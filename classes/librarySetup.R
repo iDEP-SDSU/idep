@@ -1,20 +1,27 @@
-list.of.packages <- c("shiny", "shinyAce", "shinyBS",  "RSQLite", "gplots", "ggplot2", "e1071", "reshape2", 
-                   "DT", "plotly", "limma", "DESeq2", "edgeR", "gage", "PGSEA", "fgsea",
-                   "ReactomePA", "pathview", "PREDA", "PREDAsampledata", "sfsmisc", "lokern",
-                   "multtest", "data.table")
 
-list.of.bio.packages  <- c("limma", "DESeq2", "edgeR", "gage", "PGSEA", "fgsea",
-                           "ReactomePA", "pathview", "PREDA", "PREDAsampledata", "sfsmisc", "lokern",
-                           "multtest")
+
+list.of.packages <- c("shiny", "shinyAce", "shinyBS",  "RSQLite", "gplots", "ggplot2", "e1071", "reshape2", "DT", "plotly", "data.table", "dplyr", "Rcpp")
+list.of.bio.packages  <- c(
+  "limma", "DESeq2", "edgeR", "gage", "PGSEA", "fgsea", "ReactomePA", "pathview", "PREDA", "PREDAsampledata", "sfsmisc", "lokern", "multtest",
+  "org.Ag.eg.db","org.At.tair.db","org.Bt.eg.db","org.Ce.eg.db","org.Cf.eg.db",
+  "org.Dm.eg.db","org.Dr.eg.db","org.EcK12.eg.db","org.EcSakai.eg.db","org.Gg.eg.db",
+  "org.Hs.eg.db","org.Hs.ipi.db","org.Mm.eg.db","org.Mmu.eg.db","org.Pf.plasmo.db",
+  "org.Pt.eg.db","org.Rn.eg.db","org.Sc.sgd.db","org.Sco.eg.db","org.Ss.eg.db",
+  "org.Tgondii.eg.db","org.Xl.eg.db"
+)
+
+
+
+
 #Install Require packages
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
 new.bio.packages <- list.of.bio.packages[!(list.of.bio.packages %in% installed.packages()[,"Package"])]
-if(length(list.of.bio.packages)){
+if(length(new.bio.packages)){
   source("https://bioconductor.org/biocLite.R")
   biocLite(new.bio.packages, suppressUpdates = T)
-} 
+}
 
 #Load Packages
 lapply(list.of.packages, require, character.only = TRUE)

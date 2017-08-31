@@ -1,0 +1,9 @@
+version: '2'
+services:
+  web:
+    build: .
+    ports:
+      - "3838:3838"
+    volumes:
+      - ./:/code
+    command: ["Rscript", "librarySetup.R"]
