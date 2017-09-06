@@ -43,3 +43,17 @@ docker-compose down --volumes
 
 ## Documentation
 https://idepsite.wordpress.com/
+http://docs.rstudio.com/shiny-server/
+
+### Docker-Compoer documentation
+https://docs.docker.com/compose/reference/overview/
+
+### Shiny Server Log 
+https://support.rstudio.com/hc/en-us/articles/115003717168-Shiny-Server-Error-Logs
+
+## Install required packages
+open docker terminal 
+```
+> Rscript librarySetup.R
+```
+

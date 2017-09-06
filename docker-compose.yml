@@ -5,5 +5,9 @@ services:
     ports:
       - "3838:3838"
     volumes:
-      - ./:/code
-    command: ["Rscript", "librarySetup.R"]
+      - ./shinyapps:/srv/shiny-server/
+      - ./shinylog/:/var/log/shiny-server/
+      - ./config/:/etc/shiny-server/
+      - ./classes/:/usr/local/src/myscripts/
+    command: ["/usr/bin/shiny-server.sh"]
+

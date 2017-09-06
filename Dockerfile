@@ -12,7 +12,8 @@ RUN apt-get update -qq && apt-get install -y \
 # install additional packages
 COPY ./RSet /usr/local/src/myscripts
 COPY ./classes /usr/local/src/myscripts
-
+COPY ./shinyapps /srv/shiny-server
 WORKDIR /usr/local/src/myscripts
 
-CMD ["/usr/bin/shiny-server.sh"]
+CMD ["Rscript","/usr/local/src/myscripts/librarySetup.R"]
+#CMD ["/usr/bin/shiny-server.sh"]

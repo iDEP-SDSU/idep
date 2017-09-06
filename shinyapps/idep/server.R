@@ -43,7 +43,7 @@ PREDA_Permutations =1000
 # this need to be removed. Also replace go to go for folder
 #setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
 sqlite  <- dbDriver("SQLite")
-convert <- dbConnect(sqlite,"../go/convertIDs.db")
+convert <- dbConnect(sqlite,"./data/convertIDs.db")
 set.seed(2)
 mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
 
@@ -54,7 +54,7 @@ hclust2 <- function(x, method="average", ...)
 dist2 <- function(x, ...)
   as.dist(1-cor(t(x), method="pearson"))
 
-keggSpeciesID = read.csv("KEGG_Species_ID.csv")
+keggSpeciesID = read.csv("./data_go/KEGG_Species_ID.csv")
 
 
 detectGroups <- function (x){  # x are col names
@@ -1069,12 +1069,12 @@ return( TFs )
 
  if(0 ){ # pathway testing
  x = read.csv("expression.csv")
- x = read.csv("expression1_no_duplicate.csv")
+ x = read.csv("./data_go/expression1_no_duplicate.csv")
  x = read.csv("mouse1.csv")
  x = read.csv("GSE40261.csv")
  x = read.csv("GSE52778_All_Sample_FPKM_Matrix.csv")
  x = read.csv("exampleData/GSE87194.csv")
-  x = read.csv("exampleData/expression_3groups.csv")
+x = read.csv("exampleData/expression_3groups.csv")
  x = x[order(x[,1]),]
     x = x[!duplicated(x[,1]),]
     rownames(x)= x[,1]
@@ -1190,7 +1190,7 @@ return( TFs )
 
 	  x = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
 	 #x = read.csv("exampleData/GSE87194.csv") ;
-	 x=read.csv("GSE37704_sailfish_genecounts.csv");
+	 x=read.csv("./data_go/GSE37704_sailfish_genecounts.csv");
 	 #x = read.csv("exampleData/counts_test_data_3groups.csv") ;
 	 x = read.csv("exampleData/hoppe 2 samples.csv")
 
