@@ -10,7 +10,13 @@ destination_fileH = "./data/human_matrix.h5"
 destination_fileM = "./data/mouse_matrix.h5"
 sampleInfoFile = "./data/sampleInfo1.txt"
 GSEInfoFile = "./data/GSEinfo.txt"
-	
+
+
+req = httr::GET('http://localhost:8000/hdf5Read?fname=human_matrix.h5&ref=meta/Sample_geo_accession')
+json <- httr::content(req, as = "text")
+ddd <- fromJSON(json)
+print(ddd)
+
 
 if(file.exists(sampleInfoFile)) {
   sample_info =read.table(sampleInfoFile, sep="\t",header=T )

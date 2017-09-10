@@ -1,12 +1,15 @@
 list.of.packages <- c(
-  "shiny", "shinyAce", "shinyBS",  "RSQLite", "gplots", "ggplot2",
-  "e1071", "reshape2", "DT", "plotly", "data.table", "dplyr", "Rcpp",
+  "shiny", "shinyAce", "shinyBS", "plotly",
+  "RSQLite", "gplots", "ggplot2",
+  "e1071", "reshape2", "DT",  
+  "data.table", "dplyr", "Rcpp",
   "jsonlite"
-  
 )
+
 list.of.bio.packages  <- c(
   "limma", "DESeq2", "edgeR", "gage", "PGSEA", "fgsea", "ReactomePA", "pathview", "PREDA",
   "PREDAsampledata", "sfsmisc", "lokern", "multtest",
+  
   "org.Ag.eg.db","org.At.tair.db","org.Bt.eg.db","org.Ce.eg.db","org.Cf.eg.db",
   "org.Dm.eg.db","org.Dr.eg.db","org.EcK12.eg.db","org.EcSakai.eg.db","org.Gg.eg.db",
   "org.Hs.eg.db","org.Hs.ipi.db","org.Mm.eg.db","org.Mmu.eg.db","org.Pf.plasmo.db",
@@ -29,4 +32,3 @@ if(length(new.bio.packages)){
 lapply(list.of.packages, require, character.only = TRUE)
 lapply(list.of.bio.packages, require, character.only = TRUE)
 
-sessionInfo()
