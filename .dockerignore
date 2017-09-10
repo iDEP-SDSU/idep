@@ -1,0 +1,26 @@
+.git
+**/*.csv
+**/*.db
+.Rproj.user
+.httr-oauth
+.Rhistory
+.RData
+.DS_Store
+*.swp
+.idea
+plumber.Rcheck
+plumber_*.tar.gz
+.temp
+.old
+.old_impl
+.data_go
+*.job
+google_analytics.js
+*.Rproj
+shinyapps/ExtractData/data
+shinyapps/idep/data_go
+shinyapps/idep/old
+shinylog
+
+# but keep the folder
+shinyapps/idep/data/.keep
