@@ -18,9 +18,6 @@ COPY ./RSet /usr/local/src/myscripts
 COPY ./classes /usr/local/src/myscripts
 COPY ./shinyapps /srv/shiny-server
 
-# Install required R libraries
-CMD ["Rscript","/usr/local/src/myscripts/librarySetup.R"] 
-
 RUN mkdir -p /srv/shiny-server/idep/data/geneInfo
 RUN mkdir -p /srv/shiny-server/idep/data/gmt
 RUN mkdir -p /srv/shiny-server/idep/data/motif
@@ -42,6 +39,7 @@ RUN wget -qO- -O tmp6.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-
   && unzip tmp6.zip -d /srv/shiny-server/idep/data && rm tmp6.zip
 
 WORKDIR /usr/local/src/myscripts
-
+# Install required R libraries
+CMD ["Rscript", "librarySetup.R"] 
 
 #CMD ["/usr/bin/shiny-server.sh"] #If you don't use docker-compose need to comment out
