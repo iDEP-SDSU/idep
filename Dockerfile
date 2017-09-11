@@ -8,6 +8,9 @@ RUN apt-get update -qq && apt-get install -y \
   libxml2-dev \
   libxml2  \
   libssl-dev \
+  # https://stackoverflow.com/questions/42287164/install-udunits2-package-for-r3-3
+  libudunits2-dev \ 
+  libmariadb-client-lgpl-dev \
   wget \ 
   unzip
 

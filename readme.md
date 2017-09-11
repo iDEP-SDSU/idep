@@ -6,6 +6,12 @@ iDep stacks of ready to run Shiny application in Docker.
 
 Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data. See documentation and manuscript. Based on annotation of 69 metazoa and 42 plant genomes in Ensembl BioMart as of 6/4/2017. Additional data from KEGG, Reactome, MSigDB (human), GSKB (mouse) and araPath (arabidopsis). For feedbacks or data contributions (genes and GO mapping of any species), please contact us, or visit our homepage. Send us suggestions or any error message to help improve iDEP.
 
+## Requirements
++ Storage should be more than 50GB 
++ Memory should be more than 2GB
+
+
+
 ## Prerequisites
 
 + git [Installation Guide](https://gist.github.com/derhuerst/1b15ff4652a867391f03)

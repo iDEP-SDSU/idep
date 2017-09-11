@@ -5,7 +5,7 @@ services:
     ports:
       - "3838:3838"
     volumes:
-      - ./shinyapps:/srv/shiny-server/
+      #- ./shinyapps:/srv/shiny-server/
       - ./shinylog/:/var/log/shiny-server/
       - ./config/:/etc/shiny-server/
       - ./classes/:/usr/local/src/myscripts/
