@@ -1,5 +1,5 @@
 FROM rocker/shiny:latest
-#FROM debian # for test cases
+#FROM debian # for testing
 
 MAINTAINER Kevin Son "eunwoo.son@sdstate.edu"
 RUN apt-get update -qq && apt-get install -y \
@@ -18,10 +18,14 @@ COPY ./RSet /usr/local/src/myscripts
 COPY ./classes /usr/local/src/myscripts
 COPY ./shinyapps /srv/shiny-server
 
+# Install required R libraries
+CMD ["Rscript","/usr/local/src/myscripts/librarySetup.R"] 
+
 RUN mkdir -p /srv/shiny-server/idep/data/geneInfo
 RUN mkdir -p /srv/shiny-server/idep/data/gmt
 RUN mkdir -p /srv/shiny-server/idep/data/motif
 RUN mkdir -p /srv/shiny-server/idep/data/pathwayDB
+RUN mkdir -p /srv/shiny-server/idep/data/data_go
 
 # Download Required Data
 RUN wget -qO- -O tmp.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2FgeneInfo.zip?alt=media&token=a281e5cf-6900-493c-81e4-89ce423c26bb'\
@@ -34,10 +38,10 @@ RUN wget -qO- -O tmp4.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-
   && unzip tmp4.zip -d /srv/shiny-server/idep/data && rm tmp4.zip
 RUN wget -qO- -O tmp5.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2FconvertIDs.db.zip?alt=media&token=55c80e8c-d5c1-43a5-995f-5e0c56242013' \
   && unzip tmp5.zip -d /srv/shiny-server/idep/data && rm tmp5.zip
+RUN wget -qO- -O tmp6.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2Fdata_go.zip?alt=media&token=96ddcf70-ead4-4386-b582-18afe0386b8d' \
+  && unzip tmp6.zip -d /srv/shiny-server/idep/data && rm tmp6.zip
 
 WORKDIR /usr/local/src/myscripts
 
-# Install required R libraries
-CMD ["Rscript","/usr/local/src/myscripts/librarySetup.R"] 
 
 #CMD ["/usr/bin/shiny-server.sh"] #If you don't use docker-compose need to comment out
