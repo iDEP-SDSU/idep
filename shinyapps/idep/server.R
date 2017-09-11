@@ -4,7 +4,7 @@ source("./setup/libraryServer.R")
 #setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
 sqlite  <- dbDriver("SQLite")
 convert <- dbConnect(sqlite,"./data/convertIDs.db")
-keggSpeciesID = read.csv("./data_go/KEGG_Species_ID.csv")
+keggSpeciesID = read.csv("./data/data_go/KEGG_Species_ID.csv")
 
 # R packages needed
 # install.packages(c("shiny","RSQLite","gplots","ggplot2","e1071","shinyAce","shinyBS","reshape2","DT","plotly" ) )
@@ -29,12 +29,12 @@ set.seed(2)
 mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
 
 # Create a list of GMT files in /gmt sub folder
-gmtFiles = list.files(path = "../go/pathwayDB",pattern=".*\\.db")
-gmtFiles = paste("../go/pathwayDB/",gmtFiles,sep="")
+gmtFiles = list.files(path = "./data/pathwayDB",pattern=".*\\.db")
+gmtFiles = paste("./data/pathwayDB/",gmtFiles,sep="")
 geneInfoFiles = list.files(path = "../go/geneInfo",pattern=".*GeneInfo\\.csv")
-geneInfoFiles = paste("../go/geneInfo/",geneInfoFiles,sep="")
-motifFiles = list.files(path = "../go/motif",pattern=".*\\.db")
-motifFiles = paste("../go/motif/",motifFiles,sep="")
+geneInfoFiles = paste("./data/geneInfo/",geneInfoFiles,sep="")
+motifFiles = list.files(path = "./data/motif",pattern=".*\\.db")
+motifFiles = paste("./data/motif/",motifFiles,sep="")
 
 # Create a list for Select Input options
 orgInfo <- dbGetQuery(convert, paste("select distinct * from orgInfo " ))
@@ -1015,257 +1015,7 @@ promoter <- function (converted,selectOrg, radio){
 	return( TFs )
 	}
 }
-# pathway testing # This should be removed
-testUnknown <- function(){
-	if(0) { 
-		x = read.csv("expression.csv")
-		x = read.csv("./data_go/expression1_no_duplicate.csv")
-		x = read.csv("mouse1.csv")
-		x = read.csv("GSE40261.csv")
-		x = read.csv("GSE52778_All_Sample_FPKM_Matrix.csv")
-		x = read.csv("exampleData/GSE87194.csv")
-		x = read.csv("exampleData/expression_3groups.csv")
-		x = x[order(x[,1]),]
-		x = x[!duplicated(x[,1]),]
-		rownames(x)= x[,1]
-		x = x[,-1]
 
-		tem = apply(x,1,max)
-		x = x[which(tem> 1),]
-
-		x = log(x+abs( 1),2)
-		tem = apply(x,1,sd)
-		x = x[order(-tem),]
-
-		selectOrg = "BestMatch"; GO="GOBP";
-		myrange = c(15,1000)
-
-		converted = convertID(rownames(x),selectOrg)
-
-		head(converted$conversionTable)
-		mapping = converted$conversionTable
-
-		rownames(x) = toupper(rownames(x))
-		x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
-			tem = apply(x1[,3:(dim(x1)[2]-2)],1,sd)
-		x1 = x1[order(x1[,2],-tem),]
-		x1 = x1[!duplicated(x1[,2]) ,]
-		rownames(x1) = x1[,2]
-		x1 = as.matrix(x1[,c(-1,-2)])
-
-		convertedData = x1
-		gmt = readGeneSets(converted, convertedData, GO,selectOrg, myrange)
-
-		subtype = detectGroups(colnames(convertedData))
-		Pvalue = 1  # cut off to report in PGSEA. Otherwise NA
-		Pval_pathway = 0.05   # cut off for P value of ANOVA test  to writ to file
-		top = 30   # number of pathways to show
-		myrange = c(10,2000)
-
-		pg = myPGSEA (x,cl=gmt,range=myrange,p.value=TRUE, weighted=FALSE,nPermutation=1)
-		result = PGSEApathway (converted,convertedData, selectOrg,GO,gmt, myrange,.05,30)
-		smcPlot(result$pg3,factor(subtype),scale = c(-result$best, result$best), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5)
-		smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5)
-
-		pca = 100*prcomp(t(x))$rotation
-		Npca = 10
-		if (Npca > dim(pca)[2]) { Npca = dim(pca)[2] } else pca <-  pca[,1:Npca]
-		#pca = pca[,1:5]
-		pg = myPGSEA (pca,cl=gmt,range=myrange,p.value=TRUE, weighted=FALSE,nPermutation=1)
-
-		# correcting for multiple testing
-		p.matrix = pg$p.result
-		tem = p.adjust(as.numeric(p.matrix),"fdr")
-		p.matrix = matrix(tem, nrow=dim(p.matrix)[1], ncol = dim(p.matrix)[2] )
-		rownames(p.matrix) = rownames(pg$p.result); colnames(p.matrix) = colnames(pg$p.result)
-
-		# using absolute value to rank
-		#selected = unlist( apply(pg$result, 2, function(y) which( rank(y) >= length(y)-3.1)   ) )
-
-		# using p value to rank #
-		#selected = unlist( apply(p.matrix, 2, function(x) which( rank(x,ties.method='first') <= 5)   ) )
-		selected =c()
-		for( i in 1:dim(p.matrix)[2]) {
-		tem = which( rank(p.matrix[,i],ties.method='first') <= 3)
-		#tem = which( rank(pg$result[,i],ties.method='first') >= dim(p.matrix)[1]-3.1)
-		names(tem) = paste("PC",i," ", rownames(p.matrix)[tem], sep="" )
-		selected = c(selected, tem)
-		}
-		rowids = gsub(" .*","",names(selected))
-		rowids = as.numeric( gsub("PC","",rowids) )
-		pvals = p.matrix[ cbind(selected,rowids) ]
-		a=sprintf("%-1.0e",pvals)
-		tem = pg$result[selected,]
-		rownames(tem) = paste(a,names(selected)); #colnames(tem)= paste("PC",colnames(tem),sep="")
-
-		tem = tem[!duplicated(selected),]
-		#tem = t(tem); tem = t( (tem - apply(tem,1,mean)) ) #/apply(tem,1,sd) )
-		smcPlot(tem,scale =  c(-max(tem), max(tem)), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5)
-
-		############  testing D.E.G.
-		limma = DEG.limma(convertedData, .1, .5,rawCounts=NULL,countsDEGMethods=1,priorCounts=3, dataFormat=2)
-		genes = limma$results
-		if( is.null(genes) ) return(NULL)
-		ix = match(limma$comparisons, colnames(genes))
-		query = rownames(genes)[which(genes[,ix] != 0)]
-		iy = match(query, rownames(convertedData  ) )
-		convertedData[iy,]
-		iz= match( detectGroups(colnames(convertedData)), unlist(strsplit( limma$comparisons, "-"))	  )
-		iz = which(!is.na(iz))
-		myheatmap( convertedData[iy,iz] )
-		# convertedData()[iy,iz]
-		# rawCounts = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
-		x = read.csv("exampleData/GSE87194.csv") ; x[,1] = toupper(x[,1]);   x = x[order(x[,1]),];    x = x[!duplicated(x[,1]),] #rownames(x)= x[,1]; rawCounts= x[,-1]
-		rawCounts = rawCounts[which(apply(rawCounts,1,max )>10 ) ,]
-		# res =DEG.DESeq2(rawCounts, .05, 2)
-		# res =
-		# tem = res$topGenes
-		# head( res$results )
-		# res2= DEG.limma(rawCounts, .05, 2,rawCounts, 1 ,3)
-		######### testing GAGE
-		fc = apply(x1[,4:6],1,mean)- apply(x1[,1:3],1,mean)
-		paths <- gage(fc, gsets = gmt, ref = NULL, samp = NULL)
-		paths <- as.data.frame(paths)
-		path1 <- rownames(paths)[1]
-		x = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
-		#x = read.csv("exampleData/GSE87194.csv") ;
-		x=read.csv("./data_go/GSE37704_sailfish_genecounts.csv");
-		#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
-		x = read.csv("exampleData/hoppe 2 samples.csv")
-		x[,1] = toupper(x[,1]);
-		colnames(x)[1]= "User_input"
-		selectOrg = "BestMatch"; GO="KEGG";
-		myrange = c(15,2000)
-		converted = convertID(x[,1],selectOrg)
-		mapping = converted$conversionTable
-		x = merge(mapping[,1:2],x,   by = 'User_input')
-		tem = apply(x[,3:(dim(x)[2]-2)],1,sum)
-		x = x[order(x[,2],-tem),]
-		x = x[!duplicated(x[,2]) ,]
-		rownames(x) = x[,2]
-		x = as.matrix(x[,c(-1,-2)])
-		convertedData = x
-		gmt = readGeneSets(converted, convertedData, GO,selectOrg, myrange)
-		res =DEG.DESeq2(x, .25, 1)
-		res <- DEG.limma (x, maxP_limma=.2, minFC_limma=2, x,countsDEGMethods=2,priorCounts=3, dataFormat=1)
-		top1 <- res$topGenes[[1]]
-		head(top1)
-		paths <- gage(top1[,1,drop=F], gsets = gmt, ref = NULL, samp = NULL)
-		paths <-  rbind(paths$greater,paths$less)
-		if(dim(paths)[1] < 1 | dim(paths)[2]< 6 ) return( noSig )
-		top1 <- paths[,c('stat.mean','set.size','q.val')]
-		colnames(top1)= c("stat.mean","Set Size","FDR")
-		top1 <- top1[order(top1[,3]) ,]
-		if ( length( which( top1[,3] <=  .9   ) ) == 0 )
-			return( noSig)
-		top1 <- top1[which(top1[,3] <=  .9 ) ,]
-		if(dim(top1)[1] > 30 )
-			top1 <- top1[1:30,]
-		top1
-		res = DEG.limma(x, .05, 2,NULL, 1,3 )
-		## fgsea
-		top1 <- res$topGenes[[1]]
-		head(top1)
-		colnames(top1)= c("Fold","FDR")
-		fold = top1[,1]; names(fold) <- rownames(top1)
-		paths <- fgsea(pathways = gmt,
-					stats = fold,
-					minSize=15,
-					maxSize=2000,
-					nperm=10000)
-		if(dim(paths)[1] < 1  ) {return( noSig )}
-		paths <- as.data.frame(paths)
-		top1 <- paths[,c(4,5,7,3)]
-		rownames(top1) <- paths[,1]
-		colnames(top1)= c("ES","NES","Set Size","FDR")
-		top1 <- top1[order(top1[,4]) ,]
-		if ( length( which( top1[,4] <=  input$pathwayPvalCutoff   ) ) == 0 )
-			return( noSig)
-		top1 <- top1[which(top1[,4] <=  input$pathwayPvalCutoff ) ,]
-		if(dim(top1)[1] > input$nPathwayShow )
-			top1 <- top1[1:input$nPathwayShow,]
-		top1
-		# testing visualize KEGG pathway
-		query = x[1:500,1]
-		fc= convertEnsembl2Entrez (query, Species)
-		fc = log2(fc/mean(fc))
-		top1 <- res$topGenes[[1]]
-		top1 <- top1[,1]; names(top1)= rownames(res$topGenes[[1]] )
-		Species = converted$species[1,1]
-		system.time(fc <- convertEnsembl2Entrez (top1, Species)  )
-		fc = sort(fc,decreasing =T)
-		head(fc)
-		system.time(y<- gsePathway(fc, nPerm=1000, minGSSize=15, pvalueCutoff=0.5,
-					pAdjustMethod="BH", verbose=FALSE) )
-		res <- as.data.frame(y)
-		head(res)
-		# testing mouse
-		top1 = limma$topGenes[[1]]
-		top1 <- top1[,1]; names(top1)= rownames(limma$topGenes[[1]] )
-		Species = converted$species[1,1]
-		system.time(  fc <- convertEnsembl2Entrez (top1, Species)  )
-		fc = sort(fc,decreasing =T)
-		system.time ( y<- gsePathway(fc, nPerm=1000,organism = "mouse",
-				minGSSize=15, pvalueCutoff=0.5,
-				pAdjustMethod="BH", verbose=FALSE) )
-		res <- as.data.frame(y)
-		head(res)
-		ensemblSpecies <- c("hsapiens_gene_ensembl","rnorvegicus_gene_ensembl", "mmusculus_gene_ensembl",
-		"celegans_gene_ensembl","scerevisiae_gene_ensembl", "drerio_gene_ensembl", "dmelanogaster_gene_ensembl")
-		ReactomePASpecies= c("human", "rat", "mouse", "celegans", "yeast", "zebrafish", "fly" )
-		#### testing KEGG pathway graph
-		x=read.csv("GSE37704_sailfish_genecounts.csv");
-		#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
-		x[,1] = toupper(x[,1]);
-		colnames(x)[1]= "User_input"
-		selectOrg = "BestMatch"; GO="KEGG";
-		myrange = c(15,2000)
-		converted = convertID(x[,1],selectOrg)
-		mapping = converted$conversionTable
-		x = merge(mapping[,1:2],x,   by = 'User_input')
-		tem = apply(x[,3:(dim(x)[2]-2)],1,sum)
-		x = x[order(x[,2],-tem),]
-		x = x[!duplicated(x[,2]) ,]
-		rownames(x) = x[,2]
-		x = as.matrix(x[,c(-1,-2)])
-		convertedData = x
-		gmt = readGeneSets(converted, convertedData, GO,selectOrg, myrange)
-		res =DEG.DESeq2(x, .25, 1)
-		top1 <- res$topGenes[[1]]
-		head(top1)
-		paths <- gage(top1[,1,drop=F], gsets = gmt, ref = NULL, samp = NULL)
-		paths <-  rbind(paths$greater,paths$less)
-		selectedPathway = rownames(paths)[1]
-		# [1] "Cytokine-cytokine receptor interaction"
-
-		Species <- converted$species[1,1]
-
-		fold = top1[,1]; names(fold) <- rownames(top1)
-		fold <- convertEnsembl2Entrez(fold,Species)
-
-		keggSpecies <- as.character( keggSpeciesID[which(keggSpeciesID[,1] == Species),3] )
-
-		if(nchar( keggSpecies) <=2 ) return(blank) # not in KEGG
-		cat("here5  ",keggSpecies, " ",Species," ",input$sigPathways)
-		# kegg pathway id
-		pathID = keggPathwayID(selectedPathway, Species, "KEGG",selectOrg)
-
-		cat("\n",fold[1:5],"\n",keggSpecies,"\n",pathID)
-		if(is.null(pathID) ) return(blank) # kegg pathway id not found.
-		pv.out <- pathview(gene.data = fold, pathway.id = pathID, species = keggSpecies, kegg.native=TRUE)
-
-		#######################################
-		# testing for species not recognized
-		x=read.csv("exampleData/Wu_wet_vs_control - new species.csv");
-		#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
-		x[,1] = toupper(x[,1]);
-		colnames(x)[1]= "User_input"
-		selectOrg = "BestMatch"; GO="KEGG";
-		myrange = c(15,2000)
-		converted = convertID(x[,1],selectOrg)
-		mapping = converted$conversionTable
-	}
-}
 debug_prep <- function () {
   inFile = "C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/expression1_no_duplicate.csv"
   # inFile = "C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/GSE52778_All_Sample_FPKM_Matrix.csv"
@@ -1346,7 +1096,7 @@ debug_prep <- function () {
 ## Shiny Server Implementation 
 shinyServer(function(input, output,session) {
 
-	demoDataFile = "GSE37704_sailfish_genecounts.csv" #"expression1_no_duplicate.csv"
+	demoDataFile = "./data/data_go/GSE37704_sailfish_genecounts.csv" #"expression1_no_duplicate.csv"
 	#-----------------------------------------------
 	# Available datasets
 	# readData()$data: transformed data, readData()$rawCounts: Counts data. NULL if non-count data.
@@ -3475,8 +3225,6 @@ shinyServer(function(input, output,session) {
 		}) # progress
 		}) # isloate
 	})
-
-
 	output$genomePlot <- renderPlot({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		if( is.null( genomePlotData() ) ) return(NULL)
@@ -3533,21 +3281,16 @@ shinyServer(function(input, output,session) {
 		tem = tem[,c(8,1:7,9)]
 		colnames(tem)[1] ="RegionID"
 		tem = tem[,-7]
-
 		tem
-
 	},rownames= FALSE)
 	output$genesInChrRegions <- DT::renderDataTable({
 	if (is.null(input$file1) && input$goButton == 0)   return(NULL)
 	tem = input$selectContrast2
-
 		tem = genomePlotData()$Genes
 		tem <- tem[,-c(5,10,12)]
 		tem$Fold <- round(tem$Fold,3)
 		colnames(tem)[2]="Dir"
 		tem
-
-
 	},rownames= FALSE)
 
 })  # shiny Server

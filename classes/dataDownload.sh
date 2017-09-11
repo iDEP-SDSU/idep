@@ -10,3 +10,5 @@ wget -qO- -O tmp4.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bclo
   && unzip tmp4.zip -d /srv/shiny-server/idep/data && rm tmp4.zip
 wget -qO- -O tmp5.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2FconvertIDs.db.zip?alt=media&token=55c80e8c-d5c1-43a5-995f-5e0c56242013' \
   && unzip tmp5.zip -d /srv/shiny-server/idep/data && rm tmp5.zip
+wget -qO- -O tmp6.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2Fdata_go.zip?alt=media&token=96ddcf70-ead4-4386-b582-18afe0386b8d' \
+  && unzip tmp6.zip -d /srv/shiny-server/idep/data && rm tmp6.zip
