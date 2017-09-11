@@ -23,7 +23,7 @@ sudo docker ps -a | grep Exit | cut -d ' ' -f 1 | xargs sudo docker rm
 
 
 ## Run bash
-docker run -it image_name /bin/bash
+docker exec -it idep_web_1 bash
 
 
 
