@@ -6,22 +6,25 @@ iDep stacks of ready to run Shiny application in Docker.
 
 Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data. See documentation and manuscript. Based on annotation of 69 metazoa and 42 plant genomes in Ensembl BioMart as of 6/4/2017. Additional data from KEGG, Reactome, MSigDB (human), GSKB (mouse) and araPath (arabidopsis). For feedbacks or data contributions (genes and GO mapping of any species), please contact us, or visit our homepage. Send us suggestions or any error message to help improve iDEP.
 
-
 ## Prerequisites
 
-+ docker community edition (win10 above and MacOS)
++ git [Installation Guide](https://gist.github.com/derhuerst/1b15ff4652a867391f03)
+
++ docker community edition (win10 above and MacOS)[Installation Guide]()
+
 + + docker toolbox (win7) 
 
 
 ### Install `docker` and `docker-compose`
 
-+ [Installation] (https://github.com/iDEP-SDSU/idep/wiki/Install-Docker-and-Docker-Compose)
+More detail information 
 
-### Install 
++ [Installation](https://github.com/iDEP-SDSU/idep/wiki/Install-Docker-and-Docker-Compose)
 
-### Quick Start
+## Quick Start
 
-Make clone 
+From your local machine Make clone 
+
 ```
 > git clone https://github.com/iDEP-SDSU/idep.git
 ```
@@ -80,6 +83,7 @@ https://docs.docker.com/compose/reference/overview/
 https://support.rstudio.com/hc/en-us/articles/115003717168-Shiny-Server-Error-Logs
 
 ## Install required packages
+
 open docker terminal 
 ```
 > Rscript librarySetup.R

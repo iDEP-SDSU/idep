@@ -28,3 +28,6 @@ docker run -it image_name /bin/bash
 
 
 https://stackoverflow.com/questions/24482822/how-to-share-my-docker-image-without-using-the-docker-hub
+
+### How to delete dangling volume 
+https://stackoverflow.com/questions/30604846/docker-error-no-space-left-on-device

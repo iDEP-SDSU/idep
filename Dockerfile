@@ -29,6 +29,8 @@ RUN wget -qO- -O tmp3.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-
   && unzip tmp3.zip -d /srv/shiny-server/idep/data && rm tmp3.zip
 RUN wget -qO- -O tmp4.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2FpathwayDB.zip?alt=media&token=e602f2f7-102a-4cc4-8412-be2b05997daa' \
   && unzip tmp4.zip -d /srv/shiny-server/idep/data && rm tmp4.zip
+RUN wget -qO- -O tmp5.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2FconvertIDs.db.zip?alt=media&token=55c80e8c-d5c1-43a5-995f-5e0c56242013' \
+  && unzip tmp5.zip -d /srv/shiny-server/idep/data && rm tmp5.zip
 
 WORKDIR /usr/local/src/myscripts
 
