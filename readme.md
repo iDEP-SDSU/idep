@@ -17,6 +17,7 @@ Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic
 + git [Installation Guide](https://gist.github.com/derhuerst/1b15ff4652a867391f03)
 
 + docker community edition (win10 above and MacOS)[Installation Guide]()
+https://docs.docker.com/engine/installation/linux/docker-ce/debian/#install-using-the-repository
 
 + + docker toolbox (win7) 
 

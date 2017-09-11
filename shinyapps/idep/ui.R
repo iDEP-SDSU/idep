@@ -1,4 +1,4 @@
-source("./libraryUI.R")
+source("./setup/libraryUI.R")
 iDEPversion = "iDEP 0.37"
 
 
