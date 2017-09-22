@@ -1,0 +1,1 @@
+exec Rscript librarySetup.R
