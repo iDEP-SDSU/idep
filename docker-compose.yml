@@ -3,7 +3,7 @@ services:
   web:
     build: .
     ports:
-      - "3838:3838"
+      - "80:3838"
     volumes:
       #- ./shinyapps:/srv/shiny-server/ # this volume only for dev 
       - ./shinylog/:/var/log/shiny-server/
