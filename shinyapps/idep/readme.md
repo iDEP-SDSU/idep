@@ -22,3 +22,4 @@ https://stackoverflow.com/questions/30604846/docker-error-no-space-left-on-devic
 
 + means your vm doesn't have sufficient memory to compile it. (Need more Memory)
 
+R -e "shiny::runApp('./shinyapps/idep')"
