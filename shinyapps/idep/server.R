@@ -1017,7 +1017,7 @@ promoter <- function (converted,selectOrg, radio){
 }
 
 debug_prep <- function () {
-  inFile = "C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/expression1_no_duplicate.csv"
+  inFile = "./data/data_go/expression1_no_duplicate.csv"
   # inFile = "C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/GSE52778_All_Sample_FPKM_Matrix.csv"
   lowFilter = 1; logStart = 1
   x = read.csv(inFile)
