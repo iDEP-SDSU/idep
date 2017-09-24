@@ -3,7 +3,7 @@ source("./setup/libraryServer.R")
 # this need to be removed. Also replace go to go for folder
 #setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
 sqlite  <- dbDriver("SQLite")
-convert <- dbConnect(sqlite,"./data/convertIDs.db")
+convert <- dbConnect(sqlite, "./data/convertIDs.db")
 keggSpeciesID = read.csv("./data/data_go/KEGG_Species_ID.csv")
 
 # R packages needed
