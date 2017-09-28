@@ -23,3 +23,6 @@ https://stackoverflow.com/questions/30604846/docker-error-no-space-left-on-devic
 + means your vm doesn't have sufficient memory to compile it. (Need more Memory)
 
 R -e "shiny::runApp('./shinyapps/idep')"
+
+### PostgreSQL backup
+http://www.mholt.tech/blog/2016/01/12/how-to-back-up-a-data-container/

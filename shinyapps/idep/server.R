@@ -1,3 +1,5 @@
+## PLAN dplyr should be used for all filter and mutate process
+
 iDEPversion = "iDEP 0.39"
 ################################################################
 # R packages
@@ -31,7 +33,7 @@ notInstalled = setdiff(biocLibs, rownames(installed.packages()))
 if(length(notInstalled)>0) { 
 	source("https://bioconductor.org/biocLite.R")
 	biocLite(notInstalled)
-	}
+}
 library(limma) # Differential expression
 library(DESeq2) # count data analysis
 library(edgeR) # count data D.E.
@@ -73,19 +75,14 @@ mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,1
 #  setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
 sqlite  <- dbDriver("SQLite")
 convert <- dbConnect(sqlite,"./data/convertIDs.db",flags=SQLITE_RO)  #read only mode
-
-keggSpeciesID = read.csv("./data/data_go/KEGG_Species_ID.csv")  
-
+keggSpeciesID = read.csv("./data/data_go/KEGG_Species_ID.csv")
 # List of GMT files in /gmt sub folder
 gmtFiles = list.files(path = "./data/pathwayDB",pattern=".*\\.db")
 gmtFiles = paste("./data/pathwayDB/",gmtFiles,sep="")
-
 geneInfoFiles = list.files(path = "./data/geneInfo",pattern=".*GeneInfo\\.csv")
 geneInfoFiles = paste("./data/geneInfo/",geneInfoFiles,sep="")
-
 motifFiles = list.files(path = "./data/motif",pattern=".*\\.db")
 motifFiles = paste("./data/motif/",motifFiles,sep="")
-
 demoDataFile = "./data/data_go/GSE37704_sailfish_genecounts.csv" #"expression1_no_duplicate.csv"
 
 ################################################################
@@ -95,6 +92,7 @@ demoDataFile = "./data/data_go/GSE37704_sailfish_genecounts.csv" #"expression1_n
 # Functions for hierarchical clustering
 hclust2 <- function(x, method="average", ...)  # average linkage
   hclust(x, method=method, ...)
+
 dist2 <- function(x, ...)   # distance function = 1-PCC (Pearson's correlation coefficient)
   as.dist(1-cor(t(x), method="pearson"))
 
@@ -262,7 +260,7 @@ myheatmap2 <- function (x,bar,n=-1 ) {
 cleanGeneSet <- function (x){
   # remove duplicate; upper case; remove special characters
   x <- unique( toupper( gsub("\n| ","",x) ) )
-  x <- x[ which( nchar(x)>1) ]  # genes should have at least two characters
+  x <- x[which( nchar(x)>1) ]  # genes should have at least two characters
   return(x)
 }
 
@@ -437,7 +435,7 @@ myPGSEA  <- function (exprs, cl, range = c(25, 500), ref = NULL, center = TRUE,
 }
 
 
-
+# [ConvertDB Class START]
 # prepare species list
 
 # Create a list for Select Input options
@@ -464,11 +462,10 @@ i= grep("Homo sapiens",names(speciesChoice)); speciesChoice <- move2(i)
 GO_levels = dbGetQuery(convert, "select distinct id,level from GO  
                                 WHERE GO = 'biological_process'"  )
 level2Terms = GO_levels[which(GO_levels$level %in% c(2,3))  ,1]  # level 2 and 3
-
 idIndex <- dbGetQuery(convert, paste("select distinct * from idIndex " ))
-
 quotes <- dbGetQuery(convert, " select * from quotes")
 quotes = paste0("\"",quotes$quotes,"\"", " -- ",quotes$author,".       ")
+# [ConvertDB Class END]
 
 # This function convert gene set names
 # x="GOBP_mmu_mgi_GO:0000183_chromatin_silencing_at_rDNA"
@@ -505,74 +502,68 @@ matchedSpeciesInfo <- function (x) {
 }
 
 # convert gene IDs to ensembl gene ids and find species
-convertID <- function (query,selectOrg, selectGO) { 
-  querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,' )  ) )
-  result <- dbGetQuery( convert,
-                        paste( " select distinct id,ens,species from mapping where id IN ('", paste(querySet,collapse="', '"),   "')",sep="") )
-  if( dim(result)[1] == 0  ) return(NULL)
-  if(selectOrg == speciesChoice[[1]]) { 
-    comb = paste( result$species,result$idType)
-    sortedCounts = sort( table(comb ),decreasing=T)
-    recognized =names(sortedCounts[1]  )
-    result <- result[which(comb == recognized )  , ]
-
-	speciesMatched=sortedCounts
-    names(speciesMatched )= sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  ) 
-    speciesMatched <- as.data.frame( speciesMatched )
-	if(length(sortedCounts) == 1) { # if only  one species matched
-	  speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
-	 } else {# if more than one species matched
-		speciesMatched[,1] <- as.character(speciesMatched[,1])
-		speciesMatched[,1] <- paste( speciesMatched[,1]," (",speciesMatched[,2], ")", sep="") 
-		speciesMatched[1,1] <- paste( speciesMatched[1,1],"   ***Used in mapping***  To change, select from above and resubmit query.") 	
-		speciesMatched <- as.data.frame(speciesMatched[,1])
+convertID <- function (query,selectOrg, selectGO) {
+	querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,')))
+	# querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
+	querySTMT <- paste( "select distinct id,ens,species from mapping where id IN ('", paste(querySet,collapse="', '"),"')",sep="")
+	result <- dbGetQuery(convert, querySTMT)
+	if( dim(result)[1] == 0  ) return(NULL)
+	if(selectOrg == speciesChoice[[1]]) {
+		comb = paste( result$species,result$idType)
+		sortedCounts = sort(table(comb),decreasing=T)
+		recognized =names(sortedCounts[1])
+		result <- result[which(comb == recognized),]
+		speciesMatched=sortedCounts
+		names(speciesMatched )= sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  ) 
+		speciesMatched <- as.data.frame( speciesMatched )
+		if(length(sortedCounts) == 1) { # if only  one species matched
+		speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
+		} else {# if more than one species matched
+			speciesMatched[,1] <- as.character(speciesMatched[,1])
+			speciesMatched[,1] <- paste( speciesMatched[,1]," (",speciesMatched[,2], ")", sep="") 
+			speciesMatched[1,1] <- paste( speciesMatched[1,1],"   ***Used in mapping***  To change, select from above and resubmit query.") 	
+			speciesMatched <- as.data.frame(speciesMatched[,1])
+		}
+	} else { # if species is selected
+		result <- result[which(result$species == selectOrg ) ,]
+		if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
+		speciesMatched <- as.data.frame(paste("Using selected species ", findSpeciesByIdName(selectOrg) )  )
 	}
-	
-  } else { # if species is selected
-    result <- result[which(result$species == selectOrg ) ,]
-    if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
-    speciesMatched <- as.data.frame(paste("Using selected species ", findSpeciesByIdName(selectOrg) )  )
-  }
-  result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id
-  result <- result[which(!duplicated(result[,1]) ),] # remove duplicates in user ID
-  colnames(speciesMatched) = c("Matched Species (genes)" ) 
-  conversionTable <- result[,1:2]; colnames(conversionTable) = c("User_input","ensembl_gene_id")
-  conversionTable$Species = sapply(result[,3], findSpeciesByIdName )
-  
-  if(0){
-  # generate a list of gene set categories
-  ix = grep(findSpeciesById(result$species[1])[1,1],gmtFiles)
-   
-  if (length(ix) == 0 ) {categoryChoices = NULL}
-  
-  # If selected species is not the default "bestMatch", use that species directly
-  if(selectOrg != speciesChoice[[1]]) {  
-    ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
-	if (length(ix) == 0 ) {categoryChoices = NULL}
-	totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
-  }
-  pathway <- dbConnect(sqlite,gmtFiles[ix])
- 
-  # Generate a list of geneset categories such as "GOBP", "KEGG" from file
-  geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
-  geneSetCategory  <- geneSetCategory[,1]
-  categoryChoices <- setNames(as.list( geneSetCategory ), geneSetCategory )
-  categoryChoices <- append( setNames( "All","All available gene sets"), categoryChoices  )
-  #change GOBO to the full description for display
-  names(categoryChoices)[ match("GOBP",categoryChoices)  ] <- "GO Biological Process"
-  names(categoryChoices)[ match("GOCC",categoryChoices)  ] <- "GO Cellular Component"
-  names(categoryChoices)[ match("GOMF",categoryChoices)  ] <- "GO Molecular Function"
-  
-  dbDisconnect(pathway)
-  
-  } #if (0)
-  return(list(originalIDs = querySet,IDs=unique( result[,2]), 
-              species = findSpeciesById(result$species[1]), 
-              #idType = findIDtypeById(result$idType[1] ),
-              speciesMatched = speciesMatched,
-			  conversionTable = conversionTable
-			  ) )
-} 
+	result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id
+	result <- result[which(!duplicated(result[,1]) ),] # remove duplicates in user ID
+	colnames(speciesMatched) = c("Matched Species (genes)" ) 
+	conversionTable <- result[,1:2]; colnames(conversionTable) = c("User_input","ensembl_gene_id")
+	conversionTable$Species = sapply(result[,3], findSpeciesByIdName )
+	if(0){
+		# generate a list of gene set categories
+		ix = grep(findSpeciesById(result$species[1])[1,1],gmtFiles)
+		if (length(ix) == 0 ) {categoryChoices = NULL}
+		# If selected species is not the default "bestMatch", use that species directly
+		if(selectOrg != speciesChoice[[1]]) {  
+			ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
+			if (length(ix) == 0 ) {categoryChoices = NULL}
+			totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
+		}
+		pathway <- dbConnect(sqlite,gmtFiles[ix])
+		# Generate a list of geneset categories such as "GOBP", "KEGG" from file
+		geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
+		geneSetCategory  <- geneSetCategory[,1]
+		categoryChoices <- setNames(as.list( geneSetCategory ), geneSetCategory )
+		categoryChoices <- append( setNames( "All","All available gene sets"), categoryChoices  )
+		#change GOBO to the full description for display
+		names(categoryChoices)[ match("GOBP",categoryChoices)  ] <- "GO Biological Process"
+		names(categoryChoices)[ match("GOCC",categoryChoices)  ] <- "GO Cellular Component"
+		names(categoryChoices)[ match("GOMF",categoryChoices)  ] <- "GO Molecular Function"
+		dbDisconnect(pathway)
+	} #if (0)
+
+	return(list(originalIDs = querySet,IDs=unique( result[,2]), 
+				species = findSpeciesById(result$species[1]), 
+				#idType = findIDtypeById(result$idType[1] ),
+				speciesMatched = speciesMatched,
+				conversionTable = conversionTable
+				) )
+}
 
 # finds id index corresponding to entrez gene and KEGG for id conversion
 idType_Entrez <- dbGetQuery(convert, paste("select distinct * from idIndex where idType = 'entrezgene'" ))
