@@ -166,35 +166,34 @@ myheatmap3 <- function (x,n=-1) {
 	,key=F
 	,margins = c(6, 20)
 	)
-if(0) {
-	lmat = rbind(c(5,4),c(0,1),c(3,2))
-	lwid = c(1.5,6)
-	lhei = c(1,.2,8)
+	if(0) {
+		lmat = rbind(c(5,4),c(0,1),c(3,2))
+		lwid = c(1.5,6)
+		lhei = c(1,.2,8)
 
-if( dim(x)[1]>100) 
-	heatmap.2(x, distfun = dist2,hclustfun=hclust2,
-	 col=greenred(75), density.info="none", trace="none", scale="none", keysize=.5
-	,key=T, symkey=F
-	,ColSideColors=mycolors[ groups]
-	,labRow=""
-	,margins=c(6,8)
-	,srtCol=45
-	#,lmat = lmat, lwid = lwid, lhei = lhei
-	)
+		if( dim(x)[1]>100) 
+			heatmap.2(x, distfun = dist2,hclustfun=hclust2,
+			col=greenred(75), density.info="none", trace="none", scale="none", keysize=.5
+			,key=T, symkey=F
+			,ColSideColors=mycolors[ groups]
+			,labRow=""
+			,margins=c(6,8)
+			,srtCol=45
+			#,lmat = lmat, lwid = lwid, lhei = lhei
+			)
 
-	if( dim(x)[1] <=100)  # show gene names if less than 100 genes
-	heatmap.2(x, distfun = dist2,hclustfun=hclust2,
-	 col=greenred(75), density.info="none", trace="none", scale="none", keysize=.5
-	,key=T, symkey=F,
-	#,labRow=labRow
-		,ColSideColors=mycolors[ groups]
-	,margins=c(6,8)
-	,cexRow=1.5
-	,srtCol=45
-	#,lmat = lmat, lwid = lwid, lhei = lhei
-	)
+		if( dim(x)[1] <=100)  # show gene names if less than 100 genes
+		heatmap.2(x, distfun = dist2,hclustfun=hclust2,
+		col=greenred(75), density.info="none", trace="none", scale="none", keysize=.5
+		,key=T, symkey=F,
+		#,labRow=labRow
+			,ColSideColors=mycolors[ groups]
+		,margins=c(6,8)
+		,cexRow=1.5
+		,srtCol=45
+		#,lmat = lmat, lwid = lwid, lhei = lhei
+		)
   }
-
 }
 
 #Heatmap: randomly samples genes
@@ -348,8 +347,7 @@ findOverlapGMT <- function ( query, geneSet, minFDR=.2 ,minSize=2,maxSize=10000 
 
 # Runs pathway analysis using PGSEA; this is copied and revised from PGSEA package
 myPGSEA  <- function (exprs, cl, range = c(25, 500), ref = NULL, center = TRUE, 
-    p.value = 0.005, weighted = TRUE, nPermutation=100, enforceRange = TRUE, ...) 
-{
+    p.value = 0.005, weighted = TRUE, nPermutation=100, enforceRange = TRUE, ...) {
     if (is(exprs, "ExpressionSet")) 
         exprs <- exprs(exprs)
     if (!is.list(cl)) 
@@ -574,234 +572,234 @@ if(dim(idType_KEGG)[1] != 1) {cat("Warning! KEGG ID not found!")}
 idType_KEGG = as.numeric( idType_KEGG[1,1])
 
 convertEnsembl2Entrez <- function (query,Species) { 
-  querySet <- cleanGeneSet( unlist( strsplit( toupper(names( query)),'\t| |\n|\\,' )  ) )
-  speciesID <- orgInfo$id[ which(orgInfo$ensembl_dataset == Species)]  # note uses species Identifying
-  # idType 6 for entrez gene ID
-  result <- dbGetQuery( convert,
-                       paste( " select  id,ens,species from mapping where ens IN ('", paste(querySet,collapse="', '"),
-                			"') AND  idType ='",idType_Entrez,"'",sep="") )	# slow
-						
-  if( dim(result)[1] == 0  ) return(NULL)
-  result <- subset(result, species==speciesID, select = -species)
+	querySet <- cleanGeneSet( unlist( strsplit( toupper(names( query)),'\t| |\n|\\,' )  ) )
+	speciesID <- orgInfo$id[ which(orgInfo$ensembl_dataset == Species)]  # note uses species Identifying
+	# idType 6 for entrez gene ID
+	result <- dbGetQuery( convert,
+						paste( " select  id,ens,species from mapping where ens IN ('", paste(querySet,collapse="', '"),
+								"') AND  idType ='",idType_Entrez,"'",sep="") )	# slow
+							
+	if( dim(result)[1] == 0  ) return(NULL)
+	result <- subset(result, species==speciesID, select = -species)
 
-  ix = match(result$ens,names(query)  )
+	ix = match(result$ens,names(query)  )
 
-  tem <- query[ix];  names(tem) = result$id
-  return(tem)
+	tem <- query[ix];  names(tem) = result$id
+	return(tem)
   
 }
 
 convertEnsembl2KEGG <- function (query,Species) {  # not working
-  querySet <- cleanGeneSet( unlist( strsplit( toupper(names( query)),'\t| |\n|\\,' )  ) )
-  speciesID <- orgInfo$id[ which(orgInfo$ensembl_dataset == Species)]  # note uses species Identifying
-  # idType 6 for entrez gene ID
-  result <- dbGetQuery( convert,
-                       paste( " select  id,ens,species from mapping where ens IN ('", paste(querySet,collapse="', '"),
-                			"') AND  idType ='",idType_KEGG,"'",sep="") )	# slow
-						
-  if( dim(result)[1] == 0  ) return(NULL)
-  result <- subset(result, species==speciesID, select = -species)
+	querySet <- cleanGeneSet( unlist( strsplit( toupper(names( query)),'\t| |\n|\\,' )  ) )
+	speciesID <- orgInfo$id[ which(orgInfo$ensembl_dataset == Species)]  # note uses species Identifying
+	# idType 6 for entrez gene ID
+	result <- dbGetQuery( convert,
+						paste( " select  id,ens,species from mapping where ens IN ('", paste(querySet,collapse="', '"),
+								"') AND  idType ='",idType_KEGG,"'",sep="") )	# slow
+							
+	if( dim(result)[1] == 0  ) return(NULL)
+	result <- subset(result, species==speciesID, select = -species)
 
-  ix = match(result$ens,names(query)  )
+	ix = match(result$ens,names(query)  )
 
-  tem <- query[ix];  names(tem) = result$id
-  return(tem)  
+	tem <- query[ix];  names(tem) = result$id
+	return(tem)  
 }
 
 # retrieve detailed info on genes
 geneInfo <- function (converted,selectOrg){
-  # query = scan("query_temp.txt",what=""); selectOrg ="BestMatch";
-   # query = scan("zebrafish_test.gmt", what="" ); selectOrg ="BestMatch";
-  # query = scan("Celegans_test.gmt", what="" ); selectOrg ="BestMatch";
-  # query = scan("test_query_mouse_symbol.txt", what="" ); selectOrg ="BestMatch";
-  #  query = scan("soy_test.txt", what="" );selectOrg ="BestMatch";
-  # querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,')))
-  # converted = convertID( querySet,selectOrg)
-  if(is.null(converted) ) return(as.data.frame("ID not recognized!") ) # no ID 
-  querySet <- converted$IDs
-  if(length(querySet) == 0) return(as.data.frame("ID not recognized!") )
-  ix = grep(converted$species[1,1],geneInfoFiles)
-  if (length(ix) == 0 ) {return(as.data.frame("No matching gene info file found") )} else {
-  # If selected species is not the default "bestMatch", use that species directly
-  if(selectOrg != speciesChoice[[1]]) {  
-    ix = grep(findSpeciesById(selectOrg)[1,1], geneInfoFiles )
-  }
-  if(length(ix) == 1)  # if only one file           #WBGene0000001 some ensembl gene ids in lower case
-  { x = read.csv(as.character(geneInfoFiles[ix]) ); x[,1]= toupper(x[,1]) } else # read in the chosen file 
-  { return(as.data.frame("Multiple geneInfo file found!") )   }
-  Set = match(x$ensembl_gene_id, querySet)
-  Set[which(is.na(Set))]="Genome"
-  Set[which(Set!="Genome")] ="List"
-  # x = cbind(x,Set) } # just for debuging
-  return( cbind(x,Set) )}
+	# query = scan("query_temp.txt",what=""); selectOrg ="BestMatch";
+	# query = scan("zebrafish_test.gmt", what="" ); selectOrg ="BestMatch";
+	# query = scan("Celegans_test.gmt", what="" ); selectOrg ="BestMatch";
+	# query = scan("test_query_mouse_symbol.txt", what="" ); selectOrg ="BestMatch";
+	#  query = scan("soy_test.txt", what="" );selectOrg ="BestMatch";
+	# querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,')))
+	# converted = convertID( querySet,selectOrg)
+	if(is.null(converted) ) return(as.data.frame("ID not recognized!") ) # no ID 
+	querySet <- converted$IDs
+	if(length(querySet) == 0) return(as.data.frame("ID not recognized!") )
+	ix = grep(converted$species[1,1],geneInfoFiles)
+	if (length(ix) == 0 ) {return(as.data.frame("No matching gene info file found") )} else {
+	# If selected species is not the default "bestMatch", use that species directly
+	if(selectOrg != speciesChoice[[1]]) {  
+		ix = grep(findSpeciesById(selectOrg)[1,1], geneInfoFiles )
+	}
+	if(length(ix) == 1)  # if only one file           #WBGene0000001 some ensembl gene ids in lower case
+	{ x = read.csv(as.character(geneInfoFiles[ix]) ); x[,1]= toupper(x[,1]) } else # read in the chosen file 
+	{ return(as.data.frame("Multiple geneInfo file found!") )   }
+	Set = match(x$ensembl_gene_id, querySet)
+	Set[which(is.na(Set))]="Genome"
+	Set[which(Set!="Genome")] ="List"
+	# x = cbind(x,Set) } # just for debuging
+	return( cbind(x,Set) )}
  }
 
 # Main function. Find a query set of genes enriched with functional category
 FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR) {
-  maxTerms =10 # max number of enriched terms
-  idNotRecognized = as.data.frame("ID not recognized!")
-  
-  if(is.null(converted) ) return(idNotRecognized) # no ID 
-  
-  # only coding
-  gInfo <- gInfo[which( gInfo$gene_biotype == "protein_coding"),]  
-  querySet <- intersect( converted$IDs, gInfo[,1]);
-  
-  if(length(querySet) == 0) return(idNotRecognized )
-  
-  ix = grep(converted$species[1,1],gmtFiles)
-  totalGenes <- converted$species[1,7]
-  
-  if (length(ix) == 0 ) {return(idNotRecognized )}
-  
-  # If selected species is not the default "bestMatch", use that species directly
-  if(selectOrg != speciesChoice[[1]]) {  
-    ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
+	maxTerms =10 # max number of enriched terms
+	idNotRecognized = as.data.frame("ID not recognized!")
+	
+	if(is.null(converted) ) return(idNotRecognized) # no ID 
+	
+	# only coding
+	gInfo <- gInfo[which( gInfo$gene_biotype == "protein_coding"),]  
+	querySet <- intersect( converted$IDs, gInfo[,1]);
+	
+	if(length(querySet) == 0) return(idNotRecognized )
+	
+	ix = grep(converted$species[1,1],gmtFiles)
+	totalGenes <- converted$species[1,7]
+	
 	if (length(ix) == 0 ) {return(idNotRecognized )}
-	totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
-  }
-  pathway <- dbConnect(sqlite,gmtFiles[ix])
- 
-     
-  sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySet,collapse="', '"),"')" ,sep="")
-  
-  #cat(paste0("HH",GO,"HH") )
-  
-  if( GO != "All") sqlQuery = paste0(sqlQuery, " AND category ='",GO,"'")
-  result <- dbGetQuery( pathway, sqlQuery  )
-  if( dim(result)[1] ==0) {return(as.data.frame("No matching species or gene ID file!" )) }
+	
+	# If selected species is not the default "bestMatch", use that species directly
+	if(selectOrg != speciesChoice[[1]]) {  
+		ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
+		if (length(ix) == 0 ) {return(idNotRecognized )}
+		totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
+	}
+	pathway <- dbConnect(sqlite,gmtFiles[ix])
+	
+		
+	sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySet,collapse="', '"),"')" ,sep="")
+	
+	#cat(paste0("HH",GO,"HH") )
+	
+	if( GO != "All") sqlQuery = paste0(sqlQuery, " AND category ='",GO,"'")
+	result <- dbGetQuery( pathway, sqlQuery  )
+	if( dim(result)[1] ==0) {return(as.data.frame("No matching species or gene ID file!" )) }
 
-   # given a pathway id, it finds the overlapped genes, symbol preferred
-  sharedGenesPrefered <- function(pathwayID) {
-    tem <- result[which(result[,2]== pathwayID ),1]
-	ix = match(tem, converted$conversionTable$ensembl_gene_id) # convert back to original
-	tem2 <- unique( converted$conversionTable$User_input[ix] )
-    if(length(unique(gInfo$symbol) )/dim(gInfo)[1] >.7  ) # if 70% genes has symbol in geneInfo
-	{ ix = match(tem, gInfo$ensembl_gene_id); 
-	  tem2 <- unique( gInfo$symbol[ix] )      }
-  return( paste( tem2 ,collapse=" ",sep="") )}
-  
-  x0 = table(result$pathwayID)					
-  x0 = as.data.frame( x0[which(x0>=Min_overlap)] )# remove low overlaps
-  if(dim(x0)[1] <= 5 ) return(idNotRecognized) # no data
-  colnames(x0)=c("pathwayID","overlap")
-  pathwayInfo <- dbGetQuery( pathway, paste( " select distinct id,n,Description from pathwayInfo where id IN ('", 
-						paste(x0$pathwayID,collapse="', '"),   "') ",sep="") )
-  
-  x = merge(x0,pathwayInfo, by.x='pathwayID', by.y='id')
-  
-  x$Pval=phyper(x$overlap-1,length(querySet),totalGenes - length(querySet),as.numeric(x$n), lower.tail=FALSE );
-  x$FDR = p.adjust(x$Pval,method="fdr")
-  x <- x[ order( x$FDR)  ,]  # sort according to FDR
- 
- 
-  if(min(x$FDR) > minFDR) x=as.data.frame("No significant enrichment found!") else {
-  x <- x[which(x$FDR < minFDR),] 
-  if(dim(x)[1] > maxTerms ) x = x[1:maxTerms,]
-  x= cbind(x,sapply( x$pathwayID, sharedGenesPrefered ) )
-  colnames(x)[7]= "Genes"
-  x <- subset(x,select = c(FDR,overlap,n,description,Genes) )
-  colnames(x) = c("Corrected P value (FDR)", "Genes in list", "Total genes in category","Functional Category","Genes"  )
-  }
-        
- dbDisconnect(pathway)
- return(x )
+	# given a pathway id, it finds the overlapped genes, symbol preferred
+	sharedGenesPrefered <- function(pathwayID) {
+		tem <- result[which(result[,2]== pathwayID ),1]
+		ix = match(tem, converted$conversionTable$ensembl_gene_id) # convert back to original
+		tem2 <- unique( converted$conversionTable$User_input[ix] )
+		if(length(unique(gInfo$symbol) )/dim(gInfo)[1] >.7  ) # if 70% genes has symbol in geneInfo
+		{ ix = match(tem, gInfo$ensembl_gene_id); 
+		tem2 <- unique( gInfo$symbol[ix] )      }
+	return( paste( tem2 ,collapse=" ",sep="") )}
+	
+	x0 = table(result$pathwayID)					
+	x0 = as.data.frame( x0[which(x0>=Min_overlap)] )# remove low overlaps
+	if(dim(x0)[1] <= 5 ) return(idNotRecognized) # no data
+	colnames(x0)=c("pathwayID","overlap")
+	pathwayInfo <- dbGetQuery( pathway, paste( " select distinct id,n,Description from pathwayInfo where id IN ('", 
+							paste(x0$pathwayID,collapse="', '"),   "') ",sep="") )
+	
+	x = merge(x0,pathwayInfo, by.x='pathwayID', by.y='id')
+	
+	x$Pval=phyper(x$overlap-1,length(querySet),totalGenes - length(querySet),as.numeric(x$n), lower.tail=FALSE );
+	x$FDR = p.adjust(x$Pval,method="fdr")
+	x <- x[ order( x$FDR)  ,]  # sort according to FDR
+	
+	
+	if(min(x$FDR) > minFDR) x=as.data.frame("No significant enrichment found!") else {
+	x <- x[which(x$FDR < minFDR),] 
+	if(dim(x)[1] > maxTerms ) x = x[1:maxTerms,]
+	x= cbind(x,sapply( x$pathwayID, sharedGenesPrefered ) )
+	colnames(x)[7]= "Genes"
+	x <- subset(x,select = c(FDR,overlap,n,description,Genes) )
+	colnames(x) = c("Corrected P value (FDR)", "Genes in list", "Total genes in category","Functional Category","Genes"  )
+	}
+			
+	dbDisconnect(pathway)
+	return(x )
 } 
                                      #, categoryChoices = categoryChoices 
 #Given a KEGG pathway description, found pathway ids
 keggPathwayID <- function (pathwayDescription, Species, GO,selectOrg) {
-  ix = grep(Species,gmtFiles)
+	ix = grep(Species,gmtFiles)
 
-  if (length(ix) == 0 ) {return(NULL)}
-  
-  # If selected species is not the default "bestMatch", use that species directly
-  if(selectOrg != speciesChoice[[1]]) {  
-    ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
-	if (length(ix) == 0 ) {return(NULL )}
-	totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
-  }
-  pathway <- dbConnect(sqlite,gmtFiles[ix])
- 
-  pathwayInfo <- dbGetQuery( pathway, paste( " select * from pathwayInfo where description =  '", 
-						pathwayDescription,   "' AND name LIKE '",GO,"%'",sep="") )
-  dbDisconnect(pathway);
-  if(dim(pathwayInfo)[1] != 1 ) {return(NULL) }
-  tem = gsub(".*:","",pathwayInfo[1,2])  
-  return( gsub("_.*","",tem) )
-  } 
-  
+	if (length(ix) == 0 ) {return(NULL)}
+	
+	# If selected species is not the default "bestMatch", use that species directly
+	if(selectOrg != speciesChoice[[1]]) {  
+		ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
+		if (length(ix) == 0 ) {return(NULL )}
+		totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
+	}
+	pathway <- dbConnect(sqlite,gmtFiles[ix])
+	
+	pathwayInfo <- dbGetQuery( pathway, paste( " select * from pathwayInfo where description =  '", 
+							pathwayDescription,   "' AND name LIKE '",GO,"%'",sep="") )
+	dbDisconnect(pathway);
+	if(dim(pathwayInfo)[1] != 1 ) {return(NULL) }
+	tem = gsub(".*:","",pathwayInfo[1,2])  
+	return( gsub("_.*","",tem) )
+}
+
 gmtCategory <- function (converted, convertedData, selectOrg,gmtFile) {
-  if(selectOrg == "NEW" && !is.null(gmtFile) )
-     return( list(Custom_GeneSet ="Custom" ) )
-  idNotRecognized = as.data.frame("ID not recognized!")
-  if(is.null(converted) ) return(idNotRecognized) # no ID 
-  querySet <- rownames(convertedData)
-  if(length(querySet) == 0) return(idNotRecognized )
-  ix = grep(converted$species[1,1],gmtFiles)
-  if (length(ix) == 0 ) {return(idNotRecognized )}
-  
-  # If selected species is not the default "bestMatch", use that species directly
-  if(selectOrg != speciesChoice[[1]]) {  
-    ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
+	if(selectOrg == "NEW" && !is.null(gmtFile) )
+		return( list(Custom_GeneSet ="Custom" ) )
+	idNotRecognized = as.data.frame("ID not recognized!")
+	if(is.null(converted) ) return(idNotRecognized) # no ID 
+	querySet <- rownames(convertedData)
+	if(length(querySet) == 0) return(idNotRecognized )
+	ix = grep(converted$species[1,1],gmtFiles)
 	if (length(ix) == 0 ) {return(idNotRecognized )}
-  }
-  pathway <- dbConnect(sqlite,gmtFiles[ix])
- cat(paste("selectOrg:",selectOrg) )
-  # Generate a list of geneset categories such as "GOBP", "KEGG" from file
-  geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
-  geneSetCategory  <- geneSetCategory[,1]
-  categoryChoices <- setNames(as.list( geneSetCategory ), geneSetCategory )
-  categoryChoices <- append( setNames( "All","All available gene sets"), categoryChoices  )
-  #change GOBO to the full description for display
-  names(categoryChoices)[ match("GOBP",categoryChoices)  ] <- "GO Biological Process"
-  names(categoryChoices)[ match("GOCC",categoryChoices)  ] <- "GO Cellular Component"
-  names(categoryChoices)[ match("GOMF",categoryChoices)  ] <- "GO Molecular Function"
-  
-  dbDisconnect(pathway)
- return(categoryChoices )
+	
+	# If selected species is not the default "bestMatch", use that species directly
+	if(selectOrg != speciesChoice[[1]]) {  
+		ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
+		if (length(ix) == 0 ) {return(idNotRecognized )}
+	}
+	pathway <- dbConnect(sqlite,gmtFiles[ix])
+	cat(paste("selectOrg:",selectOrg) )
+	# Generate a list of geneset categories such as "GOBP", "KEGG" from file
+	geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
+	geneSetCategory  <- geneSetCategory[,1]
+	categoryChoices <- setNames(as.list( geneSetCategory ), geneSetCategory )
+	categoryChoices <- append( setNames( "All","All available gene sets"), categoryChoices  )
+	#change GOBO to the full description for display
+	names(categoryChoices)[ match("GOBP",categoryChoices)  ] <- "GO Biological Process"
+	names(categoryChoices)[ match("GOCC",categoryChoices)  ] <- "GO Cellular Component"
+	names(categoryChoices)[ match("GOMF",categoryChoices)  ] <- "GO Molecular Function"
+	
+	dbDisconnect(pathway)
+	return(categoryChoices )
 } 
  
 # Main function. Find a query set of genes enriched with functional category
 readGeneSets <- function (converted, convertedData, GO,selectOrg, myrange) {
-  idNotRecognized = as.data.frame("ID not recognized!")
-  if(is.null(converted) ) return(idNotRecognized) # no ID 
-  querySet <- rownames(convertedData)
-  if(length(querySet) == 0) return(idNotRecognized )
-  ix = grep(converted$species[1,1],gmtFiles)
-  if (length(ix) == 0 ) {return(idNotRecognized )}
-  
-  # If selected species is not the default "bestMatch", use that species directly
-  if(selectOrg != speciesChoice[[1]]) {  
-    ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
+	idNotRecognized = as.data.frame("ID not recognized!")
+	if(is.null(converted) ) return(idNotRecognized) # no ID 
+	querySet <- rownames(convertedData)
+	if(length(querySet) == 0) return(idNotRecognized )
+	ix = grep(converted$species[1,1],gmtFiles)
 	if (length(ix) == 0 ) {return(idNotRecognized )}
-  }
-  pathway <- dbConnect(sqlite,gmtFiles[ix])
- 
-  if(is.null(GO) ) GO <- "GOBP"   # initial value not properly set; enforcing  
+	
+	# If selected species is not the default "bestMatch", use that species directly
+	if(selectOrg != speciesChoice[[1]]) {  
+		ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
+		if (length(ix) == 0 ) {return(idNotRecognized )}
+	}
+	pathway <- dbConnect(sqlite,gmtFiles[ix])
+	
+	if(is.null(GO) ) GO <- "GOBP"   # initial value not properly set; enforcing  
 
- # get Gene sets
-  querySet = rownames(convertedData)
-  sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySet,collapse="', '"),"')" ,sep="")
- # cat(paste0("\n\nhere:",GO,"There"))
+	# get Gene sets
+	querySet = rownames(convertedData)
+	sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySet,collapse="', '"),"')" ,sep="")
+	# cat(paste0("\n\nhere:",GO,"There"))
 
-  if( GO != "All") sqlQuery = paste0(sqlQuery, " AND category ='",GO,"'")
-  result <- dbGetQuery( pathway, sqlQuery  )
-  if( dim(result)[1] ==0) {return(list( x=as.data.frame("No matching species or gene ID file!" )) )}
-  # list pathways and frequency of genes
-  pathwayIDs = aggregate( result$pathwayID, by   = list(unique.values = result$pathwayID), FUN = length)
-  pathwayIDs = pathwayIDs[which(pathwayIDs[,2]>= myrange[1] ),]
-  pathwayIDs = pathwayIDs[which( pathwayIDs[,2] <= myrange[2] ),]
-  if(dim(pathwayIDs)[1] ==0 ) geneSets = NULL;
-  
-   # convert pathways into lists like those generated by readGMT
-   geneSets = lapply(pathwayIDs[,1], function(x)  result[which(result$pathwayID == x ),1]     )
-   pathwayInfo <- dbGetQuery( pathway, paste( " select distinct id,Description from pathwayInfo where id IN ('", 
-						paste(pathwayIDs[,1],collapse="', '"),   "') ",sep="") )
-   ix = match( pathwayIDs[,1], pathwayInfo[,1])
-   names(geneSets) <- pathwayInfo[ix,2]  
-   #geneSets <- geneSets[ -which(duplicated(names(geneSets) ))] # remove geneSets with the same name
-  dbDisconnect(pathway)
- return( geneSets )
+	if( GO != "All") sqlQuery = paste0(sqlQuery, " AND category ='",GO,"'")
+	result <- dbGetQuery( pathway, sqlQuery  )
+	if( dim(result)[1] ==0) {return(list( x=as.data.frame("No matching species or gene ID file!" )) )}
+	# list pathways and frequency of genes
+	pathwayIDs = aggregate( result$pathwayID, by   = list(unique.values = result$pathwayID), FUN = length)
+	pathwayIDs = pathwayIDs[which(pathwayIDs[,2]>= myrange[1] ),]
+	pathwayIDs = pathwayIDs[which( pathwayIDs[,2] <= myrange[2] ),]
+	if(dim(pathwayIDs)[1] ==0 ) geneSets = NULL;
+	
+	# convert pathways into lists like those generated by readGMT
+	geneSets = lapply(pathwayIDs[,1], function(x)  result[which(result$pathwayID == x ),1]     )
+	pathwayInfo <- dbGetQuery( pathway, paste( " select distinct id,Description from pathwayInfo where id IN ('", 
+							paste(pathwayIDs[,1],collapse="', '"),   "') ",sep="") )
+	ix = match( pathwayIDs[,1], pathwayInfo[,1])
+	names(geneSets) <- pathwayInfo[ix,2]  
+	#geneSets <- geneSets[ -which(duplicated(names(geneSets) ))] # remove geneSets with the same name
+	dbDisconnect(pathway)
+	return( geneSets )
 } 
  
 PGSEApathway <- function (converted,convertedData, selectOrg,GO,gmt, myrange,Pval_pathway,top){
@@ -859,6 +857,9 @@ PGSEApathway <- function (converted,convertedData, selectOrg,GO,gmt, myrange,Pva
     }
  }
 
+
+
+
 if(0){ # for testing LIMMA
 	x = read.csv("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/doc/Hoxa1-1/GSE50813_reduced.csv")
 	rownames(x) = x[,1]
@@ -868,279 +869,278 @@ if(0){ # for testing LIMMA
 
 # Differential expression using LIMMA 
 DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMethods,priorCounts, dataFormat){
- topGenes = list();  limmaTrend = FALSE
- if( dataFormat == 2) {   # if normalized data
-	eset = new("ExpressionSet", exprs=as.matrix(x)) } else { # counts data
-		if (countsDEGMethods == 1 ) { # limma-trend method selected for counts data
-			dge <- DGEList(counts=rawCounts);
-			dge <- calcNormFactors(dge)
-			eset <- cpm(dge, log=TRUE, prior.count=priorCounts)
-			limmaTrend = TRUE
-		}
- }
+	topGenes = list();  limmaTrend = FALSE
+	if( dataFormat == 2) {   # if normalized data
+		eset = new("ExpressionSet", exprs=as.matrix(x)) } else { # counts data
+			if (countsDEGMethods == 1 ) { # limma-trend method selected for counts data
+				dge <- DGEList(counts=rawCounts);
+				dge <- calcNormFactors(dge)
+				eset <- cpm(dge, log=TRUE, prior.count=priorCounts)
+				limmaTrend = TRUE
+			}
+	}
 
- groups = colnames(x)
- groups = detectGroups( groups)
- g =  unique(groups)  
- 
- # check for replicates, removes samples without replicates
- reps = as.matrix(table(groups)) # number of replicates per biological sample
- if ( sum( reps[,1] >= 2) <2 ) # if less than 2 samples with replicates
- return( list(results= NULL, comparisons = NULL, Exp.type="Failed to parse sample names to define groups. 
-       Cannot perform DEGs and pathway analysis. Please double check column names! Use WT_Rep1, WT_Rep2 etc. ", topGenes=NULL)) 
- # remove samples without replicates
- g <- rownames(reps)[which(reps[,1] >1)]
- ix <- which( groups %in% g)  
- groups <- groups[ix]   
- x<- x[,ix]; rawCounts <- rawCounts[,ix] 
- 
- 
- if(length(g) ==2 ) { 
-  g= unique(groups)
- comparisons <-  paste(g[2],"-",g[1],sep="")
- design <- model.matrix(~0+groups)
- colnames(design) <- g
- 
- if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
-     v <- voom(rawCounts, design); fit <- lmFit(v, design) } else 
-	fit <- lmFit(eset, design)      # regular limma
+	groups = colnames(x)
+	groups = detectGroups( groups)
+	g =  unique(groups)  
 	
-cont.matrix <- makeContrasts(contrasts=comparisons, levels=design)
-fit2 <- contrasts.fit(fit, cont.matrix)
-fit2 <- eBayes(fit2, trend=limmaTrend)
+	# check for replicates, removes samples without replicates
+	reps = as.matrix(table(groups)) # number of replicates per biological sample
+	if ( sum( reps[,1] >= 2) <2 ) # if less than 2 samples with replicates
+	return( list(results= NULL, comparisons = NULL, Exp.type="Failed to parse sample names to define groups. 
+		Cannot perform DEGs and pathway analysis. Please double check column names! Use WT_Rep1, WT_Rep2 etc. ", topGenes=NULL)) 
+	# remove samples without replicates
+	g <- rownames(reps)[which(reps[,1] >1)]
+	ix <- which( groups %in% g)  
+	groups <- groups[ix]   
+	x<- x[,ix]; rawCounts <- rawCounts[,ix] 
+	
+	if(length(g) ==2 ) { 
+	g= unique(groups)
+	comparisons <-  paste(g[2],"-",g[1],sep="")
+	design <- model.matrix(~0+groups)
+	colnames(design) <- g
+	
+	if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
+		v <- voom(rawCounts, design); fit <- lmFit(v, design) } else 
+		fit <- lmFit(eset, design)      # regular limma
+		
+	cont.matrix <- makeContrasts(contrasts=comparisons, levels=design)
+	fit2 <- contrasts.fit(fit, cont.matrix)
+	fit2 <- eBayes(fit2, trend=limmaTrend)
 
- # calls differential gene expression 1 for up, -1 for down
- results <- decideTests(fit2, p.value=maxP_limma, lfc=log2(minFC_limma) )
- #vennDiagram(results,circle.col=rainbow(5))
- topGenes1 =topTable(fit2, number = 1e12,sort.by="M" )
- if (dim(topGenes1)[1] != 0) {
- topGenes1 = topGenes1[,c('logFC','adj.P.Val')] 
- # topGenes1[,1] <-  -1* topGenes1[,1] # reverse direction
- topGenes[[1]] <- topGenes1 }
-  # log fold change is actually substract of means. So if the data is natral log transformed, it shoudl be natral log.
- Exp.type = "2 sample groups."
- }
-  
-  if(length(g) > 2 ) { 
- design <- model.matrix(~ 0+factor(groups))
- colnames(design) <- gsub(".*)","",colnames(design))
- 
- if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
-     v <- voom(rawCounts, design); fit <- lmFit(v, design) } else 
-		fit <- lmFit(eset, design)
- 
- fit <- eBayes(fit, trend=limmaTrend)
- 
- comparisons = ""
-  for( i in 1:(length(g)-1) )
-    for (j in (i+1):length(g)) 
-	 comparisons = c(comparisons,paste(g[j],"-",g[i],sep="" ) )
-  comparisons <- comparisons[-1]
-
-contrast1 <- makeContrasts(contrasts=comparisons[1], levels=design)
-for( kk in 2:length(comparisons) )
-     contrast1<-  cbind(contrast1,makeContrasts(contrasts=comparisons[kk], levels=design)   )
- Exp.type = paste(length(g)," sample groups detected.")	 
- 
-# if factorial design 2x2, 2x3, 3x5 etc.
-	# all samples must be something like WT_control_rep1
-if ( sum(sapply(strsplit(g,"_"),length) == 2 ) == length(g) ) {
+	# calls differential gene expression 1 for up, -1 for down
+	results <- decideTests(fit2, p.value=maxP_limma, lfc=log2(minFC_limma) )
+	#vennDiagram(results,circle.col=rainbow(5))
+	topGenes1 =topTable(fit2, number = 1e12,sort.by="M" )
+	if (dim(topGenes1)[1] != 0) {
+	topGenes1 = topGenes1[,c('logFC','adj.P.Val')] 
+	# topGenes1[,1] <-  -1* topGenes1[,1] # reverse direction
+	topGenes[[1]] <- topGenes1 }
+	# log fold change is actually substract of means. So if the data is natral log transformed, it shoudl be natral log.
+	Exp.type = "2 sample groups."
+	}
+	
+	if(length(g) > 2 ) { 
+	design <- model.matrix(~ 0+factor(groups))
+	colnames(design) <- gsub(".*)","",colnames(design))
+	
+	if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
+		v <- voom(rawCounts, design); fit <- lmFit(v, design) } else 
+			fit <- lmFit(eset, design)
+	
+	fit <- eBayes(fit, trend=limmaTrend)
+	
 	comparisons = ""
-	  for( i in 1:(length(g)-1) )
+	for( i in 1:(length(g)-1) )
 		for (j in (i+1):length(g)) 
-		 if( strsplit(g[i],"_")[[1]][1] == strsplit(g[j],"_")[[1]][1]| strsplit(g[i],"_")[[1]][2] == strsplit(g[j],"_")[[1]][2]) # only compare WT_control vs. WT_treatment
-			comparisons = c(comparisons,paste(g[j],"-",g[i],sep="" ) )
-	  comparisons <- comparisons[-1]
-	 
-	extract_treatment <- function (x) paste( gsub( ".*_","",unlist( strsplit(x,"-")) ), collapse="-")
-	extract_genotype <- function (x) gsub( "_.*","",unlist( strsplit(x,"-")) )[1]
-	extract_treatment_counting <- unique( gsub( ".*_","",unlist( strsplit(g,"-")) ))
-	treatments = sapply(comparisons, extract_treatment)
-	genotypes = sapply(comparisons, extract_genotype)
-	Exp.type = paste( Exp.type, "\nFactorial design:",length(unique(genotypes)),"X", length( extract_treatment_counting ), sep="" )
+		comparisons = c(comparisons,paste(g[j],"-",g[i],sep="" ) )
+	comparisons <- comparisons[-1]
+
 	contrast1 <- makeContrasts(contrasts=comparisons[1], levels=design)
 	for( kk in 2:length(comparisons) )
-		 contrast1<-  cbind(contrast1,makeContrasts(contrasts=comparisons[kk], levels=design)   )
-	contrast.names = colnames(contrast1)
-	for ( kk in 1:(length(comparisons)-1) ) {
-	   for( kp in (kk+1):length(comparisons)) 
-		  if( treatments[kp]== treatments[kk] ) 
-		   {  
-			  contrast1 = cbind(contrast1, contrast1[,kp]- contrast1[,kk] )
-			  contrast.names = c(contrast.names, paste("Diff:",  genotypes[kp], "-", genotypes[kk],"(",gsub("-",".vs.",treatments[kp]),")",sep="" ) )
-		   }   
-	}
-	colnames(contrast1)=contrast.names
-	comparisons = contrast.names
-	}	
-	 
-fit2 <- contrasts.fit(fit, contrast1)
-fit2 <- eBayes(fit2, trend=limmaTrend)
-#topTable(fit2, coef=1, adjust="BH")
-results <- decideTests(fit2, p.value=maxP_limma, lfc= log2(minFC_limma ))
-#vennDiagram(results[,1:5],circle.col=rainbow(5))
-
- # extract fold change for each comparison
- # there is issues with direction of foldchange. Sometimes opposite
- top <- function (comp) {
-   tem <- topTable(fit2, number = 1e12,coef=comp,sort.by="M" ) 
-   if(dim(tem)[1] == 0) return (1) else  { 
-   
-  # compute fold change for the first gene (ranked by absolute value)
-  tem2 = as.numeric( x[ which(rownames(x)== rownames(tem)[1]) , ] )
-  names(tem2) = colnames(x) 
-  # compute real fold change in A-B comparison
-  realFC =  mean ( tem2[which( groups == gsub("-.*","",comp))] ) - # average in A
-            mean ( tem2[which( groups == gsub(".*-","",comp))] ) # average in B
-  if( realFC * tem[1,1] <0 ) # if reversed
-	tem[,1] <- -1*tem[,1]; # reverse direction if needed
-   
-  return( tem[,c(1,5)]) }  
-                                           
- }  # no significant gene returns 1, otherwise a data frame
- 
+		contrast1<-  cbind(contrast1,makeContrasts(contrasts=comparisons[kk], levels=design)   )
+	Exp.type = paste(length(g)," sample groups detected.")	 
 	
- topGenes <- lapply(comparisons, top)
- topGenes <- setNames(topGenes, comparisons )
- ix <- which( unlist( lapply(topGenes, class) ) == "numeric")
- if( length(ix)>0) topGenes <- topGenes[ - ix ]
-  # if (length(topGenes) == 0) topGenes = NULL;
-}
- return( list(results= results, comparisons = comparisons, Exp.type=Exp.type, topGenes=topGenes)) 
+	# if factorial design 2x2, 2x3, 3x5 etc.
+		# all samples must be something like WT_control_rep1
+	if ( sum(sapply(strsplit(g,"_"),length) == 2 ) == length(g) ) {
+		comparisons = ""
+		for( i in 1:(length(g)-1) )
+			for (j in (i+1):length(g)) 
+			if( strsplit(g[i],"_")[[1]][1] == strsplit(g[j],"_")[[1]][1]| strsplit(g[i],"_")[[1]][2] == strsplit(g[j],"_")[[1]][2]) # only compare WT_control vs. WT_treatment
+				comparisons = c(comparisons,paste(g[j],"-",g[i],sep="" ) )
+		comparisons <- comparisons[-1]
+		
+		extract_treatment <- function (x) paste( gsub( ".*_","",unlist( strsplit(x,"-")) ), collapse="-")
+		extract_genotype <- function (x) gsub( "_.*","",unlist( strsplit(x,"-")) )[1]
+		extract_treatment_counting <- unique( gsub( ".*_","",unlist( strsplit(g,"-")) ))
+		treatments = sapply(comparisons, extract_treatment)
+		genotypes = sapply(comparisons, extract_genotype)
+		Exp.type = paste( Exp.type, "\nFactorial design:",length(unique(genotypes)),"X", length( extract_treatment_counting ), sep="" )
+		contrast1 <- makeContrasts(contrasts=comparisons[1], levels=design)
+		for( kk in 2:length(comparisons) )
+			contrast1<-  cbind(contrast1,makeContrasts(contrasts=comparisons[kk], levels=design)   )
+		contrast.names = colnames(contrast1)
+		for ( kk in 1:(length(comparisons)-1) ) {
+		for( kp in (kk+1):length(comparisons)) 
+			if( treatments[kp]== treatments[kk] ) 
+			{  
+				contrast1 = cbind(contrast1, contrast1[,kp]- contrast1[,kk] )
+				contrast.names = c(contrast.names, paste("Diff:",  genotypes[kp], "-", genotypes[kk],"(",gsub("-",".vs.",treatments[kp]),")",sep="" ) )
+			}   
+		}
+		colnames(contrast1)=contrast.names
+		comparisons = contrast.names
+		}	
+		
+	fit2 <- contrasts.fit(fit, contrast1)
+	fit2 <- eBayes(fit2, trend=limmaTrend)
+	#topTable(fit2, coef=1, adjust="BH")
+	results <- decideTests(fit2, p.value=maxP_limma, lfc= log2(minFC_limma ))
+	#vennDiagram(results[,1:5],circle.col=rainbow(5))
+
+	# extract fold change for each comparison
+	# there is issues with direction of foldchange. Sometimes opposite
+	top <- function (comp) {
+	tem <- topTable(fit2, number = 1e12,coef=comp,sort.by="M" ) 
+	if(dim(tem)[1] == 0) return (1) else  { 
+	
+	# compute fold change for the first gene (ranked by absolute value)
+	tem2 = as.numeric( x[ which(rownames(x)== rownames(tem)[1]) , ] )
+	names(tem2) = colnames(x) 
+	# compute real fold change in A-B comparison
+	realFC =  mean ( tem2[which( groups == gsub("-.*","",comp))] ) - # average in A
+				mean ( tem2[which( groups == gsub(".*-","",comp))] ) # average in B
+	if( realFC * tem[1,1] <0 ) # if reversed
+		tem[,1] <- -1*tem[,1]; # reverse direction if needed
+	
+	return( tem[,c(1,5)]) }  
+											
+	}  # no significant gene returns 1, otherwise a data frame
+	
+		
+	topGenes <- lapply(comparisons, top)
+	topGenes <- setNames(topGenes, comparisons )
+	ix <- which( unlist( lapply(topGenes, class) ) == "numeric")
+	if( length(ix)>0) topGenes <- topGenes[ - ix ]
+	# if (length(topGenes) == 0) topGenes = NULL;
+	}
+	return( list(results= results, comparisons = comparisons, Exp.type=Exp.type, topGenes=topGenes)) 
 }
 
 # Differential expression using DESeq2
 DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2){
- groups = as.character ( detectGroups( colnames( rawCounts ) ) )
- g = unique(groups)# order is reversed
- 
- # check for replicates, removes samples without replicates
- reps = as.matrix(table(groups)) # number of replicates per biological sample
- if ( sum( reps[,1] >= 2) <2 ) # if less than 2 samples with replicates
- return( list(results= NULL, comparisons = NULL, Exp.type="Failed to parse sample names to define groups. 
-       Cannot perform DEGs and pathway analysis. Please double check column names! Use WT_Rep1, WT_Rep2 etc. ", topGenes=NULL)) 
- # remove samples without replicates
- g <- rownames(reps)[which(reps[,1] >1)]
- ix <- which( groups %in% g)  
- groups <- groups[ix]   
- rawCounts <- rawCounts[,ix] 
-  
- 
- Exp.type = paste(length(g)," sample groups detected.")
-  comparisons = ""
-  for( i in 1:(length(g)-1) )
-    for (j in (i+1):length(g)) 
-	 comparisons = c(comparisons,paste(g[j],"-",g[i],sep="" ) )
-  comparisons <- comparisons[-1]
-  
-colData = cbind(colnames(rawCounts), groups )
+	groups = as.character ( detectGroups( colnames( rawCounts ) ) )
+	g = unique(groups)# order is reversed
+	
+	# check for replicates, removes samples without replicates
+	reps = as.matrix(table(groups)) # number of replicates per biological sample
+	if ( sum( reps[,1] >= 2) <2 ) # if less than 2 samples with replicates
+	return( list(results= NULL, comparisons = NULL, Exp.type="Failed to parse sample names to define groups. 
+		Cannot perform DEGs and pathway analysis. Please double check column names! Use WT_Rep1, WT_Rep2 etc. ", topGenes=NULL)) 
+	# remove samples without replicates
+	g <- rownames(reps)[which(reps[,1] >1)]
+	ix <- which( groups %in% g)  
+	groups <- groups[ix]   
+	rawCounts <- rawCounts[,ix] 
+	
+	
+	Exp.type = paste(length(g)," sample groups detected.")
+	comparisons = ""
+	for( i in 1:(length(g)-1) )
+		for (j in (i+1):length(g)) 
+		comparisons = c(comparisons,paste(g[j],"-",g[i],sep="" ) )
+	comparisons <- comparisons[-1]
+	
+	colData = cbind(colnames(rawCounts), groups )
 
-# Set up the DESeqDataSet Object and run the DESeq pipeline
-dds = DESeqDataSetFromMatrix(countData=rawCounts,
-                              colData=colData,
-                              design=~groups)
-dds = DESeq(dds)  # main function
+	# Set up the DESeqDataSet Object and run the DESeq pipeline
+	dds = DESeqDataSetFromMatrix(countData=rawCounts,
+								colData=colData,
+								design=~groups)
+	dds = DESeq(dds)  # main function
 
-result1 = NULL; allCalls = NULL;
-topGenes = list(); pk = 1 # counter
-pp=0 # first results?
-for( kk in 1:length(comparisons) ) {
-	tem = unlist( strsplit(comparisons[kk],"-") )
-	selected = results(dds, contrast=c("groups", tem[1], tem[2]) ) #, lfcThreshold=log2(minFC_limma))
-	# selected = subset(res, padj < maxP_limma )
-	if(dim(selected)[1] == 0 ) next; # no significant genes
-	selected = selected[order(-abs(selected$log2FoldChange)),] 
+	result1 = NULL; allCalls = NULL;
+	topGenes = list(); pk = 1 # counter
+	pp=0 # first results?
+	for( kk in 1:length(comparisons) ) {
+		tem = unlist( strsplit(comparisons[kk],"-") )
+		selected = results(dds, contrast=c("groups", tem[1], tem[2]) ) #, lfcThreshold=log2(minFC_limma))
+		# selected = subset(res, padj < maxP_limma )
+		if(dim(selected)[1] == 0 ) next; # no significant genes
+		selected = selected[order(-abs(selected$log2FoldChange)),] 
 
-	selected$calls =0   
-	selected$calls [which( selected$log2FoldChange > log2(minFC_limma) & selected$padj < maxP_limma ) ]  <-  1
-	selected$calls [ which( selected$log2FoldChange <  -log2(minFC_limma) & selected$padj < maxP_limma ) ] <-  -1
-	colnames(selected)= paste( as.character(comparisons[kk]), "___",colnames(selected),sep="" )
-	selected = as.data.frame(selected)
-	if (pp==0){  # if first one with significant genes, collect gene list and Pval+ fold
-	  result1 = selected; pp = 1; 
-	  # selected[,2] <- -1 * selected[,2] # reverse fold change direction
-	  topGenes[[1]] = selected[,c(2,6)]; 
-	  names(topGenes)[1] = comparisons[kk]; } else 
-		  { result1 = merge(result1,selected,by="row.names"); 
-		    rownames(result1) = result1[,1]; 
-			result1 <- result1[,-1]
-			pk= pk+1; 
-			# selected[,2] <- -1 * selected[,2] # reverse fold change direction
-			topGenes[[pk]] = selected[,c(2,6)]; 
-			names(topGenes)[pk] = comparisons[kk]; 
-		  }
-}
-#if( length(comparisons) == 1) topGenes <- topGenes[[1]] # if only one comparison, topGenes is not a list, just a data frame itself.
-if(! is.null(result1)) { 
-# note that when you only select 1 column from a data frame it automatically converts to a vector. drop =FALSE prevents that.
-allCalls = as.matrix( result1[,grep("calls",colnames(result1)), drop = FALSE  ] )
-colnames(allCalls)= gsub("___.*","", colnames(allCalls))
-colnames(allCalls)= gsub("\\.","-", colnames(allCalls)) # note that samples names should have no "."
-}
- return( list(results= allCalls, comparisons = comparisons, Exp.type=Exp.type, topGenes=topGenes)) 
+		selected$calls =0   
+		selected$calls [which( selected$log2FoldChange > log2(minFC_limma) & selected$padj < maxP_limma ) ]  <-  1
+		selected$calls [ which( selected$log2FoldChange <  -log2(minFC_limma) & selected$padj < maxP_limma ) ] <-  -1
+		colnames(selected)= paste( as.character(comparisons[kk]), "___",colnames(selected),sep="" )
+		selected = as.data.frame(selected)
+		if (pp==0){  # if first one with significant genes, collect gene list and Pval+ fold
+		result1 = selected; pp = 1; 
+		# selected[,2] <- -1 * selected[,2] # reverse fold change direction
+		topGenes[[1]] = selected[,c(2,6)]; 
+		names(topGenes)[1] = comparisons[kk]; } else 
+			{ result1 = merge(result1,selected,by="row.names"); 
+				rownames(result1) = result1[,1]; 
+				result1 <- result1[,-1]
+				pk= pk+1; 
+				# selected[,2] <- -1 * selected[,2] # reverse fold change direction
+				topGenes[[pk]] = selected[,c(2,6)]; 
+				names(topGenes)[pk] = comparisons[kk]; 
+			}
+	}
+	#if( length(comparisons) == 1) topGenes <- topGenes[[1]] # if only one comparison, topGenes is not a list, just a data frame itself.
+	if(! is.null(result1)) { 
+	# note that when you only select 1 column from a data frame it automatically converts to a vector. drop =FALSE prevents that.
+	allCalls = as.matrix( result1[,grep("calls",colnames(result1)), drop = FALSE  ] )
+	colnames(allCalls)= gsub("___.*","", colnames(allCalls))
+	colnames(allCalls)= gsub("\\.","-", colnames(allCalls)) # note that samples names should have no "."
+	}
+	return( list(results= allCalls, comparisons = comparisons, Exp.type=Exp.type, topGenes=topGenes)) 
 }
 
 # Find enriched TF binding motifs in promoters
 promoter <- function (converted,selectOrg, radio){
-  idNotRecognized = as.data.frame("ID not recognized!") 
-  if(is.null(converted) ) return(idNotRecognized) # no ID 
-  querySet <- converted$IDs;
-  if(length(querySet) == 0) return(idNotRecognized )
-    ix = grep(converted$species[1,1],motifFiles)
+	idNotRecognized = as.data.frame("ID not recognized!") 
+	if(is.null(converted) ) return(idNotRecognized) # no ID 
+	querySet <- converted$IDs;
+	if(length(querySet) == 0) return(idNotRecognized )
+		ix = grep(converted$species[1,1],motifFiles)
 
-  # If selected species is not the default "bestMatch", use that species directly
-  if(selectOrg != speciesChoice[[1]]) {  
-    ix = grep(findSpeciesById(selectOrg)[1,1], motifFiles )
-  }
-  ix1 =grep(as.character(radio),motifFiles[ix]) # match 300bp or 600bp
-  if(length(ix1) >0) ix = ix[ix1]   # if 600 is not found, use 300bp
-  
-   if (length(ix) == 0 ) {return(as.data.frame("No matching motif file found") )} else { 
-  if(length(ix) > 1)  # if only one file          
-    return(as.data.frame("Multiple geneInfo file found!") )   
- 
- motifs <- dbConnect(sqlite,motifFiles[ix]) # makes a new file
-    
-  sqlQuery = paste( " select * from scores where row_names IN ('", paste(querySet,collapse="', '"),"')" ,sep="")
-   result <- dbGetQuery( motifs, sqlQuery  )
-  if( dim(result)[1] ==0) {return(as.data.frame("No matching species or gene ID file!" ) )}
-   row.names(result) <- result$row_names; result <- result[,-1]
-   TFstat <- as.data.frame( cbind(apply(result,2,mean),apply(result,2,sd) ) )
-    colnames(TFstat) = c("scoreMean1","scoreSD1" )
-   rownames(TFstat) = toupper( colnames(result) )
-  
-   TFs <- dbGetQuery(motifs, "select ID,TF_Name,Family_Name,DBID,Motif_ID,coreMotif,memo,nGenes,scoreSD,scoreMean from  TF_Information ")
-   dbDisconnect(motifs)
-   TFs$ID <- toupper(TFs$ID)
- 
-   TFs <- merge(TFs, TFstat, by.x = 'ID', by.y='row.names')
-   TFs <- TFs[!is.na(TFs$scoreSD) ,]  #some TFs return NA -Inf
-   n1 = dim(result)[1] # number of genes in query set
-   TFs$scoreMean2 <- (TFs$scoreMean * TFs$nGenes - TFs$scoreMean1 *n1)/(TFs$nGenes - n1)    
-   #SD2 needs to be adjusted too, but ignored for now. use overall SD2
-   # t test unequal variance statistic
-   TFs$t <- (TFs$scoreMean1-TFs$scoreMean2)/ sqrt( TFs$scoreSD1^2/n1 + TFs$scoreSD^2/TFs$nGenes   ) 
-   # degree of freedom
-   TFs$df <- ( TFs$scoreSD1^2/n1 + TFs$scoreSD^2/TFs$nGenes)^2 /
-    (   (TFs$scoreSD1^2/n1)^2/(n1-1) +   (TFs$scoreSD^2/TFs$nGenes)^2/(TFs$nGenes-1)   )
-   TFs$pVal =1-pt(TFs$t,df = TFs$df)  # t distribution
-   TFs$FDR = p.adjust(TFs$pVal,method="fdr")
-   TFs <- TFs[order(TFs$pVal) ,]
-   TFs$scoreDiff = round(TFs$scoreMean1 - TFs$scoreMean2,0)
-   #TFs <- TFs[order(-TFs$scoreDiff) ,]
-   
-# does this transcription factor gene in this cluster? 
-ix <- match(toupper( TFs$DBID), querySet) # assuming the DBID column in cisbp are ensembl gene ids
-TFs$note = ""
-if(sum(!is.na(ix)) >0) {
-TFs$note[which(!is.na(ix))] <- "* Query Gene"
-}
-TFs <- subset(TFs, FDR<0.25, select=c(coreMotif,TF_Name,Family_Name, pVal,FDR,scoreDiff, note ) )
-colnames(TFs) =c("Motif", "TF","TF family","List","FDR","Score","Note"   )
-if(dim(TFs)[1] >20 ) TFs <- TFs[1:20,]
-if(dim(TFs)[1] ==0) return(as.data.frame("No significant TF binding motif detected.") ) else
-return( TFs )
- }
+	# If selected species is not the default "bestMatch", use that species directly
+	if(selectOrg != speciesChoice[[1]]) {  
+		ix = grep(findSpeciesById(selectOrg)[1,1], motifFiles )
+	}
+	ix1 =grep(as.character(radio),motifFiles[ix]) # match 300bp or 600bp
+	if(length(ix1) >0) ix = ix[ix1]   # if 600 is not found, use 300bp
+	
+	if (length(ix) == 0 ) {return(as.data.frame("No matching motif file found") )} else { 
+	if(length(ix) > 1)  # if only one file          
+		return(as.data.frame("Multiple geneInfo file found!") )   
+	
+	motifs <- dbConnect(sqlite,motifFiles[ix]) # makes a new file
+		
+	sqlQuery = paste( " select * from scores where row_names IN ('", paste(querySet,collapse="', '"),"')" ,sep="")
+	result <- dbGetQuery( motifs, sqlQuery  )
+	if( dim(result)[1] ==0) {return(as.data.frame("No matching species or gene ID file!" ) )}
+	row.names(result) <- result$row_names; result <- result[,-1]
+	TFstat <- as.data.frame( cbind(apply(result,2,mean),apply(result,2,sd) ) )
+		colnames(TFstat) = c("scoreMean1","scoreSD1" )
+	rownames(TFstat) = toupper( colnames(result) )
+	
+	TFs <- dbGetQuery(motifs, "select ID,TF_Name,Family_Name,DBID,Motif_ID,coreMotif,memo,nGenes,scoreSD,scoreMean from  TF_Information ")
+	dbDisconnect(motifs)
+	TFs$ID <- toupper(TFs$ID)
+	
+	TFs <- merge(TFs, TFstat, by.x = 'ID', by.y='row.names')
+	TFs <- TFs[!is.na(TFs$scoreSD) ,]  #some TFs return NA -Inf
+	n1 = dim(result)[1] # number of genes in query set
+	TFs$scoreMean2 <- (TFs$scoreMean * TFs$nGenes - TFs$scoreMean1 *n1)/(TFs$nGenes - n1)    
+	#SD2 needs to be adjusted too, but ignored for now. use overall SD2
+	# t test unequal variance statistic
+	TFs$t <- (TFs$scoreMean1-TFs$scoreMean2)/ sqrt( TFs$scoreSD1^2/n1 + TFs$scoreSD^2/TFs$nGenes   ) 
+	# degree of freedom
+	TFs$df <- ( TFs$scoreSD1^2/n1 + TFs$scoreSD^2/TFs$nGenes)^2 /
+		(   (TFs$scoreSD1^2/n1)^2/(n1-1) +   (TFs$scoreSD^2/TFs$nGenes)^2/(TFs$nGenes-1)   )
+	TFs$pVal =1-pt(TFs$t,df = TFs$df)  # t distribution
+	TFs$FDR = p.adjust(TFs$pVal,method="fdr")
+	TFs <- TFs[order(TFs$pVal) ,]
+	TFs$scoreDiff = round(TFs$scoreMean1 - TFs$scoreMean2,0)
+	#TFs <- TFs[order(-TFs$scoreDiff) ,]
+	
+	# does this transcription factor gene in this cluster? 
+	ix <- match(toupper( TFs$DBID), querySet) # assuming the DBID column in cisbp are ensembl gene ids
+	TFs$note = ""
+	if(sum(!is.na(ix)) >0) {
+	TFs$note[which(!is.na(ix))] <- "* Query Gene"
+	}
+	TFs <- subset(TFs, FDR<0.25, select=c(coreMotif,TF_Name,Family_Name, pVal,FDR,scoreDiff, note ) )
+	colnames(TFs) =c("Motif", "TF","TF family","List","FDR","Score","Note"   )
+	if(dim(TFs)[1] >20 ) TFs <- TFs[1:20,]
+	if(dim(TFs)[1] ==0) return(as.data.frame("No significant TF binding motif detected.") ) else
+	return( TFs )
+	}
 }
 
 
@@ -1551,66 +1551,72 @@ function(input, output,session) {
 	readData <- reactive ({
 		inFile <- input$file1
 		inFile <- inFile$datapath
-		if (is.null(input$file1) && input$goButton == 0)   return(NULL)
-		if (is.null(input$file1) && input$goButton > 0 )   inFile = demoDataFile
+
+		if(is.null(input$file1) && input$goButton == 0)   return(NULL)
+		if(is.null(input$file1) && input$goButton > 0 )   inFile = demoDataFile
 		tem = input$dataFileFormat
-		if( !is.null(input$dataFileFormat) ) # these are needed to make it responsive to changes
+		if(!is.null(input$dataFileFormat)) # these are needed to make it responsive to changes
 			if(input$dataFileFormat== 1){  
 				tem = input$minCounts 
 				tem = input$countsLogStart
 				tem = input$CountsTransform 
 			}
-		if( !is.null(input$dataFileFormat))
+		if(!is.null(input$dataFileFormat))
 			if(input$dataFileFormat== 2){ 
 				tem = input$transform; 
 				tem = input$logStart; 
 				tem= input$lowFilter 
-			}	
+		}
+
 		isolate({
 			withProgress(message="Reading and pre-processing ", {
 				if (is.null( input$dataFileFormat )) return(NULL)
 				dataTypeWarning =0
+				dataType =c(TRUE)
+
 				#---------------Read file
 				x <- read.csv(inFile)	# try CSV
 				if(dim(x)[2] <= 2 )   # if less than 3 columns, try tab-deliminated
 					x <- read.table(inFile, sep="\t",header=TRUE)	
 				#-------Remove non-numeric columns, except the first column
-				dataType =c(TRUE)
-				for( i in 2:dim(x)[2]) 
+				
+				for(i in 2:dim(x)[2])
 					dataType = c( dataType, is.numeric(x[,i]) )
 				if(sum(dataType) <=2) return (NULL)  # only less than 2 columns are numbers
 				x <- x[,dataType]  # only keep numeric columns
-					
+
 				x[,1] <- toupper(x[,1])
 				x[,1] <- gsub(" ","",x[,1]) # remove spaces in gene ids
 				x = x[order(- apply(x[,2:dim(x)[2]],1,sd) ),]  # sort by SD
 				x <- x[!duplicated(x[,1]) ,]  # remove duplicated genes
 				rownames(x) <- x[,1]
-				x <- as.matrix(x[,c(-1)]) 	
-				
-				# imput missing data using median
-				if( sum( is.na(x)) > 0 ) {     # if there is missing values
-				rowMeans <- apply(x,1, function (y)  median(y,na.rm=T))  
-				for( i in 1:dim(x)[1] )
-				x[i, which( is.na(x[i,]) )  ]  <- rowMeans[i] 
+				x <- as.matrix(x[,c(-1)])
+
+				# missng value for median value
+				if(sum(is.na(x))>0) {# if there is missing values
+					rowMeans <- apply(x,1, function (y)  median(y,na.rm=T))
+					for( i in 1:dim(x)[1] )
+					x[i, which( is.na(x[i,]) )  ]  <- rowMeans[i]
 				}
+
 				# Compute kurtosis
-				mean.kurtosis = mean( apply(x,2, kurtosis) )
+				mean.kurtosis = mean(apply(x,2, kurtosis))
+
 				if (input$dataFileFormat == 2 ) {  # if FPKM, microarray
 					incProgress(1/3,"Pre-processing data")
-					
+
 					if ( is.integer(x) ) dataTypeWarning = 1;  # Data appears to be read counts
-					
+
 					#-------------filtering
 					tem <- apply(x,1,max)
 					x <- x[which(tem > input$lowFilter),]  # max by row is at least 		
 					x <- x[which(apply(x,1, function(y) max(y)- min(y) ) > 0  ),]  # remove rows with all the same levels
-					
+
 					#--------------Log transform
 					# Takes log if log is selected OR kurtosis is big than 100
 					if ( (input$transform == TRUE) | (mean.kurtosis > kurtosis.log ) ) 
 						x = log(x+abs( input$logStart),2)
-						
+
 					tem <- apply(x,1,sd) 
 					x <- x[order(-tem),]  # sort by SD
 					rawCounts = NULL
@@ -1618,7 +1624,9 @@ function(input, output,session) {
 					incProgress(1/3, "Pre-processing counts data")
 					tem = input$CountsDEGMethod; tem = input$countsTransform
 					# data not seems to be read counts
-					if(!is.integer(x) & mean.kurtosis < kurtosis.log ) dataTypeWarning = -1  
+					if(!is.integer(x) & mean.kurtosis < kurtosis.log ) {
+						dataTypeWarning = -1
+					}
 					validate(   # if Kurtosis is less than a threshold, it is not read-count
 						need(mean.kurtosis > kurtosis.log, "Data does not seem to be read count based on distribution. Please double check.")
 					)
@@ -1631,7 +1639,7 @@ function(input, output,session) {
 						x <- x[which(rowSums(  myCPM > input$minCounts)  > 1 ),]  # at least two samples above this level
 						rm(dge); rm(myCPM)
 					}
-					rawCounts = x;
+					rawCounts = x; # ??? 
 					# construct DESeqExpression Object
 					# colData = cbind(colnames(x), as.character(detectGroups( colnames(x) )) )
 					tem = rep("A",dim(x)[2]); tem[1] <- "B"   # making a fake design matrix to allow process, even when there is no replicates
@@ -1639,7 +1647,7 @@ function(input, output,session) {
 					colnames(colData)  = c("sample", "groups")
 					dds <- DESeqDataSetFromMatrix(countData = x, colData = colData, design = ~ groups)
 					dds <- estimateSizeFactors(dds) # estimate size factor for use in normalization later for started log method
-					
+
 					incProgress(1/2,"transforming raw counts")
 					# regularized log  or VST transformation
 					if( input$CountsTransform == 3 && dim(counts(dds))[2] <= 10 ) { # rlog is slow, only do it with 10 samples
@@ -1653,10 +1661,8 @@ function(input, output,session) {
 						}
 					}
 				}
-
 				incProgress(1, "Done.")
 				finalResult <- list(data = as.matrix(x), mean.kurtosis = mean.kurtosis, rawCounts = rawCounts, dataTypeWarning=dataTypeWarning)
-
 				return(finalResult)
 			})
 		})
@@ -2346,16 +2352,17 @@ output$downloadPCAData <- downloadHandler(
 Kmeans <- reactive({ # Kmeans clustering
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	
-	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
+    	if(input$dataFileFormat== 1)  {  
+			tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform 
+		}
 	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    	if(input$dataFileFormat== 2) { 
+			tem = input$transform; tem = input$logStart; tem= input$lowFilter 
+		}
 	####################################
 	
 	withProgress(message="k-means clustering", {

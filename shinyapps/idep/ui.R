@@ -95,7 +95,8 @@ tableOutput('species' ),
 				)
 				,conditionalPanel("input.dataFileFormat == 1",
 				numericInput("minCounts", label = h5("Removing genes with less than this many reads in all samples: "), value = 2) 
- 				,radioButtons("CountsTransform", "Transform counts data for clustering & PCA.",  c("VST: variance stabilizing transform"=2, "rlog: regularized log (only for N<10) "= 3,"Started log: log2(x+c)" = 1),selected = 1 )
+ 				,radioButtons("CountsTransform", "Transform counts data for clustering & PCA.",  c("VST: variance stabilizing transform"=2, 
+				 "rlog: regularized log (only for N<10) "= 3,"Started log: log2(x+c)" = 1),selected = 1 )
 				,conditionalPanel("input.CountsTransform == 1",numericInput("countsLogStart", label = h5("Constant c for started log"), value = 4))
  				#,radioButtons("CountsDEGMethod", "Detect differntial expression using:",  c("limma-voom"=2,"limma-trend"=1,"DESeq2"= 3) )
 				
