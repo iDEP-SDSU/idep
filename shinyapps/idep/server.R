@@ -1539,255 +1539,238 @@ function(input, output,session) {
  # allGeneInfo(): returns all information in the geneInfo file for each gene
  # geneSets(): gene set as a list for pathway analysis
   
-options(shiny.maxRequestSize = 50*1024^2) # 50MB file max for upload
+	options(shiny.maxRequestSize = 50*1024^2) # 50MB file max for upload
 
-observe({  updateSelectInput(session, "selectOrg", choices = speciesChoice )      })
+	observe({  updateSelectInput(session, "selectOrg", choices = speciesChoice )      })
 
-################################################################
-#   Read data
-################################################################
+	################################################################
+	#   Read data
+	################################################################
  
-# read data file and do filtering and transforming
-readData <- reactive ({ 
-    inFile <- input$file1
-	inFile <- inFile$datapath
-    if (is.null(input$file1) && input$goButton == 0)   return(NULL)
-	if (is.null(input$file1) && input$goButton > 0 )   inFile = demoDataFile
-	tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) # these are needed to make it responsive to changes
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-			
-	isolate({ 
-
-	withProgress(message="Reading and pre-processing ", {
-	if (is.null( input$dataFileFormat )) return(NULL)
-	dataTypeWarning =0
-	
-		#---------------Read file
-		x <- read.csv(inFile)	# try CSV
-        if(dim(x)[2] <= 2 )   # if less than 3 columns, try tab-deliminated
-			x <- read.table(inFile, sep="\t",header=TRUE)	
-		#-------Remove non-numeric columns, except the first column
-		dataType =c(TRUE)
-        for( i in 2:dim(x)[2]) 
-			dataType = c( dataType, is.numeric(x[,i]) )
-		if(sum(dataType) <=2) return (NULL)  # only less than 2 columns are numbers
-		x <- x[,dataType]  # only keep numeric columns
-			
-		x[,1] <- toupper(x[,1])
-		x[,1] <- gsub(" ","",x[,1]) # remove spaces in gene ids
-		x = x[order(- apply(x[,2:dim(x)[2]],1,sd) ),]  # sort by SD
-		x <- x[!duplicated(x[,1]) ,]  # remove duplicated genes
-		rownames(x) <- x[,1]
-		x <- as.matrix(x[,c(-1)]) 	
-		
-		# imput missing data using median
-        if( sum( is.na(x)) > 0 ) {     # if there is missing values
-		  rowMeans <- apply(x,1, function (y)  median(y,na.rm=T))  
-		  for( i in 1:dim(x)[1] )
-		   x[i, which( is.na(x[i,]) )  ]  <- rowMeans[i] 
-		}
-		
-		# Compute kurtosis
-		mean.kurtosis = mean( apply(x,2, kurtosis) )
-	   
-    if (input$dataFileFormat == 2 ) {  # if FPKM, microarray
-	    incProgress(1/3,"Pre-processing data")
-		
-		if ( is.integer(x) ) dataTypeWarning = 1;  # Data appears to be read counts
-		 
-		#-------------filtering
-		tem <- apply(x,1,max)
-		x <- x[which(tem > input$lowFilter),]  # max by row is at least 		
-		x <- x[which(apply(x,1, function(y) max(y)- min(y) ) > 0  ),]  # remove rows with all the same levels
-		
-		#--------------Log transform
-		# Takes log if log is selected OR kurtosis is big than 100
-		if ( (input$transform == TRUE) | (mean.kurtosis > kurtosis.log ) ) 
-			x = log(x+abs( input$logStart),2)
-			
-		tem <- apply(x,1,sd) 
-		x <- x[order(-tem),]  # sort by SD
-		rawCounts = NULL
-		
-   } else {  # counts data
-		incProgress(1/3, "Pre-processing counts data")
-		
-		tem = input$CountsDEGMethod; tem = input$countsTransform
-		
-		# data not seems to be read counts
-		if(!is.integer(x) & mean.kurtosis < kurtosis.log ) dataTypeWarning = -1  
-		
-		validate(   # if Kurtosis is less than a threshold, it is not read-count
-			need(mean.kurtosis > kurtosis.log, "Data does not seem to be read count based on distribution. Please double check.")
-		)
-		
-		x <- round(x,0) # enforce the read counts to be integers. Sailfish outputs has decimal points.
-		x <- x[ which( apply(x,1,max) >= input$minCounts ) , ] # remove all zero counts
-		
-		if(0){  # disabled
-			# remove genes with low expression by counts per million (CPM)
-			dge <- DGEList(counts=x); dge <- calcNormFactors(dge)
-			myCPM <- cpm(dge, prior.counts = 3 )
-			x <- x[which(rowSums(  myCPM > input$minCounts)  > 1 ),]  # at least two samples above this level
-			rm(dge); rm(myCPM)
-		}
-		
-		rawCounts = x;
-		
-		# construct DESeqExpression Object
-		# colData = cbind(colnames(x), as.character(detectGroups( colnames(x) )) )
-		tem = rep("A",dim(x)[2]); tem[1] <- "B"   # making a fake design matrix to allow process, even when there is no replicates
-		colData = cbind(colnames(x), tem )
-		colnames(colData)  = c("sample", "groups")
-		dds <- DESeqDataSetFromMatrix(countData = x,
-                                  colData = colData,
-                                  design = ~ groups)
-		dds <- estimateSizeFactors(dds) # estimate size factor for use in normalization later for started log method
-		incProgress(1/2,"transforming raw counts")
-		# regularized log  or VST transformation
-		if( input$CountsTransform == 3 && dim(counts(dds))[2] <= 10 )  # rlog is slow, only do it with 10 samples
-		    { x <- rlog(dds, blind=TRUE); x <- assay(x) } else {
-			if ( input$CountsTransform == 2 )    # vst is fast but aggressive
-			   { x <- vst(dds, blind=TRUE); x <- assay(x)  } else{  # normalized by library sizes and add a constant.
-				    x <- log2( counts(dds, normalized=TRUE) + input$countsLogStart )   # log(x+c)
-				}
+	# read data file and do filtering and transforming
+	readData <- reactive ({
+		inFile <- input$file1
+		inFile <- inFile$datapath
+		if (is.null(input$file1) && input$goButton == 0)   return(NULL)
+		if (is.null(input$file1) && input$goButton > 0 )   inFile = demoDataFile
+		tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) # these are needed to make it responsive to changes
+			if(input$dataFileFormat== 1){  
+				tem = input$minCounts 
+				tem = input$countsLogStart
+				tem = input$CountsTransform 
 			}
-			
-   }
-       incProgress(1, "Done.")
-     
-    return( list(data = as.matrix(x), mean.kurtosis = mean.kurtosis, rawCounts = rawCounts, dataTypeWarning=dataTypeWarning) )
-	 })
+		if( !is.null(input$dataFileFormat))
+			if(input$dataFileFormat== 2){ 
+				tem = input$transform; 
+				tem = input$logStart; 
+				tem= input$lowFilter 
+			}	
+		isolate({
+			withProgress(message="Reading and pre-processing ", {
+				if (is.null( input$dataFileFormat )) return(NULL)
+				dataTypeWarning =0
+				#---------------Read file
+				x <- read.csv(inFile)	# try CSV
+				if(dim(x)[2] <= 2 )   # if less than 3 columns, try tab-deliminated
+					x <- read.table(inFile, sep="\t",header=TRUE)	
+				#-------Remove non-numeric columns, except the first column
+				dataType =c(TRUE)
+				for( i in 2:dim(x)[2]) 
+					dataType = c( dataType, is.numeric(x[,i]) )
+				if(sum(dataType) <=2) return (NULL)  # only less than 2 columns are numbers
+				x <- x[,dataType]  # only keep numeric columns
+					
+				x[,1] <- toupper(x[,1])
+				x[,1] <- gsub(" ","",x[,1]) # remove spaces in gene ids
+				x = x[order(- apply(x[,2:dim(x)[2]],1,sd) ),]  # sort by SD
+				x <- x[!duplicated(x[,1]) ,]  # remove duplicated genes
+				rownames(x) <- x[,1]
+				x <- as.matrix(x[,c(-1)]) 	
+				
+				# imput missing data using median
+				if( sum( is.na(x)) > 0 ) {     # if there is missing values
+				rowMeans <- apply(x,1, function (y)  median(y,na.rm=T))  
+				for( i in 1:dim(x)[1] )
+				x[i, which( is.na(x[i,]) )  ]  <- rowMeans[i] 
+				}
+				# Compute kurtosis
+				mean.kurtosis = mean( apply(x,2, kurtosis) )
+				if (input$dataFileFormat == 2 ) {  # if FPKM, microarray
+					incProgress(1/3,"Pre-processing data")
+					
+					if ( is.integer(x) ) dataTypeWarning = 1;  # Data appears to be read counts
+					
+					#-------------filtering
+					tem <- apply(x,1,max)
+					x <- x[which(tem > input$lowFilter),]  # max by row is at least 		
+					x <- x[which(apply(x,1, function(y) max(y)- min(y) ) > 0  ),]  # remove rows with all the same levels
+					
+					#--------------Log transform
+					# Takes log if log is selected OR kurtosis is big than 100
+					if ( (input$transform == TRUE) | (mean.kurtosis > kurtosis.log ) ) 
+						x = log(x+abs( input$logStart),2)
+						
+					tem <- apply(x,1,sd) 
+					x <- x[order(-tem),]  # sort by SD
+					rawCounts = NULL
+				} else {  # counts data
+					incProgress(1/3, "Pre-processing counts data")
+					tem = input$CountsDEGMethod; tem = input$countsTransform
+					# data not seems to be read counts
+					if(!is.integer(x) & mean.kurtosis < kurtosis.log ) dataTypeWarning = -1  
+					validate(   # if Kurtosis is less than a threshold, it is not read-count
+						need(mean.kurtosis > kurtosis.log, "Data does not seem to be read count based on distribution. Please double check.")
+					)
+					x <- round(x,0) # enforce the read counts to be integers. Sailfish outputs has decimal points.
+					x <- x[ which( apply(x,1,max) >= input$minCounts ) , ] # remove all zero counts
+					if(0){  # disabled
+						# remove genes with low expression by counts per million (CPM)
+						dge <- DGEList(counts=x); dge <- calcNormFactors(dge)
+						myCPM <- cpm(dge, prior.counts = 3 )
+						x <- x[which(rowSums(  myCPM > input$minCounts)  > 1 ),]  # at least two samples above this level
+						rm(dge); rm(myCPM)
+					}
+					rawCounts = x;
+					# construct DESeqExpression Object
+					# colData = cbind(colnames(x), as.character(detectGroups( colnames(x) )) )
+					tem = rep("A",dim(x)[2]); tem[1] <- "B"   # making a fake design matrix to allow process, even when there is no replicates
+					colData = cbind(colnames(x), tem )
+					colnames(colData)  = c("sample", "groups")
+					dds <- DESeqDataSetFromMatrix(countData = x, colData = colData, design = ~ groups)
+					dds <- estimateSizeFactors(dds) # estimate size factor for use in normalization later for started log method
+					
+					incProgress(1/2,"transforming raw counts")
+					# regularized log  or VST transformation
+					if( input$CountsTransform == 3 && dim(counts(dds))[2] <= 10 ) { # rlog is slow, only do it with 10 samples
+						x <- rlog(dds, blind=TRUE); x <- assay(x) } 
+					else {
+						if ( input$CountsTransform == 2 ) {    # vst is fast but aggressive
+							x <- vst(dds, blind=TRUE)
+							x <- assay(x)  
+						} else{  # normalized by library sizes and add a constant.
+							x <- log2( counts(dds, normalized=TRUE) + input$countsLogStart )   # log(x+c)
+						}
+					}
+				}
+
+				incProgress(1, "Done.")
+				finalResult <- list(data = as.matrix(x), mean.kurtosis = mean.kurtosis, rawCounts = rawCounts, dataTypeWarning=dataTypeWarning)
+
+				return(finalResult)
+			})
+		})
 	})
-  })	
   
-output$text.transform <- renderText({
-      if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	  inFile <- input$file1
-	  
-	  k.value =  readData()$mean.kurtosis	  
-      tem = paste( "Mean Kurtosis =  ", round(k.value,2), ".\n",sep = "")
-	  if( k.value > kurtosis.log) tem = paste(tem, " Detected extremely large numbers with kurtosis >", kurtosis.log,
-   	  ". Log transformation is automatically applied, even user selects otherwise.", sep="") else if (k.value>kurtosis.warning)
-	  {tem = paste(tem, " Detected  large numbers with kurtosis >",
-   	  kurtosis.warning,". Log transformation is recommended.", sep="") }
-	  
-	  if(readData()$dataTypeWarning == 1 ) {
-	      tem = paste (tem, " ------Warning!!! Data matrix contains all integers. It seems to be read counts!!! Please select appropriate data type in the previous page and reload file.")}
-	  if(readData()$dataTypeWarning == -1 ) {
-	       tem = paste (tem, "  ------Warning!!! Data does not look like read counts data. Please select appropriate data type in the previous page and reload file.")}
-	
-	  tem
-  
+	output$text.transform <- renderText({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		inFile <- input$file1
+		k.value =  readData()$mean.kurtosis	  
+		tem = paste( "Mean Kurtosis =  ", round(k.value,2), ".\n",sep = "")
+		if( k.value > kurtosis.log) tem = paste(tem, " Detected extremely large numbers with kurtosis >", kurtosis.log,
+		". Log transformation is automatically applied, even user selects otherwise.", sep="") else if (k.value>kurtosis.warning)
+		{tem = paste(tem, " Detected  large numbers with kurtosis >",
+		kurtosis.warning,". Log transformation is recommended.", sep="") }
+		if(readData()$dataTypeWarning == 1 ) {
+			tem = paste (tem, " ------Warning!!! Data matrix contains all integers. It seems to be read counts!!! Please select appropriate data type in the previous page and reload file.")}
+		if(readData()$dataTypeWarning == -1 ) {
+			tem = paste (tem, "  ------Warning!!! Data does not look like read counts data. Please select appropriate data type in the previous page and reload file.")}
+		tem
 	})	
 
-# Show info on file format	
-output$fileFormat <- renderUI({
-	i = "<h3>Done. Ready to load data files.</h3>"
-	i = c(i,"Users can upload a CSV or tab-delimited text file with the first column as gene IDs. 
-	For RNA-seq data, read count per gene is recommended.
-	Also accepted are normalized expression data based on FPKM, RPKM, or DNA microarray data. iDEP can convert most types of common gene IDs to Ensembl gene IDs, which is used 
-		internally for enrichment and pathway analyses. iDEP parses column names to define sample groups. To define 3 biological samples (Control,
-	TreatmentA, TreatmentB) with 2 replicates each, column names should be:")
-	i = c(i," <strong> Ctrl_1, Ctrl_2, TrtA_1, TrtA_2, TrtB_1, TrtB_2</strong>.") 
-	i = c(i,"For factorial design, use underscore \"_\" to separate factors such as genetic background 
-	(wide type vs. mutant:WT vs. Mu) and experimental condition (Ctrl vs. Trt). 
-	Currently, only two factors are allowed. To define an 2x2 factorial design, use column names like:")
-	i = c(i,"<strong>WT_Ctrl_1, WT_Ctrl_2, WT_Trt_1, WT_Trt_2, Mu_Ctrl_1, Mu_Ctrl_2, Mu_Trt_1, Mu_Trt_2</strong>") 
-	
-	HTML(paste(i, collapse='<br/>') )
+	# Show info on file format	
+	output$fileFormat <- renderUI({
+		i = "<h3>Done. Ready to load data files.</h3>"
+		i = c(i,"Users can upload a CSV or tab-delimited text file with the first column as gene IDs. 
+		For RNA-seq data, read count per gene is recommended.
+		Also accepted are normalized expression data based on FPKM, RPKM, or DNA microarray data. iDEP can convert most types of common gene IDs to Ensembl gene IDs, which is used 
+			internally for enrichment and pathway analyses. iDEP parses column names to define sample groups. To define 3 biological samples (Control,
+		TreatmentA, TreatmentB) with 2 replicates each, column names should be:")
+		i = c(i," <strong> Ctrl_1, Ctrl_2, TrtA_1, TrtA_2, TrtB_1, TrtB_2</strong>.") 
+		i = c(i,"For factorial design, use underscore \"_\" to separate factors such as genetic background 
+		(wide type vs. mutant:WT vs. Mu) and experimental condition (Ctrl vs. Trt). 
+		Currently, only two factors are allowed. To define an 2x2 factorial design, use column names like:")
+		i = c(i,"<strong>WT_Ctrl_1, WT_Ctrl_2, WT_Trt_1, WT_Trt_2, Mu_Ctrl_1, Mu_Ctrl_2, Mu_Trt_1, Mu_Trt_2</strong>") 
+		
+		HTML(paste(i, collapse='<br/>') )
 	})
-# this defines an reactive object that can be accessed from other rendering functions
+	# this defines an reactive object that can be accessed from other rendering functions
 
-converted <- reactive({  
-	  if (is.null(input$file1) && input$goButton == 0)    return(NULL)
-       tem = input$selectOrg;
-      isolate( {
-   #   withProgress(message="Converting gene ids", {
-     # cat (paste("\nID:",input$selectOrg) )
-	  convertID(rownames(readData()$data ),input$selectOrg, input$selectGO );
-	         
-	 # })
-	  }) 
+	converted <- reactive({
+		if (is.null(input$file1) && input$goButton == 0)    return(NULL)
+		tem = input$selectOrg;
+		isolate( {
+		#   withProgress(message="Converting gene ids", {
+		# cat (paste("\nID:",input$selectOrg) )
+		convertID(rownames(readData()$data ),input$selectOrg, input$selectGO );
+		# })
+		}) 
+	})
 
-	} )
+	# this defines an reactive object that can be accessed from other rendering functions
+	allGeneInfo <- reactive({
+		if (is.null(input$file1) && input$goButton == 0)    return(NULL)
+		tem = input$selectOrg;
+		isolate( {
+		withProgress(message="Looking up gene annotation", {
+		geneInfo(converted(),input$selectOrg); 
+				})
+		})
+	})
 
-# this defines an reactive object that can be accessed from other rendering functions
-allGeneInfo <- reactive({  
-	  if (is.null(input$file1) && input$goButton == 0)    return(NULL)
-       tem = input$selectOrg;
-      isolate( {
-      withProgress(message="Looking up gene annotation", {
-	  geneInfo(converted(),input$selectOrg); 
-			 })
-	  })
-	} )
-
-convertedData <- reactive({  
-	  if (is.null(input$file1) && input$goButton == 0)    return()
-	  
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	####################################
-			
-      if( is.null(converted() ) ) return( readData()$data) # if id or species is not recognized use original data.
-
-	  isolate( {  
-	  withProgress(message="Converting data ... ", {
-	   mapping <- converted()$conversionTable
-      # cat (paste( "\nData:",input$selectOrg) )
-	   x =readData()$data
-	   rownames(x) = toupper(rownames(x))
-	  
-	  # any gene not recognized by the database is disregarded
-	  # x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
-
-	   # the 3 lines keeps the unrecogized genes using original IDs
-	   x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
-	   ix = which(is.na(x1[,2]) )
-	   x1[ix,2] = x1[ix,1] # original IDs used
-	   #write.csv(x1,"tem.csv")
-	   
-	   #multiple matched IDs, use the one with highest SD
-	   tem = apply(x1[,3:(dim(x1)[2])],1,sd)
-	   x1 = x1[order(x1[,2],-tem),]
-	   x1 = x1[!duplicated(x1[,2]) ,]
-	   rownames(x1) = x1[,2]
-	   
-	   x1 = as.matrix(x1[,c(-1,-2)])
-	   tem = apply(x1,1,sd)
-	   x1 = x1[order(-tem),]  # sort again by SD
-	   incProgress(1, "Done.")
-	   })
-       return(x1)
-	  }) 
-
-	} )	
+	convertedData <- reactive({
+		if (is.null(input$file1) && input$goButton == 0) return()  
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		####################################
+		if( is.null(converted() ) ) return( readData()$data) # if id or species is not recognized use original data.
+		isolate( {  
+			withProgress(message="Converting data ... ", {
+				mapping <- converted()$conversionTable
+				# cat (paste( "\nData:",input$selectOrg) )
+				x =readData()$data
+				rownames(x) = toupper(rownames(x))
+				# any gene not recognized by the database is disregarded
+				# x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
+				# the 3 lines keeps the unrecogized genes using original IDs
+				x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
+				ix = which(is.na(x1[,2]) )
+				x1[ix,2] = x1[ix,1] # original IDs used
+				#write.csv(x1,"tem.csv")
+				#multiple matched IDs, use the one with highest SD
+				tem = apply(x1[,3:(dim(x1)[2])],1,sd)
+				x1 = x1[order(x1[,2],-tem),]
+				x1 = x1[!duplicated(x1[,2]) ,]
+				rownames(x1) = x1[,2]
+				x1 = as.matrix(x1[,c(-1,-2)])
+				tem = apply(x1,1,sd)
+				x1 = x1[order(-tem),]  # sort again by SD
+				incProgress(1, "Done.")
+			})
+		return(x1)
+		})
+	})
 	
-GeneSets <- reactive({  
-	  if (is.null(input$file1) && input$goButton == 0)    return()
+	GeneSets <- reactive({
+		if (is.null(input$file1) && input$goButton == 0)	return()
+		tem = input$selectOrg
+		tem = input$selectGO
+		tem =input$minSetSize; tem= input$maxSetSize
+		isolate( {
+			if(input$selectOrg == "NEW" && !is.null(input$gmtFile) ) # new species 
+			{     inFile <- input$gmtFile; inFile <- inFile$datapath
+				return( readGMTRobust(inFile) ) }else
+		return( readGeneSets( converted(), convertedData(), input$selectGO,input$selectOrg,c(input$minSetSize, input$maxSetSize)  ) ) }) 
+	})
 
-	  tem = input$selectOrg
-	  tem = input$selectGO
-	  tem =input$minSetSize; tem= input$maxSetSize
-      isolate( {
-		if(input$selectOrg == "NEW" && !is.null(input$gmtFile) ) # new species 
-		  {     inFile <- input$gmtFile; inFile <- inFile$datapath
-		     return( readGMTRobust(inFile) ) }else
-	   return( readGeneSets( converted(), convertedData(), input$selectGO,input$selectOrg,c(input$minSetSize, input$maxSetSize)  ) ) }) 
-	} )
+####### [TODO] Kevin Indentation Work 10/5 #######
 
 output$contents <- renderTable({
    inFile <- input$file1
@@ -2507,33 +2490,38 @@ output$KmeansGO <- renderTable({
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
 	####################################
-	
 	withProgress(message="GO Enrichment", {
+		# GO
+		pp=0
+		minFDR = 0.01
 
-    # GO
-	pp=0
-	for( i in 1:input$nClusters) {
-	incProgress(1/input$nClusters, , detail = paste("Cluster",toupper(letters)[i]) )
-	query = rownames(Kmeans()$x)[which(Kmeans()$bar == i)]
-	
-	if(input$selectOrg == "NEW" && !is.null( input$gmtFile) )
-	{ result <- findOverlapGMT( query, GeneSets(),1) } else { 
-		convertedID <- converted()
-		convertedID$IDs <- query
-		result = FindOverlap (convertedID,allGeneInfo(), input$selectGO3,input$selectOrg,1) }
+		for( i in 1:input$nClusters) {
+			incProgress(1/input$nClusters, , detail = paste("Cluster",toupper(letters)[i]) )
 
-	if( dim(result)[2] ==1) next;   # result could be NULL
-	result$Genes = toupper(letters)[i] 
-	if (pp==0 ) { results <- result; pp <- 1;} else  results <- rbind(results,result)
-	}
-	if( pp == 0) return( as.data.frame("No enrichment found.") )
-	results= results[,c(5,1,2,4)]
-	colnames(results)= c("Cluster","FDR","Genes","Pathways")
-	minFDR = 0.01
-	if(min(results$FDR) > minFDR ) results = as.data.frame("No signficant enrichment found.") else
-	results = results[which(results$FDR < minFDR),]
-	incProgress(1, detail = paste("Done")) 
+			query = rownames(Kmeans()$x)[which(Kmeans()$bar == i)]
+			if(input$selectOrg == "NEW" && !is.null( input$gmtFile) ){ 
+				result <- findOverlapGMT( query, GeneSets(),1) 
+			} else {
+				convertedID <- converted()
+				convertedID$IDs <- query
+				result = FindOverlap (convertedID,allGeneInfo(),input$selectGO3,input$selectOrg,1) 
+			}
+			if( dim(result)[2] ==1) next;   # result could be NULL
+			result$Genes = toupper(letters)[i] 
+			if (pp==0 ) { results <- result; pp <- 1;
+			} else {
+				results <- rbind(results,result)
+			}
+		}
+
+		if(pp == 0) return( as.data.frame("No enrichment found."))
+		results= results[,c(5,1,2,4)]
+		colnames(results)= c("Cluster","FDR","Genes","Pathways")
+		if(min(results$FDR) > minFDR ) results = as.data.frame("No signficant enrichment found.") else
+		results = results[which(results$FDR < minFDR),]
+		incProgress(1, detail = paste("Done")) 
 	}) #progress
+
 	if( dim(results)[2] ==1)  return ( as.matrix("No significant enrichment.") )
 	colnames(results)[2] = "adj.Pval"
 	results$Genes <- as.character(results$Genes)

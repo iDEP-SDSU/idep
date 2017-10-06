@@ -11,8 +11,8 @@ shinyUI(
   
 #  fluidPage( 
   navbarPage(iDEPversion,
-             tabPanel("Load Data",
-	     titlePanel("Upload Files"),
+            tabPanel("Load Data",
+	     	titlePanel("Upload Files"),
     sidebarLayout(
       sidebarPanel(
 	    actionButton("goButton", "Click here to load demo data"),
@@ -62,20 +62,20 @@ tableOutput('species' ),
       ),
       mainPanel(
         tableOutput('contents')
-	,h5("Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data.  See ",
-	a(" documentation", href="https://idepsite.wordpress.com/"), "and",
-a(" manuscript.", href="http://biorxiv.org/content/biorxiv/early/2017/06/09/148411.full.pdf"),
-   "Based on annotation of",a( " 69 metazoa and 42 plant genomes ",href="https://idepsite.wordpress.com/species/") ,"in Ensembl BioMart as of 6/4/2017."
+		,h5("Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data.  See ",
+			a(" documentation", href="https://idepsite.wordpress.com/"), "and",
+			a(" manuscript.", href="http://biorxiv.org/content/biorxiv/early/2017/06/09/148411.full.pdf"),
+   			"Based on annotation of",a( " 69 metazoa and 42 plant genomes ",href="https://idepsite.wordpress.com/species/") ,"in Ensembl BioMart as of 6/4/2017."
             ," Additional  data from"
 			,a("KEGG, ", href="www.genome.jp/kegg/")
 			,a("Reactome, ", href="http://www.reactome.org/")
 			,a("MSigDB (human),", href="https://doi.org/10.1093/bioinformatics/btr260") 
-         ,a("GSKB (mouse)", href="http://biorxiv.org/content/early/2016/10/24/082511") 
-         ,"and",a("  araPath (arabidopsis).", href="https://doi.org/10.1093/bioinformatics/bts421") 
-         ," For feedbacks or data contributions (genes and GO mapping of any species), please"
-         ,a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=iDEP" )
-         , "or visit our",a(" homepage.", href="http://ge-lab.org/")
-		 , "Send us suggestions or any error message to help improve iDEP."
+			,a("GSKB (mouse)", href="http://biorxiv.org/content/early/2016/10/24/082511") 
+			,"and",a("  araPath (arabidopsis).", href="https://doi.org/10.1093/bioinformatics/bts421") 
+			," For feedbacks or data contributions (genes and GO mapping of any species), please"
+			,a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=iDEP" )
+			, "or visit our",a(" homepage.", href="http://ge-lab.org/")
+			, "Send us suggestions or any error message to help improve iDEP."
          )
 		,h3("Loading R packages ... ...")
 		,htmlOutput('fileFormat')
