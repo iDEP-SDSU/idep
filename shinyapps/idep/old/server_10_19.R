@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.40"
+iDEPversion = "iDEP 0.39"
 ################################################################
 # R packages
 ################################################################
@@ -13,7 +13,7 @@ if(length(notInstalled)>0)
 	install.packages(notInstalled)
 
 # To test these packages, start an R session and paste these lines below.
-#library(shiny)   	# for Shiny interface
+library(shiny)   	# for Shiny interface
 library(RSQLite)	# for database connection
 library(gplots)		# for hierarchical clustering
 library(ggplot2)	# graphics
@@ -34,12 +34,17 @@ if(length(notInstalled)>0) {
 	source("https://bioconductor.org/biocLite.R")
 	biocLite(notInstalled)
 }
-
-#library(DESeq2) # count data analysis
-#library(edgeR) # count data D.E.
-
-#library(PGSEA) # pathway 
-
+library(limma) # Differential expression
+library(DESeq2) # count data analysis
+library(edgeR) # count data D.E.
+library(gage) # pathway analysis
+library(PGSEA) # pathway 
+library(fgsea) # fast GSEA
+library(ReactomePA) # pathway analysis
+library(pathview)
+library(PREDA)  # showing expression on genome
+library(PREDAsampledata) 
+library(hgu133plus2.db)
 library(sfsmisc)
 library(lokern)
 library(multtest)
@@ -61,10 +66,6 @@ minGenesEnrichment = 2 # perform GO or promoter analysis only if more than this 
 PREDA_Permutations =1000
 set.seed(2) # seed for random number generator
 mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
-#Each row of this matrix represents a color scheme;
-heatColors = rbind(      greenred(75),     bluered(75),     colorpanel(75,"green","black","magenta") )
-rownames(heatColors) = c("Green-Black-Red","Blue-White-Red","Green-Black-Magenta")
-colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull down menu
 
 ################################################################
 #   Input files
@@ -73,17 +74,6 @@ colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull do
 # this need to be removed. Also replace go to go for folder
 #  setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
 sqlite  <- dbDriver("SQLite")
-# convert <- dbConnect(sqlite,"../go/convertIDs.db",flags=SQLITE_RO)  #read only mode
-# keggSpeciesID = read.csv("KEGG_Species_ID.csv")  
-# # List of GMT files in /gmt sub folder
-# gmtFiles = list.files(path = "../go/pathwayDB",pattern=".*\\.db")
-# gmtFiles = paste("../go/pathwayDB/",gmtFiles,sep="")
-# geneInfoFiles = list.files(path = "../go/geneInfo",pattern=".*GeneInfo\\.csv")
-# geneInfoFiles = paste("../go/geneInfo/",geneInfoFiles,sep="")
-# motifFiles = list.files(path = "../go/motif",pattern=".*\\.db")
-# motifFiles = paste("../go/motif/",motifFiles,sep="")
-# demoDataFile = "GSE37704_sailfish_genecounts.csv" #"expression1_no_duplicate.csv"
-
 convert <- dbConnect(sqlite,"./data/convertIDs.db",flags=SQLITE_RO)  #read only mode
 keggSpeciesID = read.csv("./data/data_go/KEGG_Species_ID.csv")
 # List of GMT files in /gmt sub folder
@@ -100,46 +90,31 @@ demoDataFile = "./data/data_go/GSE37704_sailfish_genecounts.csv" #"expression1_n
 ################################################################
 
 # Functions for hierarchical clustering
-hclust2 <- function(x, method="average", ...)  # average linkage
-  hclust(x, method=method, ...)
-hclust.ward.D <- function(x, method="ward.D", ...)  # average linkage
-  hclust(x, method=method, ...)
-hclust.ward.D2 <- function(x, method="ward.D2", ...)  # average linkage
-  hclust(x, method=method, ...)
-hclust.single <- function(x, method="single", ...)  # average linkage
-  hclust(x, method=method, ...)
-hclust.mcquitty <- function(x, method="mcquitty", ...)  # average linkage
-  hclust(x, method=method, ...)
-hclust.median <- function(x, method="median", ...)  # average linkage
-  hclust(x, method=method, ...)
-hclust.centroid <- function(x, method="centroid", ...)  # average linkage
-  hclust(x, method=method, ...)
+hclust2 <- function(x, method="average", ...) { # average linkage
+	hclust(x, method=method, ...)
+}  
   
-hclustFuns <- list( averge = hclust2, complete=hclust, single=hclust.single,
-					median=hclust.median, centroid=hclust.centroid, mcquitty=hclust.mcquitty)
-hclustChoices = setNames(1:length(hclustFuns),names(hclustFuns)) # for pull down menu
 
-dist2 <- function(x, ...)   # distance function = 1-PCC (Pearson's correlation coefficient)
-  as.dist(1-cor(t(x), method="pearson"))
-  
-dist3 <- function(x, ...)   # distance function = 1-abs(PCC) (Pearson's correlation coefficient)
-  as.dist(1-abs(cor(t(x), method="pearson")))
-# List of distance functions 
-distFuns <- list(Correlation=dist2, Euclidean=dist,AbsolutePCC=dist3)
-distChoices = setNames(1:length(distFuns),names(distFuns)) # for pull down menu
+dist2 <- function(x, ...) {	# distance function = 1-PCC (Pearson's correlation coefficient)
+	as.dist(1-cor(t(x), method="pearson"))
+}   
 
 # Given a set of numbers, find the difference between 2nd largest and 2nd smallest
 # 2,3,5,6,1   --> 5-2 = 3
 geneChange <- function(x){
 	n = length(x)
-	if( n<4) return( max(x)-min(x)  ) else 
-	return(sort(x)[n-1] - sort(x)[2]   )
+	if( n<4) 
+		return( max(x)-min(x)) 
+	else 
+		return(sort(x)[n-1] - sort(x)[2])
 }
-dynamicRange <- function( x ) {
+
+dynamicRange <- function(x) {
 	y = sort(x)
 	if(length(x)>=4)  k =2 else k =1;
-	return( y[length(x)-k+1] - y[k]) 
-}
+	return( y[length(x)-k+1] - y[k])
+}  
+
 # Define sample groups based on column names
  detectGroups <- function (x){  # x are col names
 	tem <- gsub("[0-9]*$","",x) # Remove all numbers from end
@@ -151,12 +126,113 @@ dynamicRange <- function( x ) {
  	return( tem )
  }
 
+# Generate heatmap 
+ myheatmap <- function (x,n=-1) {
+	if(n == -1) n=dim(x)[1]
+	geneSD = apply(x,1,sd)
+	x = x[order(-geneSD),]
+	# this will cutoff very large values, which could skew the color 
+	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+	cutoff = median(unlist(x)) + 3*sd (unlist(x)) 
+	x[x>cutoff] <- cutoff
+	cutoff = median(unlist(x)) - 3*sd (unlist(x)) 
+	x[x< cutoff] <- cutoff
+	hy <-  heatmap.2(x, distfun = dist2,hclustfun=hclust2,
+		col=greenred(75), density.info="none", trace="none", scale="none", keysize=.5
+		#,Colv=FALSE,
+		,key=F
+		,margins = c(6, 8)
+	)
+}
+
+# Heatmap, with option of top n genes
+myheatmap3 <- function (x,n=-1) {
+	if( n > 0 && n< dim(x)[1]) { 
+		geneSD = apply(x,1,sd)
+		x = x[order(-geneSD),]
+		# this will cutoff very large values, which could skew the color 
+		x=as.matrix(x[1:n,])
+	}
+	x=as.matrix(x)-apply(x,1,mean)
+	cutoff = median(unlist(x)) + 3*sd (unlist(x)) 
+	x[x>cutoff] <- cutoff
+	cutoff = median(unlist(x)) - 3*sd (unlist(x)) 
+	x[x< cutoff] <- cutoff
+	groups = detectGroups(colnames(x))
+	colnames(x) = detectGroups(colnames(x))
+	hy <-  heatmap.2(x, dendrogram ="row",distfun = dist2,hclustfun=hclust2,
+		col=greenred(75), density.info="none", trace="none", scale="none", keysize=.5
+		#,Colv=FALSE,
+		,labRow=""
+		#,labCol=""
+		,ColSideColors=mycolors[ groups]
+		,key=F
+		,margins = c(6, 20)
+	)
+	if(0) {
+		lmat = rbind(c(5,4),c(0,1),c(3,2))
+		lwid = c(1.5,6)
+		lhei = c(1,.2,8)
+
+		if( dim(x)[1]>100) 
+			heatmap.2(x, distfun = dist2,hclustfun=hclust2,
+			col=greenred(75), density.info="none", trace="none", scale="none", keysize=.5
+			,key=T, symkey=F
+			,ColSideColors=mycolors[ groups]
+			,labRow=""
+			,margins=c(6,8)
+			,srtCol=45
+			#,lmat = lmat, lwid = lwid, lhei = lhei
+			)
+
+		if( dim(x)[1] <=100)  # show gene names if less than 100 genes
+			heatmap.2(x, distfun = dist2,hclustfun=hclust2,
+				col=greenred(75), density.info="none", trace="none", scale="none", keysize=.5
+				,key=T, symkey=F,
+				#,labRow=labRow
+					,ColSideColors=mycolors[ groups]
+				,margins=c(6,8)
+				,cexRow=1.5
+				,srtCol=45
+				#,lmat = lmat, lwid = lwid, lhei = lhei
+			)
+  }
+}
+
+#Heatmap: randomly samples genes
+myheatmap4 <- function (x,n=-1) {
+	if( n > 0 && n< dim(x)[1]) { 
+		ix = sample(1:dim(x)[1], n)
+		# this will cutoff very large values, which could skew the color 
+		x=as.matrix(x[ix,])
+	}
+	x=as.matrix(x)-apply(x,1,mean)
+	cutoff = median(unlist(x)) + 3*sd (unlist(x)) 
+	x[x>cutoff] <- cutoff
+	cutoff = median(unlist(x)) - 3*sd (unlist(x)) 
+	x[x< cutoff] <- cutoff
+	groups = detectGroups(colnames(x))
+	colnames(x) = detectGroups(colnames(x))
+	hy <-  heatmap.2(x, dendrogram ="row",distfun = dist2,hclustfun=hclust2,
+		col=greenred(75), density.info="none", trace="none", scale="none", keysize=.5
+		,Colv=FALSE,
+		,labRow=""
+		#,labCol=""
+		,ColSideColors=mycolors[ groups]
+		,key=F
+		,margins = c(6, 20)
+	)
+}
+
 # heatmap with color bar define gene groups
-myheatmap2 <- function (x,bar,n=-1,mycolor=1 ) {
+myheatmap2 <- function (x,bar,n=-1 ) {
 	# number of genes to show
 	ngenes = as.character( table(bar))
-	if(length(bar) >n && n != -1) {ix = sort( sample(1:length(bar),n) ); bar = bar[ix]; x = x[ix,]  }
-
+	if(length(bar) >n && n != -1) {
+		ix = sort( sample(1:length(bar),n) ); 
+		bar = bar[ix]; 
+		x = x[ix,]  
+	}
 	# this will cutoff very large values, which could skew the color 
 	x=as.matrix(x)-apply(x,1,mean)
 	cutoff = median(unlist(x)) + 3*sd (unlist(x)) 
@@ -165,13 +241,12 @@ myheatmap2 <- function (x,bar,n=-1,mycolor=1 ) {
 	x[x< cutoff] <- cutoff
 	#colnames(x)= detectGroups(colnames(x))
 	 heatmap.2(x,  Rowv =F,Colv=F, dendrogram ="none",
-	 col=heatColors[as.integer(mycolor),], density.info="none", trace="none", scale="none", keysize=.3
-	,key=F, labRow = F,
-	,RowSideColors = mycolors[bar]
-	,margins = c(8, 24)
-	,srtCol=45
+		col=greenred(75), density.info="none", trace="none", scale="none", keysize=.3
+		,key=F, labRow = F,
+		,RowSideColors = mycolors[bar]
+		,margins = c(8, 24)
+		,srtCol=45
 	)
-
 	legend.text = paste("Cluster ", toupper(letters)[unique(bar)], " (N=", ngenes,")", sep="")
 	par(lend = 1)           # square line ends for the color legend
 	legend("topright",      # location of the legend on the heatmap plot
@@ -180,7 +255,6 @@ myheatmap2 <- function (x,bar,n=-1,mycolor=1 ) {
 		lty= 1,             # line style
 		lwd = 10            # line width
 	)
-
 }
 
 # Clean up gene sets. Remove spaces and other control characters from gene names  
@@ -248,9 +322,9 @@ findOverlapGMT <- function ( query, geneSet, minFDR=.2 ,minSize=2,maxSize=10000 
 	if(length(query) <=2) return(noSig)
 	if(length(geneSet) <1) return(noSig)
 	  geneSet <- geneSet[which(sapply(geneSet,length) > minSize)]  # gene sets smaller than 1 is ignored!!!
-	  geneSet <- geneSet[which(sapply(geneSet,length) < maxSize)]  # gene sets smaller than 1 is ignored!!!
-	result <- unlist( lapply(geneSet, function(x) length( intersect (query, x) ) ) )
-	result <- cbind(unlist( lapply(geneSet, length) ), result )
+	geneSet <- geneSet[which(sapply(geneSet,length) < maxSize)]  # gene sets smaller than 1 is ignored!!!
+	result <- unlist( lapply(geneSet, function(x) length(intersect(query, x))))
+	result <- cbind(unlist( lapply(geneSet, length) ), result)
 	result <- result[ which(result[,2]>Min_overlap), ,drop=F]
 	if(dim(result)[1] == 0) return( noSig)
 	xx <- result[,2]
@@ -258,17 +332,23 @@ findOverlapGMT <- function ( query, geneSet, minFDR=.2 ,minSize=2,maxSize=10000 
 	nn <- total_elements - mm
 	kk <- result[,1]
 	Pval_enrich=phyper(xx-1,mm,nn,kk, lower.tail=FALSE );
-	FDR <- p.adjust(Pval_enrich,method="fdr",n=length(geneSet) )
+	FDR <- p.adjust(Pval_enrich,method="fdr",n=length(geneSet))
 	result <- as.data.frame(cbind(FDR,result))
 	result <- result[,c(1,3,2)]
 	result$pathway = rownames(result)
-	result$Genes = ""  # place holder just 
+	result$Genes = ""  # place holder just
+
 	colnames(result)= c("Corrected P value (FDR)", "Genes in list", "Total genes in category","Functional Category","Genes"  )
 	result <- result[ which( result[,1] < minFDR),,drop=F]
-	if( dim( result)[1] == 0) return(noSig) 
-	if(min(FDR) > minFDR) return(noSig) 
+	
+	if(dim(result)[1] == 0)
+		return(noSig) 
+	if(min(FDR) > minFDR)
+		return(noSig) 
+
 	result <- result[order(result[,1] ),]
-	if(dim(result)[1] > maxTerms ) result <- result[1:maxTerms,]
+	if(dim(result)[1] > maxTerms ) 
+		result <- result[1:maxTerms,]
 
 	return( result)
 }
@@ -384,9 +464,8 @@ i= grep("Rattus norvegicus" ,names(speciesChoice)); speciesChoice <- move2(i)
 i= grep("Mus musculus",names(speciesChoice)); speciesChoice <- move2(i)
 i= grep("Homo sapiens",names(speciesChoice)); speciesChoice <- move2(i)
 
-GO_levels = dbGetQuery(convert, "select distinct id,level from GO  
-                                WHERE GO = 'biological_process'"  )
-level2Terms = GO_levels[which(GO_levels$level %in% c(2,3))  ,1]  # level 2 and 3
+GO_levels = dbGetQuery(convert, "select distinct id,level from GO WHERE GO = 'biological_process'")
+level2Terms = GO_levels[which(GO_levels$level %in% c(2,3))  ,1] # level 2 and 3
 idIndex <- dbGetQuery(convert, paste("select distinct * from idIndex " ))
 quotes <- dbGetQuery(convert, " select * from quotes")
 quotes = paste0("\"",quotes$quotes,"\"", " -- ",quotes$author,".       ")
@@ -505,11 +584,15 @@ convertEnsembl2Entrez <- function (query,Species) {
 	result <- dbGetQuery( convert,
 						paste( " select  id,ens,species from mapping where ens IN ('", paste(querySet,collapse="', '"),
 								"') AND  idType ='",idType_Entrez,"'",sep="") )	# slow
+							
 	if( dim(result)[1] == 0  ) return(NULL)
 	result <- subset(result, species==speciesID, select = -species)
+
 	ix = match(result$ens,names(query)  )
+
 	tem <- query[ix];  names(tem) = result$id
-	return(tem)  
+	return(tem)
+  
 }
 
 convertEnsembl2KEGG <- function (query,Species) {  # not working
@@ -519,6 +602,7 @@ convertEnsembl2KEGG <- function (query,Species) {  # not working
 	result <- dbGetQuery( convert,
 						paste( " select  id,ens,species from mapping where ens IN ('", paste(querySet,collapse="', '"),
 								"') AND  idType ='",idType_KEGG,"'",sep="") )	# slow
+							
 	if( dim(result)[1] == 0  ) return(NULL)
 	result <- subset(result, species==speciesID, select = -species)
 
@@ -683,13 +767,17 @@ gmtCategory <- function (converted, convertedData, selectOrg,gmtFile) {
  
 # Main function. Find a query set of genes enriched with functional category
 readGeneSets <- function (converted, convertedData, GO,selectOrg, myrange) {
-	idNotRecognized = as.data.frame("ID not recognized!")
-	if(is.null(converted) ) return(idNotRecognized) # no ID 
-	querySet <- rownames(convertedData)
-	if(length(querySet) == 0) return(idNotRecognized )
-	ix = grep(converted$species[1,1],gmtFiles)
-	if (length(ix) == 0 ) {return(idNotRecognized )}
 	
+	idNotRecognized = as.data.frame("ID not recognized!")
+	if(is.null(converted) ) 
+		return(idNotRecognized) # no ID 
+	querySet <- rownames(convertedData)
+	if(length(querySet) == 0) 
+		return(idNotRecognized )
+	ix = grep(converted$species[1,1],gmtFiles)
+	if (length(ix) == 0 )
+		return(idNotRecognized)
+
 	# If selected species is not the default "bestMatch", use that species directly
 	if(selectOrg != speciesChoice[[1]]) {  
 		ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
@@ -726,7 +814,6 @@ readGeneSets <- function (converted, convertedData, GO,selectOrg, myrange) {
  
 PGSEApathway <- function (converted,convertedData, selectOrg,GO,gmt, myrange,Pval_pathway,top){
   	subtype = detectGroups(colnames(convertedData))
-	library(PGSEA)
 	Pvalue = 0.01  # cut off to report in PGSEA. Otherwise NA
 	#Pval_pathway = 0.2   # cut off for P value of ANOVA test  to writ to file 
 	# top = 30   # number of pathways to show
@@ -792,13 +879,12 @@ if(0){ # for testing LIMMA
 
 # Differential expression using LIMMA 
 DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMethods,priorCounts, dataFormat){
-	library(limma) # Differential expression
 	topGenes = list();  limmaTrend = FALSE
 	if( dataFormat == 2) {   # if normalized data
 		eset = new("ExpressionSet", exprs=as.matrix(x)) } else { # counts data
 			if (countsDEGMethods == 1 ) { # limma-trend method selected for counts data
 				dge <- DGEList(counts=rawCounts);
-				dge <- calcNormFactors(dge, method = "TMM")
+				dge <- calcNormFactors(dge)
 				eset <- cpm(dge, log=TRUE, prior.count=priorCounts)
 				limmaTrend = TRUE
 			}
@@ -826,9 +912,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 	colnames(design) <- g
 	
 	if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
-		dge <- DGEList(counts=rawCounts);
-		dge <- calcNormFactors(dge, method = "TMM")  # normalization
-		v <- voom(dge, design); fit <- lmFit(v, design) } else 
+		v <- voom(rawCounts, design); fit <- lmFit(v, design) } else 
 		fit <- lmFit(eset, design)      # regular limma
 		
 	cont.matrix <- makeContrasts(contrasts=comparisons, levels=design)
@@ -937,7 +1021,6 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 
 # Differential expression using DESeq2
 DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2){
-	library(DESeq2) # count data analysis
 	groups = as.character ( detectGroups( colnames( rawCounts ) ) )
 	g = unique(groups)# order is reversed
 	
@@ -1186,21 +1269,15 @@ promoter <- function (converted,selectOrg, radio){
 	paths <- as.data.frame(paths)
 	path1 <- rownames(paths)[1]
 
-
-
-		x = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
-		#x = read.csv("exampleData/GSE87194.csv") ; 
-		x=read.csv("GSE37704_sailfish_genecounts.csv");
-		#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
-		x = read.csv("exampleData/hoppe 2 samples.csv")
-		
-		x[,1] = toupper(x[,1]);  
-		colnames(x)[1]= "User_input"
-
-
+	x = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
+	#x = read.csv("exampleData/GSE87194.csv") ; 
+	x=read.csv("GSE37704_sailfish_genecounts.csv");
+	#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
+	x = read.csv("exampleData/hoppe 2 samples.csv")
+	x[,1] = toupper(x[,1]);  
+	colnames(x)[1]= "User_input"
 	selectOrg = "BestMatch"; GO="KEGG"; 
 	myrange = c(15,2000)
-
 	converted = convertID(x[,1],selectOrg)
 	mapping = converted$conversionTable
 	x = merge(mapping[,1:2],x,   by = 'User_input')
@@ -1209,107 +1286,88 @@ promoter <- function (converted,selectOrg, radio){
 	x = x[!duplicated(x[,2]) ,]
 	rownames(x) = x[,2]
 	x = as.matrix(x[,c(-1,-2)])
-
 	convertedData = x
 	gmt = readGeneSets(converted, convertedData, GO,selectOrg, myrange)
-
 	res =DEG.DESeq2(x, .25, 1)
-
 	res <- DEG.limma (x, maxP_limma=.2, minFC_limma=2, x,countsDEGMethods=2,priorCounts=3, dataFormat=1)
-
 	top1 <- res$topGenes[[1]]
-
-	head(top1)	
-
-		paths <- gage(top1[,1,drop=F], gsets = gmt, ref = NULL, samp = NULL)
-		paths <-  rbind(paths$greater,paths$less)
-		if(dim(paths)[1] < 1 | dim(paths)[2]< 6 ) return( noSig )
-		top1 <- paths[,c('stat.mean','set.size','q.val')]
-		colnames(top1)= c("stat.mean","Set Size","FDR")
-		top1 <- top1[order(top1[,3]) ,]  
-		if ( length( which( top1[,3] <=  .9   ) ) == 0 )
-		return( noSig)
-		top1 <- top1[which(top1[,3] <=  .9 ) ,]
-		if(dim(top1)[1] > 30 ) 
-			top1 <- top1[1:30,]
-		top1
-
-
+	head(top1)
+	paths <- gage(top1[,1,drop=F], gsets = gmt, ref = NULL, samp = NULL)
+	paths <-  rbind(paths$greater,paths$less)
+	if(dim(paths)[1] < 1 | dim(paths)[2]< 6 ) return( noSig )
+	top1 <- paths[,c('stat.mean','set.size','q.val')]
+	colnames(top1)= c("stat.mean","Set Size","FDR")
+	top1 <- top1[order(top1[,3]) ,]  
+	if ( length( which( top1[,3] <=  .9   ) ) == 0 )
+	return( noSig)
+	top1 <- top1[which(top1[,3] <=  .9 ) ,]
+	if(dim(top1)[1] > 30 )
+		top1 <- top1[1:30,]
+	top1
 	res = DEG.limma(x, .05, 2,NULL, 1,3 )
-
 	## fgsea
-		top1 <- res$topGenes[[1]]
+	top1 <- res$topGenes[[1]]
 	head(top1)	
 	colnames(top1)= c("Fold","FDR")
 	fold = top1[,1]; names(fold) <- rownames(top1)
-		paths <- fgsea(pathways = gmt, 
-					stats = fold,
-					minSize=15,
-					maxSize=2000,
-					nperm=10000)
+	paths <- fgsea(pathways = gmt, 
+				stats = fold,
+				minSize=15,
+				maxSize=2000,
+				nperm=10000)
 	if(dim(paths)[1] < 1  ) return( noSig )
-		paths <- as.data.frame(paths)
-		top1 <- paths[,c(4,5,7,3)]
-		rownames(top1) <- paths[,1]
-		colnames(top1)= c("ES","NES","Set Size","FDR")
-		top1 <- top1[order(top1[,4]) ,]  
-		if ( length( which( top1[,4] <=  input$pathwayPvalCutoff   ) ) == 0 )
-		return( noSig)
-		top1 <- top1[which(top1[,4] <=  input$pathwayPvalCutoff ) ,]
-		if(dim(top1)[1] > input$nPathwayShow ) 
-			top1 <- top1[1:input$nPathwayShow,]
-			
-		top1
+	paths <- as.data.frame(paths)
+	top1 <- paths[,c(4,5,7,3)]
+	rownames(top1) <- paths[,1]
+	colnames(top1)= c("ES","NES","Set Size","FDR")
+	top1 <- top1[order(top1[,4]) ,]  
+	if ( length( which( top1[,4] <=  input$pathwayPvalCutoff   ) ) == 0 )
+	return( noSig)
+	top1 <- top1[which(top1[,4] <=  input$pathwayPvalCutoff ) ,]
+	if(dim(top1)[1] > input$nPathwayShow ) 
+		top1 <- top1[1:input$nPathwayShow,]
+	top1
 		
 	# testing visualize KEGG pathway
-
 	query = x[1:500,1]
-		fc= convertEnsembl2Entrez (query, Species)  
+	fc= convertEnsembl2Entrez (query, Species)  
 		
-		fc = log2(fc/mean(fc))
+	fc = log2(fc/mean(fc))
 		
-			top1 <- res$topGenes[[1]]
-		top1 <- top1[,1]; names(top1)= rownames(res$topGenes[[1]] )
-		Species = converted$species[1,1] 	
+	top1 <- res$topGenes[[1]]
+	top1 <- top1[,1]; names(top1)= rownames(res$topGenes[[1]] )
+	Species = converted$species[1,1] 	
 		
-	system.time(  fc <- convertEnsembl2Entrez (top1, Species)  )
-			fc = sort(fc,decreasing =T)
-		
-		head(fc)
-		
-		system.time ( y<- gsePathway(fc, nPerm=1000,
-				minGSSize=15, pvalueCutoff=0.5,
-				pAdjustMethod="BH", verbose=FALSE) )
-		res <- as.data.frame(y)
-		head(res)
-		
-		
-		# testing mouse 
-		top1 = limma$topGenes[[1]]
-		top1 <- top1[,1]; names(top1)= rownames(limma$topGenes[[1]] )
-		Species = converted$species[1,1] 	
-		system.time(  fc <- convertEnsembl2Entrez (top1, Species)  )
-				fc = sort(fc,decreasing =T)
-				system.time ( y<- gsePathway(fc, nPerm=1000,organism = "mouse",
-				minGSSize=15, pvalueCutoff=0.5,
-				pAdjustMethod="BH", verbose=FALSE) )
-		res <- as.data.frame(y)
-		head(res)
-		ensemblSpecies <- c("hsapiens_gene_ensembl","rnorvegicus_gene_ensembl", "mmusculus_gene_ensembl",
+	system.time(fc <- convertEnsembl2Entrez (top1, Species))
+	fc = sort(fc,decreasing =T)
+	head(fc)	
+	system.time ( y<- gsePathway(fc, nPerm=1000,
+		minGSSize=15, pvalueCutoff=0.5,
+		pAdjustMethod="BH", verbose=FALSE))
+	res <- as.data.frame(y)
+	head(res)
+
+	# testing mouse 
+	top1 = limma$topGenes[[1]]
+	top1 <- top1[,1]; names(top1)= rownames(limma$topGenes[[1]] )
+	Species = converted$species[1,1] 	
+	system.time(fc <- convertEnsembl2Entrez (top1, Species))
+	fc = sort(fc,decreasing =T)
+	system.time ( y<- gsePathway(fc, nPerm=1000,organism = "mouse",
+		minGSSize=15, pvalueCutoff=0.5,
+		pAdjustMethod="BH", verbose=FALSE))
+	res <- as.data.frame(y)
+	head(res)
+	ensemblSpecies <- c("hsapiens_gene_ensembl","rnorvegicus_gene_ensembl", "mmusculus_gene_ensembl",
 		"celegans_gene_ensembl","scerevisiae_gene_ensembl", "drerio_gene_ensembl", "dmelanogaster_gene_ensembl")
-			ReactomePASpecies= c("human", "rat", "mouse", "celegans", "yeast", "zebrafish", "fly" )
-
-
+	ReactomePASpecies= c("human", "rat", "mouse", "celegans", "yeast", "zebrafish", "fly" )
 	#### testing KEGG pathway graph
 	x=read.csv("GSE37704_sailfish_genecounts.csv");
-		#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
-		x[,1] = toupper(x[,1]);  
-		colnames(x)[1]= "User_input"
-
-
+	#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
+	x[,1] = toupper(x[,1]);  
+	colnames(x)[1]= "User_input"
 	selectOrg = "BestMatch"; GO="KEGG"; 
 	myrange = c(15,2000)
-
 	converted = convertID(x[,1],selectOrg)
 	mapping = converted$conversionTable
 	x = merge(mapping[,1:2],x,   by = 'User_input')
@@ -1318,53 +1376,42 @@ promoter <- function (converted,selectOrg, radio){
 	x = x[!duplicated(x[,2]) ,]
 	rownames(x) = x[,2]
 	x = as.matrix(x[,c(-1,-2)])
-
 	convertedData = x
 	gmt = readGeneSets(converted, convertedData, GO,selectOrg, myrange)
-
 	res =DEG.DESeq2(x, .25, 1)
-
 	top1 <- res$topGenes[[1]]
-
-	head(top1)	
-
-		paths <- gage(top1[,1,drop=F], gsets = gmt, ref = NULL, samp = NULL)
-		paths <-  rbind(paths$greater,paths$less)
-		
+	head(top1)
+	paths <- gage(top1[,1,drop=F], gsets = gmt, ref = NULL, samp = NULL)
+	paths <-  rbind(paths$greater,paths$less)
 	selectedPathway = rownames(paths)[1]
 	# [1] "Cytokine-cytokine receptor interaction"
+	Species <- converted$species[1,1]
 
-		Species <- converted$species[1,1]
-		
-		fold = top1[,1]; names(fold) <- rownames(top1)
-		fold <- convertEnsembl2Entrez(fold,Species)
-		
-		keggSpecies <- as.character( keggSpeciesID[which(keggSpeciesID[,1] == Species),3] )
-		
-		if(nchar( keggSpecies) <=2 ) return(blank) # not in KEGG
+	fold = top1[,1]; names(fold) <- rownames(top1)
+	fold <- convertEnsembl2Entrez(fold,Species)
+
+	keggSpecies <- as.character( keggSpeciesID[which(keggSpeciesID[,1] == Species),3] )
+
+	if(nchar( keggSpecies) <=2 ) return(blank) # not in KEGG
 	cat("here5  ",keggSpecies, " ",Species," ",input$sigPathways)
-		# kegg pathway id
+	# kegg pathway id
 	pathID = keggPathwayID(selectedPathway, Species, "KEGG",selectOrg)
-
 	cat("\n",fold[1:5],"\n",keggSpecies,"\n",pathID)
 	if(is.null(pathID) ) return(blank) # kegg pathway id not found.	
 	pv.out <- pathview(gene.data = fold, pathway.id = pathID, species = keggSpecies, kegg.native=TRUE)
 
-
-
-
 	#######################################
 	# testing for species not recognized 
 	x=read.csv("exampleData/Wu_wet_vs_control - new species.csv");
-		#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
-		x[,1] = toupper(x[,1]);  
-		colnames(x)[1]= "User_input"
+	#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
+	x[,1] = toupper(x[,1]);  
+	colnames(x)[1]= "User_input"
 	selectOrg = "BestMatch"; GO="KEGG"; 
 	myrange = c(15,2000)
 	converted = convertID(x[,1],selectOrg)
 	mapping = converted$conversionTable	  
  }
- 
+
 if(0) {  # testing
 
 	inFile = "C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/expression1_no_duplicate.csv"
@@ -1380,9 +1427,6 @@ if(0) {  # testing
 	tem = apply(x,1,max)
 	x = x[which(tem> lowFilter),] 
 
-	tem = apply(x,1,function(y) sum(y>2) )
-	
-	
 	x = log(x+abs( logStart),2)
 	tem = apply(x,1,sd)
 	x = x[order(-tem),]
@@ -1452,8 +1496,6 @@ if(0) {  # testing
 	results = results[which(results$FDR < minFDR),]
 }
 
-
-
 ################################################################
 #   Server function
 ################################################################
@@ -1461,28 +1503,21 @@ if(0) {  # testing
 shinyServer(
 function(input, output,session) {
   
- #----------------------------------------------- 
- # Available datasets 
- # readData()$data: transformed data, readData()$rawCounts: Counts data. NULL if non-count data.
- # converted():id conversion results with many components such as: converted()$originalIDs,  converted()$IDs: converted IDs
-               #,converted()$species,   converted()$speciesMatched,  converted()$conversionTable
- # allGeneInfo(): returns all information in the geneInfo file for each gene
- # geneSets(): gene set as a list for pathway analysis
-  
+	#----------------------------------------------- 
+	# Available datasets 
+	# readData()$data: transformed data, readData()$rawCounts: Counts data. NULL if non-count data.
+	# converted():id conversion results with many components such as: converted()$originalIDs,  converted()$IDs: converted IDs
+				#,converted()$species,   converted()$speciesMatched,  converted()$conversionTable
+	# allGeneInfo(): returns all information in the geneInfo file for each gene
+	# geneSets(): gene set as a list for pathway analysis
 	options(shiny.maxRequestSize = 50*1024^2) # 50MB file max for upload
-
-	observe({  updateSelectInput(session, "selectOrg", choices = speciesChoice )      })
-	observe({  updateSelectInput(session, "heatColors1", choices = colorChoices )      })
-	observe({  updateSelectInput(session, "distFunctions", choices = distChoices )      })
-	observe({  updateSelectInput(session, "hclustFunctions", choices = hclustChoices )      })
+	observe({updateSelectInput(session, "selectOrg", choices = speciesChoice)})
 	################################################################
 	#   Read data
 	################################################################
  
 	# read data file and do filtering and transforming
 	readData <- reactive ({
-		library(edgeR) # count data D.E.
-		library(DESeq2) # count data analysis
 		inFile <- input$file1
 		inFile <- inFile$datapath
 
@@ -1492,17 +1527,15 @@ function(input, output,session) {
 		if(!is.null(input$dataFileFormat)) # these are needed to make it responsive to changes
 			if(input$dataFileFormat== 1){  
 				tem = input$minCounts 
-				tem= input$NminSamples
 				tem = input$countsLogStart
 				tem = input$CountsTransform 
 			}
 		if(!is.null(input$dataFileFormat))
-			if(input$dataFileFormat== 2){ 
+			if(input$dataFileFormat== 2){
 				tem = input$transform; 
 				tem = input$logStart; 
 				tem= input$lowFilter 
-		}
-
+			}
 		isolate({
 			withProgress(message="Reading and pre-processing ", {
 				if (is.null( input$dataFileFormat )) return(NULL)
@@ -1516,8 +1549,9 @@ function(input, output,session) {
 				#-------Remove non-numeric columns, except the first column
 				
 				for(i in 2:dim(x)[2])
-					dataType = c( dataType, is.numeric(x[,i]) )
-				if(sum(dataType) <=2) return (NULL)  # only less than 2 columns are numbers
+					dataType = c( dataType, is.numeric(x[,i]))
+				if(sum(dataType) <=2) 
+					return (NULL)  # only less than 2 columns are numbers
 				x <- x[,dataType]  # only keep numeric columns
 
 				x[,1] <- toupper(x[,1])
@@ -1528,10 +1562,10 @@ function(input, output,session) {
 				x <- as.matrix(x[,c(-1)])
 
 				# missng value for median value
-				if(sum(is.na(x))>0) {# if there is missing values
+				if(sum(is.na(x))>0) {	# if there is missing values
 					rowMeans <- apply(x,1, function (y)  median(y,na.rm=T))
 					for( i in 1:dim(x)[1] )
-					x[i, which( is.na(x[i,]) )  ]  <- rowMeans[i]
+						x[i, which( is.na(x[i,]))] <- rowMeans[i]
 				}
 
 				# Compute kurtosis
@@ -1562,21 +1596,11 @@ function(input, output,session) {
 					if(!is.integer(x) & mean.kurtosis < kurtosis.log ) {
 						dataTypeWarning = -1
 					}
-					# not used as some counts data like those from CRISPR screen
-					#validate(   # if Kurtosis is less than a threshold, it is not read-count
-					#	need(mean.kurtosis > kurtosis.log, "Data does not seem to be read count based on distribution. Please double check.")
-					# )
+					validate(   # if Kurtosis is less than a threshold, it is not read-count
+						need(mean.kurtosis > kurtosis.log, "Data does not seem to be read count based on distribution. Please double check.")
+					)
 					x <- round(x,0) # enforce the read counts to be integers. Sailfish outputs has decimal points.
-					#x <- x[ which( apply(x,1,max) >= input$minCounts ) , ] # remove all zero counts
-					
-
-					# remove genes if it does not at least have minCounts in at least NminSamples
-					#x <- x[ which( apply(x,1,function(y) sum(y>=input$minCounts)) >= input$NminSamples ) , ]  # filtering on raw counts
-					# using counts per million (CPM) for filtering out genes.
-                                             # CPM matrix                  #N samples > minCounts
-					x <- x[ which( apply( cpm(DGEList(counts = x)), 1,  function(y) sum(y>=input$minCounts)) >= input$NminSamples ) , ] 
-					
-
+					x <- x[ which( apply(x,1,max) >= input$minCounts ) , ] # remove all zero counts
 					if(0){  # disabled
 						# remove genes with low expression by counts per million (CPM)
 						dge <- DGEList(counts=x); dge <- calcNormFactors(dge)
@@ -1602,9 +1626,7 @@ function(input, output,session) {
 							x <- vst(dds, blind=TRUE)
 							x <- assay(x)  
 						} else{  # normalized by library sizes and add a constant.
-							x <- log2( counts(dds, normalized=TRUE) + input$countsLogStart )   # log(x+c) 
-							#x <- cpm(DGEList(counts = x),log=TRUE, prior.count=input$countsLogStart )  #log CPM from edgeR
-							#x <- x-min(x)  # shift values to avoid negative numbers
+							x <- log2( counts(dds, normalized=TRUE) + input$countsLogStart )   # log(x+c)
 						}
 					}
 				}
@@ -1614,59 +1636,26 @@ function(input, output,session) {
 			})
 		})
 	})
-
-	readSampleInfo <- reactive ({
-		inFile <- input$file2
-		inFile <- inFile$datapath
-
-		if(is.null(input$file2) && input$goButton == 0)   return(NULL)
-
-		isolate({
-				if (is.null( input$dataFileFormat )) return(NULL)
-				dataTypeWarning =0
-				dataType =c(TRUE)
-
-				#---------------Read file
-				x <- read.csv(inFile,row.names=1,header=T)	# try CSV
-				if(dim(x)[2] <= 2 )   # if less than 3 columns, try tab-deliminated
-					x <- read.table(inFile, row.names=1,sep="\t",header=TRUE)	
-				#-------Remove non-numeric columns, except the first column
-
-
-   ##############  Needs work. double check. reordering. Merge with sample names .....
-
-
-
-				
-				return(t(x))
-		})
-	})
-	
-	output$sampleInfoTable <- renderTable({
-
-		if (is.null(input$file2) )   return(NULL)
-		isolate({
-			t(readSampleInfo() )
-			#head(iris)
-		})
-	},include.rownames=TRUE) 	
-	
 	output$text.transform <- renderText({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(input$file1)&& input$goButton == 0)   
+			return(NULL)
 		inFile <- input$file1
-		k.value =  readData()$mean.kurtosis	  
+		k.value =  readData()$mean.kurtosis
 		tem = paste( "Mean Kurtosis =  ", round(k.value,2), ".\n",sep = "")
-		if( k.value > kurtosis.log) tem = paste(tem, " Detected extremely large numbers with kurtosis >", kurtosis.log,
-		". Log transformation is automatically applied, even user selects otherwise.", sep="") else if (k.value>kurtosis.warning)
-		{tem = paste(tem, " Detected  large numbers with kurtosis >",
-		kurtosis.warning,". Log transformation is recommended.", sep="") }
+
+		if( k.value > kurtosis.log) 
+			tem = paste(tem, " Detected extremely large numbers with kurtosis >", kurtosis.log,
+					". Log transformation is automatically applied, even user selects otherwise.", sep="") 
+		else if (k.value>kurtosis.warning) {
+			tem = paste(tem, " Detected  large numbers with kurtosis >",
+					kurtosis.warning,". Log transformation is recommended.", sep="") 
+		}
 		if(readData()$dataTypeWarning == 1 ) {
 			tem = paste (tem, " ------Warning!!! Data matrix contains all integers. It seems to be read counts!!! Please select appropriate data type in the previous page and reload file.")}
 		if(readData()$dataTypeWarning == -1 ) {
 			tem = paste (tem, "  ------Warning!!! Data does not look like read counts data. Please select appropriate data type in the previous page and reload file.")}
 		tem
-	})	
-
+	})
 	# Show info on file format	
 	output$fileFormat <- renderUI({
 		i = "<h3>Done. Ready to load data files.</h3>"
@@ -1680,19 +1669,18 @@ function(input, output,session) {
 		(wide type vs. mutant:WT vs. Mu) and experimental condition (Ctrl vs. Trt). 
 		Currently, only two factors are allowed. To define an 2x2 factorial design, use column names like:")
 		i = c(i,"<strong>WT_Ctrl_1, WT_Ctrl_2, WT_Trt_1, WT_Trt_2, Mu_Ctrl_1, Mu_Ctrl_2, Mu_Trt_1, Mu_Trt_2</strong>") 
-		
-		HTML(paste(i, collapse='<br/>') )
+		HTML(paste(i, collapse='<br/>'))
 	})
 	# this defines an reactive object that can be accessed from other rendering functions
-
 	converted <- reactive({
-		if (is.null(input$file1) && input$goButton == 0)    return(NULL)
+		if (is.null(input$file1) && input$goButton == 0)    
+			return(NULL)
 		tem = input$selectOrg;
 		isolate( {
-		#   withProgress(message="Converting gene ids", {
-		# cat (paste("\nID:",input$selectOrg) )
-		convertID(rownames(readData()$data ),input$selectOrg, input$selectGO );
-		# })
+			#   withProgress(message="Converting gene ids", {
+			# cat (paste("\nID:",input$selectOrg) )
+			convertID(rownames(readData()$data ),input$selectOrg, input$selectGO );
+			# })
 		}) 
 	})
 
@@ -1701,9 +1689,9 @@ function(input, output,session) {
 		if (is.null(input$file1) && input$goButton == 0)    return(NULL)
 		tem = input$selectOrg;
 		isolate( {
-		withProgress(message="Looking up gene annotation", {
-		geneInfo(converted(),input$selectOrg); 
-				})
+			withProgress(message="Looking up gene annotation", {
+				geneInfo(converted(),input$selectOrg); 
+			})
 		})
 	})
 
@@ -1711,16 +1699,23 @@ function(input, output,session) {
 		if (is.null(input$file1) && input$goButton == 0) return()  
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
+		tem = input$selectOrg
+		tem = input$dataFileFormat
 		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+			if(input$dataFileFormat== 1)  {  
+				tem = input$minCounts ; 
+				tem = input$countsLogStart; 
+				tem=input$CountsTransform 
+			}
 		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+			if(input$dataFileFormat== 2) { 
+				tem = input$transform; 
+				tem = input$logStart; 
+				tem= input$lowFilter 
+			}
 		####################################
 		if( is.null(converted() ) ) return( readData()$data) # if id or species is not recognized use original data.
-		isolate( {  
+		isolate({
 			withProgress(message="Converting data ... ", {
 				mapping <- converted()$conversionTable
 				# cat (paste( "\nData:",input$selectOrg) )
@@ -1746,75 +1741,87 @@ function(input, output,session) {
 		return(x1)
 		})
 	})
-	
+
 	GeneSets <- reactive({
 		if (is.null(input$file1) && input$goButton == 0)	return()
 		tem = input$selectOrg
 		tem = input$selectGO
-		tem =input$minSetSize; tem= input$maxSetSize; 
-		isolate( {
-			if(input$selectOrg == "NEW" && !is.null(input$gmtFile) ) # new species 
-			{     inFile <- input$gmtFile; inFile <- inFile$datapath
-				return( readGMTRobust(inFile) ) }else
-		return( readGeneSets( converted(), convertedData(), input$selectGO,input$selectOrg,c(input$minSetSize, input$maxSetSize)  ) ) }) 
+		tem =input$minSetSize; tem= input$maxSetSize
+		isolate({
+			if(input$selectOrg == "NEW" && !is.null(input$gmtFile)) { # new species 
+			    inFile <- input$gmtFile; inFile <- inFile$datapath
+				return(readGMTRobust(inFile))
+			}else{
+				return(
+					readGeneSets(converted(), convertedData(),
+						input$selectGO,input$selectOrg,
+						c(input$minSetSize, input$maxSetSize))
+				)
+			}
+		})
 	})
-
 ####### [TODO] Kevin Indentation Work 10/5 #######
-
 output$contents <- renderTable({
    inFile <- input$file1
 	inFile <- inFile$datapath
-    if (is.null(input$file1) && input$goButton == 0)   return(NULL)
-#    if (is.null(input$file1) && input$goButton > 0 )   inFile = "expression1_no_duplicate.csv"
-	if (is.null(input$file1) && input$goButton > 0 )   inFile = demoDataFile
-
+    if (is.null(input$file1) && input$goButton == 0)   
+		return(NULL)
+	#if (is.null(input$file1) && input$goButton > 0 )   inFile = "expression1_no_duplicate.csv"
+	if (is.null(input$file1) && input$goButton > 0 )   
+		inFile = demoDataFile
 	tem = input$selectOrg
 	isolate({
-	x <- read.csv(inFile)
-	if(dim(x)[2] <= 2 ) x <- read.table(inFile, sep="\t",header=TRUE)	# not CSV
-    #x <- readData()$data
-     x[1:20,]
+		x <- read.csv(inFile)
+		if(dim(x)[2] <= 2 ) 
+			x <- read.table(inFile, sep="\t",header=TRUE)	# not CSV
+		#x <- readData()$data
+		x[1:20,]
 	})
   },include.rownames=FALSE)
 
 # show first 20 rows of data
-output$species <-renderTable({   
+output$species <-renderTable({  
       if (is.null(input$file1) && input$goButton == 0)    return()
       isolate( {  #tem <- convertID(input$input_text,input$selectOrg );
-	  	  withProgress(message="Converting gene IDs", {
-                  tem <- converted()
-			incProgress(1, detail = paste("Done"))	  })
-		  
-				  if( is.null(tem)) {as.data.frame("ID not recognized.")} else {
-	              tem$speciesMatched }
-
+	  	withProgress(message="Converting gene IDs", {
+			tem <- converted()
+			incProgress(1, detail = paste("Done"))	  
+		})  
+		if( is.null(tem)) {
+			as.data.frame("ID not recognized.")
+		}
+		else {
+			tem$speciesMatched 
+		}
       }) # avoid showing things initially         
-    }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+    }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T
+)
 
 # show first 20 rows of processed data; not used
 output$debug <- renderTable({
-      if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	  tem = input$selectOrg; tem = input$lowFilter ; tem = input$transform
+	if (is.null(input$file1)&& input$goButton == 0)   
+		return(NULL)
+	tem = input$selectOrg; 
+	tem = input$lowFilter ; 
+	tem = input$transform
 	x <- convertedData()
 	#tem = GeneSets()
-	
 	return( as.data.frame (x[1:20,] ))
-	},include.rownames=TRUE)
+	},include.rownames=TRUE
+)
 
 
 ################################################################
 #   Pre-process
 ################################################################
-	
 output$EDA <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -1831,11 +1838,11 @@ output$EDA <- renderPlot({
 	  
 	for( i in 2:dim(x)[2] )
 	lines(density(x[,i]),col=myColors[i], lwd=2 )
-    legend("topright", cex=1.2,colnames(x), lty=rep(1,dim(x)[2]), col=myColors )	
+    legend("topright", cex=1.7,colnames(x), lty=rep(1,dim(x)[2]), col=myColors )	
    # boxplot of first two samples, often technical replicates
    
 	boxplot(x, las = 2, ylab="Transformed expression levels", main="Distribution of transformed data"
-		,cex.lab=1.5, cex.axis=1.5, cex.main=2, cex.sub=2)
+		,cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2)
 	plot(x[,1:2],xlab=colnames(x)[1],ylab=colnames(x)[2], main="Scatter plot of first two samples",cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2)
 	
    }, height = 1600, width = 500)
@@ -1847,7 +1854,7 @@ output$genePlot <- renderPlot({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -1942,7 +1949,7 @@ processedData <- reactive({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -2035,17 +2042,12 @@ output$heatmap1 <- renderPlot({
 
 	#http://stackoverflow.com/questions/15351575/moving-color-key-in-r-heatmap-2-function-of-gplots-package
 	lmat = rbind(c(5,4),c(0,1),c(3,2))
-	lwid = c(2,6) # width of gene tree; width of heatmap
+	lwid = c(1.5,6)
 	lhei = c(1,.2,8)
 
 	if( n>110) 
-	heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
-		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
-	 #col=colorpanel(75,"green","black","magenta")  ,
-	 #col=bluered(75),
-	 #col=greenred(75), 
-	 ,col= heatColors[as.integer(input$heatColors1),]
-	 ,density.info="none", trace="none", scale="none", keysize=.5
+	heatmap.2(x, distfun = dist2,hclustfun=hclust2,
+	 col=greenred(75), density.info="none", trace="none", scale="none", keysize=.5
 	,key=T, symkey=F
 	,ColSideColors=groups.colors[ as.factor(groups)]
 	,labRow=""
@@ -2056,17 +2058,16 @@ output$heatmap1 <- renderPlot({
 	)
 
 	if( n<=110) 
-	heatmap.2(x, distfun =  distFuns[[as.integer(input$distFunctions)]]
-		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
-		,col= heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.5
-		,key=T, symkey=F,
-		#,labRow=labRow
-		,ColSideColors=groups.colors[ groups]
-		,margins=c(18,12)
-		,cexRow=1
-		,srtCol=45
-		,cexCol=1.8  # size of font for sample names
-		,lmat = lmat, lwid = lwid, lhei = lhei
+	heatmap.2(x, distfun = dist2,hclustfun=hclust2,
+	 col=greenred(75), density.info="none", trace="none", scale="none", keysize=.5
+	,key=T, symkey=F,
+	#,labRow=labRow
+	,ColSideColors=groups.colors[ groups]
+	,margins=c(18,12)
+	,cexRow=1
+	,srtCol=45
+	,cexCol=1.8  # size of font for sample names
+	,lmat = lmat, lwid = lwid, lhei = lhei
 	)
 	incProgress(1,"Done")
 	})
@@ -2078,7 +2079,7 @@ output$heatmap <- renderPlotly({
    # x <- readData()$data   # x = read.csv("expression1.csv")
     x <- convertedData()
 	withProgress(message="Rendering heatmap ", {
-	n=input$nGenesPlotly
+	n=input$nGenes
 	if(n>6000) n = 6000 # max
 	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
 	# this will cutoff very large values, which could skew the color 
@@ -2108,10 +2109,10 @@ output$heatmap <- renderPlotly({
 	   melt()
 	   
 	colnames(df)[1:2] <- c("X","Y")
-    colorNames = unlist(strsplit(tolower(rownames(heatColors)[ as.integer(input$heatColors1)   ]),"-" ) )
+
 	p <- df %>%
 	  ggplot(aes(X, Y, fill = value)) + 
-		   geom_tile()+ scale_fill_gradient2(low = colorNames[1], mid = colorNames[2],high = colorNames[3]) +
+		   geom_tile()+ scale_fill_gradient2(low = "green", mid = "black",high = "red") +
 		   theme(axis.title.y=element_blank(),   # remove y labels
 		   # axis.text.y=element_blank(),  # keep gene names for zooming
 			axis.ticks.y=element_blank(),
@@ -2128,7 +2129,8 @@ output$heatmap <- renderPlotly({
 heatmapData <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
     x <- readData()$data
-
+	geneSD = apply(x,1,sd)
+	x = x[order(-geneSD),]
 	
 	n=input$nGenes
 	if(n>6000) n = 6000 # max
@@ -2136,29 +2138,27 @@ heatmapData <- reactive({
 	# this will cutoff very large values, which could skew the color 
 	x1 = x[1:n,] 
 	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	cutoff = median(unlist(x)) + 4*sd (unlist(x)) 
+	cutoff = median(unlist(x)) + 3*sd (unlist(x)) 
 	x[x>cutoff] <- cutoff
-	cutoff = median(unlist(x)) - 4*sd (unlist(x)) 
+	cutoff = median(unlist(x)) - 3*sd (unlist(x)) 
 	x[x< cutoff] <- cutoff
 	
 	groups = detectGroups(colnames(x) )
 	groups.colors = rainbow(length(unique(groups) ) )
 
-	#pdf(file=NULL,width =700, height =700)
-	hy <- heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
-		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
-		,density.info="none", trace="none", scale="none")
-    #dev.off()
+	pdf(file=NULL,width =700, height =700)
+	hy <- heatmap.2(x, distfun = dist2,hclustfun=hclust2,#labRow="",labCol="",
+	density.info="none", trace="none", scale="none")
+    dev.off()
 	
 	# if not new species, add gene symbol
-	if( input$selectOrg == "NEW") return(NULL) else { 
+	if( input$selectOrg != "NEW") { 
 		x1 <- x1[ rev( hy$rowInd),hy$colInd]
 		# add gene symbol
 		ix = match( rownames(x1), allGeneInfo()[,1])
 		x1 <- cbind(as.character( allGeneInfo()$symbol)[ix],x1)
-		return( x1 )
 	}
-	
+	return( x1 )
 
 	
   })  
@@ -2213,29 +2213,10 @@ output$correlationMatrix <- renderPlot({
 ################################################################
 #   PCA
 ################################################################
-output$listFactors <- renderUI({
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
-	
-      if (is.null(input$file2) )
-       { return(NULL) }	 else { 
-	  selectInput("selectFactors", label="Color:",choices=colnames(readSampleInfo())
-	     )   } 
-	})
-output$listFactors2 <- renderUI({
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
-	
-      if (is.null(input$file2) )
-       { return(NULL) }	 else { 
-	   tem <- colnames(readSampleInfo() )
-	   if(length(tem)>1) { tem2 = tem[1]; tem[1] <- tem[2]; tem[1] = tem2; } # swap 2nd factor with first
-	  selectInput("selectFactors2", label="Shape:",choices=tem)
-	        } 
-	})
+
 output$PCA <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-
+    
 	x <- convertedData();
      if(input$PCA_MDS ==1) {   #PCA
 	 pca.object <- prcomp(t(x))
@@ -2250,13 +2231,7 @@ output$PCA <- renderPlot({
 	pcaData = as.data.frame(pca.object$x[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
 	colnames(pcaData) = c("PC1", "PC2", "Type")
 	percentVar=round(100*summary(pca.object)$importance[2,1:2],0)
-	if(is.null(input$file2)) { 
-		p=ggplot(pcaData, aes(PC1, PC2, color=Type, shape = Type)) + geom_point(size=5) 
-		} else {
-		pcaData = cbind(pcaData,readSampleInfo() )
-		p=ggplot(pcaData, aes_string("PC1", "PC2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
-		
-		}
+	p=ggplot(pcaData, aes(PC1, PC2, color=Type, shape = Type)) + geom_point(size=5) 
 	p=p+xlab(paste0("PC1: ",percentVar[1],"% variance")) 
 	p=p+ylab(paste0("PC2: ",percentVar[2],"% variance")) 
 	p=p+ggtitle("Principal component analysis (PCA)")+coord_fixed(ratio=1.0)+ 
@@ -2274,7 +2249,6 @@ output$PCA <- renderPlot({
 	# pathways
 	if(input$PCA_MDS ==2) {  
 	withProgress(message="Running pathway analysis", {
-	library(PGSEA)
 	pca.object <- prcomp(t(x))
 	pca = 100*pca.object$rotation 
 	Npca = 5
@@ -2327,13 +2301,7 @@ output$PCA <- renderPlot({
 	pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
 	colnames(pcaData) = c("x1", "x2", "Type")
 	
-
-	if(is.null(input$file2)) { 
 	p=ggplot(pcaData, aes(x1, x2, color=Type, shape = Type)) + geom_point(size=5) 
-	} else {
-		pcaData = cbind(pcaData,readSampleInfo() )
-		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
-		}
 	p=p+xlab("Dimension 1") 
 	p=p+ylab("Dimension 2") 
 	p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
@@ -2379,52 +2347,50 @@ Kmeans <- reactive({ # Kmeans clustering
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  {  
-			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
+			tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform 
 		}
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) { 
 			tem = input$transform; tem = input$logStart; tem= input$lowFilter 
 		}
 	####################################
-	
 	withProgress(message="k-means clustering", {
-    x <- convertedData()
-	#x <- readData()
-	#par(mfrow=c(1,2))
-	n=input$nGenesKNN
-	if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	#x1 <- x;
-	#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	#x = 100* x[1:n,] / apply(x[1:n,],1,sum) 
-	x = 100* x[1:n,] / apply(x[1:n,],1,function(y) sum(abs(y))) # L1 norm
-	#x = x - apply(x,1,mean)  # this is causing problem??????
-	#colnames(x) = gsub("_.*","",colnames(x))
-	set.seed(2)
-	k=input$nClusters
-	
-	cl = kmeans(x,k,iter.max = 50)
-	#myheatmap(cl$centers)	
- 
-   incProgress(.3, detail = paste("Heatmap..."))
-	hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
-	tem = match(cl$cluster,hc$order) #  new order 
-	x = x[order(tem),] ; 	bar = sort(tem)
-		incProgress(1, detail = paste("Done")) }) #progress 
+		x <- convertedData()
+		#x <- readData()
+		#par(mfrow=c(1,2))
+		n=input$nGenesKNN
+		if(n>6000) n = 6000 # max
+		if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+		#x1 <- x;
+		#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+		#x = 100* x[1:n,] / apply(x[1:n,],1,sum) 
+		x = 100* x[1:n,] / apply(x[1:n,],1,function(y) sum(abs(y))) # L1 norm
+		#x = x - apply(x,1,mean)  # this is causing problem??????
+		#colnames(x) = gsub("_.*","",colnames(x))
+		set.seed(2)
+		k=input$nClusters
+		cl = kmeans(x,k,iter.max = 50)
+		#myheatmap(cl$centers)	
+		incProgress(.3, detail = paste("Heatmap..."))
+		hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean)))# perform cluster for the reordering of samples
+		tem = match(cl$cluster,hc$order) #  new order 
+		x = x[order(tem),]
+		bar = sort(tem)
+		incProgress(1, detail = paste("Done")) 
+	}) #progress 
 	#myheatmap2(x-apply(x,1,mean), bar,1000)
 	return(list( x = x, bar = bar)) 
-
-  } )
+})
   
 output$KmeansHeatmap <- renderPlot({ # Kmeans clustering
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1
+	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -2432,11 +2398,10 @@ output$KmeansHeatmap <- renderPlot({ # Kmeans clustering
 	
 	if( is.null(Kmeans()) ) return(NULL)
 	withProgress(message="Creating heatmap", {
-   
-	myheatmap2(Kmeans()$x-apply(Kmeans()$x,1,mean), Kmeans()$bar,1000,mycolor=input$heatColors1)
-	
-	incProgress(1, detail = paste("Done")) }) #progress 
-  } , height = 500)
+		myheatmap2(Kmeans()$x-apply(Kmeans()$x,1,mean), Kmeans()$bar,1000)
+		incProgress(1, detail = paste("Done")) 
+	}) #progress 
+} , height = 500)
 output$KmeansNclusters <- renderPlot({ # Kmeans clustering
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	withProgress(message="k-means clustering", {
@@ -2476,7 +2441,7 @@ KmeansData <- reactive({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -2514,7 +2479,7 @@ output$KmeansGO <- renderTable({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -2569,7 +2534,7 @@ output$KmeansPromoter <- renderTable({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -2639,7 +2604,7 @@ limma <- reactive({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -2683,7 +2648,7 @@ output$vennPlot <- renderPlot({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -2742,7 +2707,7 @@ DEG.data <- reactive({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -2768,14 +2733,14 @@ output$selectedHeatmap <- renderPlot({
 	
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast;
-	tem = input$heatColors1
+
 	tem = input$CountsDEGMethod; 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -2803,7 +2768,7 @@ output$selectedHeatmap <- renderPlot({
 	 fc = sort(fc)
 	 bar = (fc>0 )+1
 	 incProgress(1/2 )
- 	 myheatmap2( genes,bar,200,mycolor=input$heatColors1 )
+ 	 myheatmap2( genes,bar,200 )
 	 incProgress(1, detail = paste("Done")) 
 	
 	 })
@@ -2823,7 +2788,7 @@ selectedHeatmap.data <- reactive({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -2881,7 +2846,7 @@ output$geneList <- renderTable({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -2905,7 +2870,7 @@ geneListDataExport <- reactive({
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts; tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+	tem = input$minCounts; tem = input$lowFilter; tem=input$transform; tem = input$logStart
 	noSig = as.data.frame("No significant genes find!")
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
@@ -2928,7 +2893,7 @@ geneListData <- reactive({
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+	tem = input$minCounts; tem = input$lowFilter; tem=input$transform; tem = input$logStart
 	noSig = as.data.frame("No significant genes find!")
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
@@ -2984,7 +2949,7 @@ output$volcanoPlot <- renderPlot({
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem=input$transform; tem = input$logStart
+	tem = input$minCounts; tem = input$lowFilter; tem=input$transform; tem = input$logStart
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
@@ -3022,7 +2987,7 @@ output$volcanoPlotly <- renderPlotly({
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem=input$transform; tem = input$logStart
+	tem = input$minCounts; tem = input$lowFilter; tem=input$transform; tem = input$logStart
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
@@ -3085,7 +3050,7 @@ output$scatterPlot <- renderPlot({
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+	tem = input$minCounts; tem = input$lowFilter; tem=input$transform; tem = input$logStart
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
@@ -3142,7 +3107,7 @@ output$scatterPlotly <- renderPlotly({
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+	tem = input$minCounts; tem = input$lowFilter; tem=input$transform; tem = input$logStart
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
@@ -3216,7 +3181,7 @@ output$geneListGO <- renderTable({
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+	tem = input$minCounts; tem = input$lowFilter; tem=input$transform; tem = input$logStart
 	if( is.null(limma()$results) ) return(NULL)
 	if( is.null(selectedHeatmap.data()) ) return(NULL) # this has to be outside of isolate() !!!
 	if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
@@ -3294,7 +3259,7 @@ output$DEG.Promoter <- renderTable({
 	tem = input$selectOrg; tem = input$radio.promoter
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem=input$transform; tem = input$logStart
+	tem = input$minCounts; tem = input$lowFilter; tem=input$transform; tem = input$logStart
 	if( is.null(limma()$results) ) return(NULL)
 	if( is.null(selectedHeatmap.data()  ) ) return(NULL)
 	#if( !is.data.frame(selectedHeatmap.data()  ) ) return(NULL)
@@ -3383,7 +3348,6 @@ output$selectGO3 <- renderUI({
 
 output$PGSEAplot <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	library(PGSEA)
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
 	tem = input$selectGO;		tem = input$selectContrast1
 	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
@@ -3394,7 +3358,7 @@ output$PGSEAplot <- renderPlot({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -3433,7 +3397,6 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 output$PGSEAplotAllSamples <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	library(PGSEA)
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
 	tem = input$selectGO
 	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
@@ -3444,7 +3407,7 @@ output$PGSEAplotAllSamples <- renderPlot({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -3476,7 +3439,6 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     }, height = 800, width = 500)
 
 output$gagePathway <- renderTable({
-
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
 	tem = input$selectGO;	tem = input$selectContrast1
@@ -3488,7 +3450,7 @@ output$gagePathway <- renderTable({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -3501,7 +3463,6 @@ output$gagePathway <- renderTable({
   },digits=0,align="l",include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
  
 gagePathwayData <- reactive({
-	library(gage) # pathway analysis	
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
@@ -3515,7 +3476,7 @@ gagePathwayData <- reactive({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -3599,7 +3560,7 @@ output$fgseaPathway <- renderTable({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -3612,7 +3573,6 @@ output$fgseaPathway <- renderTable({
   },digits=0,align="l",include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
  
 fgseaPathwayData <- reactive({
-	library(fgsea) # fast GSEA
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
 	tem = input$selectGO; tem = input$selectContrast1
@@ -3626,7 +3586,7 @@ fgseaPathwayData <- reactive({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -3702,7 +3662,6 @@ fgseaPathwayData <- reactive({
   })
 
 ReactomePAPathwayData <- reactive({
-	library(ReactomePA) # pathway analysis
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
 	tem = input$selectGO; tem = input$selectContrast1
@@ -3716,7 +3675,7 @@ ReactomePAPathwayData <- reactive({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -3764,7 +3723,7 @@ ReactomePAPathwayData <- reactive({
 	  
 	  fold <- convertEnsembl2Entrez (fold, Species)  
 		 fold <- sort(fold,decreasing =T)
-	  incProgress(3/4,"Runing enrichment analysis using ReactomePA")
+	  incProgress(3/4,"Runing enrichment analysis using fgsea")
 	  paths <- gsePathway(fold, nPerm=5000, organism = ReactomePASpecies[ix],
                 minGSSize= input$minSetSize, 
 				maxGSSize= input$maxSetSize,
@@ -3823,7 +3782,7 @@ output$ReactomePAPathway <- renderTable({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -3844,7 +3803,7 @@ PGSEAplot.data <- reactive({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -3893,7 +3852,7 @@ output$listSigPathways <- renderUI({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -3925,7 +3884,7 @@ selectedPathwayData <- reactive({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -3971,10 +3930,10 @@ output$selectedPathwayHeatmap <- renderPlot({
 	# cat(input$sigPathways)
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1
+	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -3999,7 +3958,7 @@ output$selectedPathwayHeatmap <- renderPlot({
 	
 	if( dim(x)[1]>200) 
 	heatmap.2(x, distfun = dist2,hclustfun=hclust2,
-	 col=heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.5
+	 col=greenred(75), density.info="none", trace="none", scale="none", keysize=.5
 	,key=T, symkey=F
 	,dendrogram = "row"
 	,ColSideColors=mycolors[ groups]
@@ -4012,7 +3971,7 @@ output$selectedPathwayHeatmap <- renderPlot({
 
 	if( dim(x)[1]<=200) 
 	heatmap.2(x, distfun = dist2,hclustfun=hclust2,
-	 col=heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.5
+	 col=greenred(75), density.info="none", trace="none", scale="none", keysize=.5
 	,key=T, symkey=F, 
 	dendrogram = "row",
 	,labRow=gsub(".*:","",rownames(x))
@@ -4029,8 +3988,6 @@ output$selectedPathwayHeatmap <- renderPlot({
 }, height = 1800, width = 600)
 
 output$KeggImage <- renderImage({
-	library(pathview)
-
    # First generate a blank image. Otherse return(NULL) gives us errors.
     outfile <- tempfile(fileext='.png')
     png(outfile, width=400, height=300)
@@ -4136,7 +4093,7 @@ output$genomePlotly <- renderPlotly({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -4266,7 +4223,7 @@ genomePlotDataPre <- reactive({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -4384,7 +4341,7 @@ genomePlotData <- reactive({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -4512,10 +4469,6 @@ genomePlotData <- reactive({
 
 # Using PREDA to identify significant genomic regions 
 output$genomePlot <- renderPlot({
-	library(PREDA)  # showing expression on genome
-	library(PREDAsampledata) 
-	library(hgu133plus2.db)
-	
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
     if( is.null( genomePlotData() ) ) return(NULL)
 	tem = input$selectOrg ; 
@@ -4528,7 +4481,7 @@ output$genomePlot <- renderPlot({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -4570,7 +4523,7 @@ output$chrRegionsList <- renderTable({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -4599,7 +4552,7 @@ output$chrRegions <- DT::renderDataTable({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -4624,7 +4577,7 @@ output$genesInChrRegions <- DT::renderDataTable({
 	tem = input$selectOrg;  tem = input$dataFileFormat
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
@@ -4680,8 +4633,8 @@ output$RsessionInfo <- renderUI({
 			i = c(i, "No log-transformation.")
 			
 		}else { # read counts
-			i = c(i,"Input file type: RNA-seq read count file")    
-			i = c(i,"<br><strong>Pre-processing and exploratory data analysis settings:</strong>", paste("Min. counts: minCounts=", input$minCounts), paste("Min. counts samples: NminSamples=", input$NminSamples) ) 
+			i = c(i,"Input file type: RNA-seq read count file")
+			i = c(i,"<br><strong>Pre-processing and exploratory data analysis settings:</strong>", paste("Min. counts: minCounts=", input$minCounts) ) 
 			transforms1 = c("Started log: log2(x+c)" ,"VST: variance stabilizing transform", "rlog: regularized log")
 			i = c(i, paste("Counts data transformation method: ", transforms1[as.numeric(input$CountsTransform)] ) )
 			if ( input$CountsTransform == 1)
@@ -4718,5 +4671,4 @@ output$RsessionInfo <- renderUI({
 	i = c(i,capture.output(sessionInfo()) )
 	HTML(paste(i, collapse='<br/>') )
   })
-  
 })  # shiny Server
