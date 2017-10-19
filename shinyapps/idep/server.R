@@ -84,16 +84,16 @@ sqlite  <- dbDriver("SQLite")
 # motifFiles = paste("../go/motif/",motifFiles,sep="")
 # demoDataFile = "GSE37704_sailfish_genecounts.csv" #"expression1_no_duplicate.csv"
 
-convert <- dbConnect(sqlite,"./data/convertIDs.db",flags=SQLITE_RO)  #read only mode
-keggSpeciesID = read.csv("./data/data_go/KEGG_Species_ID.csv")
+convert <- dbConnect(sqlite,"../../data/convertIDs.db",flags=SQLITE_RO)  #read only mode
+keggSpeciesID = read.csv("../../data/data_go/KEGG_Species_ID.csv")
 # List of GMT files in /gmt sub folder
-gmtFiles = list.files(path = "./data/pathwayDB",pattern=".*\\.db")
-gmtFiles = paste("./data/pathwayDB/",gmtFiles,sep="")
+gmtFiles = list.files(path = "../../data/pathwayDB",pattern=".*\\.db")
+gmtFiles = paste("../../data/pathwayDB/",gmtFiles,sep="")
 geneInfoFiles = list.files(path = "./data/geneInfo",pattern=".*GeneInfo\\.csv")
-geneInfoFiles = paste("./data/geneInfo/",geneInfoFiles,sep="")
-motifFiles = list.files(path = "./data/motif",pattern=".*\\.db")
-motifFiles = paste("./data/motif/",motifFiles,sep="")
-demoDataFile = "./data/data_go/GSE37704_sailfish_genecounts.csv" #"expression1_no_duplicate.csv"
+geneInfoFiles = paste("../../data/geneInfo/",geneInfoFiles,sep="")
+motifFiles = list.files(path = "../../data/motif",pattern=".*\\.db")
+motifFiles = paste("../../data/motif/",motifFiles,sep="")
+demoDataFile = "../../data/data_go/GSE37704_sailfish_genecounts.csv" #"expression1_no_duplicate.csv"
 
 ################################################################
 #   Utility functions

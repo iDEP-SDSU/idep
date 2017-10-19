@@ -4,6 +4,7 @@
 .RData
 .DS_Store
 *.swp
+data
 .idea
 plumber.Rcheck
 plumber_*.tar.gz
