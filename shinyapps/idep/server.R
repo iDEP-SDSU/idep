@@ -73,8 +73,8 @@ colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull do
 # this need to be removed. Also replace go to go for folder
 #  setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
 
-#datapath = "../../data/"
-datapath = "../../../go/"  # windows
+datapath = "../../data/"
+#datapath = "../../../go/"  # windows
 #datapath = "../go/" # digital ocean
 
 sqlite  <- dbDriver("SQLite")
