@@ -4,5 +4,5 @@
 mkdir -p /var/log/shiny-server
 chown shiny.shiny /var/log/shiny-server
 # Install required R packages
-exec Rscript librarySetup.R
+exec Rscript /usr/local/src/myscripts/librarySetup.R
 exec shiny-server >> /var/log/shiny-server.log 2>&1
