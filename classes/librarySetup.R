@@ -11,7 +11,7 @@ list.of.packages <- c(
   "plotly",
   "e1071", "reshape2", "DT",
   "data.table", "Rcpp",
-  "RPostgreSQL"
+  #"RPostgreSQL"
 )
 
 list.of.bio.packages  <- c(
