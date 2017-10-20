@@ -73,16 +73,6 @@ colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull do
 # this need to be removed. Also replace go to go for folder
 #  setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
 sqlite  <- dbDriver("SQLite")
-# convert <- dbConnect(sqlite,"../go/convertIDs.db",flags=SQLITE_RO)  #read only mode
-# keggSpeciesID = read.csv("KEGG_Species_ID.csv")  
-# # List of GMT files in /gmt sub folder
-# gmtFiles = list.files(path = "../go/pathwayDB",pattern=".*\\.db")
-# gmtFiles = paste("../go/pathwayDB/",gmtFiles,sep="")
-# geneInfoFiles = list.files(path = "../go/geneInfo",pattern=".*GeneInfo\\.csv")
-# geneInfoFiles = paste("../go/geneInfo/",geneInfoFiles,sep="")
-# motifFiles = list.files(path = "../go/motif",pattern=".*\\.db")
-# motifFiles = paste("../go/motif/",motifFiles,sep="")
-# demoDataFile = "GSE37704_sailfish_genecounts.csv" #"expression1_no_duplicate.csv"
 
 convert <- dbConnect(sqlite,"../../data/convertIDs.db",flags=SQLITE_RO)  #read only mode
 keggSpeciesID = read.csv("../../data/data_go/KEGG_Species_ID.csv")
@@ -123,7 +113,8 @@ dist2 <- function(x, ...)   # distance function = 1-PCC (Pearson's correlation c
   as.dist(1-cor(t(x), method="pearson"))
   
 dist3 <- function(x, ...)   # distance function = 1-abs(PCC) (Pearson's correlation coefficient)
-  as.dist(1-abs(cor(t(x), method="pearson")))
+  as.dist(1-abs(cor(t(x), method="pearson")))   
+  
 # List of distance functions 
 distFuns <- list(Correlation=dist2, Euclidean=dist,AbsolutePCC=dist3)
 distChoices = setNames(1:length(distFuns),names(distFuns)) # for pull down menu
@@ -135,11 +126,13 @@ geneChange <- function(x){
 	if( n<4) return( max(x)-min(x)  ) else 
 	return(sort(x)[n-1] - sort(x)[2]   )
 }
+
 dynamicRange <- function( x ) {
 	y = sort(x)
 	if(length(x)>=4)  k =2 else k =1;
 	return( y[length(x)-k+1] - y[k]) 
-}
+}  
+
 # Define sample groups based on column names
  detectGroups <- function (x){  # x are col names
 	tem <- gsub("[0-9]*$","",x) # Remove all numbers from end
@@ -360,6 +353,7 @@ myPGSEA  <- function (exprs, cl, range = c(25, 500), ref = NULL, center = TRUE,
     return(list(results = results, p.results = p.results, means = mean.results, size=Setsize, mean2=mean2, meanSD=meanSD))
 }
 
+
 # [ConvertDB Class START]
 # prepare species list
 
@@ -505,11 +499,15 @@ convertEnsembl2Entrez <- function (query,Species) {
 	result <- dbGetQuery( convert,
 						paste( " select  id,ens,species from mapping where ens IN ('", paste(querySet,collapse="', '"),
 								"') AND  idType ='",idType_Entrez,"'",sep="") )	# slow
+							
 	if( dim(result)[1] == 0  ) return(NULL)
 	result <- subset(result, species==speciesID, select = -species)
+
 	ix = match(result$ens,names(query)  )
+
 	tem <- query[ix];  names(tem) = result$id
-	return(tem)  
+	return(tem)
+  
 }
 
 convertEnsembl2KEGG <- function (query,Species) {  # not working
@@ -519,6 +517,7 @@ convertEnsembl2KEGG <- function (query,Species) {  # not working
 	result <- dbGetQuery( convert,
 						paste( " select  id,ens,species from mapping where ens IN ('", paste(querySet,collapse="', '"),
 								"') AND  idType ='",idType_KEGG,"'",sep="") )	# slow
+							
 	if( dim(result)[1] == 0  ) return(NULL)
 	result <- subset(result, species==speciesID, select = -species)
 
@@ -779,9 +778,6 @@ PGSEApathway <- function (converted,convertedData, selectOrg,GO,gmt, myrange,Pva
     return( list(pg3 = pg3, best = best ) )
     }
  }
-
-
-
 
 if(0){ # for testing LIMMA
 	x = read.csv("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/doc/Hoxa1-1/GSE50813_reduced.csv")
@@ -1761,24 +1757,24 @@ function(input, output,session) {
 
 ####### [TODO] Kevin Indentation Work 10/5 #######
 
-output$contents <- renderTable({
-   inFile <- input$file1
-	inFile <- inFile$datapath
-    if (is.null(input$file1) && input$goButton == 0)   return(NULL)
-#    if (is.null(input$file1) && input$goButton > 0 )   inFile = "expression1_no_duplicate.csv"
-	if (is.null(input$file1) && input$goButton > 0 )   inFile = demoDataFile
+	output$contents <- renderTable({
+	   inFile <- input$file1
+		inFile <- inFile$datapath
+		if (is.null(input$file1) && input$goButton == 0)   return(NULL)
+	#    if (is.null(input$file1) && input$goButton > 0 )   inFile = "expression1_no_duplicate.csv"
+		if (is.null(input$file1) && input$goButton > 0 )   inFile = demoDataFile
 
-	tem = input$selectOrg
-	isolate({
-	x <- read.csv(inFile)
-	if(dim(x)[2] <= 2 ) x <- read.table(inFile, sep="\t",header=TRUE)	# not CSV
-    #x <- readData()$data
-     x[1:20,]
-	})
-  },include.rownames=FALSE)
+		tem = input$selectOrg
+		isolate({
+		x <- read.csv(inFile)
+		if(dim(x)[2] <= 2 ) x <- read.table(inFile, sep="\t",header=TRUE)	# not CSV
+		#x <- readData()$data
+		 x[1:20,]
+		})
+	  },include.rownames=FALSE)
 
 # show first 20 rows of data
-output$species <-renderTable({   
+	output$species <-renderTable({   
       if (is.null(input$file1) && input$goButton == 0)    return()
       isolate( {  #tem <- convertID(input$input_text,input$selectOrg );
 	  	  withProgress(message="Converting gene IDs", {
@@ -1792,7 +1788,7 @@ output$species <-renderTable({
     }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
 # show first 20 rows of processed data; not used
-output$debug <- renderTable({
+	output$debug <- renderTable({
       if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	  tem = input$selectOrg; tem = input$lowFilter ; tem = input$transform
 	x <- convertedData()
@@ -1806,7 +1802,7 @@ output$debug <- renderTable({
 #   Pre-process
 ################################################################
 	
-output$EDA <- renderPlot({
+	output$EDA <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	
 	##################################  
@@ -1840,7 +1836,7 @@ output$EDA <- renderPlot({
 	
    }, height = 1600, width = 500)
    
-output$genePlot <- renderPlot({
+	output$genePlot <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	
 	# these are needed to make it responsive to changes in parameters
@@ -1934,7 +1930,7 @@ output$genePlot <- renderPlot({
    })
    
 
-processedData <- reactive({
+	processedData <- reactive({
       if (is.null(input$file1) && input$goButton == 0)    return()
 	  
 	##################################  
@@ -1972,13 +1968,13 @@ processedData <- reactive({
 		}
 	  })
   
-output$downloadProcessedData <- downloadHandler(
-     filename = function() {"processed_Data.csv"},
+	output$downloadProcessedData <- downloadHandler(
+		filename = function() {"processed_Data.csv"},
 		content = function(file) {
-      write.csv( processedData(), file, row.names=FALSE )	    }
-)
+      write.csv( processedData(), file, row.names=FALSE )	    
+	})
  
-output$examineData <- DT::renderDataTable({
+	output$examineData <- DT::renderDataTable({
    inFile <- input$file1
 	inFile <- inFile$datapath
     if (is.null(input$file1) && input$goButton == 0)   return(NULL)
@@ -1989,7 +1985,7 @@ output$examineData <- DT::renderDataTable({
 	})
   })
 
-output$totalCounts <- renderPlot({
+	output$totalCounts <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
     if (is.null(readData()$rawCounts))   return(NULL)
 	
@@ -2016,7 +2012,7 @@ output$totalCounts <- renderPlot({
 ################################################################
   
 # old heatmap.2 plot, replaced with plotly
-output$heatmap1 <- renderPlot({
+	output$heatmap1 <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
     x <- readData()$data   # x = read.csv("expression1.csv")
 	withProgress(message="Reading and pre-processing ", {
@@ -2073,7 +2069,7 @@ output$heatmap1 <- renderPlot({
   } , height = 800, width = 400 )  
 
 # interactive heatmap with plotly
-output$heatmap <- renderPlotly({
+	output$heatmap <- renderPlotly({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
    # x <- readData()$data   # x = read.csv("expression1.csv")
     x <- convertedData()
@@ -2125,7 +2121,7 @@ output$heatmap <- renderPlotly({
 	})
   })  
   
-heatmapData <- reactive({
+	heatmapData <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
     x <- readData()$data
 
@@ -2163,14 +2159,14 @@ heatmapData <- reactive({
 	
   })  
   
-output$downloadData <- downloadHandler(
-     filename = function() {"heatmap.csv"},
+	output$downloadData <- downloadHandler(
+		filename = function() {"heatmap.csv"},
 		content = function(file) {
 			write.csv(heatmapData(), file)
 	    }
-  )
+	)
 
-output$correlationMatrix <- renderPlot({
+	output$correlationMatrix <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
     # heatmap of correlation matrix
 	x <- readData()$data
@@ -2213,16 +2209,16 @@ output$correlationMatrix <- renderPlot({
 ################################################################
 #   PCA
 ################################################################
-output$listFactors <- renderUI({
+	output$listFactors <- renderUI({
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
 	
       if (is.null(input$file2) )
-       { return(NULL) }	 else { 
+       { return(HTML("Upload sample info file to customize this plot.") ) }	 else { 
 	  selectInput("selectFactors", label="Color:",choices=colnames(readSampleInfo())
 	     )   } 
 	})
-output$listFactors2 <- renderUI({
+	output$listFactors2 <- renderUI({
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
 	
@@ -2233,7 +2229,7 @@ output$listFactors2 <- renderUI({
 	  selectInput("selectFactors2", label="Shape:",choices=tem)
 	        } 
 	})
-output$PCA <- renderPlot({
+	output$PCA <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
 	x <- convertedData();
@@ -2349,7 +2345,7 @@ output$PCA <- renderPlot({
 	  
   }, height = 500, width = 500)
 
-PCAdata <- reactive({
+	PCAdata <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
     x <- readData()$data
 	
@@ -2360,18 +2356,18 @@ PCAdata <- reactive({
 	 return( result)		  
   })
  
-output$downloadPCAData <- downloadHandler(
-     filename = function() {"PCA_and_MDS.csv"},
+	output$downloadPCAData <- downloadHandler(
+		filename = function() {"PCA_and_MDS.csv"},
 		content = function(file) {
           write.csv(PCAdata(), file) 
 	    }
-  )
+	)
 
 ################################################################
 #   K-means
 ################################################################
   
-Kmeans <- reactive({ # Kmeans clustering
+	Kmeans <- reactive({ # Kmeans clustering
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	
 	##################################  
@@ -2416,7 +2412,7 @@ Kmeans <- reactive({ # Kmeans clustering
 
   } )
   
-output$KmeansHeatmap <- renderPlot({ # Kmeans clustering
+	output$KmeansHeatmap <- renderPlot({ # Kmeans clustering
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
 	##################################  
@@ -2437,7 +2433,7 @@ output$KmeansHeatmap <- renderPlot({ # Kmeans clustering
 	
 	incProgress(1, detail = paste("Done")) }) #progress 
   } , height = 500)
-output$KmeansNclusters <- renderPlot({ # Kmeans clustering
+	output$KmeansNclusters <- renderPlot({ # Kmeans clustering
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	withProgress(message="k-means clustering", {
     x <- convertedData()
@@ -2467,7 +2463,7 @@ output$KmeansNclusters <- renderPlot({ # Kmeans clustering
 	incProgress(1, detail = paste("Done")) }) #progress 
   } , height = 500, width = 550)
   
-KmeansData <- reactive({
+	KmeansData <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	if( is.null(Kmeans()) ) return(NULL)
 
@@ -2495,13 +2491,13 @@ KmeansData <- reactive({
 	 #progress 
   })
   
-output$downloadDataKmeans <- downloadHandler(
-     filename = function() {"Kmeans.csv"},
-		content = function(file) {
+	output$downloadDataKmeans <- downloadHandler(
+		filename = function() {"Kmeans.csv"},
+			content = function(file) {
       write.csv(KmeansData(), file)
 	    }
-  )
-output$KmeansGO <- renderTable({
+	)
+	output$KmeansGO <- renderTable({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectGO3
 	if( is.null(input$selectGO3 ) ) return (NULL)
@@ -2558,7 +2554,7 @@ output$KmeansGO <- renderTable({
 	results
   }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
-output$KmeansPromoter <- renderTable({
+	output$KmeansPromoter <- renderTable({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectGO3; tem = input$radioPromoterKmeans; tem=input$nGenesKNN; tem=input$nClusters
 	if( is.null(input$selectGO3 ) ) return (NULL)
@@ -2629,7 +2625,7 @@ output$KmeansPromoter <- renderTable({
 #   Differential gene expression
 ################################################################
    
-limma <- reactive({  
+	limma <- reactive({  
   if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$CountsDEGMethod; tem = input$countsLogStart
@@ -2665,7 +2661,7 @@ limma <- reactive({
 	})
 	})	
 
-output$text.limma <- renderText({
+	output$text.limma <- renderText({
       if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
  	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
@@ -2673,7 +2669,7 @@ output$text.limma <- renderText({
   
 	})	
   
-output$vennPlot <- renderPlot({
+	output$vennPlot <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
@@ -2700,7 +2696,7 @@ output$vennPlot <- renderPlot({
 	})
     }, height = 600, width = 600)
 
-output$listComparisons <- renderUI({
+	output$listComparisons <- renderUI({
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
 	
@@ -2711,7 +2707,7 @@ output$listComparisons <- renderUI({
 	     )   } 
 	})
 
-output$listComparisonsPathway <- renderUI({
+	output$listComparisonsPathway <- renderUI({
 	tem = input$selectOrg
 
       if (is.null(input$file1)&& input$goButton == 0 )
@@ -2721,7 +2717,7 @@ output$listComparisonsPathway <- renderUI({
 	     )   } 
 	})
 
-output$listComparisonsGenome <- renderUI({
+	output$listComparisonsGenome <- renderUI({
 	tem = input$selectOrg
 
       if (is.null(input$file1)&& input$goButton == 0 )
@@ -2731,7 +2727,7 @@ output$listComparisonsGenome <- renderUI({
 	     )   } 
 	})
 	
-DEG.data <- reactive({
+	DEG.data <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; 
@@ -2763,7 +2759,7 @@ DEG.data <- reactive({
 	})
     })
 
-output$selectedHeatmap <- renderPlot({
+	output$selectedHeatmap <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	
 	tem = input$selectOrg
@@ -2811,7 +2807,7 @@ output$selectedHeatmap <- renderPlot({
 	
     }, height = 400, width = 500)
 
-selectedHeatmap.data <- reactive({
+	selectedHeatmap.data <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	
 	tem = input$selectOrg
@@ -2855,22 +2851,22 @@ selectedHeatmap.data <- reactive({
 	})
     })
 
-output$download.selectedHeatmap.data <- downloadHandler(
-     filename = function() {paste("Diff_genes_heatmap_",input$selectContrast,".csv",sep="")},
-		content = function(file) {
+	output$download.selectedHeatmap.data <- downloadHandler(
+		filename = function() {paste("Diff_genes_heatmap_",input$selectContrast,".csv",sep="")},
+			content = function(file) {
 			write.csv(geneListDataExport(), file, row.names=FALSE)
 	    }
-  )
+	)
 	
-output$download.DEG.data <- downloadHandler(
-     filename = function() {"Diff_expression_all_comparisons.csv"},
+	output$download.DEG.data <- downloadHandler(
+		filename = function() {"Diff_expression_all_comparisons.csv"},
 		content = function(file) {
 			write.csv(DEG.data(), file,row.names=FALSE)
 	    }
-  )
+	)
 
 # Top DEGs  
-output$geneList <- renderTable({
+	output$geneList <- renderTable({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
@@ -2898,9 +2894,9 @@ output$geneList <- renderTable({
 	
 	
   },digits=2,align="l",include.rownames=F,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
-  #, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T,include.rownames=TRUE)
+	#, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T,include.rownames=TRUE)
   
-geneListDataExport <- reactive({
+	geneListDataExport <- reactive({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
@@ -2921,9 +2917,9 @@ geneListDataExport <- reactive({
 	return( tem )
 	
   })
-  #, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T,include.rownames=TRUE)
+	#, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T,include.rownames=TRUE)
 
-geneListData <- reactive({
+	geneListData <- reactive({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
@@ -2979,7 +2975,7 @@ geneListData <- reactive({
 	
   })
 
-output$volcanoPlot <- renderPlot({
+	output$volcanoPlot <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
@@ -3017,7 +3013,7 @@ output$volcanoPlot <- renderPlot({
 	}) })
 
   },height=450, width=500)
-output$volcanoPlotly <- renderPlotly({
+	output$volcanoPlotly <- renderPlotly({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
@@ -3080,7 +3076,7 @@ output$volcanoPlotly <- renderPlotly({
 
   })
 
-output$scatterPlot <- renderPlot({
+	output$scatterPlot <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
@@ -3137,7 +3133,7 @@ output$scatterPlot <- renderPlot({
 	 
   },height=450, width=500)
 
-output$scatterPlotly <- renderPlotly({
+	output$scatterPlotly <- renderPlotly({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
@@ -3206,7 +3202,7 @@ output$scatterPlotly <- renderPlotly({
 	 
   })
 
-output$geneListGO <- renderTable({
+	output$geneListGO <- renderTable({
     
 	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	if( is.null(input$selectContrast)) return(NULL)
@@ -3285,9 +3281,9 @@ output$geneListGO <- renderTable({
 	 })#progress
 	}) #isolate
   }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
- #   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })
+	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })
 
-output$DEG.Promoter <- renderTable({
+	output$DEG.Promoter <- renderTable({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	if( is.null(input$selectContrast)) return(NULL)
 
@@ -3348,7 +3344,7 @@ output$DEG.Promoter <- renderTable({
 ################################################################
  
 # this updates geneset categories based on species and file
-output$selectGO1 <- renderUI({
+	output$selectGO1 <- renderUI({
 	  tem = input$selectOrg
       if (is.null(input$file1)&& input$goButton == 0 )
        { selectInput("selectGO", label = NULL, # h6("Funtional Category"), 
@@ -3359,7 +3355,7 @@ output$selectGO1 <- renderUI({
 	     ,selected = "GOBP" )   } 
 	})
 
-output$selectGO2 <- renderUI({
+	output$selectGO2 <- renderUI({
 	  tem = input$selectOrg
       if (is.null(input$file1)&& input$goButton == 0 )
        { selectInput("selectGO2", label = NULL, # h6("Funtional Category"), 
@@ -3370,7 +3366,7 @@ output$selectGO2 <- renderUI({
 	     ,selected = "GOBP" )   } 
 	})
 	
-output$selectGO3 <- renderUI({
+	output$selectGO3 <- renderUI({
 	  tem = input$selectOrg
       if (is.null(input$file1)&& input$goButton == 0 )
        { selectInput("selectGO3", label = NULL, # h6("Funtional Category"), 
@@ -3381,7 +3377,7 @@ output$selectGO3 <- renderUI({
 	     ,selected = "GOBP" )   } 
 	})
 
-output$PGSEAplot <- renderPlot({
+	output$PGSEAplot <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	library(PGSEA)
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
@@ -3431,7 +3427,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	})
     }, height = 800, width = 500)
 
-output$PGSEAplotAllSamples <- renderPlot({
+	output$PGSEAplotAllSamples <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	library(PGSEA)
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
@@ -3475,7 +3471,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	})
     }, height = 800, width = 500)
 
-output$gagePathway <- renderTable({
+	output$gagePathway <- renderTable({
 
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
@@ -3500,7 +3496,7 @@ output$gagePathway <- renderTable({
 	})
   },digits=0,align="l",include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
  
-gagePathwayData <- reactive({
+	gagePathwayData <- reactive({
 	library(gage) # pathway analysis	
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
@@ -3587,7 +3583,7 @@ gagePathwayData <- reactive({
 	}) })
   })
 
-output$fgseaPathway <- renderTable({
+	output$fgseaPathway <- renderTable({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
 	tem = input$selectGO; tem = input$selectContrast1
@@ -3611,7 +3607,7 @@ output$fgseaPathway <- renderTable({
 	})
   },digits=0,align="l",include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
  
-fgseaPathwayData <- reactive({
+	fgseaPathwayData <- reactive({
 	library(fgsea) # fast GSEA
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
@@ -3701,7 +3697,7 @@ fgseaPathwayData <- reactive({
 	}) })
   })
 
-ReactomePAPathwayData <- reactive({
+	ReactomePAPathwayData <- reactive({
 	library(ReactomePA) # pathway analysis
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
@@ -3811,7 +3807,7 @@ ReactomePAPathwayData <- reactive({
 	}) })
   })
 
-output$ReactomePAPathway <- renderTable({
+	output$ReactomePAPathway <- renderTable({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
 	tem = input$selectGO; tem = input$selectContrast1
@@ -3835,7 +3831,7 @@ output$ReactomePAPathway <- renderTable({
 	})
   },digits=0,align="l",include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
   
-PGSEAplot.data <- reactive({
+	PGSEAplot.data <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg
 
@@ -3877,14 +3873,14 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	})
     })
 
-output$download.PGSEAplot.data <- downloadHandler(
-     filename = function() {"PGSEA_pathway_anova.csv"},
-		content = function(file) {
+	output$download.PGSEAplot.data <- downloadHandler(
+		filename = function() {"PGSEA_pathway_anova.csv"},
+			content = function(file) {
 			write.csv(PGSEAplot.data(), file)
 	    }
-  )
+	)
   
-output$listSigPathways <- renderUI({
+	output$listSigPathways <- renderUI({
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
 
@@ -3913,7 +3909,7 @@ output$listSigPathways <- renderUI({
 	        } 
 	})
 	
-selectedPathwayData <- reactive({
+	selectedPathwayData <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg
 	tem = input$sigPathways; 
@@ -3953,15 +3949,15 @@ selectedPathwayData <- reactive({
      }) })
 })
 
-output$downloadSelectedPathwayData <- downloadHandler(
-    # filename = function() {"Selected_Pathway_detail.csv"},
-	  filename = function() {paste(input$selectContrast1,"(",input$sigPathways,")",".csv",sep="")},
-		content = function(file) {
+	output$downloadSelectedPathwayData <- downloadHandler(
+		# filename = function() {"Selected_Pathway_detail.csv"},
+		filename = function() {paste(input$selectContrast1,"(",input$sigPathways,")",".csv",sep="")},
+			content = function(file) {
 			write.csv(selectedPathwayData(), file)
 	    }
-  )
+	)
   
-output$selectedPathwayHeatmap <- renderPlot({
+	output$selectedPathwayHeatmap <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg
 	tem = input$sigPathways; 
@@ -4028,7 +4024,7 @@ output$selectedPathwayHeatmap <- renderPlot({
 	})
 }, height = 1800, width = 600)
 
-output$KeggImage <- renderImage({
+	output$KeggImage <- renderImage({
 	library(pathview)
 
    # First generate a blank image. Otherse return(NULL) gives us errors.
@@ -4121,141 +4117,152 @@ output$KeggImage <- renderImage({
   
 
 # visualizing fold change on chrs. 
-output$genomePlotly <- renderPlotly({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-    #if(is.null(genomePlotDataPre() ) ) return(NULL)
-	
-	tem = input$selectOrg ; 
-	tem = input$selectContrast2
-	if (is.null(input$selectContrast2 ) ) return(NULL)
-	if( input$selectOrg == "NEW") return(NULL)
-	if( length(limma()$topGenes) == 0 ) return(NULL)
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	tem = input$CountsDEGMethod;
-	####################################
-	
-  isolate({ 
-	withProgress(message="Visualzing expression on the genome", {
+	output$genomePlotly <- renderPlotly({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		#if(is.null(genomePlotDataPre() ) ) return(NULL)
+		
+		tem = input$selectOrg ; 
+		tem = input$selectContrast2
+		if (is.null(input$selectContrast2 ) ) return(NULL)
+		if( input$selectOrg == "NEW") return(NULL)
+		if( length(limma()$topGenes) == 0 ) return(NULL)
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		tem = input$CountsDEGMethod;
+		tem=input$limmaPvalViz; 
+		tem=input$limmaFCViz
+		####################################
+		
+	  isolate({ 
+		withProgress(message="Visualzing expression on the genome", {
 
-	
-	if(length( limma()$comparisons)  ==1 )  
-    { top1=limma()$topGenes[[1]]  
-	} else {
-	  top = limma()$topGenes
-	  ix = match(input$selectContrast2, names(top))
-	  if( is.na(ix)) return (NULL)
-	  top1 <- top[[ix]]; 
-	  }
-	  if(dim(top1)[1] == 0 ) return (NULL)
-	  colnames(top1)= c("Fold","FDR")
-	  
-	 # write.csv(merge(top1,allGeneInfo(), by.x="row.names",by.y="ensembl_gene_id"  ),"tem.csv"  )
-	 x <- merge(top1,allGeneInfo(), by.x="row.names",by.y="ensembl_gene_id"  )
+		
+		if(length( limma()$comparisons)  ==1 )  
+		{ top1=limma()$topGenes[[1]]  
+		} else {
+		  top = limma()$topGenes
+		  ix = match(input$selectContrast2, names(top))
+		  if( is.na(ix)) return (NULL)
+		  top1 <- top[[ix]]; 
+		  }
+		  if(dim(top1)[1] == 0 ) return (NULL)
+		  colnames(top1)= c("Fold","FDR")
+		  
+		 # write.csv(merge(top1,allGeneInfo(), by.x="row.names",by.y="ensembl_gene_id"  ),"tem.csv"  )
+		 x <- merge(top1,allGeneInfo(), by.x="row.names",by.y="ensembl_gene_id"  )
+		 
+		 x <- x[order(x$chromosome_name,x$start_position),]
+		 tem = sort( table( x$chromosome_name), decreasing=T) 
+		 chromosomes <- names( tem[tem >= 5 ] )  # chromosomes with less than 100 genes are excluded
+		 if(length(chromosomes) > 50) chromosomes <- chromosomes[1:50]  # at most 50 chromosomes
+		 chromosomes <- chromosomes[ nchar(chromosomes)<=12] # chr. name less than 10 characters
+		 chromosomes = chromosomes[order(as.numeric(chromosomes) ) ]
+		 # chromosomes = chromosomes[!is.na(as.numeric(chromosomes) ) ]
+		 chromosomesNumbers = as.numeric(chromosomes)
+		 # convert chr.x to numbers
+		  j = max( chromosomesNumbers,na.rm=T) 
+		  for( i in 1:length( chromosomes)) {
+		   if ( is.na(chromosomesNumbers[i]) ) 
+		   { chromosomesNumbers[i] <- j+1; j <- j+1; }
+		 }
+		  
+		 x <- x[which(x$chromosome_name %in% chromosomes   ),]
+		 x <- droplevels(x)
+		 
+		# find the number coding for chromosome 
+		 getChrNumber <- function (chrName){
+		 return( chromosomesNumbers[ which( chromosomes == chrName)] )
+		 }
+		  x$chrNum = 1 # numeric coding
+		  x$chrNum <- unlist( lapply( x$chromosome_name, getChrNumber) )
+		 
+		 x$Row.names <- as.character( x$Row.names)
 	 
-	 x <- x[order(x$chromosome_name,x$start_position),]
-	 tem = sort( table( x$chromosome_name), decreasing=T) 
-	 chromosomes <- names( tem[tem >= 5 ] )  # chromosomes with less than 100 genes are excluded
-	 if(length(chromosomes) > 50) chromosomes <- chromosomes[1:50]  # at most 50 chromosomes
-	 chromosomes <- chromosomes[ nchar(chromosomes)<=12] # chr. name less than 10 characters
-	 chromosomes = chromosomes[order(as.numeric(chromosomes) ) ]
-	 # chromosomes = chromosomes[!is.na(as.numeric(chromosomes) ) ]
-	 chromosomesNumbers = as.numeric(chromosomes)
-	 # convert chr.x to numbers
-	  j = max( chromosomesNumbers,na.rm=T) 
-	  for( i in 1:length( chromosomes)) {
-	   if ( is.na(chromosomesNumbers[i]) ) 
-	   { chromosomesNumbers[i] <- j+1; j <- j+1; }
-	 }
-	  
-	 x <- x[which(x$chromosome_name %in% chromosomes   ),]
-	 x <- droplevels(x)
+		 # if symbol is missing use Ensembl id
+		 x$symbol = as.character(x$symbol)	 
+		 ix = which(is.na(x$symbol))
+		 ix2 = which(nchar(as.character(x$symbol))<= 2 )
+		 ix3 = which( duplicated(x$symbol))
+		 ix = unique( c(ix,ix2,ix3))
+		 x$symbol[ix] <- x$Row.names[ix] 
+					 
 	 
-	# find the number coding for chromosome 
-	 getChrNumber <- function (chrName){
-	 return( chromosomesNumbers[ which( chromosomes == chrName)] )
-	 }
-	  x$chrNum = 1 # numeric coding
-	  x$chrNum <- unlist( lapply( x$chromosome_name, getChrNumber) )
-	 
-	 x$Row.names <- as.character( x$Row.names)
- 
-     # if symbol is missing use Ensembl id
-	 x$symbol = as.character(x$symbol)	 
-	 ix = which(is.na(x$symbol))
-	 ix2 = which(nchar(as.character(x$symbol))<= 2 )
-	 ix3 = which( duplicated(x$symbol))
-	 ix = unique( c(ix,ix2,ix3))
-	 x$symbol[ix] <- x$Row.names[ix] 
-				 
- 
-	 ##################################
-	 # plotting
-	# x = read.csv("tem_genome.csv")
-	x = x[!is.na(x$chromosome_name),]
-	x = x[!is.na(x$start_position),]	
-	# only keep significant genes
-	#x = x[which(x$FDR<input$limmaPval),]
-	# x = x[which(abs(x$Fold) > log2( input$limmaFC)),]
-	
-	
-	x$start_position = x$start_position/1000000 # Mbp
-	chrD = 20 # distance between chrs.
-	foldCutoff = 5   # max log2 fold 
-	
-	x$Fold = x$Fold / sd(x$Fold)  # standardize fold change
-	
-	x$Fold[which(x$Fold > foldCutoff )] = foldCutoff   # log2fold within -5 to 5
-	x$Fold[which(x$Fold <   -1*foldCutoff )] = -1*foldCutoff 
-	x$Fold = 2* x$Fold
-	x = x[which(x$FDR<.5),]
-	x = x[which(abs(x$Fold) > 1),]	
-	
-	
-	x$y = x$chrNum*chrD + x$Fold
-	chrLengthTable = aggregate(start_position~chrNum, data=x,max )
-	chrTotal = dim(chrLengthTable)[1]	
-	x$R = as.factor(sign(x$Fold))
-	
-	colnames(x)[ which(colnames(x) == "start_position")] = "x"
+		 ##################################
+		 # plotting
+		# x = read.csv("tem_genome.csv")
+		x = x[!is.na(x$chromosome_name),]
+		x = x[!is.na(x$start_position),]	
+		# only keep significant genes
+		#x = x[which(x$FDR<input$limmaPval),]
+		# x = x[which(abs(x$Fold) > log2( input$limmaFC)),]
+		
+		ix = which( (x$FDR< as.numeric(input$limmaPvalViz)) & (abs(x$Fold) > as.numeric(input$limmaFCViz) ) )
+		
+		if (length(ix) == 0) { 
+				p <- ggplot(mtcars, aes(x = wt, y = mpg)) +
+							 geom_blank() + ggtitle("No genes found.") +
+							 theme(axis.title.x=element_blank(),axis.title.y=element_blank())
+		} else { 
+			x = x[ix,]		
+			
+			x$start_position = x$start_position/1000000 # Mbp
+			chrD = 20 # distance between chrs.
+			foldCutoff = 3   # max log2 fold 
+			
+			x$Fold = x$Fold / sd(x$Fold)  # standardize fold change
+			
+			x$Fold[which(x$Fold > foldCutoff )] = foldCutoff   # log2fold within -5 to 5
+			x$Fold[which(x$Fold <   -1*foldCutoff )] = -1*foldCutoff 
+			x$Fold = 4* x$Fold
+			
 
-	p= ggplot(x, aes(x = x, y = y, colour = R, text = symbol ) ) + geom_point(shape = 20, size = .2)
-	
-		#label y with chr names
-	p <- p +  scale_y_continuous(labels = paste("chr",chromosomes[chrLengthTable$chrNum],sep=""), breaks = chrD* (1:chrTotal), limits = c(0, 
-        chrD*chrTotal + 5) )
-	# draw horizontal lines for each chr.
-	for( i in 1:dim(chrLengthTable)[1] )
-		p = p+ annotate( "segment",x = 0, xend = chrLengthTable$start_position[i],
-			y = chrLengthTable$chrNum[i]*chrD, yend = chrLengthTable$chrNum[i]*chrD)
-	# change legend		http://ggplot2.tidyverse.org/reference/scale_manual.html
-	p=p+scale_colour_manual(name="",   # customize legend text
-		values=c("blue", "red"),
-		breaks=c("1","-1"),
-		labels=c("Up", "Dn"))	
-	p = p + xlab("Position on chrs. (Mbp)") +	 theme(axis.title.y=element_blank())					 
-    p= p + theme(legend.position="none")
-	# p <- ggplot(mtcars, aes(x=hp, y=mpg)) + geom_point(shape=20, size=17)
-   # p=p+ geom_smooth(method = "lm",se=FALSE)
-	#p+ geom_line(aes(y=rollmean(y,7, na.pad=TRUE)))
-  
-   # Customize hover text https://cran.r-project.org/web/packages/plotly/plotly.pdf
-   # style(ggplotly(p),hoverinfo="text")  # not working
-	ggplotly(p)
-	 	}) # progress
-	}) # isloate
-  })
+			
+			x$y = x$chrNum*chrD + x$Fold
+			chrLengthTable = aggregate(start_position~chrNum, data=x,max )
+			chrTotal = dim(chrLengthTable)[1]	
+			x$R = as.factor(sign(x$Fold))
+			
+			colnames(x)[ which(colnames(x) == "start_position")] = "x"
+
+			p= ggplot(x, aes(x = x, y = y, colour = R, text = symbol ) ) + geom_point(shape = 20, size = .2)
+			
+				#label y with chr names
+			p <- p +  scale_y_continuous(labels = paste("chr",chromosomes[chrLengthTable$chrNum],sep=""), breaks = chrD* (1:chrTotal), limits = c(0, 
+				chrD*chrTotal + 5) )
+			# draw horizontal lines for each chr.
+			for( i in 1:dim(chrLengthTable)[1] )
+				p = p+ annotate( "segment",x = 0, xend = chrLengthTable$start_position[i],
+					y = chrLengthTable$chrNum[i]*chrD, yend = chrLengthTable$chrNum[i]*chrD)
+			# change legend		http://ggplot2.tidyverse.org/reference/scale_manual.html
+			p=p+scale_colour_manual(name="",   # customize legend text
+				values=c("blue", "red"),
+				breaks=c("1","-1"),
+				labels=c("Up", "Dn"))	
+			p = p + xlab("Position on chrs. (Mbp)") +	 theme(axis.title.y=element_blank())					 
+			p= p + theme(legend.position="none")
+			# p <- ggplot(mtcars, aes(x=hp, y=mpg)) + geom_point(shape=20, size=17)
+		   # p=p+ geom_smooth(method = "lm",se=FALSE)
+			#p+ geom_line(aes(y=rollmean(y,7, na.pad=TRUE)))
+		  
+		   # Customize hover text https://cran.r-project.org/web/packages/plotly/plotly.pdf
+		   # style(ggplotly(p),hoverinfo="text")  # not working
+		  }  # if no genes else
+			ggplotly(p)
+		
+			}) # progress
+		}) # isloate
+	  })
 
 # pre-calculating PREDA, so that changing FDR cutoffs does not trigger entire calculation
-genomePlotDataPre <- reactive({
+	genomePlotDataPre <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
 	tem = input$selectOrg ; 
@@ -4370,7 +4377,7 @@ genomePlotDataPre <- reactive({
   })
 
 # results from PREDA
-genomePlotData <- reactive({
+	genomePlotData <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
     if(is.null(genomePlotDataPre() ) ) return(NULL)
 	
@@ -4511,7 +4518,7 @@ genomePlotData <- reactive({
   })
 
 # Using PREDA to identify significant genomic regions 
-output$genomePlot <- renderPlot({
+	output$genomePlot <- renderPlot({
 	library(PREDA)  # showing expression on genome
 	library(PREDAsampledata) 
 	library(hgu133plus2.db)
@@ -4548,21 +4555,21 @@ isolate({
  	 })
   }, height = 800, width = 1000)
  
-output$downloadRegions <- downloadHandler(
-     filename = function() {paste("Diff_Chr_Regions_",input$selectContrast2,".csv",sep="")},
+	output$downloadRegions <- downloadHandler(
+		filename = function() {paste("Diff_Chr_Regions_",input$selectContrast2,".csv",sep="")},
 		content = function(file) {
 			write.csv(genomePlotData()$Regions, file, row.names=FALSE)
 	    }
-  )
+	)
   
-output$downloadGenesInRegions <- downloadHandler(
-	filename = function() {paste("Genes_in_Diff_Chr_Regions_",input$selectContrast2,".csv",sep="")},
-	content = function(file) {
+	output$downloadGenesInRegions <- downloadHandler(
+		filename = function() {paste("Genes_in_Diff_Chr_Regions_",input$selectContrast2,".csv",sep="")},
+		content = function(file) {
 		write.csv(genomePlotData()$Genes, file, row.names=FALSE)
 	}
-)
+	)
 
-output$chrRegionsList <- renderTable({
+	output$chrRegionsList <- renderTable({
   if (is.null(input$file1) && input$goButton == 0)   return(NULL)
 
   	##################################  
@@ -4591,7 +4598,7 @@ output$chrRegionsList <- renderTable({
 
   },rownames= FALSE)
 
-output$chrRegions <- DT::renderDataTable({
+	output$chrRegions <- DT::renderDataTable({
   if (is.null(input$file1) && input$goButton == 0)   return(NULL)
   
  	##################################  
@@ -4616,7 +4623,7 @@ output$chrRegions <- DT::renderDataTable({
 
   },rownames= FALSE)
 
-output$genesInChrRegions <- DT::renderDataTable({
+	output$genesInChrRegions <- DT::renderDataTable({
   if (is.null(input$file1) && input$goButton == 0)   return(NULL)
   
 	##################################  
@@ -4646,8 +4653,8 @@ output$genesInChrRegions <- DT::renderDataTable({
 #   Session Info
 ################################################################
   
-# output user settings and session info
-output$RsessionInfo <- renderUI({
+	# output user settings and session info
+	output$RsessionInfo <- renderUI({
 	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		
 	i = "<h4> <a href=\"mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP\" target=\"_top\">Email us</a> for questions, 
