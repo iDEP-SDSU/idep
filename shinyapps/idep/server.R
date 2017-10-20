@@ -72,18 +72,20 @@ colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull do
 
 # this need to be removed. Also replace go to go for folder
 #  setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
-sqlite  <- dbDriver("SQLite")
+datapath = "../../data/"
+#datapath = "../../../go/"  # windows
 
-convert <- dbConnect(sqlite,"../../data/convertIDs.db",flags=SQLITE_RO)  #read only mode
-keggSpeciesID = read.csv("../../data/data_go/KEGG_Species_ID.csv")
+sqlite  <- dbDriver("SQLite")
+convert <- dbConnect(sqlite,paste0(datapath,"convertIDs.db"),flags=SQLITE_RO)  #read only mode
+keggSpeciesID = read.csv(paste0(datapath,"KEGG_Species_ID.csv"))
 # List of GMT files in /gmt sub folder
-gmtFiles = list.files(path = "../../data/pathwayDB",pattern=".*\\.db")
-gmtFiles = paste("../../data/pathwayDB/",gmtFiles,sep="")
-geneInfoFiles = list.files(path = "./data/geneInfo",pattern=".*GeneInfo\\.csv")
-geneInfoFiles = paste("../../data/geneInfo/",geneInfoFiles,sep="")
-motifFiles = list.files(path = "../../data/motif",pattern=".*\\.db")
-motifFiles = paste("../../data/motif/",motifFiles,sep="")
-demoDataFile = "../../data/data_go/GSE37704_sailfish_genecounts.csv" #"expression1_no_duplicate.csv"
+gmtFiles = list.files(path = paste0(datapath,"pathwayDB"),pattern=".*\\.db")
+gmtFiles = paste(datapath,"pathwayDB/",gmtFiles,sep="")
+geneInfoFiles = list.files(path = paste0(datapath,"geneInfo"),pattern=".*GeneInfo\\.csv")
+geneInfoFiles = paste(datapath,"geneInfo/",geneInfoFiles,sep="")
+motifFiles = list.files(path = paste0(datapath,"motif"),pattern=".*\\.db")
+motifFiles = paste(datapath,"motif/",motifFiles,sep="")
+demoDataFile = paste0(datapath,"GSE37704_sailfish_genecounts.csv") #"expression1_no_duplicate.csv"
 
 ################################################################
 #   Utility functions
