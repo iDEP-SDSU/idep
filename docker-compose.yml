@@ -6,7 +6,7 @@ services:
       - "80:3838"
     volumes:
       - ./shinyapps/:/srv/shiny-server/
-      - ./data/:/srv/
+      #- ./data/:/srv/
       - ./shinylog/:/var/log/shiny-server/
       - ./config/:/etc/shiny-server/
       - ./classes/:/usr/local/src/myscripts/
