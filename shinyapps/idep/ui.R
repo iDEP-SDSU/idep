@@ -352,8 +352,8 @@ tableOutput('species' ),
 				,htmlOutput("listComparisonsGenome")
 				,tags$style(type='text/css', "#listComparisonsPathway { width:100%;   margin-top:-12px}")	
 				,fluidRow(
-				 column(7,numericInput("limmaPvalViz", label = h5("Filters: FDR "), value = 0.1,min=1e-5,max=1,step=.05)  )
-				 ,column(5, numericInput("limmaFCViz", label = h5("Fold change"), value = 2,min=1,max=100,step=0.5) )
+				 column(6,numericInput("limmaPvalViz", label = h5("Filters: FDR "), value = 0.1,min=1e-5,max=1,step=.05)  )
+				 ,column(6, numericInput("limmaFCViz", label = h5("Fold change"), value = 2,min=1,max=100,step=0.5) )
 				) # fluidRow				
 				,br(), h5("To identify genomic regions significatly enriched with up- or down-regulation genes, we can use "
 				,a("PREDA.", href="https://academic.oup.com/bioinformatics/article/27/17/2446/224332/PREDA-an-R-package-to-identify-regional-variations"),

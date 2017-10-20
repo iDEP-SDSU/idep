@@ -72,8 +72,10 @@ colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull do
 
 # this need to be removed. Also replace go to go for folder
 #  setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
-datapath = "../../data/"
-#datapath = "../../../go/"  # windows
+
+#datapath = "../../data/"
+datapath = "../../../go/"  # windows
+#datapath = "../go/" # digital ocean
 
 sqlite  <- dbDriver("SQLite")
 convert <- dbConnect(sqlite,paste0(datapath,"convertIDs.db"),flags=SQLITE_RO)  #read only mode
@@ -1618,6 +1620,7 @@ function(input, output,session) {
 		inFile <- inFile$datapath
 
 		if(is.null(input$file2) && input$goButton == 0)   return(NULL)
+		if(is.null(readData() ) ) return(NULL)
 
 		isolate({
 				if (is.null( input$dataFileFormat )) return(NULL)
@@ -1628,15 +1631,19 @@ function(input, output,session) {
 				x <- read.csv(inFile,row.names=1,header=T)	# try CSV
 				if(dim(x)[2] <= 2 )   # if less than 3 columns, try tab-deliminated
 					x <- read.table(inFile, row.names=1,sep="\t",header=TRUE)	
-				#-------Remove non-numeric columns, except the first column
-
-
-   ##############  Needs work. double check. reordering. Merge with sample names .....
-
-
-
+				#----------------Matching with column names of expression file
+				ix = match( toupper(colnames(x)) , toupper(colnames(readData()$data)) ) 
+				ix = ix[which(!is.na(ix))] # remove NA
+				validate(
+				  need(length(unique(ix) ) == dim(readData()$data)[2] 
+				       & dim(x)[1]>=1  # at least one row
+					 ,"Error!!! Sample information file not recognized. Please see documentation on format.")
+				)
+				if( length(unique(ix) ) == dim(readData()$data)[2]) { # matches exactly
+					return(t( x[,ix] ) )		# columns are reordered		
+				} else retrun(NULL)
+							
 				
-				return(t(x))
 		})
 	})
 	
