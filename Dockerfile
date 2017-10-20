@@ -27,6 +27,7 @@ RUN mkdir -p /srv/data/data_go
 # Download Required Data
 RUN wget -qO- -O tmp.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2FgeneInfo.zip?alt=media&token=a281e5cf-6900-493c-81e4-89ce423c26bb'\
   && unzip tmp.zip -d /srv/data && rm tmp.zip
+# gmt file 
 RUN wget -qO- -O tmp2.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2Fgmt.zip?alt=media&token=5ee100d1-e645-41ef-a591-7a9ba208ce3c' \
   && unzip tmp2.zip -d /srv/data && rm tmp2.zip
 RUN wget -qO- -O tmp3.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2Fmotif.zip?alt=media&token=dc1e5972-ffd9-43a1-bbcc-49b78da6f047' \
@@ -40,5 +41,5 @@ RUN wget -qO- -O tmp6.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-
 
 WORKDIR /usr/local/src/myscripts
 # Install required R libraries
-CMD ["Rscript", "librarySetup.R"] 
+CMD ["Rscript", "librarySetup.R"]
 #CMD ["/usr/bin/shiny-server.sh"] #If you don't use docker-compose need to comment out
