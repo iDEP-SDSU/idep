@@ -1632,15 +1632,16 @@ function(input, output,session) {
 				if(dim(x)[2] <= 2 )   # if less than 3 columns, try tab-deliminated
 					x <- read.table(inFile, row.names=1,sep="\t",header=TRUE)	
 				#----------------Matching with column names of expression file
-				ix = match( toupper(colnames(x)) , toupper(colnames(readData()$data)) ) 
+				ix = match(toupper(colnames(readData()$data)), toupper(colnames(x)) ) 
 				ix = ix[which(!is.na(ix))] # remove NA
+
 				validate(
 				  need(length(unique(ix) ) == dim(readData()$data)[2] 
 				       & dim(x)[1]>=1  # at least one row
-					 ,"Error!!! Sample information file not recognized. Please see documentation on format.")
+					 ,"Error!!! Sample information file not recognized. Sample names must be exactly the same. Each row is a factor. Each column represent a sample.  Please see documentation on format.")
 				)
 				if( length(unique(ix) ) == dim(readData()$data)[2]) { # matches exactly
-					return(t( x[,ix] ) )		# columns are reordered		
+					return(t( x[,ix] ) )			
 				} else retrun(NULL)
 							
 				
