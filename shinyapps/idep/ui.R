@@ -409,7 +409,7 @@ tableOutput('species' ),
      htmlOutput('RsessionInfo')
  ) ))
 
-   #,tags$head(includeScript("google_analytics.js")) # tracking usage  
+  ,tags$head(includeScript("google_analytics.js")) # tracking usage  
   )# Navibar
  # ) # fluid page
 )
