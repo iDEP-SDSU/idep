@@ -73,7 +73,8 @@ colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull do
 # this need to be removed. Also replace go to go for folder
 #  setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
 
-datapath = "../../data/"
+# relative path to data files
+datapath = "../../data/"   # production server
 #datapath = "../../../go/"  # windows
 #datapath = "../go/" # digital ocean
 
@@ -178,6 +179,16 @@ myheatmap2 <- function (x,bar,n=-1,mycolor=1 ) {
 		lwd = 10            # line width
 	)
 
+}
+
+# adding sample legends to heatmap; this is for the main heatmap
+# https://stackoverflow.com/questions/3932038/plot-a-legend-outside-of-the-plotting-area-in-base-graphics
+add_legend <- function(...) {
+  opar <- par(fig=c(0, 1, 0, 1), oma=c(0, 0, 0, 0), 
+    mar=c(0, 0, 0, 6), new=TRUE)
+  on.exit(par(opar))
+  plot(0, 0, type='n', bty='n', xaxt='n', yaxt='n')
+  legend(...)
 }
 
 # Clean up gene sets. Remove spaces and other control characters from gene names  
@@ -2020,7 +2031,16 @@ function(input, output,session) {
 ################################################################
 #   Heatmaps
 ################################################################
-  
+
+	output$listFactorsHeatmap <- renderUI({
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC
+	
+    if (is.null(readSampleInfo()) ) # if sample info is uploaded and correctly parsed.
+       { return(NULL) }	 else { 
+	  selectInput("selectFactorsHeatmap", label="Sample color bar:",choices=colnames(readSampleInfo())
+	     )   } 
+	})  
 # old heatmap.2 plot, replaced with plotly
 	output$heatmap1 <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -2037,29 +2057,48 @@ function(input, output,session) {
 	x[x< cutoff] <- cutoff
 	
     groups = detectGroups(colnames(x) )
+	# if sample info file is uploaded us that info:
+
+	if(!is.null(readSampleInfo()) &&  !is.null(input$selectFactorsHeatmap) ) { 
+		ix = match(input$selectFactorsHeatmap, colnames(readSampleInfo() ) ) 
+		groups = readSampleInfo()[,ix]
+	}
+	
+	
 	groups.colors = rainbow(length(unique(groups) ) )
 
 	#http://stackoverflow.com/questions/15351575/moving-color-key-in-r-heatmap-2-function-of-gplots-package
-	lmat = rbind(c(5,4),c(0,1),c(3,2))
+	lmat = rbind(c(0,4),c(0,1),c(3,2),c(5,0))
 	lwid = c(2,6) # width of gene tree; width of heatmap
-	lhei = c(1,.2,8)
+	lhei = c(1.5,.2,8,1.1)
+	#layout matrix
+	#		 [,1] [,2]
+	#	[1,]    0    4
+	#	[2,]    0    1
+	#	[3,]    3    2
+	#	[4,]    5    0
+	# 4--> column tree; 1--> column color bar; 2--> heatmap; 3-> row tree; 5--> color key.
+	# height of 4 rows is specified by lhei; width of columns is given by lwid
 
+
+	par(mar = c(5, 4, 1.4, 0.2))
+	
 	if( n>110) 
 	heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
 		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
-	 #col=colorpanel(75,"green","black","magenta")  ,
-	 #col=bluered(75),
-	 #col=greenred(75), 
-	 ,col= heatColors[as.integer(input$heatColors1),]
-	 ,density.info="none", trace="none", scale="none", keysize=.5
-	,key=T, symkey=F
-	,ColSideColors=groups.colors[ as.factor(groups)]
-	,labRow=""
-	,margins=c(10,0)
-	,srtCol=45
-	,cexCol=2  # size of font for sample names
-	,lmat = lmat, lwid = lwid, lhei = lhei
-	)
+		#col=colorpanel(75,"green","black","magenta")  ,
+		#col=bluered(75),
+		#col=greenred(75), 
+		,col= heatColors[as.integer(input$heatColors1),]
+		,density.info="none", trace="none", scale="none", keysize=.5
+		,key=T, symkey=F
+		,ColSideColors=groups.colors[ as.factor(groups)]
+		,labRow=""
+		,margins=c(10,0)
+		,srtCol=45
+		,cexCol=2  # size of font for sample names
+		,lmat = lmat, lwid = lwid, lhei = lhei
+		)
 
 	if( n<=110) 
 	heatmap.2(x, distfun =  distFuns[[as.integer(input$distFunctions)]]
@@ -2067,16 +2106,27 @@ function(input, output,session) {
 		,col= heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.5
 		,key=T, symkey=F,
 		#,labRow=labRow
-		,ColSideColors=groups.colors[ groups]
+		,ColSideColors=groups.colors[ as.factor(groups)]
 		,margins=c(18,12)
 		,cexRow=1
 		,srtCol=45
 		,cexCol=1.8  # size of font for sample names
 		,lmat = lmat, lwid = lwid, lhei = lhei
 	)
+	
+	
+	par(lend = 1)           # square line ends for the color legend
+	add_legend("topleft",
+		legend = unique(groups), # category labels
+		col = groups.colors[ unique(as.factor(groups))],  # color key
+		lty= 1,             # line style
+		lwd = 10            # line width
+	)
+	
 	incProgress(1,"Done")
 	})
-  } , height = 800, width = 400 )  
+
+} , height = 800, width = 400 )  
 
 # interactive heatmap with plotly
 	output$heatmap <- renderPlotly({
@@ -2223,8 +2273,8 @@ function(input, output,session) {
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
 	
-      if (is.null(input$file2) )
-       { return(HTML("Upload sample info file to customize this plot.") ) }	 else { 
+      if (is.null(readSampleInfo()) )
+       { return(HTML("Upload a sample info file to customize this plot.") ) }	 else { 
 	  selectInput("selectFactors", label="Color:",choices=colnames(readSampleInfo())
 	     )   } 
 	})
@@ -2232,7 +2282,7 @@ function(input, output,session) {
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
 	
-      if (is.null(input$file2) )
+      if (is.null(readSampleInfo()) )
        { return(NULL) }	 else { 
 	   tem <- colnames(readSampleInfo() )
 	   if(length(tem)>1) { tem2 = tem[1]; tem[1] <- tem[2]; tem[1] = tem2; } # swap 2nd factor with first
@@ -2443,6 +2493,7 @@ function(input, output,session) {
 	
 	incProgress(1, detail = paste("Done")) }) #progress 
   } , height = 500)
+  
 	output$KmeansNclusters <- renderPlot({ # Kmeans clustering
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	withProgress(message="k-means clustering", {

@@ -158,9 +158,11 @@ tableOutput('species' ),
 								
 		 ,br()
 
-			,selectInput("heatColors1", label = "Color scheme","green-black-red",width='100%')
+			,selectInput("heatColors1", label = "Color scheme:","green-black-red",width='100%')
 			,selectInput("distFunctions", label = "Distance function:","Correlation",width='100%')
-			,selectInput("hclustFunctions", label = "Clustering method:","average",width='100%')
+			,selectInput("hclustFunctions", label = "Clustering method(linkage):","average",width='100%')
+	
+			,htmlOutput('listFactorsHeatmap')
 		,br(),br()	,actionButton("showStaticHeatmap", "Interactive heatmap")
 		,br(),br()
 		,actionButton("showCorrelation", "Correlation matrix")
