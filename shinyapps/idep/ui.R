@@ -105,7 +105,7 @@ tableOutput('species' ),
              sidebarLayout(
                sidebarPanel(
 			     conditionalPanel("input.dataFileFormat == 2"
-					,numericInput("lowFilter", label = h5("Only keep genes with expression at least:"), value = 1)
+					,numericInput("lowFilter", label = h5("Only keep genes with expression at least:"), value = -1e-20)
 					,radioButtons("transform", "Log Transformation",c("No"=FALSE,"Yes"=TRUE) )
 					,numericInput("logStart", label = h5("Constant c for started log: log(x+c)"), value = 1)
 					,br(),h4( textOutput("text.transform") )
@@ -122,7 +122,14 @@ tableOutput('species' ),
 							
 					,radioButtons("CountsTransform", "Transform counts data for clustering & PCA.",  c("VST: variance stabilizing transform"=2, 
 					"rlog: regularized log (only for N<10) "= 3,"edgeR's logCPM with prior count" = 1),selected = 1 )
-					,conditionalPanel("input.CountsTransform == 1",numericInput("countsLogStart", label = h5("prior count:"), value = 1))
+					,conditionalPanel("input.CountsTransform == 1",
+						fluidRow(
+							column(5, h5("Prior count:")  )
+							,column(7, numericInput("countsLogStart", label = NULL, value = 1) )
+						)
+					        
+					
+					)
  				#,radioButtons("CountsDEGMethod", "Detect differntial expression using:",  c("limma-voom"=2,"limma-trend"=1,"DESeq2"= 3) )
 				
 				)
@@ -152,41 +159,47 @@ tableOutput('species' ),
     ,tabPanel("Heatmap",
               sidebarLayout(
                 sidebarPanel(
-   					sliderInput("nGenes", label = h4("Most variable genes to include:"), min = 10, max = 2000, value = 1000,step=50) 
+   					sliderInput("nGenes", label = h4("Most variable genes to include:"), min = 10, max = 10000, value = 1000,step=50) 
+					,br()
+					,fluidRow(
+						column(3, h5("Color")  )
+						,column(9, selectInput("heatColors1", label = NULL,"green-black-red",width='100%') )
+					)
+					,fluidRow(
+						column(4, h5("Distance")  )
+						,column(8, selectInput("distFunctions", label = NULL,"Correlation",width='100%') )
+					)					
+					,fluidRow(
+						column(4, h5("Linkage")  )
+						,column(8, selectInput("hclustFunctions", label = NULL,"average",width='100%') )
+					)						
 
-								
-		 ,br()
+					,htmlOutput('listFactorsHeatmap')
+					,br(),br()	,actionButton("showStaticHeatmap", "Interactive heatmap")
+					,br(),br()
+					,actionButton("showCorrelation", "Correlation matrix")
+					,br(),br()
+					,downloadButton('downloadData', 'Download heatmap data')
+					,br(),a(h5("?",align = "right"), href="https://idepsite.wordpress.com/heatmap/",target="_blank")
+						),
+					mainPanel(				  
+						plotOutput("heatmap1")
 
-			,selectInput("heatColors1", label = "Color scheme:","green-black-red",width='100%')
-			,selectInput("distFunctions", label = "Distance function:","Correlation",width='100%')
-			,selectInput("hclustFunctions", label = "Clustering method(linkage):","average",width='100%')
-	
-			,htmlOutput('listFactorsHeatmap')
-		,br(),br()	,actionButton("showStaticHeatmap", "Interactive heatmap")
-		,br(),br()
-		,actionButton("showCorrelation", "Correlation matrix")
-		,br(),br()
-		,downloadButton('downloadData', 'Download heatmap data')
-			,br(),a(h5("?",align = "right"), href="https://idepsite.wordpress.com/heatmap/",target="_blank")
-					),
-                mainPanel(				  
-  				  plotOutput("heatmap1")
-				  
-				 # ,verbatimTextOutput("event")
-				  ,bsModal("modalExample8", "Correlation matrix using all genes", "showCorrelation", size = "large",plotOutput("correlationMatrix"))
-				  ,bsModal("modalExample28", "Heatmap with hierarchical clustering tree", "showStaticHeatmap", size = "large",
-					sliderInput("nGenesPlotly", label = h4("Most variable genes to include:"), min = 10, max = 2000, value = 50,step=50),
-					h4("Mouse over to see gene names. To zoom, click and drag up or downward and release."),
-					plotlyOutput("heatmap",width = "100%", height = "800px"))
-				 
-                )
-              )       
-    )
+						# ,verbatimTextOutput("event")
+						,bsModal("modalExample8", "Correlation matrix using all genes", "showCorrelation", size = "large",plotOutput("correlationMatrix"))
+						,bsModal("modalExample28", "Heatmap with hierarchical clustering tree", "showStaticHeatmap", size = "large",
+						sliderInput("nGenesPlotly", label = h4("Most variable genes to include:"), min = 10, max = 2000, value = 50,step=50),
+						h4("Mouse over to see gene names. To zoom, click and drag up or downward and release."),
+						plotlyOutput("heatmap",width = "100%", height = "800px"))
+					 
+					)
+					)       
+					)
 	,tabPanel("k-Means",
               sidebarLayout(
                 sidebarPanel(
 				#numericInput("nClusters", label = h4("Number of Clusters (often <15) "), value = 6)
-   				sliderInput("nGenesKNN", label = h4("Most variable genes to include "), min = 10, max = 6000, value = 2000,step=100) 
+   				sliderInput("nGenesKNN", label = h4("Most variable genes to include "), min = 10, max = 10000, value = 2000,step=100) 
 				,sliderInput("nClusters", label = h4("Number of Clusters"), min = 2, max = 20, value = 4,step=1) 
 				,actionButton("NClusters", "How many clusters?")
 				,br(),br(),actionButton("showMotifKmeans", "Promoter analysis of each cluster")
