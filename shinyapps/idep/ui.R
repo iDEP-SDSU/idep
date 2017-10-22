@@ -40,8 +40,7 @@ shinyUI(
                     '.csv',
                     '.tsv'					
                   )
-        )
-		
+        )		
 		,fileInput('file2', h5('Optional: Upload sample info file (CSV or text)'),
                   accept = c(
                     'text/csv',

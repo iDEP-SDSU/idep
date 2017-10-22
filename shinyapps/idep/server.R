@@ -2036,7 +2036,7 @@ function(input, output,session) {
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
 	
-    if (is.null(readSampleInfo()) ) # if sample info is uploaded and correctly parsed.
+    if (is.null(input$file2) ) # if sample info is uploaded and correctly parsed.
        { return(NULL) }	 else { 
 	  selectInput("selectFactorsHeatmap", label="Sample color bar:",choices=colnames(readSampleInfo())
 	     )   } 
@@ -2059,7 +2059,7 @@ function(input, output,session) {
     groups = detectGroups(colnames(x) )
 	# if sample info file is uploaded us that info:
 
-	if(!is.null(readSampleInfo()) &&  !is.null(input$selectFactorsHeatmap) ) { 
+	if(!is.null(input$file2) &&  !is.null(input$selectFactorsHeatmap) ) { 
 		ix = match(input$selectFactorsHeatmap, colnames(readSampleInfo() ) ) 
 		groups = readSampleInfo()[,ix]
 	}
@@ -2273,7 +2273,7 @@ function(input, output,session) {
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
 	
-      if (is.null(readSampleInfo()) )
+      if (is.null(input$file2) )
        { return(HTML("Upload a sample info file to customize this plot.") ) }	 else { 
 	  selectInput("selectFactors", label="Color:",choices=colnames(readSampleInfo())
 	     )   } 
@@ -2282,7 +2282,7 @@ function(input, output,session) {
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
 	
-      if (is.null(readSampleInfo()) )
+      if (is.null(input$file2) )
        { return(NULL) }	 else { 
 	   tem <- colnames(readSampleInfo() )
 	   if(length(tem)>1) { tem2 = tem[1]; tem[1] <- tem[2]; tem[1] = tem2; } # swap 2nd factor with first
