@@ -159,8 +159,12 @@ tableOutput('species' ),
     ,tabPanel("Heatmap",
               sidebarLayout(
                 sidebarPanel(
-   					sliderInput("nGenes", label = h4("Most variable genes to include:"), min = 10, max = 10000, value = 1000,step=50) 
-					,br()
+   					sliderInput("nGenes", label = h4("Most variable genes to include:"), min = 10, max = 6000, value = 1000,step=50) 
+					,actionButton("showStaticHeatmap", "Interactive heatmap")
+					,br(),br()
+					,actionButton("showCorrelation", "Correlation matrix")			
+					,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
+					,strong("Customize hierarchical clustering")
 					,fluidRow(
 						column(3, h5("Color")  )
 						,column(9, selectInput("heatColors1", label = NULL,"green-black-red",width='100%') )
@@ -172,13 +176,15 @@ tableOutput('species' ),
 					,fluidRow(
 						column(4, h5("Linkage")  )
 						,column(8, selectInput("hclustFunctions", label = NULL,"average",width='100%') )
-					)						
-
+					)
+					,fluidRow(
+						column(8, h5("Cut-off Z score")  )
+						,column(4, numericInput("heatmapCutoff", label = NULL, value = 4,min=2,step=1) )
+					)					
+					,checkboxInput("geneNormalize", "Normalize by gene", value = FALSE)
+					,checkboxInput("sampleNormalize", "Normalize by sample", value = FALSE)
 					,htmlOutput('listFactorsHeatmap')
-					,br(),br()	,actionButton("showStaticHeatmap", "Interactive heatmap")
-					,br(),br()
-					,actionButton("showCorrelation", "Correlation matrix")
-					,br(),br()
+
 					,downloadButton('downloadData', 'Download heatmap data')
 					,br(),a(h5("?",align = "right"), href="https://idepsite.wordpress.com/heatmap/",target="_blank")
 						),
@@ -199,7 +205,7 @@ tableOutput('species' ),
               sidebarLayout(
                 sidebarPanel(
 				#numericInput("nClusters", label = h4("Number of Clusters (often <15) "), value = 6)
-   				sliderInput("nGenesKNN", label = h4("Most variable genes to include "), min = 10, max = 10000, value = 2000,step=100) 
+   				sliderInput("nGenesKNN", label = h4("Most variable genes to include "), min = 10, max = 6000, value = 2000,step=100) 
 				,sliderInput("nClusters", label = h4("Number of Clusters"), min = 2, max = 20, value = 4,step=1) 
 				,actionButton("NClusters", "How many clusters?")
 				,br(),br(),actionButton("showMotifKmeans", "Promoter analysis of each cluster")

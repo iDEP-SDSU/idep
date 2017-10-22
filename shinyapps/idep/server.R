@@ -2047,13 +2047,23 @@ function(input, output,session) {
     x <- readData()$data   # x = read.csv("expression1.csv")
 	withProgress(message="Reading and pre-processing ", {
 	n=input$nGenes
-	if(n>6000) n = 6000 # max
+	#if(n>6000) n = 6000 # max
 	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
 	# this will cutoff very large values, which could skew the color 
 	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	cutoff = median(unlist(x)) + 4*sd (unlist(x)) 
+	
+	# standardize by gene
+	if(input$geneNormalize) 
+		x <- x / apply(x,1,sd)
+	# standardize by sample
+	if(input$sampleNormalize){
+		x <- scale(x, center = FALSE, scale = apply(x,2,sd)) 
+	}
+	
+	
+	cutoff = median(unlist(x)) + input$heatmapCutoff * sd (unlist(x)) 
 	x[x>cutoff] <- cutoff
-	cutoff = median(unlist(x)) - 4*sd (unlist(x)) 
+	cutoff = median(unlist(x)) - input$heatmapCutoff *sd (unlist(x)) 
 	x[x< cutoff] <- cutoff
 	
     groups = detectGroups(colnames(x) )
@@ -2062,8 +2072,7 @@ function(input, output,session) {
 	if(!is.null(input$file2) &&  !is.null(input$selectFactorsHeatmap) ) { 
 		ix = match(input$selectFactorsHeatmap, colnames(readSampleInfo() ) ) 
 		groups = readSampleInfo()[,ix]
-	}
-	
+	}	
 	
 	groups.colors = rainbow(length(unique(groups) ) )
 
@@ -2135,7 +2144,7 @@ function(input, output,session) {
     x <- convertedData()
 	withProgress(message="Rendering heatmap ", {
 	n=input$nGenesPlotly
-	if(n>6000) n = 6000 # max
+	#if(n>6000) n = 6000 # max
 	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
 	# this will cutoff very large values, which could skew the color 
 	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
@@ -2187,7 +2196,7 @@ function(input, output,session) {
 
 	
 	n=input$nGenes
-	if(n>6000) n = 6000 # max
+	#if(n>6000) n = 6000 # max
 	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
 	# this will cutoff very large values, which could skew the color 
 	x1 = x[1:n,] 
@@ -2448,7 +2457,7 @@ function(input, output,session) {
 	#x <- readData()
 	#par(mfrow=c(1,2))
 	n=input$nGenesKNN
-	if(n>6000) n = 6000 # max
+	#if(n>6000) n = 6000 # max
 	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
 	#x1 <- x;
 	#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
@@ -2501,7 +2510,7 @@ function(input, output,session) {
 	#x <- readData()
 	#par(mfrow=c(1,2))
 	n=input$nGenesKNN
-	if(n>6000) n = 6000 # max
+	#if(n>6000) n = 6000 # max
 	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
 	#x1 <- x;
 	#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
