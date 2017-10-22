@@ -32,7 +32,7 @@ readGMT <- function (fileName){
 
 sqlite  <- dbDriver("SQLite")
 convert <- dbConnect(sqlite,paste0(datapath,"convertIDs.db"),flags=SQLITE_RO)  #read only mode
-keggSpeciesID = read.csv(paste0(datapath,"data_go/KEGG_Species_ID.csv"))
+# keggSpeciesID = read.csv(paste0(datapath,"data_go/KEGG_Species_ID.csv"))
 # List of GMT files in /gmt sub folder
 gmtFiles = list.files(path = paste0(datapath,"pathwayDB"),pattern=".*\\.db")
 gmtFiles = paste(datapath,"pathwayDB/",gmtFiles,sep="")
