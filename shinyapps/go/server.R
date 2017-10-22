@@ -1,6 +1,9 @@
 library(shiny)
 library(RSQLite)
 
+# relative path to data files
+datapath = "../../data/"   # production server
+
 Min_overlap <- 2
 minSetSize = 3;
 mappingCoverage = 0.60 # 60% percent genes has to be mapped for confident mapping
