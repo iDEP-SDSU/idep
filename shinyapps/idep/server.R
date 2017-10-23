@@ -2568,7 +2568,6 @@ function(input, output,session) {
 
 			for( i in 1:input$nClusters) {
 				incProgress(1/input$nClusters, , detail = paste("Cluster",toupper(letters)[i]) )
-
 				query = rownames(Kmeans()$x)[which(Kmeans()$bar == i)]
 				if(input$selectOrg == "NEW" && !is.null( input$gmtFile) ){ 
 					result <- findOverlapGMT( query, GeneSets(),1) 
