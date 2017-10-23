@@ -13,6 +13,7 @@ iDEPversion = "iDEP 0.40"
 
 shinyUI(
 	navbarPage(iDEPversion,
+		id='navBar',
 		tabPanel("Load Data",
 			titlePanel("Upload Files"),
 			sidebarLayout(
