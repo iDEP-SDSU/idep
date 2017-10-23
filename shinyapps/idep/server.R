@@ -2388,7 +2388,7 @@ function(input, output,session) {
 	})
 
 	output$downloadPCAData <- downloadHandler(
-		filename 	= function() {"PCA_and_MDS.csv"}
+		filename 	= function() {"PCA_and_MDS.csv"},
 		content 	= function(file) {
           write.csv(PCAdata(), file) 
 	    }
@@ -2583,7 +2583,6 @@ function(input, output,session) {
 					results <- rbind(results,result)
 				}
 			}
-
 			if(pp == 0) return( as.data.frame("No enrichment found."))
 			results= results[,c(5,1,2,4)]
 			colnames(results)= c("Cluster","FDR","Genes","Pathways")

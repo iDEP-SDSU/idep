@@ -371,7 +371,7 @@ shinyUI(
 		,tabPanel("R",
 			fluidRow(column(12,htmlOutput('RsessionInfo')))
 		)
-		,tags$head(includeScript("google_analytics.js")) # tracking usage  
+		,tags$head(includeScript("ga.js")) # tracking usage  
 	)# Navibar
 )
 
