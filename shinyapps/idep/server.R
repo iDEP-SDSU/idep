@@ -80,7 +80,7 @@ datapath = "../../data/"   # production server
 
 sqlite  <- dbDriver("SQLite")
 convert <- dbConnect(sqlite,paste0(datapath,"convertIDs.db"),flags=SQLITE_RO)  #read only mode
-keggSpeciesID = read.csv(paste0(datapath,"KEGG_Species_ID.csv"))
+keggSpeciesID = read.csv(paste0(datapath,"data_go/KEGG_Species_ID.csv"))
 # List of GMT files in /gmt sub folder
 gmtFiles = list.files(path = paste0(datapath,"pathwayDB"),pattern=".*\\.db")
 gmtFiles = paste(datapath,"pathwayDB/",gmtFiles,sep="")
@@ -88,7 +88,7 @@ geneInfoFiles = list.files(path = paste0(datapath,"geneInfo"),pattern=".*GeneInf
 geneInfoFiles = paste(datapath,"geneInfo/",geneInfoFiles,sep="")
 motifFiles = list.files(path = paste0(datapath,"motif"),pattern=".*\\.db")
 motifFiles = paste(datapath,"motif/",motifFiles,sep="")
-demoDataFile = paste0(datapath,"GSE37704_sailfish_genecounts.csv") #"expression1_no_duplicate.csv"
+demoDataFile = paste0(datapath,"data_go/GSE37704_sailfish_genecounts.csv") #"expression1_no_duplicate.csv"
 
 ################################################################
 #   Utility functions
