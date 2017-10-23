@@ -6,9 +6,9 @@
 //ShinyGO
 //ga('create', 'UA-87863704-1', 'auto');
 //iDEP at DO
-//ga('create', 'UA-87863704-2', 'auto');
+ga('create', 'UA-87863704-2', 'auto');
 //iDEP at prod
-ga('create', 'UA-87863704-3', 'auto');
+//ga('create', 'UA-87863704-3', 'auto');
 ga('send', 'pageview');
 // Event Tracking Code
 $(document).on('shiny:inputchanged', function(event) {
