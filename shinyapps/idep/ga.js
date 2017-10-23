@@ -13,6 +13,6 @@ ga('send', 'pageview');
 // Event Tracking Code
 $(document).on('shiny:inputchanged', function(event) {
     if(event.name == 'navBar'){
-        ga('send', 'pageview');
+        ga('send', 'event' ,'pageview');
     }
 });
