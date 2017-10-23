@@ -1775,26 +1775,22 @@ function(input, output,session) {
 				return( readGMTRobust(inFile) ) }else
 		return( readGeneSets( converted(), convertedData(), input$selectGO,input$selectOrg,c(input$minSetSize, input$maxSetSize)  ) ) }) 
 	})
-
-####### [TODO] Kevin Indentation Work 10/5 #######
-
 	output$contents <- renderTable({
-	   inFile <- input$file1
+		inFile <- input$file1
 		inFile <- inFile$datapath
 		if (is.null(input$file1) && input$goButton == 0)   return(NULL)
-	#    if (is.null(input$file1) && input$goButton > 0 )   inFile = "expression1_no_duplicate.csv"
+		#if (is.null(input$file1) && input$goButton > 0 )   inFile = "expression1_no_duplicate.csv"
 		if (is.null(input$file1) && input$goButton > 0 )   inFile = demoDataFile
-
 		tem = input$selectOrg
 		isolate({
-		x <- read.csv(inFile)
-		if(dim(x)[2] <= 2 ) x <- read.table(inFile, sep="\t",header=TRUE)	# not CSV
-		#x <- readData()$data
-		 x[1:20,]
+			x <- read.csv(inFile)
+			if(dim(x)[2] <= 2 ) x <- read.table(inFile, sep="\t",header=TRUE)	# not CSV
+			#x <- readData()$data
+			x[1:20,]
 		})
-	  },include.rownames=FALSE)
+	},include.rownames=FALSE)
 
-# show first 20 rows of data
+	# show first 20 rows of data
 	output$species <-renderTable({   
       if (is.null(input$file1) && input$goButton == 0)    return()
       isolate( {  #tem <- convertID(input$input_text,input$selectOrg );
@@ -1808,163 +1804,152 @@ function(input, output,session) {
       }) # avoid showing things initially         
     }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
-# show first 20 rows of processed data; not used
+	# show first 20 rows of processed data; not used
 	output$debug <- renderTable({
-      if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	  tem = input$selectOrg; tem = input$lowFilter ; tem = input$transform
-	x <- convertedData()
-	#tem = GeneSets()
-	
-	return( as.data.frame (x[1:20,] ))
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectOrg; 
+		tem = input$lowFilter;
+		tem = input$transform
+		x <- convertedData()
+		#tem = GeneSets()
+		return( as.data.frame (x[1:20,] ))
 	},include.rownames=TRUE)
 
+	################################################################
+	#   Pre-process
+	################################################################
 
-################################################################
-#   Pre-process
-################################################################
-	
 	output$EDA <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	####################################
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		####################################
 
+		
+		x <- readData()$data
+		par(mfrow=c(3,1))
+		par(mar=c(14,6,4,4))
+		myColors = rainbow(dim(x)[2])
+		plot(density(x[,1]),col = myColors[1], lwd=2,
+		xlab="Expresson values", ylab="Density", main= "Distribution of transformed data",
+		cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2, ylim=c(0, max(density(x[,1])$y)+.02 ) )
+		
+		for( i in 2:dim(x)[2] )
+		lines(density(x[,i]),col=myColors[i], lwd=2 )
+		legend("topright", cex=1.2,colnames(x), lty=rep(1,dim(x)[2]), col=myColors )	
+		# boxplot of first two samples, often technical replicates
 	
-    x <- readData()$data
-	 par(mfrow=c(3,1))
-	par(mar=c(14,6,4,4))
-	myColors = rainbow(dim(x)[2])
-	plot(density(x[,1]),col = myColors[1], lwd=2,
-	  xlab="Expresson values", ylab="Density", main= "Distribution of transformed data",
-	  cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2, ylim=c(0, max(density(x[,1])$y)+.02 ) )
-	  
-	for( i in 2:dim(x)[2] )
-	lines(density(x[,i]),col=myColors[i], lwd=2 )
-    legend("topright", cex=1.2,colnames(x), lty=rep(1,dim(x)[2]), col=myColors )	
-   # boxplot of first two samples, often technical replicates
-   
-	boxplot(x, las = 2, ylab="Transformed expression levels", main="Distribution of transformed data"
-		,cex.lab=1.5, cex.axis=1.5, cex.main=2, cex.sub=2)
-	plot(x[,1:2],xlab=colnames(x)[1],ylab=colnames(x)[2], main="Scatter plot of first two samples",cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2)
-	
-   }, height = 1600, width = 500)
+		boxplot(x, las = 2, ylab="Transformed expression levels", main="Distribution of transformed data"
+			,cex.lab=1.5, cex.axis=1.5, cex.main=2, cex.sub=2)
+		plot(x[,1:2],xlab=colnames(x)[1],ylab=colnames(x)[2], main="Scatter plot of first two samples",cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2)
+		
+	}, height = 1600, width = 500)
    
 	output$genePlot <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-
-	
-	tem = input$geneSearch ; tem = input$genePlotBox; tem = input$useSD
-	isolate({
-    x <- convertedData()
-	
-	Symbols <- rownames(x)
-	if( input$selectOrg != "NEW") {
-		ix = match( rownames(x), allGeneInfo()[,1])
-		if( sum( is.na(allGeneInfo()$symbol )) != dim(allGeneInfo() )[1] ) {  # symbol really exists? 
-			Symbols = as.character( allGeneInfo()$symbol[ix] )
-			Symbols[which( nchar(Symbols) <= 2 ) ] <- rownames(x) [which( nchar(Symbols) <= 2 ) ] 
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		tem = input$geneSearch ; tem = input$genePlotBox; tem = input$useSD
+		isolate({
+			x <- convertedData()
+			Symbols <- rownames(x)
+			if( input$selectOrg != "NEW") {
+				ix = match( rownames(x), allGeneInfo()[,1])
+				if( sum( is.na(allGeneInfo()$symbol )) != dim(allGeneInfo() )[1] ) {  # symbol really exists? 
+					Symbols = as.character( allGeneInfo()$symbol[ix] )
+					Symbols[which( nchar(Symbols) <= 2 ) ] <- rownames(x) [which( nchar(Symbols) <= 2 ) ] 
+				}
 			}
-	   }
-	x = as.data.frame(x)
-	x$Genes = Symbols
-    #write.csv(x,"tem.csv")
-	# Search for genes
-	#ix = grep("HOXA",toupper(x$Genes) )
-	# ix = grep(toupper(input$geneSearch),toupper(x$Genes))  # sox --> Tsox  
-	# matching from the beginning of symbol
-	ix = which(regexpr(  paste("^" , toupper(input$geneSearch),sep="")   ,toupper(x$Genes)) > 0)
-	
-	if(grepl(" ", input$geneSearch)  )  # if there is space character, do exact match
-		ix = match(gsub(" ","", toupper(input$geneSearch)),x$Genes)
-	
-	# too few or too many genes found
-	if(length(ix) == 0 | length(ix) > 50 ) return(NULL)
-	  # no genes found
-	 	 
-	mdf = melt(x[ix,],id.vars="Genes", value.name="value", variable.name="samples")
-	# bar plot of individual samples
-	p1 <- ggplot(data=mdf, aes(x=samples, y=value, group = Genes, shape=Genes, colour = Genes)) +
-		geom_line() +
-		geom_point( size=5,  fill="white")+ #shape=21  circle
-		#theme(axis.text.x = element_text(size=16,angle = 45, hjust = 1)) +
-		labs(y="Transformed expression level") +
-		coord_cartesian(ylim = c(0, max(mdf$value)))
-	p1 <- p1 + theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
-	 theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
-	       axis.text.y = element_text( size = 16),
-		   axis.title.x = element_blank(),
-		   axis.title.y = element_text( size = 16) ) +
-	theme(legend.text=element_text(size=12))	
-		
-		
-	#ggplotly(p) %>% layout(margin = list(b = 250,l=100))  # prevent cutoff of sample names
+			x = as.data.frame(x)
+			x$Genes = Symbols
+			#write.csv(x,"tem.csv")
+			# Search for genes
+			#ix = grep("HOXA",toupper(x$Genes) )
+			# ix = grep(toupper(input$geneSearch),toupper(x$Genes))  # sox --> Tsox  
+			# matching from the beginning of symbol
+			ix = which(regexpr(  paste("^" , toupper(input$geneSearch),sep="")   ,toupper(x$Genes)) > 0)
+			if(grepl(" ", input$geneSearch)  )  # if there is space character, do exact match
+				ix = match(gsub(" ","", toupper(input$geneSearch)),x$Genes)
+			# too few or too many genes found
+			if(length(ix) == 0 | length(ix) > 50 ) return(NULL)
+			# no genes found
+			mdf = melt(x[ix,],id.vars="Genes", value.name="value", variable.name="samples")
+			# bar plot of individual samples
+			p1 <- ggplot(data=mdf, aes(x=samples, y=value, group = Genes, shape=Genes, colour = Genes)) +
+				geom_line() +
+				geom_point( size=5,  fill="white")+ #shape=21  circle
+				#theme(axis.text.x = element_text(size=16,angle = 45, hjust = 1)) +
+				labs(y="Transformed expression level") +
+				coord_cartesian(ylim = c(0, max(mdf$value)))
+			p1 <- p1 + theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
+			theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
+				axis.text.y = element_text( size = 16),
+				axis.title.x = element_blank(),
+				axis.title.y = element_text( size = 16) ) +
+			theme(legend.text=element_text(size=12))	
+			#ggplotly(p) %>% layout(margin = list(b = 250,l=100))  # prevent cutoff of sample names
+			# Barplot with error bars
+			mdf$count = 1
+			g = detectGroups(mdf$samples)
+			Means = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = mean, na.rm=TRUE  )
+			SDs = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = sd, na.rm=TRUE  )
+			Ns = aggregate(mdf$count, by= list(g, mdf$Genes) , FUN = sum  )
+			summarized = cbind(Means,SDs[,3],Ns[,3])
+			colnames(summarized)= c("Samples","Genes","Mean","SD","N")
+			summarized$SE = summarized$SD / sqrt(summarized$N)	
+			#http://www.sthda.com/english/wiki/ggplot2-barplots-quick-start-guide-r-software-and-data-visualization
+			p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
+				geom_bar(stat="identity", position=position_dodge()) + # bars represent average
+				geom_errorbar(aes(ymin=Mean-SE, ymax=Mean+SE), width=0.2,position=position_dodge(.9)) +
+				labs(y="Expression Level")
 
-	# Barplot with error bars
-	mdf$count = 1
-	g = detectGroups(mdf$samples)
-	Means = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = mean, na.rm=TRUE  )
-	SDs = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = sd, na.rm=TRUE  )
-	Ns = aggregate(mdf$count, by= list(g, mdf$Genes) , FUN = sum  )
-	summarized = cbind(Means,SDs[,3],Ns[,3])
-	colnames(summarized)= c("Samples","Genes","Mean","SD","N")
-	summarized$SE = summarized$SD / sqrt(summarized$N)	
-		
-	#http://www.sthda.com/english/wiki/ggplot2-barplots-quick-start-guide-r-software-and-data-visualization
-	p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
-		geom_bar(stat="identity", position=position_dodge()) + # bars represent average
-		geom_errorbar(aes(ymin=Mean-SE, ymax=Mean+SE), width=0.2,position=position_dodge(.9)) +
-		labs(y="Expression Level") 
-	if(input$useSD == 1) { 
-	p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
-		geom_bar(stat="identity", position=position_dodge()) + # bars represent average
-		geom_errorbar(aes(ymin=Mean-SD, ymax=Mean+SD), width=0.2,position=position_dodge(.9)) +
-		labs(y="Expression Level") 
-	}
-	
-	p2 <- p2 +  theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
-	 theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
-	       axis.text.y = element_text( size = 16),
-		   axis.title.x = element_blank(),
-		   axis.title.y = element_text( size = 16) ) +
-	theme(legend.text=element_text(size=16))
-	
-	if( input$genePlotBox == 1)  p1 else p2
-	
+			if(input$useSD == 1) {
+				p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
+					geom_bar(stat="identity", position=position_dodge()) + # bars represent average
+					geom_errorbar(aes(ymin=Mean-SD, ymax=Mean+SD), width=0.2,position=position_dodge(.9)) +
+					labs(y="Expression Level") 
+			}
+			
+			p2 <- p2 +  theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
+				theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
+				axis.text.y = element_text( size = 16),
+				axis.title.x = element_blank(),
+				axis.title.y = element_text( size = 16) ) +
+				theme(legend.text=element_text(size=16))
+			
+			if( input$genePlotBox == 1)  p1 else p2
+		})
 	})
-   })
-   
 
 	processedData <- reactive({
-      if (is.null(input$file1) && input$goButton == 0)    return()
-	  
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	####################################
-	 
+		if (is.null(input$file1) && input$goButton == 0)    
+			return()	  
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		####################################
+
 		if(input$selectOrg == "NEW") return(  convertedData() ) else { 
 
 			withProgress(message="Preparing data for download ", {
@@ -1983,851 +1968,843 @@ function(input, output,session) {
 			# return(converted()$conversionTable) #return(readData()$data)
 			# colnames(tem)[1] = "Ensembl_or_Original_ID"
 			})
-			return(tem2)
-			
-			
+			return(tem2)			
 		}
-	  })
-  
+	})
+
 	output$downloadProcessedData <- downloadHandler(
 		filename = function() {"processed_Data.csv"},
 		content = function(file) {
-      write.csv( processedData(), file, row.names=FALSE )	    
+	      write.csv( processedData(), file, row.names=FALSE )	    
 	})
  
 	output$examineData <- DT::renderDataTable({
-   inFile <- input$file1
-	inFile <- inFile$datapath
-    if (is.null(input$file1) && input$goButton == 0)   return(NULL)
-
-	tem = input$selectOrg
-	isolate({
-	merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], round(convertedData(),2),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )
+		inFile <- input$file1
+		inFile <- inFile$datapath
+		if (is.null(input$file1) && input$goButton == 0)   
+			return(NULL)
+		tem = input$selectOrg
+		isolate({
+			merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], round(convertedData(),2),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )
+		})
 	})
-  })
 
 	output$totalCounts <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-    if (is.null(readData()$rawCounts))   return(NULL)
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	####################################
-	
-    par(mar=c(16,2,2,2))
-    x <- readData()$rawCounts
-	barplot( colSums(x)/1e6, col="green",las=3, cex.axis=1.3, cex =1.5, main="Total read counts (millions)")
+		if (is.null(input$file1)&& input$goButton == 0)   
+			return(NULL)
+		if (is.null(readData()$rawCounts))   
+			return(NULL)
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		####################################
+		par(mar=c(16,2,2,2))
+		x <- readData()$rawCounts
+		barplot( colSums(x)/1e6, col="green",las=3, cex.axis=1.3, cex =1.5, main="Total read counts (millions)")
+	},width=400) # height is automatic, this enables the display of other plots below.
 
-},width=400) # height is automatic, this enables the display of other plots below.
-
-
-################################################################
-#   Heatmaps
-################################################################
+	################################################################
+	#   Heatmaps
+	################################################################
 
 	output$listFactorsHeatmap <- renderUI({
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		
+		if (is.null(input$file2) ){   # if sample info is uploaded and correctly parsed.
+			return(NULL) }	 
+		else { 
+			selectInput("selectFactorsHeatmap", label="Sample color bar:",choices=colnames(readSampleInfo()))   
+		}
+	})
 	
-    if (is.null(input$file2) ) # if sample info is uploaded and correctly parsed.
-       { return(NULL) }	 else { 
-	  selectInput("selectFactorsHeatmap", label="Sample color bar:",choices=colnames(readSampleInfo())
-	     )   } 
-	})  
-# old heatmap.2 plot, replaced with plotly
+	# old heatmap.2 plot, replaced with plotly
 	output$heatmap1 <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-    x <- readData()$data   # x = read.csv("expression1.csv")
-	withProgress(message="Reading and pre-processing ", {
-	n=input$nGenes
-	#if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	# this will cutoff very large values, which could skew the color 
-	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	
-	# standardize by gene
-	if(input$geneNormalize) 
-		x <- x / apply(x,1,sd)
-	# standardize by sample
-	if(input$sampleNormalize){
-		x <- scale(x, center = FALSE, scale = apply(x,2,sd)) 
-	}
-	
-	
-	cutoff = median(unlist(x)) + input$heatmapCutoff * sd (unlist(x)) 
-	x[x>cutoff] <- cutoff
-	cutoff = median(unlist(x)) - input$heatmapCutoff *sd (unlist(x)) 
-	x[x< cutoff] <- cutoff
-	
-    groups = detectGroups(colnames(x) )
-	# if sample info file is uploaded us that info:
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		x <- readData()$data   # x = read.csv("expression1.csv")
+		withProgress(message="Reading and pre-processing ", {
+			n=input$nGenes
+			#if(n>6000) n = 6000 # max
+			if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+			# this will cutoff very large values, which could skew the color 
+			x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+			
+			# standardize by gene
+			if(input$geneNormalize) 
+				x <- x / apply(x,1,sd)
+			# standardize by sample
+			if(input$sampleNormalize){
+				x <- scale(x, center = FALSE, scale = apply(x,2,sd)) 
+			}
+			
+			
+			cutoff = median(unlist(x)) + input$heatmapCutoff * sd (unlist(x)) 
+			x[x>cutoff] <- cutoff
+			cutoff = median(unlist(x)) - input$heatmapCutoff *sd (unlist(x)) 
+			x[x< cutoff] <- cutoff
+			
+			groups = detectGroups(colnames(x) )
+			# if sample info file is uploaded us that info:
 
-	if(!is.null(input$file2) &&  !is.null(input$selectFactorsHeatmap) ) { 
-		ix = match(input$selectFactorsHeatmap, colnames(readSampleInfo() ) ) 
-		groups = readSampleInfo()[,ix]
-	}	
-	
-	groups.colors = rainbow(length(unique(groups) ) )
+			if(!is.null(input$file2) &&  !is.null(input$selectFactorsHeatmap) ) { 
+				ix = match(input$selectFactorsHeatmap, colnames(readSampleInfo() ) ) 
+				groups = readSampleInfo()[,ix]
+			}	
+			
+			groups.colors = rainbow(length(unique(groups) ) )
 
-	#http://stackoverflow.com/questions/15351575/moving-color-key-in-r-heatmap-2-function-of-gplots-package
-	lmat = rbind(c(0,4),c(0,1),c(3,2),c(5,0))
-	lwid = c(2,6) # width of gene tree; width of heatmap
-	lhei = c(1.5,.2,8,1.1)
-	#layout matrix
-	#		 [,1] [,2]
-	#	[1,]    0    4
-	#	[2,]    0    1
-	#	[3,]    3    2
-	#	[4,]    5    0
-	# 4--> column tree; 1--> column color bar; 2--> heatmap; 3-> row tree; 5--> color key.
-	# height of 4 rows is specified by lhei; width of columns is given by lwid
+			#http://stackoverflow.com/questions/15351575/moving-color-key-in-r-heatmap-2-function-of-gplots-package
+			lmat = rbind(c(0,4),c(0,1),c(3,2),c(5,0))
+			lwid = c(2,6) # width of gene tree; width of heatmap
+			lhei = c(1.5,.2,8,1.1)
+			#layout matrix
+			#		 [,1] [,2]
+			#	[1,]    0    4
+			#	[2,]    0    1
+			#	[3,]    3    2
+			#	[4,]    5    0
+			# 4--> column tree; 1--> column color bar; 2--> heatmap; 3-> row tree; 5--> color key.
+			# height of 4 rows is specified by lhei; width of columns is given by lwid
+			par(mar = c(5, 4, 1.4, 0.2))
+			if( n>110) 
+			heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
+				,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
+				#col=colorpanel(75,"green","black","magenta")  ,
+				#col=bluered(75),
+				#col=greenred(75), 
+				,col= heatColors[as.integer(input$heatColors1),]
+				,density.info="none", trace="none", scale="none", keysize=.5
+				,key=T, symkey=F
+				,ColSideColors=groups.colors[ as.factor(groups)]
+				,labRow=""
+				,margins=c(10,0)
+				,srtCol=45
+				,cexCol=2  # size of font for sample names
+				,lmat = lmat, lwid = lwid, lhei = lhei
+				)
+			if( n<=110) 
+			heatmap.2(x, distfun =  distFuns[[as.integer(input$distFunctions)]]
+				,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
+				,col= heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.5
+				,key=T, symkey=F,
+				#,labRow=labRow
+				,ColSideColors=groups.colors[ as.factor(groups)]
+				,margins=c(18,12)
+				,cexRow=1
+				,srtCol=45
+				,cexCol=1.8  # size of font for sample names
+				,lmat = lmat, lwid = lwid, lhei = lhei
+			)
+			par(lend = 1)           # square line ends for the color legend
+			add_legend("topleft",
+				legend = unique(groups), # category labels
+				col = groups.colors[ unique(as.factor(groups))],  # color key
+				lty= 1,             # line style
+				lwd = 10            # line width
+			)
+			incProgress(1,"Done")
+		})
+	} , height = 800, width = 400 )  
 
-
-	par(mar = c(5, 4, 1.4, 0.2))
-	
-	if( n>110) 
-	heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
-		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
-		#col=colorpanel(75,"green","black","magenta")  ,
-		#col=bluered(75),
-		#col=greenred(75), 
-		,col= heatColors[as.integer(input$heatColors1),]
-		,density.info="none", trace="none", scale="none", keysize=.5
-		,key=T, symkey=F
-		,ColSideColors=groups.colors[ as.factor(groups)]
-		,labRow=""
-		,margins=c(10,0)
-		,srtCol=45
-		,cexCol=2  # size of font for sample names
-		,lmat = lmat, lwid = lwid, lhei = lhei
-		)
-
-	if( n<=110) 
-	heatmap.2(x, distfun =  distFuns[[as.integer(input$distFunctions)]]
-		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
-		,col= heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.5
-		,key=T, symkey=F,
-		#,labRow=labRow
-		,ColSideColors=groups.colors[ as.factor(groups)]
-		,margins=c(18,12)
-		,cexRow=1
-		,srtCol=45
-		,cexCol=1.8  # size of font for sample names
-		,lmat = lmat, lwid = lwid, lhei = lhei
-	)
-	
-	
-	par(lend = 1)           # square line ends for the color legend
-	add_legend("topleft",
-		legend = unique(groups), # category labels
-		col = groups.colors[ unique(as.factor(groups))],  # color key
-		lty= 1,             # line style
-		lwd = 10            # line width
-	)
-	
-	incProgress(1,"Done")
-	})
-
-} , height = 800, width = 400 )  
-
-# interactive heatmap with plotly
+	# interactive heatmap with plotly
 	output$heatmap <- renderPlotly({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-   # x <- readData()$data   # x = read.csv("expression1.csv")
-    x <- convertedData()
-	withProgress(message="Rendering heatmap ", {
-	n=input$nGenesPlotly
-	#if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	# this will cutoff very large values, which could skew the color 
-	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	cutoff = median(unlist(x)) + 3*sd (unlist(x)) 
-	x[x>cutoff] <- cutoff
-	cutoff = median(unlist(x)) - 3*sd (unlist(x)) 
-	x[x< cutoff] <- cutoff
+		if (is.null(input$file1)&& input$goButton == 0)   
+			return(NULL)
+		# x <- readData()$data   # x = read.csv("expression1.csv")
+		x <- convertedData()
+		withProgress(message="Rendering heatmap ", {
+			n=input$nGenesPlotly
+			#if(n>6000) n = 6000 # max
+			if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+			# this will cutoff very large values, which could skew the color 
+			x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+			cutoff = median(unlist(x)) + 3*sd (unlist(x)) 
+			x[x>cutoff] <- cutoff
+			cutoff = median(unlist(x)) - 3*sd (unlist(x)) 
+			x[x< cutoff] <- cutoff
 
-	# adding gene symbol
-	ix <- match( rownames(x), allGeneInfo()[,1])
-	geneSymbols <- as.character( allGeneInfo()$symbol)[ix]
-	# if missing or duplicated, use Ensembl ID
-	ix <- which(nchar( geneSymbols) <=1 | duplicated(geneSymbols ) );	geneSymbols[ ix ] <- rownames(x)[ix]
-	rownames( x) = geneSymbols;
+			# adding gene symbol
+			ix <- match( rownames(x), allGeneInfo()[,1])
+			geneSymbols <- as.character( allGeneInfo()$symbol)[ix]
+			# if missing or duplicated, use Ensembl ID
+			ix <- which(nchar( geneSymbols) <=1 | duplicated(geneSymbols ) );	geneSymbols[ ix ] <- rownames(x)[ix]
+			rownames( x) = geneSymbols;
 
-	incProgress(1/2, "Clustering of genes")	
-	clust <- x %>% 
-	  dist2() %>% 
-	  hclust2()
+			incProgress(1/2, "Clustering of genes")	
+			clust <- x %>% 
+			dist2() %>% 
+			hclust2()
 
-	# Get order
-	ord <- clust$order
+			# Get order
+			ord <- clust$order
 
-	# Re-arrange based on order
-	df <- t( x[ord,] )%>%
-	   melt()
-	   
-	colnames(df)[1:2] <- c("X","Y")
-    colorNames = unlist(strsplit(tolower(rownames(heatColors)[ as.integer(input$heatColors1)   ]),"-" ) )
-	p <- df %>%
-	  ggplot(aes(X, Y, fill = value)) + 
-		   geom_tile()+ scale_fill_gradient2(low = colorNames[1], mid = colorNames[2],high = colorNames[3]) +
-		   theme(axis.title.y=element_blank(),   # remove y labels
-		   # axis.text.y=element_blank(),  # keep gene names for zooming
-			axis.ticks.y=element_blank(),
-			axis.title.x=element_blank()) +
-			theme(axis.text.x = element_text(size=10,angle = 45, hjust = 1))
+			# Re-arrange based on order
+			df <- t( x[ord,] )%>%
+			melt()
+			
+			colnames(df)[1:2] <- c("X","Y")
+			colorNames = unlist(strsplit(tolower(rownames(heatColors)[ as.integer(input$heatColors1)   ]),"-" ) )
+			p <- df %>%
+			ggplot(aes(X, Y, fill = value)) + 
+				geom_tile()+ scale_fill_gradient2(low = colorNames[1], mid = colorNames[2],high = colorNames[3]) +
+				theme(axis.title.y=element_blank(),   # remove y labels
+				# axis.text.y=element_blank(),  # keep gene names for zooming
+					axis.ticks.y=element_blank(),
+					axis.title.x=element_blank()) +
+					theme(axis.text.x = element_text(size=10,angle = 45, hjust = 1))
 
-		incProgress(1,"Done")
-	ggplotly(p) %>% 
-		layout(margin = list(b = 150,l=200))  # prevent cutoff of sample names
+			incProgress(1,"Done")
+			ggplotly(p) %>% 
+				layout(margin = list(b = 150,l=200))  # prevent cutoff of sample names
 
+		})
 	})
-  })  
   
 	heatmapData <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-    x <- readData()$data
-
-	
-	n=input$nGenes
-	#if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	# this will cutoff very large values, which could skew the color 
-	x1 = x[1:n,] 
-	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	cutoff = median(unlist(x)) + 4*sd (unlist(x)) 
-	x[x>cutoff] <- cutoff
-	cutoff = median(unlist(x)) - 4*sd (unlist(x)) 
-	x[x< cutoff] <- cutoff
-	
-	groups = detectGroups(colnames(x) )
-	groups.colors = rainbow(length(unique(groups) ) )
-
-	#pdf(file=NULL,width =700, height =700)
-	hy <- heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
-		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
-		,density.info="none", trace="none", scale="none")
-    #dev.off()
-	
-	# if not new species, add gene symbol
-	if( input$selectOrg == "NEW") return(NULL) else { 
-		x1 <- x1[ rev( hy$rowInd),hy$colInd]
-		# add gene symbol
-		ix = match( rownames(x1), allGeneInfo()[,1])
-		x1 <- cbind(as.character( allGeneInfo()$symbol)[ix],x1)
-		return( x1 )
-	}
-	
-
-	
-  })  
-  
+		if (is.null(input$file1)&& input$goButton == 0)   
+			return(NULL)
+		x <- readData()$data
+		n=input$nGenes
+		#if(n>6000) n = 6000 # max
+		if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+		# this will cutoff very large values, which could skew the color 
+		x1 = x[1:n,] 
+		x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+		cutoff = median(unlist(x)) + 4*sd (unlist(x)) 
+		x[x>cutoff] <- cutoff
+		cutoff = median(unlist(x)) - 4*sd (unlist(x)) 
+		x[x< cutoff] <- cutoff
+		groups = detectGroups(colnames(x) )
+		groups.colors = rainbow(length(unique(groups) ) )
+		#pdf(file=NULL,width =700, height =700)
+		hy <- heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
+			,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
+			,density.info="none", trace="none", scale="none")
+		#dev.off()
+		# if not new species, add gene symbol
+		if( input$selectOrg == "NEW") return(NULL) else { 
+			x1 <- x1[ rev( hy$rowInd),hy$colInd]
+			# add gene symbol
+			ix = match( rownames(x1), allGeneInfo()[,1])
+			x1 <- cbind(as.character( allGeneInfo()$symbol)[ix],x1)
+			return( x1 )
+		}
+	})
 	output$downloadData <- downloadHandler(
 		filename = function() {"heatmap.csv"},
 		content = function(file) {
 			write.csv(heatmapData(), file)
 	    }
 	)
-
 	output$correlationMatrix <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-    # heatmap of correlation matrix
-	x <- readData()$data
-	maxGene <- apply(x,1,max)
-	x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
-	
-   melted_cormat <- melt(round(cor(x),2), na.rm = TRUE)
-# melted_cormat <- melted_cormat[which(melted_cormat[,1] != melted_cormat[,2] ) , ]
-	# Create a ggheatmap
-	ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
-	 geom_tile(color = "white")+
-	 scale_fill_gradient2(low = "green", high = "red",  mid = "white", 
-		space = "Lab",  limit = c(min(melted_cormat[,3]) ,max(melted_cormat[,3])), midpoint = median(melted_cormat[,3]),
-		name="Pearson\nCorrelation"
-	  ) +
-	  theme_minimal()+ # minimal theme
-	 theme(axis.text.x = element_text(angle = 45, vjust = 1, 
-		size = 15, hjust = 1))+
-	 theme(axis.text.y = element_text( 
-		size = 15))+
-	 coord_fixed()
-	# print(ggheatmap)
-	 ggheatmap + 
-	geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
-	theme(
-	  axis.title.x = element_blank(),
-	  axis.title.y = element_blank(),
-	  panel.grid.major = element_blank(),
-	  panel.border = element_blank(),
-	  panel.background = element_blank(),
-	  axis.ticks = element_blank(),
-	 legend.justification = c(1, 0),
-	  legend.position = c(0.6, 0.7),
-	 legend.direction = "horizontal")+
-	 guides(fill = FALSE) # + ggtitle("Pearson's Correlation Coefficient (all genes)")
+		if (is.null(input$file1)&& input$goButton == 0)   
+			return(NULL)
+		# heatmap of correlation matrix
+		x <- readData()$data
+		maxGene <- apply(x,1,max)
+		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
+		
+		melted_cormat <- melt(round(cor(x),2), na.rm = TRUE)
+		# melted_cormat <- melted_cormat[which(melted_cormat[,1] != melted_cormat[,2] ) , ]
+		# Create a ggheatmap
+		ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+			geom_tile(color = "white")+
+			scale_fill_gradient2(low = "green", high = "red",  mid = "white", 
+				space = "Lab",  limit = c(min(melted_cormat[,3]) ,max(melted_cormat[,3])), midpoint = median(melted_cormat[,3]),
+				name="Pearson\nCorrelation"
+			) +
+			theme_minimal()+ # minimal theme
+			theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+				size = 15, hjust = 1))+
+			theme(axis.text.y = element_text( 
+				size = 15))+
+			coord_fixed()
+		# print(ggheatmap)
+		ggheatmap + 
+			geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
+			theme(
+			axis.title.x = element_blank(),
+			axis.title.y = element_blank(),
+			panel.grid.major = element_blank(),
+			panel.border = element_blank(),
+			panel.background = element_blank(),
+			axis.ticks = element_blank(),
+			legend.justification = c(1, 0),
+			legend.position = c(0.6, 0.7),
+			legend.direction = "horizontal")+
+			guides(fill = FALSE) # + ggtitle("Pearson's Correlation Coefficient (all genes)")
+	}) #, height = 500, width = 500)
 
- 
-  }  )#, height = 500, width = 500)
-
-################################################################
-#   PCA
-################################################################
+	################################################################
+	#   PCA
+	################################################################
 	output$listFactors <- renderUI({
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
-	
-      if (is.null(input$file2) )
-       { return(HTML("Upload a sample info file to customize this plot.") ) }	 else { 
-	  selectInput("selectFactors", label="Color:",choices=colnames(readSampleInfo())
-	     )   } 
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC	
+		if (is.null(input$file2)) { 
+			return(HTML("Upload a sample info file to customize this plot.") ) 
+		} else { 
+			selectInput("selectFactors", label="Color:",choices=colnames(readSampleInfo()))   
+		} 
 	})
 	output$listFactors2 <- renderUI({
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
-	
-      if (is.null(input$file2) )
-       { return(NULL) }	 else { 
-	   tem <- colnames(readSampleInfo() )
-	   if(length(tem)>1) { tem2 = tem[1]; tem[1] <- tem[2]; tem[1] = tem2; } # swap 2nd factor with first
-	  selectInput("selectFactors2", label="Shape:",choices=tem)
-	        } 
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file2) ) { 
+			return(NULL) 
+		} else {
+			tem <- colnames(readSampleInfo() )
+			if(length(tem)>1) { tem2 = tem[1]; tem[1] <- tem[2]; tem[1] = tem2; } # swap 2nd factor with first
+			selectInput("selectFactors2", label="Shape:",choices=tem)
+		}
 	})
 	output$PCA <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-
-	x <- convertedData();
-     if(input$PCA_MDS ==1) {   #PCA
-	 pca.object <- prcomp(t(x))
-	 # par(mfrow=c(2,1))
-	if(0){
-     plot( pca.object$x[,1], pca.object$x[,2], pch = 1,cex = 2,col = detectGroups(colnames(x)),
-	     xlim=c(min(pca.object$x[,1]),max(pca.object$x[,1])*1.5   ),
-		xlab = "First principal component", ylab="Second Principal Component")
-		text( pca.object$x[,1], pca.object$x[,2],  pos=4, labels =colnames(x), offset=.5, cex=.8)
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		x <- convertedData();
+		#PCA
+		if(input$PCA_MDS ==1) {   
+			pca.object <- prcomp(t(x))
+			# par(mfrow=c(2,1))
+			if(0){
+				plot( pca.object$x[,1], pca.object$x[,2], pch = 1,cex = 2,col = detectGroups(colnames(x)),
+					xlim=c(min(pca.object$x[,1]),max(pca.object$x[,1])*1.5   ),
+					xlab = "First principal component", ylab="Second Principal Component")
+				text( pca.object$x[,1], pca.object$x[,2],  pos=4, labels =colnames(x), offset=.5, cex=.8)
+			}
+			pcaData = as.data.frame(pca.object$x[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+			colnames(pcaData) = c("PC1", "PC2", "Type")
+			percentVar=round(100*summary(pca.object)$importance[2,1:2],0)
+			if(is.null(input$file2)) { 
+				p=ggplot(pcaData, aes(PC1, PC2, color=Type, shape = Type)) + geom_point(size=5) 
+			} else {
+				pcaData = cbind(pcaData,readSampleInfo() )
+				p=ggplot(pcaData, aes_string("PC1", "PC2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5)
+			}
+			p=p+xlab(paste0("PC1: ",percentVar[1],"% variance")) 
+			p=p+ylab(paste0("PC2: ",percentVar[2],"% variance")) 
+			p=p+ggtitle("Principal component analysis (PCA)")+coord_fixed(ratio=1.0)+ 
+				theme(plot.title = element_text(size = 16,hjust = 0.5)) + theme(aspect.ratio=1) +
+				theme(axis.text.x = element_text( size = 16),
+					axis.text.y = element_text( size = 16),
+					axis.title.x = element_text( size = 16),
+					axis.title.y = element_text( size = 16) ) +
+				theme(legend.text=element_text(size=16))
+			print(p)
 		}
+		# variance chart
+		# plot(pca.object,type="bar", xlab="Principal Components", main ="Variances explained")
 		
-	pcaData = as.data.frame(pca.object$x[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
-	colnames(pcaData) = c("PC1", "PC2", "Type")
-	percentVar=round(100*summary(pca.object)$importance[2,1:2],0)
-	if(is.null(input$file2)) { 
-		p=ggplot(pcaData, aes(PC1, PC2, color=Type, shape = Type)) + geom_point(size=5) 
-		} else {
-		pcaData = cbind(pcaData,readSampleInfo() )
-		p=ggplot(pcaData, aes_string("PC1", "PC2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
-		
+		# pathways
+		if(input$PCA_MDS ==2) {  
+			withProgress(message="Running pathway analysis", {
+				library(PGSEA)
+				pca.object <- prcomp(t(x))
+				pca = 100*pca.object$rotation 
+				Npca = 5
+				if (Npca > dim(pca)[2]) { Npca = dim(pca)[2] } else pca <-  pca[,1:Npca]
+				#pca = pca[,1:5]
+				if(is.null(GeneSets() ) ) return(NULL)  # no species recognized
+				if(length(GeneSets() ) <= 1 ) return(NULL)
+				#cat("\n\nGene Sets:",length( GeneSets()))
+				pg = myPGSEA (pca,cl=GeneSets(),range=c(15,2000),p.value=TRUE, weighted=FALSE,nPermutation=1)
+				incProgress(2/8)
+				# correcting for multiple testing
+				p.matrix = pg$p.result
+				tem = p.adjust(as.numeric(p.matrix),"fdr")
+				p.matrix = matrix(tem, nrow=dim(p.matrix)[1], ncol = dim(p.matrix)[2] )
+				rownames(p.matrix) = rownames(pg$p.result); colnames(p.matrix) = colnames(pg$p.result)
+
+
+				selected =c()
+				for( i in 1:dim(p.matrix)[2]) {
+				tem = which( rank(p.matrix[,i],ties.method='first') <= 5)  # rank by P value
+				#tem = which( rank(pg$result[,i],ties.method='first') >= dim(p.matrix)[1]-3.1) # rank by mean
+				names(tem) = paste("PC",i," ", rownames(p.matrix)[tem], sep="" )
+				selected = c(selected, tem)
+				}
+				rowids = gsub(" .*","",names(selected))
+				rowids = as.numeric( gsub("PC","",rowids) )
+				pvals = p.matrix[ cbind(selected,rowids) ]
+				a=sprintf("%-1.0e",pvals)
+				tem = pg$result[selected,]
+				rownames(tem) = paste(a,names(selected)); #colnames(tem)= paste("PC",colnames(tem),sep="")
+				
+				tem = tem[!duplicated(selected),] 
+				incProgress(3/8)
+				#tem = t(tem); tem = t( (tem - apply(tem,1,mean)) ) #/apply(tem,1,sd) )
+
+				smcPlot(tem,scale =  c(-max(tem), max(tem)), 
+					show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5, main="Pathways analysis on PCA")
+			})
 		}
-	p=p+xlab(paste0("PC1: ",percentVar[1],"% variance")) 
-	p=p+ylab(paste0("PC2: ",percentVar[2],"% variance")) 
-	p=p+ggtitle("Principal component analysis (PCA)")+coord_fixed(ratio=1.0)+ 
-     theme(plot.title = element_text(size = 16,hjust = 0.5)) + theme(aspect.ratio=1) +
-	 theme(axis.text.x = element_text( size = 16),
-	       axis.text.y = element_text( size = 16),
-		   axis.title.x = element_text( size = 16),
-		   axis.title.y = element_text( size = 16) ) +
-	theme(legend.text=element_text(size=16))
-	   print(p)
-	   }
-	# variance chart
-	# plot(pca.object,type="bar", xlab="Principal Components", main ="Variances explained")
-	
-	# pathways
-	if(input$PCA_MDS ==2) {  
-	withProgress(message="Running pathway analysis", {
-	library(PGSEA)
-	pca.object <- prcomp(t(x))
-	pca = 100*pca.object$rotation 
-	Npca = 5
-	if (Npca > dim(pca)[2]) { Npca = dim(pca)[2] } else pca <-  pca[,1:Npca]
-	#pca = pca[,1:5]
-	if(is.null(GeneSets() ) ) return(NULL)  # no species recognized
-	if(length(GeneSets() ) <= 1 ) return(NULL)
-	#cat("\n\nGene Sets:",length( GeneSets()))
-	pg = myPGSEA (pca,cl=GeneSets(),range=c(15,2000),p.value=TRUE, weighted=FALSE,nPermutation=1)
-	incProgress(2/8)
-	# correcting for multiple testing
-	p.matrix = pg$p.result
-	tem = p.adjust(as.numeric(p.matrix),"fdr")
-	p.matrix = matrix(tem, nrow=dim(p.matrix)[1], ncol = dim(p.matrix)[2] )
-	rownames(p.matrix) = rownames(pg$p.result); colnames(p.matrix) = colnames(pg$p.result)
+		# MDS
+		if(input$PCA_MDS ==3) {  # MDS
+			fit = cmdscale( dist2(t(x) ), eig=T, k=2)
+			# par(pin=c(5,5))
+			if(0) {
+			plot( fit$points[,1],fit$points[,2],pch = 1,cex = 2,col = detectGroups(colnames(x)),
+				xlim=c(min(fit$points[,1]),max(fit$points[,1])*1.5   ),
+			xlab = "First dimension", ylab="Second dimension"  )
+			text( fit$points[,1], fit$points[,2],  pos=4, labels =colnames(x), offset=.5, cex=1)
+			}
+			pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+			colnames(pcaData) = c("x1", "x2", "Type")
+			
 
-
-	selected =c()
-	for( i in 1:dim(p.matrix)[2]) {
-	  tem = which( rank(p.matrix[,i],ties.method='first') <= 5)  # rank by P value
-	 #tem = which( rank(pg$result[,i],ties.method='first') >= dim(p.matrix)[1]-3.1) # rank by mean
-	 names(tem) = paste("PC",i," ", rownames(p.matrix)[tem], sep="" )
-	 selected = c(selected, tem)
-	}
-	rowids = gsub(" .*","",names(selected))
-	rowids = as.numeric( gsub("PC","",rowids) )
-	pvals = p.matrix[ cbind(selected,rowids) ]
-	a=sprintf("%-1.0e",pvals)
-	tem = pg$result[selected,]
-	rownames(tem) = paste(a,names(selected)); #colnames(tem)= paste("PC",colnames(tem),sep="")
-	
-	tem = tem[!duplicated(selected),] 
-	incProgress(3/8)
-	#tem = t(tem); tem = t( (tem - apply(tem,1,mean)) ) #/apply(tem,1,sd) )
-
-	smcPlot(tem,scale =  c(-max(tem), max(tem)), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5, main="Pathways analysis on PCA")
-	 } )
-	 }
-	 
-	if(input$PCA_MDS ==3) {  # MDS
-	 fit = cmdscale( dist2(t(x) ), eig=T, k=2)
-	 
-	# par(pin=c(5,5))
-	if(0) {
-	plot( fit$points[,1],fit$points[,2],pch = 1,cex = 2,col = detectGroups(colnames(x)),
-	     xlim=c(min(fit$points[,1]),max(fit$points[,1])*1.5   ),
-	  xlab = "First dimension", ylab="Second dimension"  )
-	 text( fit$points[,1], fit$points[,2],  pos=4, labels =colnames(x), offset=.5, cex=1)
-	}
-	pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
-	colnames(pcaData) = c("x1", "x2", "Type")
-	
-
-	if(is.null(input$file2)) { 
-	p=ggplot(pcaData, aes(x1, x2, color=Type, shape = Type)) + geom_point(size=5) 
-	} else {
-		pcaData = cbind(pcaData,readSampleInfo() )
-		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
+			if(is.null(input$file2)) { 
+			p=ggplot(pcaData, aes(x1, x2, color=Type, shape = Type)) + geom_point(size=5) 
+			} else {
+				pcaData = cbind(pcaData,readSampleInfo() )
+				p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
+				}
+			p=p+xlab("Dimension 1") 
+			p=p+ylab("Dimension 2") 
+			p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
+			theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
+				theme(axis.text.x = element_text( size = 16),
+				axis.text.y = element_text( size = 16),
+				axis.title.x = element_text( size = 16),
+				axis.title.y = element_text( size = 16) ) +
+			theme(legend.text=element_text(size=16))
+			print(p)
 		}
-	p=p+xlab("Dimension 1") 
-	p=p+ylab("Dimension 2") 
-	p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
-     theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
-	 	 theme(axis.text.x = element_text( size = 16),
-	       axis.text.y = element_text( size = 16),
-		   axis.title.x = element_text( size = 16),
-		   axis.title.y = element_text( size = 16) ) +
-	theme(legend.text=element_text(size=16))
-	   print(p)
-	
-	 }
-	  
-  }, height = 500, width = 500)
+	}, height = 500, width = 500)
 
 	PCAdata <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-    x <- readData()$data
-	
-	 result = prcomp(t(x))$x[,1:2]
-	 fit = cmdscale( dist2(t(x) ), eig=T, k=2)
-     result = cbind( result, fit$points[,1:2] )
-	 colnames(result) = c("PCA.x","PCA.y","MDS.x", "MDS.y")
-	 return( result)		  
-  })
- 
+		if (is.null(input$file1)&& input$goButton == 0)   
+			return(NULL)
+		x <- readData()$data
+		result = prcomp(t(x))$x[,1:2]
+		fit = cmdscale( dist2(t(x) ), eig=T, k=2)
+		result = cbind( result, fit$points[,1:2])
+		colnames(result) = c("PCA.x","PCA.y","MDS.x", "MDS.y")
+		return( result)
+	})
+
 	output$downloadPCAData <- downloadHandler(
-		filename = function() {"PCA_and_MDS.csv"},
-		content = function(file) {
+		filename 	= function() {"PCA_and_MDS.csv"}
+		content 	= function(file) {
           write.csv(PCAdata(), file) 
 	    }
 	)
 
-################################################################
-#   K-means
-################################################################
+	################################################################
+	#   K-means
+	################################################################
   
 	Kmeans <- reactive({ # Kmeans clustering
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  {  
-			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
-		}
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) { 
-			tem = input$transform; tem = input$logStart; tem= input$lowFilter 
-		}
-	####################################
-	
-	withProgress(message="k-means clustering", {
-    x <- convertedData()
-	#x <- readData()
-	#par(mfrow=c(1,2))
-	n=input$nGenesKNN
-	#if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	#x1 <- x;
-	#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	#x = 100* x[1:n,] / apply(x[1:n,],1,sum) 
-	x = 100* x[1:n,] / apply(x[1:n,],1,function(y) sum(abs(y))) # L1 norm
-	#x = x - apply(x,1,mean)  # this is causing problem??????
-	#colnames(x) = gsub("_.*","",colnames(x))
-	set.seed(2)
-	k=input$nClusters
-	
-	cl = kmeans(x,k,iter.max = 50)
-	#myheatmap(cl$centers)	
- 
-   incProgress(.3, detail = paste("Heatmap..."))
-	hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
-	tem = match(cl$cluster,hc$order) #  new order 
-	x = x[order(tem),] ; 	bar = sort(tem)
-		incProgress(1, detail = paste("Done")) }) #progress 
-	#myheatmap2(x-apply(x,1,mean), bar,1000)
-	return(list( x = x, bar = bar)) 
+		if (is.null(input$file1)&& input$goButton == 0)
+			return(NULL)
+		##################################
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 1)  {
+				tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
+			}
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) {
+				tem = input$transform; tem = input$logStart; tem= input$lowFilter 
+			}
+		####################################
+		withProgress(message="k-means clustering", {
+			x <- convertedData()
+			#x <- readData()
+			#par(mfrow=c(1,2))
+			n=input$nGenesKNN
+			#if(n>6000) n = 6000 # max
+			if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+			#x1 <- x;
+			#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+			#x = 100* x[1:n,] / apply(x[1:n,],1,sum) 
+			x = 100* x[1:n,] / apply(x[1:n,],1,function(y) sum(abs(y))) # L1 norm
+			#x = x - apply(x,1,mean)  # this is causing problem??????
+			#colnames(x) = gsub("_.*","",colnames(x))
+			set.seed(2)
+			k=input$nClusters
+			cl = kmeans(x,k,iter.max = 50)
+			#myheatmap(cl$centers)	
+			incProgress(.3, detail = paste("Heatmap..."))
+			hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
+			tem = match(cl$cluster,hc$order) #  new order 
+			x = x[order(tem),]; 
+			bar = sort(tem)
+			incProgress(1, detail = paste("Done")) 
+		}) #progress
+		#myheatmap2(x-apply(x,1,mean), bar,1000)
+		return(list( x = x, bar = bar)) 
+	})
+  	
+	# Kmeans clustering
+	output$KmeansHeatmap <- renderPlot({
+    	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		####################################
+		if( is.null(Kmeans())) 
+			return(NULL)
 
-  } )
+		withProgress(message="Creating heatmap", {
+			myheatmap2(Kmeans()$x-apply(Kmeans()$x,1,mean), Kmeans()$bar,1000,mycolor=input$heatColors1)
+			incProgress(1, detail = paste("Done")) 
+		}) #progress 
+	}, height = 500)
   
-	output$KmeansHeatmap <- renderPlot({ # Kmeans clustering
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	# Kmeans clustering
+	output$KmeansNclusters <- renderPlot({
+		if (is.null(input$file1)&& input$goButton == 0)   
+			return(NULL)
+		withProgress(message="k-means clustering", {
+			x <- convertedData()
+			#x <- readData()
+			#par(mfrow=c(1,2))
+			n=input$nGenesKNN
+			#if(n>6000) n = 6000 # max
+			if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+			#x1 <- x;
+			#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+			x = 100* x[1:n,] / apply(x[1:n,],1,sum)  # this is causing problem??????
+			#x = x - apply(x,1,mean)  # this is causing problem??????
+			#colnames(x) = gsub("_.*","",colnames(x))
+			set.seed(2)
+			# determining number of clusters
+			incProgress(.3, detail = paste("Performing k-means..."))
+			
+			k = 30
+			wss <- (nrow(x)-1)*sum(apply(x,2,var))
+			for (i in 2:k) wss[i] <- sum(kmeans(x,centers=i,iter.max = 30)$withinss)
+				par(mar=c(4,5,4,4))
+			plot(1:k, wss, type="b", xlab="Number of Clusters (k)",
+				ylab="Within groups sum of squares",
+				cex=2,cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	,xaxt="n"	 )
+			axis(1, at = seq(1, 30, by = 2),cex.axis=1.5,cex=1.5)
+			incProgress(1, detail = paste("Done")) 
+		}) #progress 
+	} , height = 500, width = 550)
 
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	####################################
-	
-	if( is.null(Kmeans()) ) return(NULL)
-	withProgress(message="Creating heatmap", {
-   
-	myheatmap2(Kmeans()$x-apply(Kmeans()$x,1,mean), Kmeans()$bar,1000,mycolor=input$heatColors1)
-	
-	incProgress(1, detail = paste("Done")) }) #progress 
-  } , height = 500)
-  
-	output$KmeansNclusters <- renderPlot({ # Kmeans clustering
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	withProgress(message="k-means clustering", {
-    x <- convertedData()
-	#x <- readData()
-	#par(mfrow=c(1,2))
-	n=input$nGenesKNN
-	#if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	#x1 <- x;
-	#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	x = 100* x[1:n,] / apply(x[1:n,],1,sum)  # this is causing problem??????
-	#x = x - apply(x,1,mean)  # this is causing problem??????
-	#colnames(x) = gsub("_.*","",colnames(x))
-	set.seed(2)
-	# determining number of clusters
-	incProgress(.3, detail = paste("Performing k-means..."))
-	
-	k = 30
-	wss <- (nrow(x)-1)*sum(apply(x,2,var))
-	  for (i in 2:k) wss[i] <- sum(kmeans(x,centers=i,iter.max = 30)$withinss)
-		par(mar=c(4,5,4,4))
-	plot(1:k, wss, type="b", xlab="Number of Clusters (k)",
-		 ylab="Within groups sum of squares",
-		 cex=2,cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	,xaxt="n"	 )
-	axis(1, at = seq(1, 30, by = 2),cex.axis=1.5,cex=1.5)
-	
-	incProgress(1, detail = paste("Done")) }) #progress 
-  } , height = 500, width = 550)
-  
 	KmeansData <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	if( is.null(Kmeans()) ) return(NULL)
+		if (is.null(input$file1)&& input$goButton == 0)   
+			return(NULL)
+		if( is.null(Kmeans()) ) 
+			return(NULL)
 
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	####################################
-	
-	#myheatmap2(x, bar)
-	Cluster <- toupper(letters)[Kmeans()$bar]
-	x <- cbind(Cluster,Kmeans()$x)
-	
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  {  
+				tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform 
+			}
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) {
+				tem = input$transform; tem = input$logStart; tem= input$lowFilter 
+			}
+		####################################
+		#myheatmap2(x, bar)
+		Cluster <- toupper(letters)[Kmeans()$bar]
+		x <- cbind(Cluster,Kmeans()$x)
 		# add gene symbol
-	if( input$selectOrg != "NEW") 
-	{ ix <- match( rownames(x), allGeneInfo()[,1])
-	  x <- cbind(as.character( allGeneInfo()$symbol)[ix],x) }
-	return(x)
-	
-	 #progress 
-  })
+		if( input$selectOrg != "NEW") { 
+			ix <- match( rownames(x), allGeneInfo()[,1])
+			x <- cbind(as.character( allGeneInfo()$symbol)[ix],x) 
+		}
+
+		return(x)
+	})
   
 	output$downloadDataKmeans <- downloadHandler(
 		filename = function() {"Kmeans.csv"},
-			content = function(file) {
-      write.csv(KmeansData(), file)
+		content = function(file) {
+			write.csv(KmeansData(), file)
 	    }
 	)
+
 	output$KmeansGO <- renderTable({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectGO3
-	if( is.null(input$selectGO3 ) ) return (NULL)
-	if( input$selectGO3 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.") )#No matching species
-   	if( is.null(Kmeans()) ) return(NULL)
-	if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	####################################
-	withProgress(message="GO Enrichment", {
-		# GO
-		pp=0
-		minFDR = 0.01
-
-		for( i in 1:input$nClusters) {
-			incProgress(1/input$nClusters, , detail = paste("Cluster",toupper(letters)[i]) )
-
-			query = rownames(Kmeans()$x)[which(Kmeans()$bar == i)]
-			if(input$selectOrg == "NEW" && !is.null( input$gmtFile) ){ 
-				result <- findOverlapGMT( query, GeneSets(),1) 
-			} else {
-				convertedID <- converted()
-				convertedID$IDs <- query
-				result = FindOverlap (convertedID,allGeneInfo(),input$selectGO3,input$selectOrg,1) 
+		if (is.null(input$file1)&& input$goButton == 0)   
+			return(NULL)
+		tem = input$selectGO3
+		if( is.null(input$selectGO3 ) ) 
+			return(NULL)
+		if( input$selectGO3 == "ID not recognized!" ) 
+			return( as.matrix("Gene ID not recognized.") )#No matching species
+		if( is.null(Kmeans()) ) 
+			return(NULL)
+		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) 
+			return(NULL) # new but without gmtFile
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 1) {  
+				tem = input$minCounts ; 
+				tem= input$NminSamples; 
+				tem = input$countsLogStart; 
+				tem=input$CountsTransform 
 			}
-			if( dim(result)[2] ==1) next;   # result could be NULL
-			result$Genes = toupper(letters)[i] 
-			if (pp==0 ) { results <- result; pp <- 1;
-			} else {
-				results <- rbind(results,result)
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) { 
+				tem = input$transform; 
+				tem = input$logStart; 
+				tem= input$lowFilter 
 			}
-		}
+		####################################
+		withProgress(message="GO Enrichment", {
+			# GO
+			pp=0
+			minFDR = 0.01
 
-		if(pp == 0) return( as.data.frame("No enrichment found."))
-		results= results[,c(5,1,2,4)]
-		colnames(results)= c("Cluster","FDR","Genes","Pathways")
-		if(min(results$FDR) > minFDR ) results = as.data.frame("No signficant enrichment found.") else
-		results = results[which(results$FDR < minFDR),]
-		incProgress(1, detail = paste("Done")) 
-	}) #progress
+			for( i in 1:input$nClusters) {
+				incProgress(1/input$nClusters, , detail = paste("Cluster",toupper(letters)[i]) )
 
-	if( dim(results)[2] ==1)  return ( as.matrix("No significant enrichment.") )
-	colnames(results)[2] = "adj.Pval"
-	results$Genes <- as.character(results$Genes)
-	results$Cluster[which( duplicated(results$Cluster) ) ] <- ""
-	results
-  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+				query = rownames(Kmeans()$x)[which(Kmeans()$bar == i)]
+				if(input$selectOrg == "NEW" && !is.null( input$gmtFile) ){ 
+					result <- findOverlapGMT( query, GeneSets(),1) 
+				} else {
+					convertedID <- converted()
+					convertedID$IDs <- query
+					result = FindOverlap (convertedID,allGeneInfo(),input$selectGO3,input$selectOrg,1) 
+				}
+				if( dim(result)[2] ==1) next;   # result could be NULL
+				result$Genes = toupper(letters)[i] 
+				if (pp==0 ) { results <- result; pp <- 1;
+				} else {
+					results <- rbind(results,result)
+				}
+			}
+
+			if(pp == 0) return( as.data.frame("No enrichment found."))
+			results= results[,c(5,1,2,4)]
+			colnames(results)= c("Cluster","FDR","Genes","Pathways")
+			if(min(results$FDR) > minFDR ) results = as.data.frame("No signficant enrichment found.") else
+			results = results[which(results$FDR < minFDR),]
+			incProgress(1, detail = paste("Done")) 
+		}) #progress
+
+		if( dim(results)[2] ==1)  
+			return(as.matrix("No significant enrichment."))
+		
+		colnames(results)[2] = "adj.Pval"
+		results$Genes <- as.character(results$Genes)
+		results$Cluster[which( duplicated(results$Cluster) ) ] <- ""
+		results
+	}, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
 	output$KmeansPromoter <- renderTable({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectGO3; tem = input$radioPromoterKmeans; tem=input$nGenesKNN; tem=input$nClusters
-	if( is.null(input$selectGO3 ) ) return (NULL)
-	if( is.null(limma()$results) ) return(NULL)
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	####################################
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectGO3; tem = input$radioPromoterKmeans; tem=input$nGenesKNN; tem=input$nClusters
+		if( is.null(input$selectGO3 ) ) return (NULL)
+		if( is.null(limma()$results) ) return(NULL)
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		####################################
+		isolate({ 
+			withProgress(message="Promoter analysis", {
+				x <- convertedData()
+				#x <- readData()
+				#par(mfrow=c(2,1))
+				n=input$nGenesKNN
+				# if(n>6000) n = 6000 # max
+				if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+				
+				x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+				#x = 100* x / apply(x,1,sum)  # this is causing problem??????
+				#x = x - apply(x,1,mean)  # this is causing problem??????
+				#colnames(x) = gsub("_.*","",colnames(x))
+				set.seed(2)
+				# determining number of clusters
+				k=input$nClusters
+				cl = kmeans(x,k,iter.max = 50)
 
-	isolate({ 
-   	withProgress(message="Promoter analysis", {
-	x <- convertedData()
-	#x <- readData()
-	#par(mfrow=c(2,1))
-	n=input$nGenesKNN
-	# if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	
-	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	#x = 100* x / apply(x,1,sum)  # this is causing problem??????
-	#x = x - apply(x,1,mean)  # this is causing problem??????
-	#colnames(x) = gsub("_.*","",colnames(x))
-	set.seed(2)
-	# determining number of clusters
-	k=input$nClusters
-	cl = kmeans(x,k,iter.max = 50)
+				hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
+				tem = match(cl$cluster,hc$order) #  new order 
+				x = x[order(tem),]
+				bar = sort(tem)
+				
+				results1 <- NULL; result <- NULL 
+				pp<- 0
+				for( i in 1:k ) {
+				incProgress(1/k, , detail = paste("Cluster",toupper(letters)[i]) )
+				query = rownames(x)[which(bar == i)]
+				
+				convertedID = convertID(query,input$selectOrg, input$selectGO2 );#"gmax_eg_gene"
+				result <- promoter( convertedID,input$selectOrg,input$radioPromoterKmeans )
+				
+				if( is.null(result)  ) next;   # result could be NULL
+				if(  dim(result)[2] ==1) next;
+				result$List = toupper(letters)[i]    
+				if (pp==0 ) { results1 <- result; pp <- 1 } else  { results1 = rbind(results1,result) }
+				}
 
-	hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
-	tem = match(cl$cluster,hc$order) #  new order 
-	x = x[order(tem),]
-	bar = sort(tem)
-	
-	results1 <- NULL; result <- NULL 
-	pp<- 0
-	for( i in 1:k ) {
-	incProgress(1/k, , detail = paste("Cluster",toupper(letters)[i]) )
-	query = rownames(x)[which(bar == i)]
-	
-	convertedID = convertID(query,input$selectOrg, input$selectGO2 );#"gmax_eg_gene"
-	result <- promoter( convertedID,input$selectOrg,input$radioPromoterKmeans )
-	
-	if( is.null(result)  ) next;   # result could be NULL
-	if(  dim(result)[2] ==1) next;
-	result$List = toupper(letters)[i]    
-	if (pp==0 ) { results1 <- result; pp <- 1 } else  { results1 = rbind(results1,result) }
-	}
+				incProgress(1, detail = paste("Done")) 
+			}) #progress
+			
+			if( is.null(results1) ) {as.data.frame("No significant motif enrichment found.")} else {
+				results1[ duplicated (results1[,4] ),4 ] <- ""
+			results1[,c(4,1:3,5)]
+			}
+		})
+	}, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
-	incProgress(1, detail = paste("Done")) 
-	}) #progress
-	
-	if( is.null(results1) ) {as.data.frame("No significant motif enrichment found.")} else {
-		results1[ duplicated (results1[,4] ),4 ] <- ""
-	  results1[,c(4,1:3,5)]
-	  }
-	})
-  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
-
-
-
-################################################################
-#   Differential gene expression
-################################################################
+	################################################################
+	#   Differential gene expression
+	################################################################
    
-	limma <- reactive({  
-  if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC; tem = input$CountsDEGMethod; tem = input$countsLogStart
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	tem=input$CountsDEGMethod
-	####################################
-	
-	isolate({ 
-	withProgress(message="Identifying Differentially expressed genes", {
-	if(input$dataFileFormat == 1 ) {  # if count data
-		 if(input$CountsDEGMethod == 3 )   # if DESeq2 method
-		  # rawCounts = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
-		 # res =DEG.DESeq2(rawCounts, .05, 2) 
-		  # res1 =DEG.limma(rawCounts, .1, 1.5,rawCounts, 2,3) 
-			return( DEG.DESeq2(readData()$rawCounts,input$limmaPval, input$limmaFC)  )
-		if(input$CountsDEGMethod < 3 )    # voom or limma-trend
-			return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,readData()$rawCounts, input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat) )
-	} else { # normalized data
-	 return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,readData()$rawCounts, input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat) )
-	}
-	
-	
+	limma <- reactive({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$CountsDEGMethod; tem = input$countsLogStart
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		tem=input$CountsDEGMethod
+		####################################
+		
+		isolate({ 
+			withProgress(message="Identifying Differentially expressed genes", {
+				if(input$dataFileFormat == 1 ) {  # if count data
+					if(input$CountsDEGMethod == 3 )   # if DESeq2 method
+					# rawCounts = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
+					# res =DEG.DESeq2(rawCounts, .05, 2) 
+					# res1 =DEG.limma(rawCounts, .1, 1.5,rawCounts, 2,3) 
+						return( DEG.DESeq2(readData()$rawCounts,input$limmaPval, input$limmaFC)  )
+					if(input$CountsDEGMethod < 3 )    # voom or limma-trend
+						return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,readData()$rawCounts, input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat))
+				} else { # normalized data
+					return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,readData()$rawCounts, input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat))
+				}
+			})
+		})
 	})
-	})
-	})	
 
 	output$text.limma <- renderText({
-      if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
- 	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
-	  limma()$Exp.type
-  
-	})	
+		if (is.null(input$file1)&& input$goButton == 0)   
+			return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		limma()$Exp.type
+	})
   
 	output$vennPlot <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	tem=input$CountsDEGMethod
-	####################################
-	
-	isolate({ 
-	
-	results = limma()$results
-	if(dim(results)[2] >5) results <- results[,1:5]
-	vennDiagram(results,circle.col=rainbow(5))
- 
-	
-	})
+		if (is.null(input$file1)&& input$goButton == 0)   
+			return(NULL)
+		
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  {  
+				tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
+			}
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) { 
+				tem = input$transform; tem = input$logStart; tem= input$lowFilter 
+			}
+		tem=input$CountsDEGMethod
+		####################################
+		isolate({ 
+			results = limma()$results
+			if(dim(results)[2] >5) results <- results[,1:5]
+			vennDiagram(results,circle.col=rainbow(5))
+		})
     }, height = 600, width = 600)
 
 	output$listComparisons <- renderUI({
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
-	
-      if (is.null(input$file1)&& input$goButton == 0 )
-       { selectInput("selectContrast", label = NULL, # h6("Funtional Category"), 
-                  choices = list("All" = "All"), selected = "All")  }	 else { 
-	  selectInput("selectContrast", label="Select a comparison to examine. A-B means A vs. B.",choices=limma()$comparisons
-	     )   } 
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		
+		if (is.null(input$file1)&& input$goButton == 0 ) { 
+			selectInput("selectContrast", label = NULL, # h6("Funtional Category"), 
+			choices = list("All" = "All"), selected = "All")  
+		} else {
+			selectInput("selectContrast", label="Select a comparison to examine. A-B means A vs. B.",choices=limma()$comparisons)
+		} 
 	})
-
 	output$listComparisonsPathway <- renderUI({
-	tem = input$selectOrg
-
-      if (is.null(input$file1)&& input$goButton == 0 )
-       { selectInput("selectContrast1", label = NULL, # h6("Funtional Category"), 
-                  choices = list("All" = "All"), selected = "All")  }	 else { 
-	  selectInput("selectContrast1", label="Select a comparison to analyze:",choices=limma()$comparisons
-	     )   } 
+		tem = input$selectOrg
+		if (is.null(input$file1)&& input$goButton == 0 ) { 
+			selectInput("selectContrast1", label = NULL, # h6("Funtional Category"), 
+			choices = list("All" = "All"), selected = "All")  
+		} else {
+			selectInput("selectContrast1", label="Select a comparison to analyze:",choices=limma()$comparisons)
+		} 
 	})
 
 	output$listComparisonsGenome <- renderUI({
-	tem = input$selectOrg
-
-      if (is.null(input$file1)&& input$goButton == 0 )
-       { selectInput("selectContrast1", label = NULL, # h6("Funtional Category"), 
-                  choices = list("All" = "All"), selected = "All")  }	 else { 
-	  selectInput("selectContrast2", label="Select a comparison to analyze:",choices=limma()$comparisons
-	     )   } 
+		tem = input$selectOrg
+		if (is.null(input$file1)&& input$goButton == 0 ) { 
+			selectInput("selectContrast1", label = NULL, # h6("Funtional Category"), 
+			choices = list("All" = "All"), selected = "All")  
+		} else { 
+			selectInput("selectContrast2", label="Select a comparison to analyze:",choices=limma()$comparisons)
+		}
 	})
 	
 	DEG.data <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC; 
-	
+		if (is.null(input$file1)&& input$goButton == 0)
+			return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval;
+		tem=input$limmaFC;
 		tem = input$CountsDEGMethod; 	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	####################################
-	
-	isolate({ 
-	  genes = limma()$results
-	  genes = as.data.frame( genes[which( rowSums(genes) != 0 ),] )
-	  colnames(genes) = colnames( limma()$results )
-	  genes = merge(genes,convertedData(), by='row.names')
-	  colnames(genes)[1] = "1: upregulation, -1: downregulation"
-	  	# add gene symbol
-	ix = match( genes[,1], allGeneInfo()[,1])
-	genes <- cbind(as.character( allGeneInfo()$symbol)[ix],genes) 
-	colnames(genes)[1] = "Symbol"
-	genes <- genes[,c(2,1,3:dim(genes)[2]) ]
-	return(genes)
-	})
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1) {  
+				tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform 
+			}
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) { 
+				tem = input$transform; tem = input$logStart; tem= input$lowFilter 
+			}
+		####################################
+		isolate({
+			genes = limma()$results
+			genes = as.data.frame( genes[which( rowSums(genes) != 0 ),] )
+			colnames(genes) = colnames( limma()$results )
+			genes = merge(genes,convertedData(), by='row.names')
+			colnames(genes)[1] = "1: upregulation, -1: downregulation"
+			# add gene symbol
+			ix = match( genes[,1], allGeneInfo()[,1])
+			genes <- cbind(as.character( allGeneInfo()$symbol)[ix],genes) 
+			colnames(genes)[1] = "Symbol"
+			genes <- genes[,c(2,1,3:dim(genes)[2]) ]
+			return(genes)
+		})
     })
+
+	####### [TODO] Kevin Indentation Work 10/22 #######
 
 	output$selectedHeatmap <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
