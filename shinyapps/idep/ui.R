@@ -389,7 +389,7 @@ tableOutput('species' ),
 				),
                 mainPanel(	
 					plotlyOutput("genomePlotly",height = "700px")
-					,h5("Red and blue dots represent up- or down-regulated genes. Mouse over to see gene symbols. ")					
+					,h5("Red and blue dots represent up- or down-regulated genes, respectively. Mouse over to see gene symbols. ")					
 					,bsModal("modalExample111", "Differentially expressed genomic loci", "runPREDA", size="large"
 						,fluidRow( 
 						column(3,numericInput("RegionsPvalCutoff", label = h5("Min. FDR"), value = 0.01,min=1e-20,max=1,step=.05) ),

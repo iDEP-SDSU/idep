@@ -808,9 +808,10 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 	if( dataFormat == 2) {   # if normalized data
 		eset = new("ExpressionSet", exprs=as.matrix(x)) } else { # counts data
 			if (countsDEGMethods == 1 ) { # limma-trend method selected for counts data
-				dge <- DGEList(counts=rawCounts);
-				dge <- calcNormFactors(dge, method = "TMM")
-				eset <- cpm(dge, log=TRUE, prior.count=priorCounts)
+				#dge <- DGEList(counts=rawCounts);
+				#dge <- calcNormFactors(dge, method = "TMM")
+				#eset <- cpm(dge, log=TRUE, prior.count=priorCounts)
+				eset = new("ExpressionSet", exprs=as.matrix(x))  # use transformed data for limma 
 				limmaTrend = TRUE
 			}
 	}
