@@ -4,7 +4,7 @@ library(shiny)
 library("shinyAce") # for showing text files, code
 library(shinyBS) # for popup figures
 library(plotly)
-iDEPversion = "iDEP 0.40"
+iDEPversion = "iDEP 0.41"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -13,7 +13,6 @@ iDEPversion = "iDEP 0.40"
    
 shinyUI(
   
-# fluidPage( 
   navbarPage(iDEPversion,
 			id='navBar',
             tabPanel("Load Data",
@@ -101,7 +100,8 @@ tableOutput('species' ),
     )
              ) #plots
 			 
-
+###############################################################################################################################
+ 
     ,tabPanel("Pre-Process",
              sidebarLayout(
                sidebarPanel(
@@ -115,14 +115,14 @@ tableOutput('species' ),
 					 
 					strong("Keep genes with minimal counts per million (CPM) in at least n libraries:")
 					,fluidRow(
-						column(6, numericInput("minCounts", label = h5("Min. CPM"), value = 1) )
+						column(6, numericInput("minCounts", label = h5("Min. CPM"), value = 0.5) )
 						,column(6, numericInput("NminSamples", label = h5("n libraries"), value = 1) )
 					) # fluidRow
 					,tags$style(type='text/css', "#minCounts { width:100%;   margin-top:-12px}")
 					,tags$style(type='text/css', "#NminSamples { width:100%;   margin-top:-12px}")
 							
 					,radioButtons("CountsTransform", "Transform counts data for clustering & PCA.",  c("VST: variance stabilizing transform"=2, 
-					"rlog: regularized log (only for N<10) "= 3,"edgeR's logCPM with prior count" = 1),selected = 1 )
+					"rlog: regularized log (slow) "= 3,"edgeR's logCPM with prior count" = 1),selected = 1 )
 					,conditionalPanel("input.CountsTransform == 1",
 						fluidRow(
 							column(5, h5("Prior count:")  )
@@ -139,7 +139,14 @@ tableOutput('species' ),
 				,actionButton("examineDataB", "Search processed data")
                  ,br(),br()
 				 ,downloadButton('downloadProcessedData', 'Download processed data') 
-				 ,br()
+				 ,br(),br()
+				 ,textOutput('nGenesFilter')
+				,tags$head(tags$style("#nGenesFilter{color: red;
+											 font-size: 16px;
+											 font-style: italic;
+											 }"
+									 )
+					)
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/pre-process/",target="_blank")
                ),
                mainPanel(
@@ -157,6 +164,10 @@ tableOutput('species' ),
              )       
     )
 
+	
+	
+###############################################################################################################################
+ 
     ,tabPanel("Heatmap",
               sidebarLayout(
                 sidebarPanel(
@@ -203,6 +214,9 @@ tableOutput('species' ),
 					)
 					)       
 					)
+
+###############################################################################################################################
+ 
 	,tabPanel("k-Means",
               sidebarLayout(
                 sidebarPanel(
@@ -212,7 +226,7 @@ tableOutput('species' ),
 				,actionButton("NClusters", "How many clusters?")
 				,br(),br(),actionButton("showMotifKmeans", "Promoter analysis of each cluster")
 				,br(),br(),downloadButton('downloadDataKmeans', 'Download K-means data')
-				,h5("Database for enrichment analysis")
+				,h5("Pathway database")
 				,htmlOutput("selectGO3"),tags$style(type='text/css', "#selectGO3 { width:100%;   margin-top:-9px}")
 				
 						 
@@ -234,6 +248,9 @@ tableOutput('species' ),
                 )
               )       
     )
+	
+###############################################################################################################################
+ 
      ,tabPanel("PCA",
               sidebarLayout(
                 sidebarPanel(
@@ -253,14 +270,16 @@ tableOutput('species' ),
                 )
               )       
     )
+
+###############################################################################################################################
+ 
 	     ,tabPanel("DEGs",
               sidebarLayout(
                 sidebarPanel(
-				h5("Identifying Differential Expressed Genes (DEGs)")
-				,conditionalPanel("input.dataFileFormat == 1",
-			    #  radioButtons("CountsDEGMethod", "Method to detect DEGs:",  c("limma-voom"=2,"limma-trend"=1,"DESeq2"= 3) )
-				selectInput("CountsDEGMethod", "Method to detect DEGs from read counts:", choices = list("DESeq2"= 3,"limma-voom"=2,"limma-trend"=1), selected = 3)				
-
+				h5("Identifying Differential Expressed Genes (DEGs)"),
+				conditionalPanel("input.dataFileFormat == 1",
+				selectInput("CountsDEGMethod", "Method:", choices = list("DESeq2"= 3,"limma-voom"=2,"limma-trend"=1), selected = 3)				
+				,tags$style(type='text/css', "#CountsDEGMethod { width:100%;   margin-top:-12px}")
 				)				
 				,fluidRow(
 				 column(5,numericInput("limmaPval", label = h5("FDR cutoff"), value = 0.1,min=1e-5,max=1,step=.05)  )
@@ -268,7 +287,9 @@ tableOutput('species' ),
 				) # fluidRow
 				,tags$style(type='text/css', "#limmaPval { width:100%;   margin-top:-12px}")
 				,tags$style(type='text/css', "#limmaFC { width:100%;   margin-top:-12px}")
-				
+				,actionButton("modelAndComparisons", "Select factors and comparisons")
+				,tags$head(tags$style("#modelAndComparisons{color: blue;}"))				
+				,br(),br() 
 				,fluidRow(
 				   column(6,actionButton("showVenn", "Venn Diagram") )
 					, column(6, downloadButton('download.DEG.data', 'All lists') )
@@ -276,7 +297,7 @@ tableOutput('species' ),
 				 #,hr()
 				 ,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
 				 ,htmlOutput("listComparisons")
-				 ,h5("Genesets for enrichment analysis")
+				 ,h5("Pathway database")
 				 ,htmlOutput("selectGO2")
 				,tags$style(type='text/css', "#selectGO2 { width:100%;   margin-top:-9px}")
 				 ,br()
@@ -284,9 +305,12 @@ tableOutput('species' ),
 					column(5,actionButton("showVolcano", "Volcano Plot"))
 					,column(5, actionButton("showScatter", "Scatter Plot") ) 
 				)
-				  ,br(),br(),actionButton("showMotif", "TF binding motifs in promoters")
+			  
+				  ,br(),actionButton("showMotif", "TF binding motifs in promoters")
+				  ,tags$style(type='text/css', "#showMotif { width:100%;   margin-top:-12px}")
 				 #,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
 				 ,br(),br(),downloadButton('download.selectedHeatmap.data', "Download gene list & data" )
+				  ,tags$style(type='text/css', "#download.selectedHeatmap.data { width:100%;   margin-top:-12px}")				 
 				,h5("Also try",  a("ShinyGO", href="http://ge-lab.org:3838/go/") )	
 				,br(),h4( textOutput("text.limma") )										
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/degs/",target="_blank")
@@ -294,7 +318,7 @@ tableOutput('species' ),
 				
                 mainPanel(
                   plotOutput("selectedHeatmap")
-				   ,h4("Enriched genesets in up (A) or down (B) -regulated genes")
+				   ,h4("Enriched pathways in differentially expressed genes:")
 				   ,tableOutput("geneListGO")
 				   ,h4("Top Genes"),tableOutput('geneList')
 				   #,h4("Enriched motif in promoters")
@@ -303,6 +327,14 @@ tableOutput('species' ),
 				   ,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
 				   ,tableOutput("DEG.Promoter"))
 				   ,bsModal("modalExample", "Venn Diagram", "showVenn", size = "large",plotOutput("vennPlot"))
+				   ,bsModal("modalExample21", "Model and comparisons", "modelAndComparisons", size = "large",				   
+						htmlOutput('listFactorsDE')
+						,htmlOutput('listModelComparisons')
+						,br(),br()
+						,actionButton("submitModelButton", "Submit & re-calculate",style="float:center")
+						,tags$head(tags$style("#submitModelButton{color: blue;font-size: 16px;}"))
+						,br(),br(),h5("Close this window to see results.")
+						)
 				   ,bsModal("modalExample4", "Volcano plot", "showVolcano", size = "large",
 						checkboxInput("volcanoPlotBox", label = "Show interactive version w/ gene symbols", value = FALSE)
 						,conditionalPanel("input.volcanoPlotBox == 0",	plotOutput("volcanoPlot") )
@@ -320,6 +352,10 @@ tableOutput('species' ),
                 )  
               )       
     )
+
+	
+###############################################################################################################################
+ 
    ,tabPanel("Pathways",
               sidebarLayout(
                 sidebarPanel(
@@ -367,7 +403,10 @@ tableOutput('species' ),
                 )
               )       
     )
-   ,tabPanel("Chromosome",
+
+
+###############################################################################################################################
+   ,tabPanel("Chromosome", 
               sidebarLayout(
                 sidebarPanel(
 				h5("The interactive map on the right visualizes gene expression changes on the genome.") 
@@ -424,14 +463,16 @@ tableOutput('species' ),
   #, height = "400px"
   #, readOnly = TRUE
  # ) )))
-
+ 
+###############################################################################################################################
+ 
 ,tabPanel("R",
       fluidRow(
        column(12,
      htmlOutput('RsessionInfo')
  ) ))
 
-  ,tags$head(includeScript("ga.js")) # tracking usage  
+  #,tags$head(includeScript("ga.js")) # tracking usage  
   )# Navibar
- # ) # fluid page
+
 )

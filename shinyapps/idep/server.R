@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.40"
+iDEPversion = "iDEP 0.41"
 ################################################################
 # R packages
 ################################################################
@@ -74,8 +74,8 @@ colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull do
 #  setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
 
 # relative path to data files
-datapath = "../../data/"   # production server
-#datapath = "../../../go/"  # windows
+#datapath = "../../data/"   # production server
+datapath = "../../../go/"  # windows
 #datapath = "../go/" # digital ocean
 
 sqlite  <- dbDriver("SQLite")
@@ -150,7 +150,7 @@ dynamicRange <- function( x ) {
  }
 
 # heatmap with color bar define gene groups
-myheatmap2 <- function (x,bar,n=-1,mycolor=1 ) {
+myheatmap2 <- function (x,bar=NULL,n=-1,mycolor=1,clusterNames=NULL ) {
 	# number of genes to show
 	ngenes = as.character( table(bar))
 	if(length(bar) >n && n != -1) {ix = sort( sample(1:length(bar),n) ); bar = bar[ix]; x = x[ix,]  }
@@ -162,24 +162,37 @@ myheatmap2 <- function (x,bar,n=-1,mycolor=1 ) {
 	cutoff = median(unlist(x)) - 3*sd (unlist(x)) 
 	x[x< cutoff] <- cutoff
 	#colnames(x)= detectGroups(colnames(x))
-	 heatmap.2(x,  Rowv =F,Colv=F, dendrogram ="none",
-	 col=heatColors[as.integer(mycolor),], density.info="none", trace="none", scale="none", keysize=.3
-	,key=F, labRow = F,
-	,RowSideColors = mycolors[bar]
-	,margins = c(8, 24)
-	,srtCol=45
-	)
+	if(is.null(bar)) # no side colors
+		heatmap.2(x,  Rowv =F,Colv=F, dendrogram ="none",
+		col=heatColors[as.integer(mycolor),], density.info="none", trace="none", scale="none", keysize=.3
+		,key=F, labRow = F,
+		#,RowSideColors = mycolors[bar]
+		,margins = c(8, 24)
+		,srtCol=45
+		) else
+		heatmap.2(x,  Rowv =F,Colv=F, dendrogram ="none",
+		col=heatColors[as.integer(mycolor),], density.info="none", trace="none", scale="none", keysize=.3
+		,key=F, labRow = F,
+		,RowSideColors = mycolors[bar]
+		,margins = c(8, 24)
+		,srtCol=45
+		)
+	if(!is.null(bar)) { 
 
-	legend.text = paste("Cluster ", toupper(letters)[unique(bar)], " (N=", ngenes,")", sep="")
-	par(lend = 1)           # square line ends for the color legend
-	legend("topright",      # location of the legend on the heatmap plot
+		legend.text = paste("Cluster ", toupper(letters)[unique(bar)], " (N=", ngenes,")", sep="") 
+		if( !is.null( clusterNames ) && length(clusterNames)>= length( unique(bar) ) )  
+			legend.text = paste(clusterNames[ 1:length( unique(bar) )  ], " (N=", ngenes,")", sep="") 
+		
+		par(lend = 1)           # square line ends for the color legend
+		legend("topright",      # location of the legend on the heatmap plot
 		legend = legend.text, # category labels
 		col = mycolors,  # color key
 		lty= 1,             # line style
-		lwd = 10            # line width
-	)
-
+		lwd = 10 )           # line width
+		}
 }
+
+
 
 # adding sample legends to heatmap; this is for the main heatmap
 # https://stackoverflow.com/questions/3932038/plot-a-legend-outside-of-the-plotting-area-in-base-graphics
@@ -948,10 +961,11 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 }
 
 # Differential expression using DESeq2
-DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2){
+DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedComparisons=NULL, sampleInfo = NULL,modelFactors=NULL){
 	library(DESeq2) # count data analysis
 	groups = as.character ( detectGroups( colnames( rawCounts ) ) )
 	g = unique(groups)# order is reversed
+	
 	
 	# check for replicates, removes samples without replicates
 	reps = as.matrix(table(groups)) # number of replicates per biological sample
@@ -971,42 +985,106 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2){
 		for (j in (i+1):length(g)) 
 		comparisons = c(comparisons,paste(g[j],"-",g[i],sep="" ) )
 	comparisons <- comparisons[-1]
-	
+	comparisons2 = comparisons
 	colData = cbind(colnames(rawCounts), groups )
 
 	# Set up the DESeqDataSet Object and run the DESeq pipeline
 	dds = DESeqDataSetFromMatrix(countData=rawCounts,
 								colData=colData,
 								design=~groups)
-	dds = DESeq(dds)  # main function
+								
+	
+	if( is.null(selectedComparisons)  ) 
+		dds = DESeq(dds)  	else  
+	{    # using selected factors and comparisons
+		# build model
+		factors = modelFactors   # selected facters and interactions: c( "strain", "treatment",  "strain:treatment")
+		factors = factors[ !grepl(":",factors )]   # non-interaction terms
+		
+		colData = sampleInfo  
+		factorsCoded = toupper(letters )[1: dim(colData)[2] ]   # Factors are encoded as "A", "B", "C"; this avoid illigal letters
+		names(factorsCoded) =  colnames(colData)  # this is for look up; each column of sampleInfo  
+		colnames(colData) = factorsCoded # all columns named A B C D 
+		# base model
+        DESeq2.Object= paste("dds = DESeqDataSetFromMatrix(countData=rawCounts, colData=colData, design=~ ", 
+							 paste( factorsCoded[factors],collapse="+")) # only use selected factors		
+		Exp.type = paste("Model: ~", paste(modelFactors,collapse="+") )
+		# interaction terms like strain:treatment
+		Interactions = modelFactors[ grepl(":",modelFactors )]
+		# create model
+		if( length(Interactions)>0 ) { # if there is interaction
+			for( interactionTerms in Interactions) {
+				interactingFactors = unlist(strsplit(interactionTerms,":" ) )  # split strain:treatment as "strain" and "mutant"
+				tem = paste(factorsCoded [ interactingFactors ],collapse=":")   # convert "strain:mutant" to "A:B"
+				DESeq2.Object = paste(DESeq2.Object, "+",tem)
+			}			
+		}
+		DESeq2.Object= paste( DESeq2.Object, ")") # ends the model
 
+		eval(parse(text = DESeq2.Object) )
+		dds = DESeq(dds)  # main function		
+		
+		# comparisons 
+		# "group: control vs. mutant"
+		comparisons = gsub(".*: ","",selectedComparisons)
+		comparisons = gsub(" vs\\. ","-",comparisons)
+		factorsVector= gsub(":.*","",selectedComparisons) # corresponding factors for each comparison
+		comparisons2 = comparisons
+		#comparisons2 = gsub(" vs\\. ","-",selectedComparisons )
+		#comparisons2 = gsub(":","",comparisons2 )
+		
+		
+		# comparisons due to interaction terms
+		if( length(Interactions)>0 ) { # if there is interaction
+			interactionComparisons = resultsNames(dds)
+			interactionComparisons = interactionComparisons[ grepl("\\.",interactionComparisons )   ]
+	
+			comparisons = c(comparisons,interactionComparisons )
+			
+			# translate comparisons generated in interaction terms back to real factor names
+			interactionComparisons2 = interactionComparisons
+			for ( i in 1:length(interactionComparisons2 ) ) {
+				tem = unlist(strsplit(interactionComparisons2[i],"\\." ) )
+				tem_factors = substr(tem,1,1) 
+				tem_factors = names(factorsCoded)[factorsCoded == tem_factors]  # get the first letters and translate into real factor names
+				interactionComparisons2[i] <- paste0( "Diff:",tem_factors[1], "_",substr(tem[1],2,nchar(tem[1]) ),".",
+													          tem_factors[2], "_",substr(tem[2],2,nchar(tem[2]) ) 
+													)				
+			}
+			comparisons2 = c(comparisons2,interactionComparisons2 )
+		}
+	}	
+	
 	result1 = NULL; allCalls = NULL;
 	topGenes = list(); pk = 1 # counter
 	pp=0 # first results?
 	for( kk in 1:length(comparisons) ) {
 		tem = unlist( strsplit(comparisons[kk],"-") )
-		selected = results(dds, contrast=c("groups", tem[1], tem[2]) ) #, lfcThreshold=log2(minFC_limma))
-		# selected = subset(res, padj < maxP_limma )
-		if(dim(selected)[1] == 0 ) next; # no significant genes
-		selected = selected[order(-abs(selected$log2FoldChange)),] 
+		
+		if(is.null(selectedComparisons)) 
+			selected = results(dds, contrast=c("groups", tem[1], tem[2]) )   else {
+			if(!grepl("\\.", comparisons[kk] ) )    # if not interaction term: they contain .  interaction term
+				selected = results(dds, contrast=c( factorsCoded[ factorsVector[kk]  ],tem[1], tem[2]) ) else # either A, B, C ...
+				selected = results(dds, name=comparisons[kk] ) # interaction term
+			}
 
 		selected$calls =0   
 		selected$calls [which( selected$log2FoldChange > log2(minFC_limma) & selected$padj < maxP_limma ) ]  <-  1
 		selected$calls [ which( selected$log2FoldChange <  -log2(minFC_limma) & selected$padj < maxP_limma ) ] <-  -1
-		colnames(selected)= paste( as.character(comparisons[kk]), "___",colnames(selected),sep="" )
+		colnames(selected)= paste( as.character(comparisons2[kk]), "___",colnames(selected),sep="" )
 		selected = as.data.frame(selected)
 		if (pp==0){  # if first one with significant genes, collect gene list and Pval+ fold
 		result1 = selected; pp = 1; 
 		# selected[,2] <- -1 * selected[,2] # reverse fold change direction
 		topGenes[[1]] = selected[,c(2,6)]; 
-		names(topGenes)[1] = comparisons[kk]; } else 
+		names(topGenes)[1] = comparisons2[kk]; } else 
 			{ result1 = merge(result1,selected,by="row.names"); 
 				rownames(result1) = result1[,1]; 
 				result1 <- result1[,-1]
 				pk= pk+1; 
 				# selected[,2] <- -1 * selected[,2] # reverse fold change direction
 				topGenes[[pk]] = selected[,c(2,6)]; 
-				names(topGenes)[pk] = comparisons[kk]; 
+				names(topGenes)[pk] = comparisons2[kk]; 
 			}
 	}
 	#if( length(comparisons) == 1) topGenes <- topGenes[[1]] # if only one comparison, topGenes is not a list, just a data frame itself.
@@ -1016,7 +1094,7 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2){
 	colnames(allCalls)= gsub("___.*","", colnames(allCalls))
 	colnames(allCalls)= gsub("\\.","-", colnames(allCalls)) # note that samples names should have no "."
 	}
-	return( list(results= allCalls, comparisons = comparisons, Exp.type=Exp.type, topGenes=topGenes)) 
+	return( list(results= allCalls, comparisons = comparisons2, Exp.type=Exp.type, topGenes=topGenes)) 
 }
 
 # Find enriched TF binding motifs in promoters
@@ -1532,6 +1610,8 @@ function(input, output,session) {
 				if(sum(dataType) <=2) return (NULL)  # only less than 2 columns are numbers
 				x <- x[,dataType]  # only keep numeric columns
 
+				dataSizeOriginal = dim(x); dataSizeOriginal[2] = dataSizeOriginal[2] -1
+				
 				x[,1] <- toupper(x[,1])
 				x[,1] <- gsub(" ","",x[,1]) # remove spaces in gene ids
 				x = x[order(- apply(x[,2:dim(x)[2]],1,sd) ),]  # sort by SD
@@ -1607,7 +1687,7 @@ function(input, output,session) {
 
 					incProgress(1/2,"transforming raw counts")
 					# regularized log  or VST transformation
-					if( input$CountsTransform == 3 && dim(counts(dds))[2] <= 10 ) { # rlog is slow, only do it with 10 samples
+					if( input$CountsTransform == 3 ) { # rlog is slow, only do it with 10 samples
 						x <- rlog(dds, blind=TRUE); x <- assay(x) } 
 					else {
 						if ( input$CountsTransform == 2 ) {    # vst is fast but aggressive
@@ -1620,8 +1700,9 @@ function(input, output,session) {
 						}
 					}
 				}
+				dataSize = dim(x);
 				incProgress(1, "Done.")
-				finalResult <- list(data = as.matrix(x), mean.kurtosis = mean.kurtosis, rawCounts = rawCounts, dataTypeWarning=dataTypeWarning)
+				finalResult <- list(data = as.matrix(x), mean.kurtosis = mean.kurtosis, rawCounts = rawCounts, dataTypeWarning=dataTypeWarning, dataSize=c(dataSizeOriginal,dataSize) )
 				return(finalResult)
 			})
 		})
@@ -1683,6 +1764,15 @@ function(input, output,session) {
 		if(readData()$dataTypeWarning == -1 ) {
 			tem = paste (tem, "  ------Warning!!! Data does not look like read counts data. Please select appropriate data type in the previous page and reload file.")}
 		tem
+	})	
+
+	# provide info on number of genes passed filter
+	output$nGenesFilter <- renderText({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		inFile <- input$file1
+		if( is.null(readData()) ) return(NULL)
+		tem = readData()$dataSize
+		return( paste(tem[4], "samples.", tem[3], "of the ", tem[1], "genes pased filter."  ) )
 	})	
 
 	# Show info on file format	
@@ -2698,9 +2788,138 @@ function(input, output,session) {
 ################################################################
 #   Differential gene expression
 ################################################################
-   
+	output$listFactorsDE <- renderUI({
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC
+	 # Note that " in HTML needs to be denoted with \"    with  the escape character \.
+    if (is.null(input$file2) ) # if sample info is uploaded and correctly parsed.
+       { return(HTML("<font size = \"4\">A <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a> 
+	     needs to be uploaded before you can select factors and comparisons! Example for the demo data:
+						 </font>
+		<style>
+		  table {
+			border-collapse: collapse;
+		  }
+		  th, td {
+			border: 1px solid orange;
+			padding: 10px;
+			text-align: left;
+		  }
+		</style>
+		<table width=\"499\">
+		<tbody>
+		<tr>
+		<td width=\"71\">&nbsp;</td>
+		<td width=\"64\">
+		<p>control_2</p>
+		</td>
+		<td width=\"64\">
+		<p>control_3</p>
+		</td>
+		<td width=\"64\">
+		<p>control_1</p>
+		</td>
+		<td width=\"79\">
+		<p>Hoxa1KN_2</p>
+		</td>
+		<td width=\"79\">
+		<p>Hoxa1KN_3</p>
+		</td>
+		<td width=\"79\">
+		<p>Hoxa1KN_1</p>
+		</td>
+		</tr>
+		<tr>
+		<td width=\"71\">
+		<p>treatment</p>
+		</td>
+		<td width=\"64\">
+		<p>control</p>
+		</td>
+		<td width=\"64\">
+		<p>control</p>
+		</td>
+		<td width=\"64\">
+		<p>control</p>
+		</td>
+		<td width=\"79\">
+		<p>Hoxa1KN</p>
+		</td>
+		<td width=\"79\">
+		<p>Hoxa1KN</p>
+		</td>
+		<td width=\"79\">
+		<p>Hoxa1KN</p>
+		</td>
+		</tr>
+		<tr>
+		<td width=\"71\">
+		<p>batch</p>
+		</td>
+		<td width=\"64\">
+		<p>A</p>
+		</td>
+		<td width=\"64\">
+		<p>B</p>
+		</td>
+		<td width=\"64\">
+		<p>C</p>
+		</td>
+		<td width=\"79\">
+		<p>A</p>
+		</td>
+		<td width=\"79\">
+		<p>B</p>
+		</td>
+		<td width=\"79\">
+		<p>C</p>
+		</td>
+		</tr>
+		</tbody>
+		</table>")) }	 else { 
+	   
+		factors = colnames(readSampleInfo())
+		choices = setNames(factors, factors  )
+		interactions = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=":"))
+		choices = append( choices,setNames( interactions, paste(interactions,"interaction") ))
+	   
+		checkboxGroupInput("selectFactorsModel", 
+                              h4("Select factors in model"), 
+                              choices = choices,
+                              selected = NULL)	   
+	  
+	        } 
+	})  
+ 
+	output$listModelComparisons <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		
+		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   { return(NULL ) }	 else { 
+				choices = list()
+				for( selectedFactors in input$selectFactorsModel) { 
+					ix = match(selectedFactors, colnames(readSampleInfo() ) )
+					if(is.na(ix) ) next;   # if column not found, skip
+					factors = unique( readSampleInfo()[,ix])
+					comparisons = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=" vs. "))
+					comparisons = c(comparisons, apply(t(combn(rev(factors),2)),1, function(x) paste(x,collapse=" vs. ")) )	
+					comparisons = sort(comparisons)
+					comparisons = paste0(selectedFactors,": ",comparisons)
+					choices = append( choices, setNames(comparisons, comparisons ))
+				}
+				if(length(choices)==0 ) return(NULL) else
+				checkboxGroupInput("selectModelComprions", 
+									  h4("Select comparisons:"), 
+									  choices = choices,
+									  selected = choices[[1]])	   
+				} 
+	}) 
+
+ 
+	
 	limma <- reactive({  
-  if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$CountsDEGMethod; tem = input$countsLogStart
 	
@@ -2714,6 +2933,7 @@ function(input, output,session) {
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
 	tem=input$CountsDEGMethod
+	tem = input$submitModelButton  # this is used to make it responsive only when model and comparisons are completed
 	####################################
 	
 	isolate({ 
@@ -2723,7 +2943,7 @@ function(input, output,session) {
 		  # rawCounts = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
 		 # res =DEG.DESeq2(rawCounts, .05, 2) 
 		  # res1 =DEG.limma(rawCounts, .1, 1.5,rawCounts, 2,3) 
-			return( DEG.DESeq2(readData()$rawCounts,input$limmaPval, input$limmaFC)  )
+			return( DEG.DESeq2(readData()$rawCounts,input$limmaPval, input$limmaFC, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel)  )
 		if(input$CountsDEGMethod < 3 )    # voom or limma-trend
 			return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,readData()$rawCounts, input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat) )
 	} else { # normalized data
@@ -2758,6 +2978,8 @@ function(input, output,session) {
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
 	tem=input$CountsDEGMethod
+	tem = input$selectFactorsModel # responsive to changes in model and comparisons
+	tem = input$selectModelComprions
 	####################################
 	
 	isolate({ 
@@ -2802,36 +3024,36 @@ function(input, output,session) {
 	})
 	
 	DEG.data <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC; 
-	
-		tem = input$CountsDEGMethod; 	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	####################################
-	
-	isolate({ 
-	  genes = limma()$results
-	  genes = as.data.frame( genes[which( rowSums(genes) != 0 ),] )
-	  colnames(genes) = colnames( limma()$results )
-	  genes = merge(genes,convertedData(), by='row.names')
-	  colnames(genes)[1] = "1: upregulation, -1: downregulation"
-	  	# add gene symbol
-	ix = match( genes[,1], allGeneInfo()[,1])
-	genes <- cbind(as.character( allGeneInfo()$symbol)[ix],genes) 
-	colnames(genes)[1] = "Symbol"
-	genes <- genes[,c(2,1,3:dim(genes)[2]) ]
-	return(genes)
-	})
-    })
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC; 
+		
+			tem = input$CountsDEGMethod; 	
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		####################################
+		
+		isolate({ 
+		  genes = limma()$results
+		  genes = as.data.frame( genes[which( rowSums(genes) != 0 ),] )
+		  colnames(genes) = colnames( limma()$results )
+		  genes = merge(genes,convertedData(), by='row.names')
+		  colnames(genes)[1] = "1: upregulation, -1: downregulation"
+			# add gene symbol
+		ix = match( genes[,1], allGeneInfo()[,1])
+		genes <- cbind(as.character( allGeneInfo()$symbol)[ix],genes) 
+		colnames(genes)[1] = "Symbol"
+		genes <- genes[,c(2,1,3:dim(genes)[2]) ]
+		return(genes)
+		})
+		})
 
 	output$selectedHeatmap <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -2854,26 +3076,61 @@ function(input, output,session) {
 	withProgress(message="Generating heatmap", {
 	if( is.null(input$selectContrast)) return(NULL)
 	if( is.null(limma()$results)) return(NULL)
+	#if( is.null(selectedHeatmap.data() )) return(NULL) 
 	isolate({ 
-	  genes = limma()$results
-	  if( is.null(genes) ) return(NULL)
-	  ix = match(input$selectContrast, colnames(genes)) 
-	  if(is.null(ix)) reutn(NULL); if(is.na(ix)) return (NULL)
-	  if( sum(abs(genes[,ix] )  ) <= 1 ) return(NULL) # no significant genes for this comparison
-	  query = rownames(genes)[which(genes[,ix] != 0)]
-      iy = match(query, rownames(convertedData()  ) )
-	 iz= match( detectGroups(colnames(convertedData())), unlist(strsplit( input$selectContrast, "-"))	  )
-     iz = which(!is.na(iz))
-	 if (grepl("Diff:",input$selectContrast) == 1) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
-	 genes = convertedData()[iy,iz]
-	 groups = detectGroups(colnames(genes) )
-	 N1 = sum(groups == groups[1] ) # number of samples in type above
-	 fc = rowMeans(genes[,1:N1])-rowMeans(genes[,(N1+1):length(groups)])
-	 genes = genes[order(fc),]
-	 fc = sort(fc)
-	 bar = (fc>0 )+1
-	 incProgress(1/2 )
- 	 myheatmap2( genes,bar,200,mycolor=input$heatColors1 )
+		  genes <- limma()$results
+		  if( is.null(genes) ) return(NULL)
+		  if(!grepl("Diff:", input$selectContrast) ) {  # if not interaction term
+			ix = match(input$selectContrast, colnames(genes)) 
+		  } else {
+			#mismatch in comparison names for interaction terms
+			#Diff:water_Wet.genetic_Hy 	 in the selected Contrast
+			#Diff-water_Wet-genetic_Hy   in column names
+			tem = gsub("Diff-","Diff:" ,colnames(genes))
+			  tem = gsub("-","\\.",tem)
+			  ix = match(input$selectContrast, tem) 
+		  }
+	  
+		  if(is.null(ix)) return(NULL)
+		  if(is.na(ix)) return(NULL)
+		  if( sum(abs(genes[,ix] )  ) <= 1 ) return(NULL) # no significant genes for this comparison
+		  if(dim(genes)[2] < ix ) return(NULL)
+		  query = rownames(genes)[which(genes[,ix] != 0)]
+		  if(length(query) == 0) return(NULL)
+		  iy = match(query, rownames(convertedData()  ) )
+		  
+		  # find sample related to the comparison
+		 iz= match( detectGroups(colnames(convertedData())), unlist(strsplit( input$selectContrast, "-"))	  )
+		 iz = which(!is.na(iz))		 
+		 if ( !is.null(input$file2) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
+			comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
+			comparisons = gsub(" vs\\. ","-",comparisons)		
+			factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
+			ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
+			if (is.na(ik)) iz=1:(dim(convertedData())[2])  else {  # interaction term, use all samples		
+				selectedfactor= factorsVector[ ik ] # corresponding factors
+				iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast, "-"))	  )
+				iz = which(!is.na(iz))
+			}		 
+		 }
+
+		 if (grepl("Diff:",input$selectContrast)) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
+		 if( is.na(iz)[1] | length(iz)<=1 ) iz=1:(dim(convertedData())[2]) 
+
+		# color bar
+		 bar = genes[,ix]
+		 bar = bar[bar!=0]
+		 bar = bar+2;
+		 bar[bar==3] =2
+		 # retreive related data		 
+		 genes = convertedData()[iy,iz]
+		 
+		 genes = genes[order(bar),] # needs to be sorted because myheatmap2 does not reorder genes
+		 bar = sort(bar)
+
+		 incProgress(1/2 )
+	  	 myheatmap2( genes,bar,200,mycolor=input$heatColors1,c("Down","Up") )
+	 
 	 incProgress(1, detail = paste("Done")) 
 	
 	 })
@@ -2882,47 +3139,71 @@ function(input, output,session) {
     }, height = 400, width = 500)
 
 	selectedHeatmap.data <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast;
+		tem = input$CountsDEGMethod; 
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		####################################
+		
+		if( is.null(input$selectContrast)) return(NULL)
+		if( is.null(limma()$results) ) return(NULL)
+		isolate({ 
+		  genes <- limma()$results
+		  if( is.null(genes) ) return(NULL)
+		  if(!grepl("Diff:", input$selectContrast) ) {  # if not interaction term
+			ix = match(input$selectContrast, colnames(genes)) 
+		  } else {
+			#mismatch in comparison names for interaction terms
+			#Diff:water_Wet.genetic_Hy 	 in the selected Contrast
+			#Diff-water_Wet-genetic_Hy   in column names
+			tem = gsub("Diff-","Diff:" ,colnames(genes))
+			  tem = gsub("-","\\.",tem)
+			  ix = match(input$selectContrast, tem) 
+		  }
 	
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast;
-	tem = input$CountsDEGMethod; 
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	####################################
-	
-	if( is.null(input$selectContrast)) return(NULL)
-	if( is.null(limma()$results) ) return(NULL)
-	isolate({ 
-	  genes <- limma()$results
-	  if( is.null(genes) ) return(NULL)
-	  ix = match(input$selectContrast, colnames(genes)) 
-	  if(is.null(ix)) return(NULL)
-	  if(is.na(ix)) return(NULL)
-	  if( sum(abs(genes[,ix] )  ) <= 1 ) return(NULL) # no significant genes for this comparison
-	  if(dim(genes)[2] < ix ) return(NULL)
-	  query = rownames(genes)[which(genes[,ix] != 0)]
-	  if(length(query) == 0) return(NULL)
-      iy = match(query, rownames(convertedData()  ) )
-	  
-     iz= match( detectGroups(colnames(convertedData())), unlist(strsplit( input$selectContrast, "-"))	  )
-     iz = which(!is.na(iz))
-	 if (grepl("Diff:",input$selectContrast) == 1) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
-	 genes = convertedData()[iy,iz]
-	 groups = detectGroups(colnames(genes) )
-	 N1 = sum(groups == groups[1] ) # number of samples in type above
-	 fc = rowMeans(genes[,1:N1])-rowMeans(genes[,(N1+1):length(groups)])
-	 genes = genes[order(fc),]
- 	 return(genes)
-	})
+		  if(is.null(ix)) return(NULL)
+		  if(is.na(ix)) return(NULL)
+		  if( sum(abs(genes[,ix] )  ) <= 1 ) return(NULL) # no significant genes for this comparison
+		  if(dim(genes)[2] < ix ) return(NULL)
+		  query = rownames(genes)[which(genes[,ix] != 0)]
+		  if(length(query) == 0) return(NULL)
+		  iy = match(query, rownames(convertedData()  ) )
+		  
+		  # find sample related to the comparison
+		 iz= match( detectGroups(colnames(convertedData())), unlist(strsplit( input$selectContrast, "-"))	  )
+		 iz = which(!is.na(iz))		 
+		 if ( !is.null(input$file2) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
+			comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
+			comparisons = gsub(" vs\\. ","-",comparisons)		
+			factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
+			ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
+			if (is.na(ik)) iz=1:(dim(convertedData())[2])  else {  # interaction term, use all samples		
+				selectedfactor= factorsVector[ ik ] # corresponding factors
+				iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast, "-"))	  )
+				iz = which(!is.na(iz))
+			}		 
+		 }
+		 if (grepl("Diff:",input$selectContrast) == 1) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
+		 if( is.na(iz)[1] | length(iz)<=1 ) iz=1:(dim(convertedData())[2]) 
+
+		 # retreive related data
+		 genes = convertedData()[iy,iz]
+		 
+		 genes = genes[order(apply(genes,1,sd), decreasing=T  ),]   # sort genes by SD
+		 
+		 return(genes)
+		})
     })
 
 	output$download.selectedHeatmap.data <- downloadHandler(
@@ -2999,6 +3280,8 @@ function(input, output,session) {
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+	tem = input$selectFactorsModel # responsive to changes in model and comparisons
+	tem = input$selectModelComprions
 	noSig = as.data.frame("No significant genes find!")
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
@@ -3159,7 +3442,9 @@ function(input, output,session) {
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
+	if(grepl("Diff:", input$selectContrast) ) 	return(NULL) # if interaction term related comparison
 	isolate({ 
+
 	withProgress(message="Generating scatter plot with all genes",{ 
 	if(length( limma()$comparisons)  ==1 )  
     { top1=limma()$topGenes[[1]]  
@@ -3184,12 +3469,35 @@ function(input, output,session) {
      samples = unlist(strsplit( input$selectContrast, "-"))
      iz= match( detectGroups(colnames(convertedData())), samples[1]	  )
      iz = which(!is.na(iz))
+	# find sample using sample info file 
+	if ( !is.null(input$file2) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
+		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
+		comparisons = gsub(" vs\\. ","-",comparisons)		
+		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
+		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
+		selectedFactor= factorsVector[ ik ] # corresponding factors
+		cat(selectedFactor)
+		iz= match( readSampleInfo()[,selectedFactor], unlist(strsplit( input$selectContrast, "-"))[1]	  )
+		iz = which(!is.na(iz))
+	}
+	 
+	 
 	 genes <- convertedData()[,iz]
 	 genes <- as.data.frame(genes)
 	 genes$average1 <- apply( genes,1,mean)
 
      iz= match( detectGroups(colnames(convertedData())), samples[2]	  )
      iz = which(!is.na(iz))
+	# find sample using sample info file 
+	if ( !is.null(input$file2) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
+		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
+		comparisons = gsub(" vs\\. ","-",comparisons)		
+		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
+		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
+		selectedfactor= factorsVector[ ik ] # corresponding factors
+		iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast, "-"))[2]	  )
+		iz = which(!is.na(iz))
+	}
 	 # genes <- cbind( genes,convertedData()[,iz] )
 	 genes$average2 <- apply(convertedData()[,iz] ,1,mean)	 
 	genes <- merge(genes,top1,by="row.names")
@@ -3216,6 +3524,7 @@ function(input, output,session) {
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
+	if(grepl("Diff:", input$selectContrast) ) 	return(NULL) # if interaction term related comparison
 	isolate({ 
 	withProgress(message="Generating scatter plot with all genes",{ 
 	if(length( limma()$comparisons)  ==1 )  
@@ -3241,12 +3550,35 @@ function(input, output,session) {
      samples = unlist(strsplit( input$selectContrast, "-"))
      iz= match( detectGroups(colnames(convertedData())), samples[1]	  )
      iz = which(!is.na(iz))
+	# find sample using sample info file 
+	if ( !is.null(input$file2) & !is.null(input$selectFactorsModel) ) {
+		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
+		comparisons = gsub(" vs\\. ","-",comparisons)		
+		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
+		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
+		selectedFactor= factorsVector[ ik ] # corresponding factors
+		cat(selectedFactor)
+		iz= match( readSampleInfo()[,selectedFactor], unlist(strsplit( input$selectContrast, "-"))[1]	  )
+		iz = which(!is.na(iz))
+	}
+	 
 	 genes <- convertedData()[,iz]
 	 genes <- as.data.frame(genes)
 	 genes$average1 <- apply( genes,1,mean)
 
      iz= match( detectGroups(colnames(convertedData())), samples[2]	  )
      iz = which(!is.na(iz))
+
+	# find sample using sample info file 
+	if ( !is.null(input$file2) & !is.null(input$selectFactorsModel) ) {
+		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
+		comparisons = gsub(" vs\\. ","-",comparisons)		
+		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
+		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
+		selectedfactor= factorsVector[ ik ] # corresponding factors
+		iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast, "-"))[2]	  )
+		iz = which(!is.na(iz))
+	}
 	 # genes <- cbind( genes,convertedData()[,iz] )
 	 genes$average2 <- apply(convertedData()[,iz] ,1,mean)	 
 	genes <- merge(genes,top1,by="row.names")
@@ -3321,7 +3653,7 @@ function(input, output,session) {
 		result = FindOverlap (convertedID,allGeneInfo(), input$selectGO2,input$selectOrg,1) }
 
 	if( dim(result)[2] ==1) next;   # result could be NULL
-		if(i == 1) result$Genes = "A"  else result$Genes = "B"
+		if(i == 1) result$Genes = "Up regulated"  else result$Genes = "Down regulated"
 		if (pp==0 ) { results1 <- result; pp = 1;} else  results1 = rbind(results1,result)
 	}
 
@@ -3343,12 +3675,7 @@ function(input, output,session) {
 	results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )
 	results1[,1] <- as.character(results1[,1])
 	tem <- results1[,1]
-	#results1[ which(tem == "A"),1] <- gsub("-"," > ",input$selectContrast )
-	#results1[ which(tem == "B"),1] <- gsub("-"," < ",input$selectContrast )
-	
-	# use sample names from data to define comparison.
-	results1[ which(tem == "A"),1] <- paste(unique(groups), collapse = " < ")
-	results1[ which(tem == "B"),1] <- paste(unique(groups), collapse = " > ")	
+
 	results1[ duplicated (results1[,1] ),1 ] <- ""
 	
 	results1
