@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.41"
+iDEPversion = "iDEP 0.42"
 ################################################################
 # R packages
 ################################################################
@@ -74,8 +74,8 @@ colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull do
 #  setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
 
 # relative path to data files
-#datapath = "../../data/"   # production server
-datapath = "../../../go/"  # windows
+datapath = "../../data/"   # production server
+#datapath = "../../../go/"  # windows
 #datapath = "../go/" # digital ocean
 
 sqlite  <- dbDriver("SQLite")
@@ -815,7 +815,7 @@ if(0){ # for testing LIMMA
 } 
 
 # Differential expression using LIMMA 
-DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMethods,priorCounts, dataFormat){
+DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMethods,priorCounts, dataFormat, selectedComparisons=NULL, sampleInfo = NULL,modelFactors=NULL){
 	library(limma) # Differential expression
 	topGenes = list();  limmaTrend = FALSE
 	if( dataFormat == 2) {   # if normalized data
@@ -847,6 +847,10 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 	if(length(g) ==2 ) { 
 	g= unique(groups)
 	comparisons <-  paste(g[2],"-",g[1],sep="")
+	# no sample file, but user selected comparisons using column names
+	if( is.null(modelFactors) & length( selectedComparisons) >0  ) 	
+		comparisons = selectedComparisons
+	
 	design <- model.matrix(~0+groups)
 	colnames(design) <- g
 	
@@ -888,6 +892,10 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 		comparisons = c(comparisons,paste(g[j],"-",g[i],sep="" ) )
 	comparisons <- comparisons[-1]
 
+	# no sample file, but user selected comparisons using column names
+	if( is.null(modelFactors) & length( selectedComparisons) >0  ) 	
+		comparisons = selectedComparisons
+	
 	contrast1 <- makeContrasts(contrasts=comparisons[1], levels=design)
 	for( kk in 2:length(comparisons) )
 		contrast1<-  cbind(contrast1,makeContrasts(contrasts=comparisons[kk], levels=design)   )

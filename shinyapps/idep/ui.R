@@ -4,7 +4,7 @@ library(shiny)
 library("shinyAce") # for showing text files, code
 library(shinyBS) # for popup figures
 library(plotly)
-iDEPversion = "iDEP 0.41"
+iDEPversion = "iDEP 0.42"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -472,7 +472,7 @@ tableOutput('species' ),
      htmlOutput('RsessionInfo')
  ) ))
 
-  #,tags$head(includeScript("ga.js")) # tracking usage  
+  ,tags$head(includeScript("ga.js")) # tracking usage  
   )# Navibar
 
 )
