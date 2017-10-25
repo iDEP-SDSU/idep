@@ -985,16 +985,21 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 		for (j in (i+1):length(g)) 
 		comparisons = c(comparisons,paste(g[j],"-",g[i],sep="" ) )
 	comparisons <- comparisons[-1]
-	comparisons2 = comparisons
+
 	colData = cbind(colnames(rawCounts), groups )
 
+	# no sample file, but user selected comparisons using column names
+	if( is.null(modelFactors) & length( selectedComparisons) >0  ) 	
+		comparisons = selectedComparisons
+		
+	comparisons2 = comparisons	 # this is for showing comparison names, which might be different from internally	
 	# Set up the DESeqDataSet Object and run the DESeq pipeline
 	dds = DESeqDataSetFromMatrix(countData=rawCounts,
 								colData=colData,
 								design=~groups)
 								
 	
-	if( is.null(selectedComparisons)  ) 
+	if( is.null(modelFactors)  ) 
 		dds = DESeq(dds)  	else  
 	{    # using selected factors and comparisons
 		# build model
@@ -1061,7 +1066,7 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 	for( kk in 1:length(comparisons) ) {
 		tem = unlist( strsplit(comparisons[kk],"-") )
 		
-		if(is.null(selectedComparisons)) 
+		if(is.null(modelFactors)) 
 			selected = results(dds, contrast=c("groups", tem[1], tem[2]) )   else {
 			if(!grepl("\\.", comparisons[kk] ) )    # if not interaction term: they contain .  interaction term
 				selected = results(dds, contrast=c( factorsCoded[ factorsVector[kk]  ],tem[1], tem[2]) ) else # either A, B, C ...
@@ -1565,6 +1570,7 @@ function(input, output,session) {
 	observe({  updateSelectInput(session, "heatColors1", choices = colorChoices )      })
 	observe({  updateSelectInput(session, "distFunctions", choices = distChoices )      })
 	observe({  updateSelectInput(session, "hclustFunctions", choices = hclustChoices )      })
+
 	################################################################
 	#   Read data
 	################################################################
@@ -1721,9 +1727,9 @@ function(input, output,session) {
 				dataType =c(TRUE)
 
 				#---------------Read file
-				x <- read.csv(inFile,row.names=1,header=T)	# try CSV
+				x <- read.csv(inFile,row.names=1,header=T,colClasses="character")	# try CSV
 				if(dim(x)[2] <= 2 )   # if less than 3 columns, try tab-deliminated
-					x <- read.table(inFile, row.names=1,sep="\t",header=TRUE)	
+					x <- read.table(inFile, row.names=1,sep="\t",header=TRUE,colClasses="character")	
 				#----------------Matching with column names of expression file
 				ix = match(toupper(colnames(readData()$data)), toupper(colnames(x)) ) 
 				ix = ix[which(!is.na(ix))] # remove NA
@@ -1734,7 +1740,14 @@ function(input, output,session) {
 					 ,"Error!!! Sample information file not recognized. Sample names must be exactly the same. Each row is a factor. Each column represent a sample.  Please see documentation on format.")
 				)
 				if( length(unique(ix) ) == dim(readData()$data)[2]) { # matches exactly
-					return(t( x[,ix] ) )			
+				x = x[,ix]
+				# if the levels of different factors are the same, it may cause problems
+				if( sum( apply(x, 1, function(y) length(unique(y)))) > length(unique(unlist(x) ) ) ) {
+					tem2 =apply(x,2, function(y) paste0( names(y),y)) # factor names are added to levels
+					rownames(tem2) = rownames(x)
+					x <- tem2				
+				}
+				return(t( x ) )			
 				} else retrun(NULL)
 							
 				
@@ -1746,7 +1759,6 @@ function(input, output,session) {
 		if (is.null(input$file2) )   return(NULL)
 		isolate({
 			t(readSampleInfo() )
-			#head(iris)
 		})
 	},include.rownames=TRUE) 	
 	
@@ -2793,90 +2805,10 @@ function(input, output,session) {
 	tem=input$limmaPval; tem=input$limmaFC
 	 # Note that " in HTML needs to be denoted with \"    with  the escape character \.
     if (is.null(input$file2) ) # if sample info is uploaded and correctly parsed.
-       { return(HTML("<font size = \"4\">A <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a> 
-	     needs to be uploaded before you can select factors and comparisons! Example for the demo data:
-						 </font>
-		<style>
-		  table {
-			border-collapse: collapse;
-		  }
-		  th, td {
-			border: 1px solid orange;
-			padding: 10px;
-			text-align: left;
-		  }
-		</style>
-		<table width=\"499\">
-		<tbody>
-		<tr>
-		<td width=\"71\">&nbsp;</td>
-		<td width=\"64\">
-		<p>control_2</p>
-		</td>
-		<td width=\"64\">
-		<p>control_3</p>
-		</td>
-		<td width=\"64\">
-		<p>control_1</p>
-		</td>
-		<td width=\"79\">
-		<p>Hoxa1KN_2</p>
-		</td>
-		<td width=\"79\">
-		<p>Hoxa1KN_3</p>
-		</td>
-		<td width=\"79\">
-		<p>Hoxa1KN_1</p>
-		</td>
-		</tr>
-		<tr>
-		<td width=\"71\">
-		<p>treatment</p>
-		</td>
-		<td width=\"64\">
-		<p>control</p>
-		</td>
-		<td width=\"64\">
-		<p>control</p>
-		</td>
-		<td width=\"64\">
-		<p>control</p>
-		</td>
-		<td width=\"79\">
-		<p>Hoxa1KN</p>
-		</td>
-		<td width=\"79\">
-		<p>Hoxa1KN</p>
-		</td>
-		<td width=\"79\">
-		<p>Hoxa1KN</p>
-		</td>
-		</tr>
-		<tr>
-		<td width=\"71\">
-		<p>batch</p>
-		</td>
-		<td width=\"64\">
-		<p>A</p>
-		</td>
-		<td width=\"64\">
-		<p>B</p>
-		</td>
-		<td width=\"64\">
-		<p>C</p>
-		</td>
-		<td width=\"79\">
-		<p>A</p>
-		</td>
-		<td width=\"79\">
-		<p>B</p>
-		</td>
-		<td width=\"79\">
-		<p>C</p>
-		</td>
-		</tr>
-		</tbody>
-		</table>")) }	 else { 
+       { return(HTML("<font size = \"3\">A <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a> 
+	     can be uploaded to build model according to experiment design. </font>"))
+	   
+		} else { 
 	   
 		factors = colnames(readSampleInfo())
 		choices = setNames(factors, factors  )
@@ -2896,7 +2828,23 @@ function(input, output,session) {
 		tem=input$limmaPval; tem=input$limmaFC
 		
 		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
-		   { return(NULL ) }	 else { 
+		   { # if using sample names
+		   
+		   	factors = as.character ( detectGroups( colnames( readData()$data ) ) )
+			factors = unique(factors)# order is reversed
+			comparisons = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=" vs. "))
+			comparisons = c(comparisons, apply(t(combn(rev(factors),2)),1, function(x) paste(x,collapse=" vs. ")) )	
+			comparisons = sort(comparisons)
+			choices =  setNames(gsub(" vs\\. ","-",comparisons), comparisons )
+			checkboxGroupInput("selectModelComprions", 
+									  h4("Select comparisons:"), 
+									  choices = choices,
+									  selected = choices[[1]])	
+		   
+		   
+		   
+		   
+		   }	 else { 
 				choices = list()
 				for( selectedFactors in input$selectFactorsModel) { 
 					ix = match(selectedFactors, colnames(readSampleInfo() ) )
@@ -2945,9 +2893,9 @@ function(input, output,session) {
 		  # res1 =DEG.limma(rawCounts, .1, 1.5,rawCounts, 2,3) 
 			return( DEG.DESeq2(readData()$rawCounts,input$limmaPval, input$limmaFC, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel)  )
 		if(input$CountsDEGMethod < 3 )    # voom or limma-trend
-			return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,readData()$rawCounts, input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat) )
+			return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,readData()$rawCounts, input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel) )
 	} else { # normalized data
-	 return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,readData()$rawCounts, input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat) )
+	 return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,readData()$rawCounts, input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel) )
 	}
 	
 	
@@ -3087,8 +3035,8 @@ function(input, output,session) {
 			#Diff:water_Wet.genetic_Hy 	 in the selected Contrast
 			#Diff-water_Wet-genetic_Hy   in column names
 			tem = gsub("Diff-","Diff:" ,colnames(genes))
-			  tem = gsub("-","\\.",tem)
-			  ix = match(input$selectContrast, tem) 
+			tem = gsub("-","\\.",tem)
+			ix = match(input$selectContrast, tem) 
 		  }
 	  
 		  if(is.null(ix)) return(NULL)
@@ -3737,7 +3685,6 @@ function(input, output,session) {
 	   }
   })
   }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
-
   
   
 ################################################################
