@@ -329,6 +329,7 @@ tableOutput('species' ),
 				   ,bsModal("modalExample", "Venn Diagram", "showVenn", size = "large",plotOutput("vennPlot"))
 				   ,bsModal("modalExample21", "Model and comparisons", "modelAndComparisons", size = "large",				   
 						htmlOutput('listFactorsDE')
+						,br(),br(),br()
 						,htmlOutput('listModelComparisons')
 						,br(),br()
 						,actionButton("submitModelButton", "Submit & re-calculate",style="float:center")
