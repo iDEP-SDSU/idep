@@ -7,7 +7,7 @@ iDEPversion = "iDEP 0.42"
 # R packages, installed by:
 # install.packages(c("shiny","RSQLite","gplots","ggplot2","e1071","shinyAce","shinyBS","reshape2","DT","plotly" ) )
 # auto install
-Rlibs = c("shiny","RSQLite","gplots","ggplot2","e1071","shinyAce","shinyBS","reshape2","DT","plotly" )
+Rlibs = c("shiny","RSQLite","gplots","ggplot2","e1071","shinyAce","shinyBS","reshape2","DT","plotly","statmod" )
 notInstalled = setdiff(Rlibs, rownames(installed.packages()))
 if(length(notInstalled)>0)
 	install.packages(notInstalled)
@@ -815,8 +815,9 @@ if(0){ # for testing LIMMA
 } 
 
 # Differential expression using LIMMA 
-DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMethods,priorCounts, dataFormat, selectedComparisons=NULL, sampleInfo = NULL,modelFactors=NULL){
+DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMethods,priorCounts, dataFormat, selectedComparisons=NULL, sampleInfo = NULL,modelFactors=NULL, blockFactor = NULL){
 	library(limma) # Differential expression
+	library(statmod)
 	topGenes = list();  limmaTrend = FALSE
 	if( dataFormat == 2) {   # if normalized data
 		eset = new("ExpressionSet", exprs=as.matrix(x)) } else { # counts data
@@ -845,131 +846,299 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 	x<- x[,ix]; rawCounts <- rawCounts[,ix] 
 	
 	if(length(g) ==2 ) { 
-	g= unique(groups)
-	comparisons <-  paste(g[2],"-",g[1],sep="")
-	# no sample file, but user selected comparisons using column names
-	if( is.null(modelFactors) & length( selectedComparisons) >0  ) 	
-		comparisons = selectedComparisons
-	
-	design <- model.matrix(~0+groups)
-	colnames(design) <- g
-	
-	if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
-		dge <- DGEList(counts=rawCounts);
-		dge <- calcNormFactors(dge, method = "TMM")  # normalization
-		v <- voom(dge, design); fit <- lmFit(v, design) } else 
-		fit <- lmFit(eset, design)      # regular limma
+		g= unique(groups)
+		comparisons <-  paste(g[2],"-",g[1],sep="")  # "Mutant-WT"
 		
-	cont.matrix <- makeContrasts(contrasts=comparisons, levels=design)
-	fit2 <- contrasts.fit(fit, cont.matrix)
-	fit2 <- eBayes(fit2, trend=limmaTrend)
+		# no sample file, but user selected comparisons using column names
+		if( is.null(modelFactors) & length( selectedComparisons) >0  ) 	
+			comparisons = selectedComparisons
+		
+		design <- model.matrix(~0+groups)
+		colnames(design) <- g
+		
+		if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
+			dge <- DGEList(counts=rawCounts);
+			dge <- calcNormFactors(dge, method = "TMM")  # normalization
+			v <- voom(dge, design); fit <- lmFit(v, design) } else 
+			fit <- lmFit(eset, design)      # regular limma
+			
+		cont.matrix <- makeContrasts(contrasts=comparisons, levels=design)
+		fit2 <- contrasts.fit(fit, cont.matrix)
+		fit2 <- eBayes(fit2, trend=limmaTrend)
 
-	# calls differential gene expression 1 for up, -1 for down
-	results <- decideTests(fit2, p.value=maxP_limma, lfc=log2(minFC_limma) )
-	#vennDiagram(results,circle.col=rainbow(5))
-	topGenes1 =topTable(fit2, number = 1e12,sort.by="M" )
-	if (dim(topGenes1)[1] != 0) {
-	topGenes1 = topGenes1[,c('logFC','adj.P.Val')] 
-	# topGenes1[,1] <-  -1* topGenes1[,1] # reverse direction
-	topGenes[[1]] <- topGenes1 }
-	# log fold change is actually substract of means. So if the data is natral log transformed, it shoudl be natral log.
-	Exp.type = "2 sample groups."
+		# calls differential gene expression 1 for up, -1 for down
+		results <- decideTests(fit2, p.value=maxP_limma, lfc=log2(minFC_limma) )
+		#vennDiagram(results,circle.col=rainbow(5))
+		topGenes1 =topTable(fit2, number = 1e12,sort.by="M" )
+		if (dim(topGenes1)[1] != 0) {
+		topGenes1 = topGenes1[,c('logFC','adj.P.Val')] 
+		# topGenes1[,1] <-  -1* topGenes1[,1] # reverse direction
+		topGenes[[1]] <- topGenes1 }
+		# log fold change is actually substract of means. So if the data is natral log transformed, it shoudl be natral log.
+		Exp.type = "2 sample groups."
 	}
 	
-	if(length(g) > 2 ) { 
-	design <- model.matrix(~ 0+factor(groups))
-	colnames(design) <- gsub(".*)","",colnames(design))
+	if(length(g) > 2 ) { # more than two sample groups
 	
-	if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
-		v <- voom(rawCounts, design); fit <- lmFit(v, design) } else 
+		design <- model.matrix(~ 0+factor(groups))
+		colnames(design) <- gsub(".*)","",colnames(design))
+		
+		if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
+			v <- voom(rawCounts, design); 
+			fit <- lmFit(v, design) 
+		} else 
 			fit <- lmFit(eset, design)
-	
-	fit <- eBayes(fit, trend=limmaTrend)
-	
-	comparisons = ""
-	for( i in 1:(length(g)-1) )
-		for (j in (i+1):length(g)) 
-		comparisons = c(comparisons,paste(g[j],"-",g[i],sep="" ) )
-	comparisons <- comparisons[-1]
-
-	# no sample file, but user selected comparisons using column names
-	if( is.null(modelFactors) & length( selectedComparisons) >0  ) 	
-		comparisons = selectedComparisons
-	
-	contrast1 <- makeContrasts(contrasts=comparisons[1], levels=design)
-	for( kk in 2:length(comparisons) )
-		contrast1<-  cbind(contrast1,makeContrasts(contrasts=comparisons[kk], levels=design)   )
-	Exp.type = paste(length(g)," sample groups detected.")	 
-	
-	# if factorial design 2x2, 2x3, 3x5 etc.
-		# all samples must be something like WT_control_rep1
-	if ( sum(sapply(strsplit(g,"_"),length) == 2 ) == length(g) ) {
+		
+		fit <- eBayes(fit, trend=limmaTrend)
+		
 		comparisons = ""
 		for( i in 1:(length(g)-1) )
 			for (j in (i+1):length(g)) 
-			if( strsplit(g[i],"_")[[1]][1] == strsplit(g[j],"_")[[1]][1]| strsplit(g[i],"_")[[1]][2] == strsplit(g[j],"_")[[1]][2]) # only compare WT_control vs. WT_treatment
-				comparisons = c(comparisons,paste(g[j],"-",g[i],sep="" ) )
+			comparisons = c(comparisons,paste(g[j],"-",g[i],sep="" ) )
 		comparisons <- comparisons[-1]
-		
-		extract_treatment <- function (x) paste( gsub( ".*_","",unlist( strsplit(x,"-")) ), collapse="-")
-		extract_genotype <- function (x) gsub( "_.*","",unlist( strsplit(x,"-")) )[1]
-		extract_treatment_counting <- unique( gsub( ".*_","",unlist( strsplit(g,"-")) ))
-		treatments = sapply(comparisons, extract_treatment)
-		genotypes = sapply(comparisons, extract_genotype)
-		Exp.type = paste( Exp.type, "\nFactorial design:",length(unique(genotypes)),"X", length( extract_treatment_counting ), sep="" )
-		contrast1 <- makeContrasts(contrasts=comparisons[1], levels=design)
-		for( kk in 2:length(comparisons) )
-			contrast1<-  cbind(contrast1,makeContrasts(contrasts=comparisons[kk], levels=design)   )
-		contrast.names = colnames(contrast1)
-		for ( kk in 1:(length(comparisons)-1) ) {
-		for( kp in (kk+1):length(comparisons)) 
-			if( treatments[kp]== treatments[kk] ) 
-			{  
-				contrast1 = cbind(contrast1, contrast1[,kp]- contrast1[,kk] )
-				contrast.names = c(contrast.names, paste("Diff:",  genotypes[kp], "-", genotypes[kk],"(",gsub("-",".vs.",treatments[kp]),")",sep="" ) )
-			}   
-		}
-		colnames(contrast1)=contrast.names
-		comparisons = contrast.names
-		}	
-		
-	fit2 <- contrasts.fit(fit, contrast1)
-	fit2 <- eBayes(fit2, trend=limmaTrend)
-	#topTable(fit2, coef=1, adjust="BH")
-	results <- decideTests(fit2, p.value=maxP_limma, lfc= log2(minFC_limma ))
-	#vennDiagram(results[,1:5],circle.col=rainbow(5))
 
-	# extract fold change for each comparison
-	# there is issues with direction of foldchange. Sometimes opposite
-	top <- function (comp) {
-	tem <- topTable(fit2, number = 1e12,coef=comp,sort.by="M" ) 
-	if(dim(tem)[1] == 0) return (1) else  { 
-	
-	# compute fold change for the first gene (ranked by absolute value)
-	tem2 = as.numeric( x[ which(rownames(x)== rownames(tem)[1]) , ] )
-	names(tem2) = colnames(x) 
-	# compute real fold change in A-B comparison
-	realFC =  mean ( tem2[which( groups == gsub("-.*","",comp))] ) - # average in A
-				mean ( tem2[which( groups == gsub(".*-","",comp))] ) # average in B
-	if( realFC * tem[1,1] <0 ) # if reversed
-		tem[,1] <- -1*tem[,1]; # reverse direction if needed
-	
-	return( tem[,c(1,5)]) }  
-											
-	}  # no significant gene returns 1, otherwise a data frame
-	
+		# no sample file, but user selected comparisons using column names
+		if( is.null(modelFactors) & length( selectedComparisons) >0  ) 	
+			comparisons = selectedComparisons
 		
-	topGenes <- lapply(comparisons, top)
-	topGenes <- setNames(topGenes, comparisons )
-	ix <- which( unlist( lapply(topGenes, class) ) == "numeric")
-	if( length(ix)>0) topGenes <- topGenes[ - ix ]
-	# if (length(topGenes) == 0) topGenes = NULL;
+		contrast1 <- makeContrasts(contrasts=comparisons[1], levels=design)
+		if(length(comparisons)>1 )
+			for( kk in 2:length(comparisons) )
+				contrast1<-  cbind(contrast1,makeContrasts(contrasts=comparisons[kk], levels=design)   )
+		Exp.type = paste(length(g)," sample groups detected.")	 
+		
+		# if factorial design 2x2, 2x3, 3x5 etc.
+			# all samples must be something like WT_control_rep1
+		if ( sum(sapply(strsplit(g,"_"),length) == 2 ) == length(g) ) {
+		
+			#comparisons
+			comparisons = ""
+			for( i in 1:(length(g)-1) )
+				for (j in (i+1):length(g)) 
+				if( strsplit(g[i],"_")[[1]][1] == strsplit(g[j],"_")[[1]][1]| strsplit(g[i],"_")[[1]][2] == strsplit(g[j],"_")[[1]][2]) # only compare WT_control vs. WT_treatment
+					comparisons = c(comparisons,paste(g[j],"-",g[i],sep="" ) )
+			comparisons <- comparisons[-1]
+
+			#factors genotype treatment levels
+			extract_treatment <- function (x) paste( gsub( ".*_","",unlist( strsplit(x,"-")) ), collapse="-")
+			extract_genotype <- function (x) gsub( "_.*","",unlist( strsplit(x,"-")) )[1]
+			extract_treatment_counting <- unique( gsub( ".*_","",unlist( strsplit(g,"-")) ))
+			treatments = sapply(comparisons, extract_treatment)
+			genotypes = sapply(comparisons, extract_genotype)
+			Exp.type = paste( Exp.type, "\nFactorial design:",length(unique(genotypes)),"X", length( extract_treatment_counting ), sep="" )
+
+			# pairwise contrasts
+			contrast1 <- makeContrasts(contrasts=comparisons[1], levels=design)
+			for( kk in 2:length(comparisons) )
+				contrast1<-  cbind(contrast1,makeContrasts(contrasts=comparisons[kk], levels=design)   )
+			contrast.names = colnames(contrast1)
+
+			# interaction contrasts
+			for ( kk in 1:(length(comparisons)-1) ) {
+			for( kp in (kk+1):length(comparisons)) 
+				if( treatments[kp]== treatments[kk] ) 
+				{  
+					contrast1 = cbind(contrast1, contrast1[,kp]- contrast1[,kk] )
+					contrast.names = c(contrast.names, paste("Diff:",  genotypes[kp], "-", genotypes[kk],"(",gsub("-",".vs.",treatments[kp]),")",sep="" ) )
+				}   
+			}
+			colnames(contrast1)=contrast.names
+			comparisons = contrast.names
+
+		} # if interaction terms	
+		
+
+		# if sample information is uploaded and user selected factors and comparisons
+		if( !is.null(modelFactors) & length( selectedComparisons) >0  ) {
+			Exp.type = paste("Model: ~", paste(modelFactors,collapse="+") )
+			interactionTerm = FALSE # default value to be re-write if needed
+			
+			# model factors that does not contain interaction terms
+			# modelFactors "genotype", "condition", "genotype:condition"
+			keyModelFactors = modelFactors[ !grepl(":",modelFactors) ]
+			
+			# "genotype: control vs. mutant"
+			factorsVector= gsub(":.*","",selectedComparisons) # corresponding factors for each comparison
+			# remove factors not used in comparison, these are batch effects/pairs/blocks, 
+			# keyModelFactors = keyModelFactors[ !is.na(match(keyModelFactors, factorsVector)) ]	
+			
+			# if a factor is selected both in block and main factors, then use it as block factor
+			keyModelFactors = keyModelFactors[ is.na(match(keyModelFactors, blockFactor)) ]	
+		
+            #------Design matrix 			
+			sampleInfo2 = sampleInfo[,keyModelFactors,drop=F] # remove factors not used.
+			groups = apply(sampleInfo2,1, function(x) paste(x,collapse="_")  )
+			g =  unique(groups)  
+			
+			design <- model.matrix(~ 0+factor(groups))
+			colnames(design) <- gsub(".*)","",colnames(design))
+		
+			if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
+				v <- voom(rawCounts, design); 
+				fit <- lmFit(v, design) 
+			} else 
+				fit <- lmFit(eset, design)
+		
+			fit <- eBayes(fit, trend=limmaTrend)	
+			
+			#-----------Making comaprisons
+			if( length(keyModelFactors) != 2 | length(blockFactor) >1 )  { # if only one factor, or more than two then use all pairwise comparisons
+				comparisons = gsub(".*: ","",selectedComparisons)
+				comparisons = gsub(" vs\\. ","-",comparisons)
+			} else if( length(keyModelFactors) == 2 ){ # two key factors
+
+				if( sum(grepl(":",modelFactors)	>0) ) {  # interaction? 
+					interactionTerm =TRUE
+					# all pairwise comparisons
+					comparisons = ""
+					for( i in 1:(length(g)-1) )
+						for (j in (i+1):length(g)) 
+						if( strsplit(g[i],"_")[[1]][1] == strsplit(g[j],"_")[[1]][1]| strsplit(g[i],"_")[[1]][2] == strsplit(g[j],"_")[[1]][2]) # only compare WT_control vs. WT_treatment
+							comparisons = c(comparisons,paste(g[j],"-",g[i],sep="" ) )
+					comparisons <- comparisons[-1]
+					
+					# pairwise contrasts
+					contrast1 <- makeContrasts(contrasts=comparisons[1], levels=design)
+					if(length(comparisons)>1 )
+					for( kk in 2:length(comparisons) )
+						contrast1<-  cbind(contrast1,makeContrasts(contrasts=comparisons[kk], levels=design)   )
+					contrast.names = colnames(contrast1)		
+				
+					# all possible interactions
+					# interaction contrasts
+					
+					contrast2 = NULL
+					contrast.names =""
+					for ( kk in 1:(dim(contrast1)[2]-1) ) {
+					for( kp in (kk+1):dim(contrast1)[2]) 
+						#if( treatments[kp]== treatments[kk] ) 
+						{  if(is.null(contrast2))  
+							contrast2 = contrast1[,kp]- contrast1[,kk]  else					
+							contrast2 = cbind(contrast2, contrast1[,kp]- contrast1[,kk] )
+							
+							contrast.names = c(contrast.names, paste0("Diff:",  colnames(contrast1)[kp], ".vs.", colnames(contrast1)[kk] ) )
+						}   
+					}
+					colnames(contrast2)=contrast.names[-1]
+					
+					# remove nonsense contrasts from interactions
+					 contrast2 = contrast2[,which(apply(abs(contrast2),2,max)==1),drop=F]
+					 contrast2 = contrast2[,which(apply(abs(contrast2),2,sum)==4),drop=F]
+					 contrast2 = t( unique(t(contrast2)) ) # remove duplicate columns
+					 comparisons2 = colnames(contrast2) 
+					 cat(comparisons2)
+					 cat( class( contrast2) )
+					 
+				}
+
+				# "stage: MN vs. EN"  -->  c("MN_AB-EN_AB", "EN_Nodule-EN_AB") 
+				#  comparisons in all levels of the other factor 
+				transformComparisons <- function (comparison1){
+					tem = gsub(".*: ","",comparison1)
+					tem = unlist(strsplit(tem, " vs\\. ") ) # control  mutant							
+					factor1= gsub(":.*","",comparison1)
+
+					ix = match(factor1, keyModelFactors) # 1: first factor, 2: 2nd factor
+					otherFactor = keyModelFactors[3-ix]   # 3-1 = 2; 3-1=1
+					otherFactorLevels = unique( sampleInfo2[,otherFactor] )				
+					comparisons = c( )
+					
+					for (factorLevels in otherFactorLevels) {
+						if( ix == 1){
+							comparisons = c( comparisons, paste(paste0( tem, "_",factorLevels),collapse="-") )
+						} else {
+							comparisons = c( comparisons,  paste(paste0(factorLevels, "_", tem),collapse="-") )
+						}
+					}
+					return(comparisons)		
+				}	
+				
+				comparisons = unlist( sapply(selectedComparisons, transformComparisons ))
+				comparisons = as.vector(comparisons)
+			
+			} # two factors
+			
+			# make contrasts
+			contrast1 <- makeContrasts(contrasts=comparisons[1], levels=design)
+			if(length(comparisons) >1 )
+			for( kk in 2:length(comparisons) )
+				contrast1<-  cbind(contrast1,makeContrasts(contrasts=comparisons[kk], levels=design)   )
+
+			if( interactionTerm ) {  # if interaction terms
+				contrast1 = cbind(contrast1,contrast2)
+				contrast.names = c(colnames(contrast1), colnames(contrast2) )
+				comparisons = c(comparisons,comparisons2)
+			}
+			
+			# block design to remove batch effect or paired samples
+			# corfit <- duplicateCorrelation(eset,design,block=targets$Subject)
+			# corfit$consensus
+			#Then this inter-subject correlation is input into the linear model fit:
+			# fit <- lmFit(eset,design,block=targets$Subject,correlation=corfit$consensus)
+
+			if(length(blockFactor) == 1 ) { # if a factor is selected as block
+				#blockFactor = modelFactors[ which( is.na(ix) ) ]
+				block = sampleInfo[, blockFactor]  # the column not used
+			
+				if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
+					v <- voom(rawCounts, design);
+					corfit <- duplicateCorrelation(v,design,block= block)			
+					fit <- lmFit(v, design,block=block,correlation=corfit$consensus) 
+				} else {
+					corfit <- duplicateCorrelation(eset,design,block= block)
+					fit <- lmFit(eset, design,block=block,correlation=corfit$consensus)
+				}
+				fit <- eBayes(fit, trend=limmaTrend)			
+	
+			} # block factors
+
+
+		} # use selected factors
+
+
+
+
+		
+		fit2 <- contrasts.fit(fit, contrast1)
+		fit2 <- eBayes(fit2, trend=limmaTrend)
+		#topTable(fit2, coef=1, adjust="BH")
+		results <- decideTests(fit2, p.value=maxP_limma, lfc= log2(minFC_limma ))
+		#vennDiagram(results[,1:5],circle.col=rainbow(5))
+
+		# extract fold change for each comparison
+		# there is issues with direction of foldchange. Sometimes opposite
+		top <- function (comp) {
+			tem <- topTable(fit2, number = 1e12,coef=comp,sort.by="M" ) 
+			if(dim(tem)[1] == 0) { return (1) 
+			} else	{ 			
+				# compute fold change for the first gene (ranked by absolute value)
+				tem2 = as.numeric( x[ which(rownames(x)== rownames(tem)[1]) , ] )
+				names(tem2) = colnames(x) 
+				
+				if( 0){ # if not interaction term
+					# compute real fold change in A-B comparison
+					realFC =  mean ( tem2[which( groups == gsub("-.*","",comp))] ) - # average in A
+								mean ( tem2[which( groups == gsub(".*-","",comp))] ) # average in B
+					if( realFC * tem[1,1] <0 ) # if reversed
+						tem[,1] <- -1*tem[,1]; # reverse direction if needed
+				}				
+				return( tem[,c(1,5)]) 
+			}  
+													
+		}  # no significant gene returns 1, otherwise a data frame
+		
+			
+		topGenes <- lapply(comparisons, top)
+		topGenes <- setNames(topGenes, comparisons )
+		ix <- which( unlist( lapply(topGenes, class) ) == "numeric")
+		if( length(ix)>0) topGenes <- topGenes[ - ix ]
+		# if (length(topGenes) == 0) topGenes = NULL;
 	}
 	return( list(results= results, comparisons = comparisons, Exp.type=Exp.type, topGenes=topGenes)) 
 }
 
 # Differential expression using DESeq2
-DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedComparisons=NULL, sampleInfo = NULL,modelFactors=NULL){
+DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedComparisons=NULL, sampleInfo = NULL,modelFactors=NULL, blockFactor = NULL){
 	library(DESeq2) # count data analysis
 	groups = as.character ( detectGroups( colnames( rawCounts ) ) )
 	g = unique(groups)# order is reversed
@@ -1011,6 +1180,8 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 		dds = DESeq(dds)  	else  
 	{    # using selected factors and comparisons
 		# build model
+		modelFactors = c(modelFactors,blockFactor) # block factor is just added in. 
+		
 		factors = modelFactors   # selected facters and interactions: c( "strain", "treatment",  "strain:treatment")
 		factors = factors[ !grepl(":",factors )]   # non-interaction terms
 		
@@ -1043,9 +1214,9 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 		comparisons = gsub(" vs\\. ","-",comparisons)
 		factorsVector= gsub(":.*","",selectedComparisons) # corresponding factors for each comparison
 		comparisons2 = comparisons
-		#comparisons2 = gsub(" vs\\. ","-",selectedComparisons )
-		#comparisons2 = gsub(":","",comparisons2 )
-		
+
+		# Note that with interaction terms, not all meaningful comparisons is listed for selection. 
+		# this is complex. Only under reference level.
 		
 		# comparisons due to interaction terms
 		if( length(Interactions)>0 ) { # if there is interaction
@@ -2812,25 +2983,40 @@ function(input, output,session) {
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
 	 # Note that " in HTML needs to be denoted with \"    with  the escape character \.
-    if (is.null(input$file2) ) # if sample info is uploaded and correctly parsed.
-       { return(HTML("<font size = \"3\">A <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a> 
-	     can be uploaded to build model according to experiment design. </font>"))
-	   
-		} else { 
-	   
+    if (is.null(input$file2) ) {# if sample info is uploaded and correctly parsed.
+        return(HTML("<font size = \"3\">A <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a> 
+	     can be uploaded to build model according to experiment design. </font>"))          
+	} else { 	   
 		factors = colnames(readSampleInfo())
 		choices = setNames(factors, factors  )
 		interactions = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=":"))
 		choices = append( choices,setNames( interactions, paste(interactions,"interaction") ))
-	   
+							  
 		checkboxGroupInput("selectFactorsModel", 
-                              h4("Select factors in model"), 
+                              h4("Select 1 or 2 main factors for the model"), 
                               choices = choices,
                               selected = NULL)	   
 	  
 	        } 
 	})  
- 
+
+	output$listBlockFactorsDE <- renderUI({
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC
+	 # Note that " in HTML needs to be denoted with \"    with  the escape character \.
+    if (is.null(input$file2) ) {# if sample info is uploaded and correctly parsed.
+		return(NULL)		   
+		} else { 
+	   
+		factors = colnames(readSampleInfo())
+		choices = setNames(factors, factors  )
+		checkboxGroupInput("selectBlockFactorsModel", 
+                              h4("Select a factor for batch effect or paired samples, if needed"), 
+                              choices = choices,
+                              selected = NULL)  
+	  
+	        } 
+	})	
 	output$listModelComparisons <- renderUI({
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
@@ -2845,7 +3031,7 @@ function(input, output,session) {
 			comparisons = sort(comparisons)
 			choices =  setNames(gsub(" vs\\. ","-",comparisons), comparisons )
 			checkboxGroupInput("selectModelComprions", 
-									  h4("Select comparisons:"), 
+									  h4("Select comparisons among sample groups:"), 
 									  choices = choices,
 									  selected = choices[[1]])	
 		   
@@ -2872,8 +3058,6 @@ function(input, output,session) {
 				} 
 	}) 
 
- 
-	
 	limma <- reactive({  
 	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg
@@ -2899,11 +3083,11 @@ function(input, output,session) {
 		  # rawCounts = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
 		 # res =DEG.DESeq2(rawCounts, .05, 2) 
 		  # res1 =DEG.limma(rawCounts, .1, 1.5,rawCounts, 2,3) 
-			return( DEG.DESeq2(readData()$rawCounts,input$limmaPval, input$limmaFC, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel)  )
+			return( DEG.DESeq2(readData()$rawCounts,input$limmaPval, input$limmaFC, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel)  )
 		if(input$CountsDEGMethod < 3 )    # voom or limma-trend
-			return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,readData()$rawCounts, input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel) )
+			return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,readData()$rawCounts, input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel) )
 	} else { # normalized data
-	 return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,readData()$rawCounts, input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel) )
+	 return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,readData()$rawCounts, input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel) )
 	}
 	
 	
@@ -3039,12 +3223,16 @@ function(input, output,session) {
 		  if(!grepl("Diff:", input$selectContrast) ) {  # if not interaction term
 			ix = match(input$selectContrast, colnames(genes)) 
 		  } else {
-			#mismatch in comparison names for interaction terms
+			#mismatch in comparison names for interaction terms for DESeq2
 			#Diff:water_Wet.genetic_Hy 	 in the selected Contrast
 			#Diff-water_Wet-genetic_Hy   in column names
 			tem = gsub("Diff-","Diff:" ,colnames(genes))
 			tem = gsub("-","\\.",tem)
 			ix = match(input$selectContrast, tem) 
+			
+			if(is.na(ix) ) # this is for limma package
+				ix = match(input$selectContrast, colnames(genes)) 			
+			
 		  }
 	  
 		  if(is.null(ix)) return(NULL)

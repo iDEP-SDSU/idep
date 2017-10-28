@@ -207,7 +207,7 @@ tableOutput('species' ),
 						# ,verbatimTextOutput("event")
 						,bsModal("modalExample8", "Correlation matrix using all genes", "showCorrelation", size = "large",plotOutput("correlationMatrix"))
 						,bsModal("modalExample28", "Heatmap with hierarchical clustering tree", "showStaticHeatmap", size = "large",
-						sliderInput("nGenesPlotly", label = h4("Most variable genes to include:"), min = 10, max = 2000, value = 50,step=50),
+						sliderInput("nGenesPlotly", label = h4("Most variable genes to include:"), min = 10, max = 6000, value = 50,step=50),
 						h4("Mouse over to see gene names. To zoom, click and drag up or downward and release."),
 						plotlyOutput("heatmap",width = "100%", height = "800px"))
 					 
@@ -280,7 +280,8 @@ tableOutput('species' ),
 				conditionalPanel("input.dataFileFormat == 1",
 				selectInput("CountsDEGMethod", "Method:", choices = list("DESeq2"= 3,"limma-voom"=2,"limma-trend"=1), selected = 3)				
 				,tags$style(type='text/css', "#CountsDEGMethod { width:100%;   margin-top:-12px}")
-				)				
+				)	
+				,conditionalPanel("input.dataFileFormat == 2", h5("Using the limma package")				)				
 				,fluidRow(
 				 column(5,numericInput("limmaPval", label = h5("FDR cutoff"), value = 0.1,min=1e-5,max=1,step=.05)  )
 				 ,column(7, numericInput("limmaFC", label = h5("Min fold change"), value = 2,min=1,max=100,step=0.5) )
@@ -327,9 +328,14 @@ tableOutput('species' ),
 				   ,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
 				   ,tableOutput("DEG.Promoter"))
 				   ,bsModal("modalExample", "Venn Diagram", "showVenn", size = "large",plotOutput("vennPlot"))
-				   ,bsModal("modalExample21", "Model and comparisons", "modelAndComparisons", size = "large",				   
-						htmlOutput('listFactorsDE')
-						,br(),br(),br()
+				   ,bsModal("modalExample21", "Model and comparisons", "modelAndComparisons", size = "large",	
+					fluidRow(
+						 column(6, htmlOutput('listFactorsDE'))
+						,column(6, htmlOutput('listBlockFactorsDE') ) 
+					)				   
+						
+						
+						,br(),br()
 						,htmlOutput('listModelComparisons')
 						,br(),br()
 						,actionButton("submitModelButton", "Submit & re-calculate",style="float:center")
