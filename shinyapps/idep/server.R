@@ -818,6 +818,11 @@ if(0){ # for testing LIMMA
 DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMethods,priorCounts, dataFormat, selectedComparisons=NULL, sampleInfo = NULL,modelFactors=NULL, blockFactor = NULL){
 	library(limma) # Differential expression
 	library(statmod)
+	
+	# many different situations: 1. just use sample names 2. just one factor  3. two factors no interaction
+	# 4. two factors with interaction   5. block factor 
+	
+	
 	topGenes = list();  limmaTrend = FALSE
 	if( dataFormat == 2) {   # if normalized data
 		eset = new("ExpressionSet", exprs=as.matrix(x)) } else { # counts data
@@ -3011,7 +3016,7 @@ function(input, output,session) {
 		factors = colnames(readSampleInfo())
 		choices = setNames(factors, factors  )
 		checkboxGroupInput("selectBlockFactorsModel", 
-                              h4("Select a factor for batch effect or paired samples, if needed"), 
+                              h4("Select a factor for batch effect or paired samples, if needed. (Slow)"), 
                               choices = choices,
                               selected = NULL)  
 	  
