@@ -1030,10 +1030,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 					 contrast2 = contrast2[,which(apply(abs(contrast2),2,max)==1),drop=F]
 					 contrast2 = contrast2[,which(apply(abs(contrast2),2,sum)==4),drop=F]
 					 contrast2 = t( unique(t(contrast2)) ) # remove duplicate columns
-					 comparisons2 = colnames(contrast2) 
-					 cat(comparisons2)
-					 cat( class( contrast2) )
-					 
+					 comparisons2 = colnames(contrast2) 				 
 				}
 
 				# "stage: MN vs. EN"  -->  c("MN_AB-EN_AB", "EN_Nodule-EN_AB") 
@@ -2990,7 +2987,7 @@ function(input, output,session) {
 	 # Note that " in HTML needs to be denoted with \"    with  the escape character \.
     if (is.null(input$file2) ) {# if sample info is uploaded and correctly parsed.
         return(HTML("<font size = \"3\">A <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a> 
-	     can be uploaded to build model according to experiment design. </font>"))          
+	     can be uploaded to build a linear model according to experiment design. </font>"))          
 	} else { 	   
 		factors = colnames(readSampleInfo())
 		choices = setNames(factors, factors  )
@@ -2998,7 +2995,7 @@ function(input, output,session) {
 		choices = append( choices,setNames( interactions, paste(interactions,"interaction") ))
 							  
 		checkboxGroupInput("selectFactorsModel", 
-                              h4("Select 1 or 2 main factors for the model"), 
+                              h4("1. Select one or two main factors for the model"), 
                               choices = choices,
                               selected = NULL)	   
 	  
@@ -3022,6 +3019,7 @@ function(input, output,session) {
 	  
 	        } 
 	})	
+	
 	output$listModelComparisons <- renderUI({
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
@@ -3039,10 +3037,7 @@ function(input, output,session) {
 									  h4("Select comparisons among sample groups:"), 
 									  choices = choices,
 									  selected = choices[[1]])	
-		   
-		   
-		   
-		   
+	   
 		   }	 else { 
 				choices = list()
 				for( selectedFactors in input$selectFactorsModel) { 
@@ -3057,7 +3052,7 @@ function(input, output,session) {
 				}
 				if(length(choices)==0 ) return(NULL) else
 				checkboxGroupInput("selectModelComprions", 
-									  h4("Select comparisons:"), 
+									  h4("2. Select one or more comparisons:"), 
 									  choices = choices,
 									  selected = choices[[1]])	   
 				} 
@@ -3221,6 +3216,41 @@ function(input, output,session) {
 	withProgress(message="Generating heatmap", {
 	if( is.null(input$selectContrast)) return(NULL)
 	if( is.null(limma()$results)) return(NULL)
+	if( is.null(selectedHeatmap.data() )) return(NULL) 
+	isolate({ 
+	
+		 bar = selectedHeatmap.data()$bar +2;
+		 bar[bar==3] =2
+	  	 myheatmap2( selectedHeatmap.data()$genes,bar,200,mycolor=input$heatColors1,c("Down","Up") )
+	 
+	 incProgress(1, detail = paste("Done")) 
+	
+	 })
+	})
+	
+    }, height = 400, width = 500)
+
+	selectedHeatmap.data <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast;
+	tem = input$heatColors1
+	tem = input$CountsDEGMethod; 	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+	####################################
+	
+
+	if( is.null(input$selectContrast)) return(NULL)
+	if( is.null(limma()$results)) return(NULL)
 	#if( is.null(selectedHeatmap.data() )) return(NULL) 
 	isolate({ 
 		  genes <- limma()$results
@@ -3269,92 +3299,20 @@ function(input, output,session) {
 		# color bar
 		 bar = genes[,ix]
 		 bar = bar[bar!=0]
-		 bar = bar+2;
-		 bar[bar==3] =2
+
 		 # retreive related data		 
 		 genes = convertedData()[iy,iz]
 		 
 		 genes = genes[order(bar),] # needs to be sorted because myheatmap2 does not reorder genes
 		 bar = sort(bar)
 
-		 incProgress(1/2 )
-	  	 myheatmap2( genes,bar,200,mycolor=input$heatColors1,c("Down","Up") )
-	 
-	 incProgress(1, detail = paste("Done")) 
+
+		 return(list(genes=genes, bar=bar ))
+
 	
 	 })
 	})
 	
-    }, height = 400, width = 500)
-
-	selectedHeatmap.data <- reactive({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		
-		tem = input$selectOrg
-		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast;
-		tem = input$CountsDEGMethod; 
-		
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-		####################################
-		
-		if( is.null(input$selectContrast)) return(NULL)
-		if( is.null(limma()$results) ) return(NULL)
-		isolate({ 
-		  genes <- limma()$results
-		  if( is.null(genes) ) return(NULL)
-		  if(!grepl("Diff:", input$selectContrast) ) {  # if not interaction term
-			ix = match(input$selectContrast, colnames(genes)) 
-		  } else {
-			#mismatch in comparison names for interaction terms
-			#Diff:water_Wet.genetic_Hy 	 in the selected Contrast
-			#Diff-water_Wet-genetic_Hy   in column names
-			tem = gsub("Diff-","Diff:" ,colnames(genes))
-			  tem = gsub("-","\\.",tem)
-			  ix = match(input$selectContrast, tem) 
-		  }
-	
-		  if(is.null(ix)) return(NULL)
-		  if(is.na(ix)) return(NULL)
-		  if( sum(abs(genes[,ix] )  ) <= 1 ) return(NULL) # no significant genes for this comparison
-		  if(dim(genes)[2] < ix ) return(NULL)
-		  query = rownames(genes)[which(genes[,ix] != 0)]
-		  if(length(query) == 0) return(NULL)
-		  iy = match(query, rownames(convertedData()  ) )
-		  
-		  # find sample related to the comparison
-		 iz= match( detectGroups(colnames(convertedData())), unlist(strsplit( input$selectContrast, "-"))	  )
-		 iz = which(!is.na(iz))		 
-		 if ( !is.null(input$file2) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
-			comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
-			comparisons = gsub(" vs\\. ","-",comparisons)		
-			factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
-			ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
-			if (is.na(ik)) iz=1:(dim(convertedData())[2])  else {  # interaction term, use all samples		
-				selectedfactor= factorsVector[ ik ] # corresponding factors
-				iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast, "-"))	  )
-				iz = which(!is.na(iz))
-			}		 
-		 }
-		 if (grepl("Diff:",input$selectContrast) == 1) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
-		 if( is.na(iz)[1] | length(iz)<=1 ) iz=1:(dim(convertedData())[2]) 
-
-		 # retreive related data
-		 genes = convertedData()[iy,iz]
-		 
-		 genes = genes[order(apply(genes,1,sd), decreasing=T  ),]   # sort genes by SD
-		 
-		 return(genes)
-		})
-    })
-
 	output$download.selectedHeatmap.data <- downloadHandler(
 		filename = function() {paste("Diff_genes_heatmap_",input$selectContrast,".csv",sep="")},
 			content = function(file) {
@@ -3401,83 +3359,83 @@ function(input, output,session) {
 	#, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T,include.rownames=TRUE)
   
 	geneListDataExport <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-		tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
-	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts; tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
-	noSig = as.data.frame("No significant genes find!")
-	if( is.null(input$selectContrast) ) return(NULL)
-	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
-	if( length(limma()$topGenes) == 0 ) return(noSig)
-	if( is.null( geneListData() ) ) return(NULL)
-	if( input$selectOrg == "NEW" )
-		tem <- merge(geneListData(), convertedData(), by.x = 'Top_Genes',by.y = 'row.names') else
-	tem <- merge(geneListData(), convertedData(), by.x = 'Ensembl ID',by.y = 'row.names') 
-	tem <- tem[order( -sign(tem[,2] ), -abs(tem[,2])),]
-	tem$Regulation = "Up"
-	tem$Regulation[which(tem[,2]<0 )] <- "Down"
-	tem <- tem[,c(dim(tem)[2],1:( dim(tem)[2]-1) )  ]
-	return( tem )
+		if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
+			tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts; tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+		noSig = as.data.frame("No significant genes find!")
+		if( is.null(input$selectContrast) ) return(NULL)
+		if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
+		if( length(limma()$topGenes) == 0 ) return(noSig)
+		if( is.null( geneListData() ) ) return(NULL)
+		if( input$selectOrg == "NEW" )
+			tem <- merge(geneListData(), convertedData(), by.x = 'Top_Genes',by.y = 'row.names') else
+		tem <- merge(geneListData(), convertedData(), by.x = 'Ensembl ID',by.y = 'row.names') 
+		tem <- tem[order( -sign(tem[,2] ), -abs(tem[,2])),]
+		tem$Regulation = "Up"
+		tem$Regulation[which(tem[,2]<0 )] <- "Down"
+		tem <- tem[,c(dim(tem)[2],1:( dim(tem)[2]-1) )  ]
+		return( tem )
 	
   })
 	#, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T,include.rownames=TRUE)
 
 	geneListData <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-		tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
-	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
-	tem = input$selectFactorsModel # responsive to changes in model and comparisons
-	tem = input$selectModelComprions
-	noSig = as.data.frame("No significant genes find!")
-	if( is.null(input$selectContrast) ) return(NULL)
-	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
-	if( length(limma()$topGenes) == 0 ) return(noSig)
-	if(length( limma()$comparisons)  ==1 )  
-    { top1=limma()$topGenes[[1]]  
-	} else {
-	  top = limma()$topGenes
-	  ix = match(input$selectContrast, names(top))
-	  if( is.na(ix)) return (noSig)
-	  top1 <- top[[ix]]; 
-	  }
-	  if(dim(top1)[1] == 0 ) return (noSig)
-	  colnames(top1)= c("Fold","FDR")
-	  #top1 = merge(top1,convertedData(), by='row.names')
-	  #colnames(top1)[1] = "Genes"
-	  top1 = top1[order(-abs(top1$Fold)) ,]
-	  if ( length( which( top1$FDR <=  input$limmaPval  &  abs(top1$Fold)  >= log2(input$limmaFC) ) ) == 0 )
-	    return( noSig)
-	  top1 <- top1[which(top1$FDR <=  input$limmaPval ) ,]
-	  top1 <- top1[which(abs(top1$Fold)  >= log2( input$limmaFC)) ,]
-	  top1$Top_Genes <- rownames(top1)
-	  top1 <- top1[,c(3,1,2)]
-	  
-	  # if new species
-	  if( input$selectGO2 == "ID not recognized!" | input$selectOrg == "NEW") return (top1); 
-	  
-	  #convertedID = convertID(top1[,1],input$selectOrg, "GOBP" );#"gmax_eg_gene"
-	  # tem <- geneInfo(convertedID,input$selectOrg) #input$selectOrg ) ;
-	 #  tem <- geneInfo(converted(),input$selectOrg)
-	  top1 <- merge(top1, allGeneInfo(), by.x ="Top_Genes", by.y="ensembl_gene_id",all.x=T )
-	  
-      if ( sum( is.na(top1$band)) == dim(top1)[1] ) top1$chr = top1$chromosome_name else
-	  	top1$chr = paste( top1$chromosome_name, top1$band,sep="")
-	  
-	  top1 <- top1[,c('Top_Genes','Fold','FDR','symbol','chr','gene_biotype')]
-	  
-	 
-	#  ix = match(top1[,1], tem$ensembl_gene_id)
-	 # if( sum(is.na( tem$Symbol[ix]) ) != length(ix) ) 
-	  # { top1 <- cbind(top1, tem$Symbol[ix]); colnames(top1)[4]= "Symbol" }
-	  top1 = top1[order(-abs(as.numeric( top1$Fold))) ,]
-	  top1$FDR <- sprintf("%-3.2e",top1$FDR )
-	  colnames(top1) <- c("Ensembl ID", "log2 Fold Change", "Adj.Pval", "Symbol","Chr","Type")
-	  if ( sum( is.na(top1$Symbol)) == dim(top1)[1] ) top1 <- top1[,-4] 
+		if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
+			tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+		tem = input$selectFactorsModel # responsive to changes in model and comparisons
+		tem = input$selectModelComprions
+		noSig = as.data.frame("No significant genes find!")
+		if( is.null(input$selectContrast) ) return(NULL)
+		if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
+		if( length(limma()$topGenes) == 0 ) return(noSig)
+		if(length( limma()$comparisons)  ==1 )  
+		{ top1=limma()$topGenes[[1]]  
+		} else {
+		  top = limma()$topGenes
+		  ix = match(input$selectContrast, names(top))
+		  if( is.na(ix)) return (noSig)
+		  top1 <- top[[ix]]; 
+		  }
+		  if(dim(top1)[1] == 0 ) return (noSig)
+		  colnames(top1)= c("Fold","FDR")
+		  #top1 = merge(top1,convertedData(), by='row.names')
+		  #colnames(top1)[1] = "Genes"
+		  top1 = top1[order(-abs(top1$Fold)) ,]
+		  if ( length( which( top1$FDR <=  input$limmaPval  &  abs(top1$Fold)  >= log2(input$limmaFC) ) ) == 0 )
+			return( noSig)
+		  top1 <- top1[which(top1$FDR <=  input$limmaPval ) ,]
+		  top1 <- top1[which(abs(top1$Fold)  >= log2( input$limmaFC)) ,]
+		  top1$Top_Genes <- rownames(top1)
+		  top1 <- top1[,c(3,1,2)]
+		  
+		  # if new species
+		  if( input$selectGO2 == "ID not recognized!" | input$selectOrg == "NEW") return (top1); 
+		  
+		  #convertedID = convertID(top1[,1],input$selectOrg, "GOBP" );#"gmax_eg_gene"
+		  # tem <- geneInfo(convertedID,input$selectOrg) #input$selectOrg ) ;
+		 #  tem <- geneInfo(converted(),input$selectOrg)
+		  top1 <- merge(top1, allGeneInfo(), by.x ="Top_Genes", by.y="ensembl_gene_id",all.x=T )
+		  
+		  if ( sum( is.na(top1$band)) == dim(top1)[1] ) top1$chr = top1$chromosome_name else
+			top1$chr = paste( top1$chromosome_name, top1$band,sep="")
+		  
+		  top1 <- top1[,c('Top_Genes','Fold','FDR','symbol','chr','gene_biotype')]
+		  
+		 
+		#  ix = match(top1[,1], tem$ensembl_gene_id)
+		 # if( sum(is.na( tem$Symbol[ix]) ) != length(ix) ) 
+		  # { top1 <- cbind(top1, tem$Symbol[ix]); colnames(top1)[4]= "Symbol" }
+		  top1 = top1[order(-abs(as.numeric( top1$Fold))) ,]
+		  top1$FDR <- sprintf("%-3.2e",top1$FDR )
+		  colnames(top1) <- c("Ensembl ID", "log2 Fold Change", "Adj.Pval", "Symbol","Chr","Type")
+		  if ( sum( is.na(top1$Symbol)) == dim(top1)[1] ) top1 <- top1[,-4] 
 
-	  return(top1)
+		  return(top1)
 	
   })
 
@@ -3757,79 +3715,75 @@ function(input, output,session) {
 	 
   })
 
-	output$geneListGO <- renderTable({
-    
-	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	if( is.null(input$selectContrast)) return(NULL)
-	if( is.null( input$selectGO2) ) return (NULL)
-	if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
+	output$geneListGO <- renderTable({		
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if( is.null(input$selectContrast)) return(NULL)
+		if( is.null( input$selectGO2) ) return (NULL)
+		if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
 
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
-	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
-	if( is.null(limma()$results) ) return(NULL)
-	if( is.null(selectedHeatmap.data()) ) return(NULL) # this has to be outside of isolate() !!!
-	if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
-	NoSig = as.data.frame("No significant enrichment found.")
-	isolate({
- 	withProgress(message="GO Enrichment", {
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+		if( is.null(limma()$results) ) return(NULL)
+		if( is.null(selectedHeatmap.data()) ) return(NULL) # this has to be outside of isolate() !!!
+		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+		NoSig = as.data.frame("No significant enrichment found.")
+		isolate({
+		withProgress(message="GO Enrichment", {
+			
+		# using expression data
+		genes <- selectedHeatmap.data()$genes
+		if(is.null(genes) ) return(NULL) 
+		if(dim(genes)[1] <= minGenesEnrichment ) return(NoSig) # if has only few genes
 		
-    # using expression data
-	genes <- selectedHeatmap.data()
-	if(is.null(genes) ) return(NULL) 
-	if(dim(genes)[1] <= minGenesEnrichment ) return(NoSig) # if has only few genes
-	
-	groups = detectGroups(colnames(genes) )
-	N1 = sum(groups == groups[1] ) # number of samples in type above
-	if( dim(genes)[2] < N1) return(NoSig)
-	fc = rowMeans(genes[,1:N1])-rowMeans(genes[,(N1+1):length(groups)])
-	
-	# GO
-	results1 <- NULL; result <- NULL
-	pp <- 0
-	for( i in c(1,-1) ) {
-		incProgress(1/2 )
+		fc = selectedHeatmap.data()$bar		
+		# GO
+		results1 <- NULL; result <- NULL
+		pp <- 0
+		for( i in c(1,-1) ) {
+			incProgress(1/2 )
+			
+			if( length(which(fc*i<0)) <= minGenesEnrichment) next; 
+			query = rownames(genes)[which(fc*i<0)]
+			if( length(query) <= minGenesEnrichment) next; 	
+			
+			if(input$selectOrg == "NEW" && !is.null( input$gmtFile) ){
+				result <- findOverlapGMT( query, GeneSets(),1) 
+			} else  { 
+				convertedID <- converted()
+				convertedID$IDs <- query
+				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO2,input$selectOrg,1) }
+
+			if( dim(result)[2] ==1) next;   # result could be NULL
+			if(i == -1) result$Genes = "Up regulated"  else result$Genes = "Down regulated"
+			if (pp==0 ) { results1 <- result; pp = 1;} else  results1 = rbind(results1,result)
+		}
+
+		if ( pp == 0 ) return (NoSig)
+		if ( is.null( results1) ) return (NoSig)
+		if( dim(results1)[2] == 1 ) return(NoSig)  # Returns a data frame: "No significant results found!"
 		
-		if( length(which(fc*i<0)) <= minGenesEnrichment) next; 
-		query = rownames(genes)[which(fc*i<0)]
-		if( length(query) <= minGenesEnrichment) next; 	
+		results1= results1[,c(5,1,2,4)]
+		colnames(results1)= c("List","FDR","Genes","GO terms or pathways")
+		minFDR = 0.01
+		if(min(results1$FDR) > minFDR ) results1 = as.data.frame("No signficant enrichment found.") else
+		results1 = results1[which(results1$FDR < minFDR),]
 		
-	if(input$selectOrg == "NEW" && !is.null( input$gmtFile) )
-	{ result <- findOverlapGMT( query, GeneSets(),1) } else  { 
-		convertedID <- converted()
-		convertedID$IDs <- query
-		result = FindOverlap (convertedID,allGeneInfo(), input$selectGO2,input$selectOrg,1) }
+		incProgress(1, detail = paste("Done")) 
+		
+		if(dim(results1)[2] != 4) return(NoSig)
+		colnames(results1)= c("Direction","adj.Pval","Genes","Pathways")
+		
+		results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )
+		results1[,1] <- as.character(results1[,1])
+		tem <- results1[,1]
 
-	if( dim(result)[2] ==1) next;   # result could be NULL
-		if(i == 1) result$Genes = "Up regulated"  else result$Genes = "Down regulated"
-		if (pp==0 ) { results1 <- result; pp = 1;} else  results1 = rbind(results1,result)
-	}
-
-	if ( pp == 0 ) return (NoSig)
-	if ( is.null( results1) ) return (NoSig)
-	if( dim(results1)[2] == 1 ) return(NoSig)  # Returns a data frame: "No significant results found!"
-	
-	results1= results1[,c(5,1,2,4)]
-	colnames(results1)= c("List","FDR","Genes","GO terms or pathways")
-	minFDR = 0.01
-	if(min(results1$FDR) > minFDR ) results1 = as.data.frame("No signficant enrichment found.") else
-	results1 = results1[which(results1$FDR < minFDR),]
-	
-	incProgress(1, detail = paste("Done")) 
-	
-	if(dim(results1)[2] != 4) return(NoSig)
-	colnames(results1)= c("Direction","adj.Pval","Genes","Pathways")
-	
-	results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )
-	results1[,1] <- as.character(results1[,1])
-	tem <- results1[,1]
-
-	results1[ duplicated (results1[,1] ),1 ] <- ""
-	
-	results1
-	 })#progress
-	}) #isolate
+		results1[ duplicated (results1[,1] ),1 ] <- ""
+		
+		results1
+		 })#progress
+		}) #isolate
   }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })
 
@@ -3847,43 +3801,41 @@ function(input, output,session) {
 	
   isolate({ 
    	withProgress(message="Promoter analysis", {
-	genes <- selectedHeatmap.data()
+	genes <- selectedHeatmap.data()$genes
 	if(is.null(genes)) return(NULL)
 	# if( !is.data.frame(genes)) return (NULL)
 	# cat("\nHere",paste(genes[1,],collapse=" ") )
 	if( dim(genes)[1] < minGenesEnrichment ) return (NULL) # skip if less than 5 genes total
-	groups = detectGroups(colnames(genes) )
-	N1 = sum(groups == groups[1] ) # number of samples in type above
-	fc = rowMeans(genes[,1:N1])-rowMeans(genes[,(N1+1):length(groups)])
-	
+
+	fc = selectedHeatmap.data()$bar
 	# GO
 	pp <- 0; results1 <- NULL; result <- NULL
 	for( i in c(1, -1) ) {
-	incProgress(1/2 )	
-	query = rownames(genes)[which(fc*i<0)]
-	if(length(query) < minGenesEnrichment) next; 
-	convertedID = convertID(query,input$selectOrg, input$selectGO2 );#"gmax_eg_gene"
-	if(length(convertedID) < minGenesEnrichment) next; 
-	result <- promoter( convertedID,input$selectOrg,input$radio.promoter )
-	
-	if( is.null(result)  ) next;   # result could be NULL
-	if(  dim(result)[2] ==1) next;
-	
-	if(i == 1) result$List ="A"  else result$List ="B" 
-	if (pp==0 ) { results1 <- result; pp <- 1 } else  { results1 = rbind(results1,result) }
+		incProgress(1/2 )	
+		query = rownames(genes)[which(fc*i<0)]
+		if(length(query) < minGenesEnrichment) next; 
+		convertedID = convertID(query,input$selectOrg, input$selectGO2 );#"gmax_eg_gene"
+		if(length(convertedID) < minGenesEnrichment) next; 
+		result <- promoter( convertedID,input$selectOrg,input$radio.promoter )
+		
+		if( is.null(result)  ) next;   # result could be NULL
+		if(  dim(result)[2] ==1) next;
+		
+		if(i == -1) result$List ="Up regulated"  else result$List ="Down regulated" 
+		if (pp==0 ) { results1 <- result; pp <- 1 } else  { results1 = rbind(results1,result) }
 	}
 
 	incProgress(1, detail = paste("Done")) 
 	}) #progress
 	
-	if( is.null(results1)) {as.data.frame("No significant motif enrichment found.")} else {
-	results1 <- results1[,c(4,1:3,5)]
-	tem <- results1[,1]
-	results1[ which( tem == "A"),1] <- gsub("-"," > ",input$selectContrast )
-	results1[ which( tem == "B"),1] <- gsub("-"," < ",input$selectContrast )
-	results1[ duplicated (results1[,1] ),1 ] <- ""
-	results1
-	   }
+	if( is.null(results1)) {
+		as.data.frame("No significant motif enrichment found.")
+	} else {
+		results1 <- results1[,c(4,1:3,5)]
+		tem <- results1[,1]
+		results1[ duplicated (results1[,1] ),1 ] <- ""
+		results1
+	}
   })
   }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
   
@@ -4123,8 +4075,8 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 		else if(input$pathwayMethod == 4 ) p.m <- "PGSEA_All"
 		else if(input$pathwayMethod == 5 ) p.m <- "ReactomePA"
 		colnames(top1)[2] <- paste(p.m," analysis:", gsub("-"," vs ",input$selectContrast1 ) )
-		top1[ which( top1[,3] >0),1 ] <- gsub("-"," > ",input$selectContrast1 )
-		top1[ which( top1[,3] <0),1 ] <- gsub("-"," < ",input$selectContrast1 )
+		top1[ which( top1[,3] >0),1 ] <- "Up" #gsub("-"," > ",input$selectContrast1 )
+		top1[ which( top1[,3] <0),1 ] <- "Down" # gsub("-"," < ",input$selectContrast1 )
 		top1 <- top1[order( top1[,1], -abs(as.numeric( top1[,3]) ) ) ,]
 		top1[ duplicated (top1[,1] ),1 ] <- ""
 		#write.csv(top1,"tem.csv")
@@ -4237,8 +4189,8 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 		else if(input$pathwayMethod == 4 ) p.m <- "PGSEA_All"
 		else if(input$pathwayMethod == 5 ) p.m <- "ReactomePA"
 		colnames(top1)[2] <- paste(p.m," analysis:", gsub("-"," vs ",input$selectContrast1 ) )
-		top1[ which( as.numeric( top1[,3]) >0),1 ] <- gsub("-"," > ",input$selectContrast1 )
-		top1[ which( as.numeric( top1[,3]) <0),1 ] <- gsub("-"," < ",input$selectContrast1 )
+		top1[ which( as.numeric( top1[,3]) >0),1 ] <- "Up" #gsub("-"," > ",input$selectContrast1 )
+		top1[ which( as.numeric( top1[,3]) <0),1 ] <- "Down" #gsub("-"," < ",input$selectContrast1 )
 		top1 <- top1[order( top1[,1], -abs(as.numeric( top1[,3]) ) ) ,]
 		top1[ duplicated (top1[,1] ),1 ] <- ""	 
 	    top1[,3] = as.character( round(as.numeric(top1[,3]),4));
@@ -4347,8 +4299,8 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 		else if(input$pathwayMethod == 4 ) p.m <- "PGSEA_All"
 		else if(input$pathwayMethod == 5 ) p.m <- "ReactomePA"
 		colnames(top1)[2] <- paste(p.m," analysis:", gsub("-"," vs ",input$selectContrast1 ) )
-		top1[ which( as.numeric( top1[,3]) >0),1 ] <- gsub("-"," > ",input$selectContrast1 )
-		top1[ which( as.numeric( top1[,3]) <0),1 ] <- gsub("-"," < ",input$selectContrast1 )
+		top1[ which( as.numeric( top1[,3]) >0),1 ] <- "Up" #gsub("-"," > ",input$selectContrast1 )
+		top1[ which( as.numeric( top1[,3]) <0),1 ] <- "Down" #gsub("-"," < ",input$selectContrast1 )
 		top1 <- top1[order( top1[,1], -abs(as.numeric( top1[,3]) ) ) ,]
 		top1[ duplicated (top1[,1] ),1 ] <- ""	 
 	  top1[,3] = as.character( round(as.numeric(top1[,3]),4));
