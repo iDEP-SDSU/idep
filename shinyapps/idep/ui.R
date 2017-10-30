@@ -106,7 +106,7 @@ tableOutput('species' ),
              sidebarLayout(
                sidebarPanel(
 			     conditionalPanel("input.dataFileFormat == 2"
-					,numericInput("lowFilter", label = h5("Only keep genes with expression at least:"), value = -1e6)
+					,numericInput("lowFilter", label = h5("Only keep genes with expression at least:"), value = 1)
 					,radioButtons("transform", "Log Transformation",c("No"=FALSE,"Yes"=TRUE) )
 					,numericInput("logStart", label = h5("Constant c for started log: log(x+c)"), value = 1)
 					,br(),h4( textOutput("text.transform") )
