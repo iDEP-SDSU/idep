@@ -1028,9 +1028,20 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 					
 					# remove nonsense contrasts from interactions
 					 contrast2 = contrast2[,which(apply(abs(contrast2),2,max)==1),drop=F]
-					 contrast2 = contrast2[,which(apply(abs(contrast2),2,sum)==4),drop=F]
-					 contrast2 = t( unique(t(contrast2)) ) # remove duplicate columns
-					 comparisons2 = colnames(contrast2) 				 
+					 contrast2 = contrast2[,which(apply(abs(contrast2),2,sum)==4),drop=F]	
+					 contrast2 = t( unique(t(contrast2)) ) # remove duplicate columns		
+					
+					# remove unwanted contrasts involving more than three levels in either factor
+					keep= c()
+					for( i in 1:dim(contrast2)[2]) {
+						tem = rownames(contrast2)[ contrast2[ ,i ] != 0   ]
+						tem1 = unique (  unlist(gsub("_.*","", tem) ) )
+						tem2 = unique (  unlist(gsub(".*_","", tem) ) )
+						if( length(tem1) == 2 & length(tem2) ==2 )
+						keep = c(keep, colnames(contrast2) [i] )
+					}
+					contrast2 = contrast2[,keep,drop=F]
+					comparisons2 = colnames(contrast2) 				 
 				}
 
 				# "stage: MN vs. EN"  -->  c("MN_AB-EN_AB", "EN_Nodule-EN_AB") 
@@ -1096,9 +1107,6 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 
 
 		} # use selected factors
-
-
-
 
 		
 		fit2 <- contrasts.fit(fit, contrast1)
@@ -3120,17 +3128,35 @@ function(input, output,session) {
 	tem=input$CountsDEGMethod
 	tem = input$selectFactorsModel # responsive to changes in model and comparisons
 	tem = input$selectModelComprions
+	if(is.null(input$selectComparisonsVenn) ) return(NULL)
 	####################################
 	
 	isolate({ 
 	
-	results = limma()$results
-	if(dim(results)[2] >5) results <- results[,1:5]
-	vennDiagram(results,circle.col=rainbow(5))
- 
-	
+		results = limma()$results
+		results = results[,input$selectComparisonsVenn,drop=FALSE] # only use selected comparisons
+		if(dim(results)[2] >5) results <- results[,1:5]
+		vennDiagram(results,circle.col=rainbow(5))
+
 	})
     }, height = 600, width = 600)
+
+	output$listComparisonsVenn <- renderUI({
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC
+	
+      if (is.null(input$file1)&& input$goButton == 0 )
+       { selectInput("selectContrast", label = NULL, # h6("Funtional Category"), 
+                  choices = list("All" = "All"), selected = "All")  
+		}	 else { 
+				choices = setNames(limma()$comparisons, limma()$comparisons  )
+				checkboxGroupInput("selectComparisonsVenn", 
+									  h4("Select up to 5 comparisons"), 
+									  choices = choices,
+									  selected = choices)	
+
+	     } 
+	})
 
 	output$listComparisons <- renderUI({
 	tem = input$selectOrg
@@ -3327,7 +3353,7 @@ function(input, output,session) {
 	    }
 	)
 
-# Top DEGs  
+	# Top DEGs  
 	output$geneList <- renderTable({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
 		tem = input$selectOrg
@@ -5150,6 +5176,47 @@ isolate({
 
   },rownames= FALSE)  
 
+################################################################
+#   Biclustering
+################################################################
+   bioclust <- reactive({
+	  if (is.null(input$file1) && input$goButton == 0)   return(NULL)
+
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		tem = input$CountsDEGMethod;
+		####################################   
+   
+		isolate({
+		
+		   x <- convertedData()
+
+			n=input$nGenesBiclust
+	
+			if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+
+			x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+			
+			
+
+		
+		
+		
+		
+		} )
+   
+   
+   
+   } )
+  
+  
 ################################################################
 #   Session Info
 ################################################################

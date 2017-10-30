@@ -106,7 +106,7 @@ tableOutput('species' ),
              sidebarLayout(
                sidebarPanel(
 			     conditionalPanel("input.dataFileFormat == 2"
-					,numericInput("lowFilter", label = h5("Only keep genes with expression at least:"), value = -1e-20)
+					,numericInput("lowFilter", label = h5("Only keep genes with expression at least:"), value = -1e6)
 					,radioButtons("transform", "Log Transformation",c("No"=FALSE,"Yes"=TRUE) )
 					,numericInput("logStart", label = h5("Constant c for started log: log(x+c)"), value = 1)
 					,br(),h4( textOutput("text.transform") )
@@ -327,7 +327,9 @@ tableOutput('species' ),
 				   ,bsModal("modalExample1", "Enriched TF binding motifs in promoters of DEGs", "showMotif", size = "large"
 				   ,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
 				   ,tableOutput("DEG.Promoter"))
-				   ,bsModal("modalExample", "Venn Diagram", "showVenn", size = "large",plotOutput("vennPlot"))
+				   ,bsModal("modalExample", "Venn Diagram", "showVenn", size = "large",
+						htmlOutput('listComparisonsVenn')
+						,plotOutput("vennPlot"))
 				   ,bsModal("modalExample21", "Model and comparisons", "modelAndComparisons", size = "large",	
 					fluidRow(
 						 column(6, htmlOutput('listFactorsDE'))
@@ -471,6 +473,22 @@ tableOutput('species' ),
   #, readOnly = TRUE
  # ) )))
  
+###############################################################################################################################
+# 
+#,tabPanel("Biclust",
+#              sidebarLayout(
+#                sidebarPanel(
+#					sliderInput("nGenesBiclust", label = h4("Most variable genes to include "), min = 10, max = 6000, value = 2000,step=100) 
+				
+				
+#				),
+#				mainPanel(	
+				
+				
+#				))
+				
+
+#) 
 ###############################################################################################################################
  
 ,tabPanel("R",
