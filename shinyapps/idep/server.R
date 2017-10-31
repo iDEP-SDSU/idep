@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.42"
+iDEPversion = "iDEP 0.43"
 ################################################################
 # R packages
 ################################################################
