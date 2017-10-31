@@ -141,7 +141,7 @@ tableOutput('species' ),
 				 ,downloadButton('downloadProcessedData', 'Download processed data') 
 				 ,br(),br()
 				 ,textOutput('nGenesFilter')
-				,tags$head(tags$style("#nGenesFilter{color: red;
+				,tags$head(tags$style("#nGenesFilter{color: blue;
 											 font-size: 16px;
 											 font-style: italic;
 											 }"
@@ -475,20 +475,44 @@ tableOutput('species' ),
  
 ###############################################################################################################################
 # 
-#,tabPanel("Biclust",
-#              sidebarLayout(
-#                sidebarPanel(
-#					sliderInput("nGenesBiclust", label = h4("Most variable genes to include "), min = 10, max = 6000, value = 2000,step=100) 
+,tabPanel("Biclust",
+              sidebarLayout(
+                sidebarPanel(
+					h5("Biclustering can discover genes correlated on subset of samples. Only useful when  sample size is large(>10). Uses methods implemented in the biclust R package and the QUBIC Bioconductor package. ")
+					,numericInput("nGenesBiclust", label = h5("Most variable genes to include "), min = 10, max = 2000, value = 1000) 
+					,selectInput("biclustMethod", "Method:", choices = list("QUBIC"= "BCQU()"
+																			#,"runibic"= "BCUnibic()"
+																			,"BCCC" = "BCCC()"
+																			, "BCPlaid" = "BCPlaid()"
+																			,"BCSpectral" = "BCSpectral()"
+																			,"BCBimax" = "BCBimax()"
+																			,"BCQuest" = "BCQuest()" 
+																			), selected = "BCQU()")				
+	
+					,htmlOutput('listBiclusters')
+					,h5("Enrichment database")
+					,htmlOutput("selectGO4"),tags$style(type='text/css', "#selectGO4 { width:100%;   margin-top:-9px}")							
+					,downloadButton('download.biclust.data', 'Download all biclusters')
+					,br(),br(),textOutput('biclusterInfo')
+					,tags$head(tags$style("#biclusterInfo{color: blue;
+											 font-size: 16px;
+											 font-style: italic;
+											 }"
+									 )
+					)									 
+				),
+				mainPanel(	
+					plotOutput('biclustHeatmap')
+					,h3("Enriched gene sets")
+					,tableOutput('geneListBclustGO')
+					,br(),br()
+					,h3("Genes in this cluster")
+					,tableOutput('geneListBicluster')
 				
-				
-#				),
-#				mainPanel(	
-				
-				
-#				))
+				))
 				
 
-#) 
+) 
 ###############################################################################################################################
  
 ,tabPanel("R",

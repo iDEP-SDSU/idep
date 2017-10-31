@@ -62,8 +62,8 @@ PREDA_Permutations =1000
 set.seed(2) # seed for random number generator
 mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
 #Each row of this matrix represents a color scheme;
-heatColors = rbind(      greenred(75),     bluered(75),     colorpanel(75,"green","black","magenta") )
-rownames(heatColors) = c("Green-Black-Red","Blue-White-Red","Green-Black-Magenta")
+heatColors = rbind(      greenred(75),     bluered(75),     colorpanel(75,"green","black","magenta"),colorpanel(75,"blue","yellow","red") )
+rownames(heatColors) = c("Green-Black-Red","Blue-White-Red","Green-Black-Magenta","Blue-Yellow-Red")
 colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull down menu
 
 ################################################################
@@ -2140,14 +2140,15 @@ function(input, output,session) {
 	  
 	for( i in 2:dim(x)[2] )
 	lines(density(x[,i]),col=myColors[i], lwd=2 )
-    legend("topright", cex=1.2,colnames(x), lty=rep(1,dim(x)[2]), col=myColors )	
+	if(dim(x)[2]< 31 ) # if too many samples do not show legends
+		legend("topright", cex=1.2,colnames(x), lty=rep(1,dim(x)[2]), col=myColors )	
    # boxplot of first two samples, often technical replicates
    
 	boxplot(x, las = 2, ylab="Transformed expression levels", main="Distribution of transformed data"
 		,cex.lab=1.5, cex.axis=1.5, cex.main=2, cex.sub=2)
 	plot(x[,1:2],xlab=colnames(x)[1],ylab=colnames(x)[2], main="Scatter plot of first two samples",cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2)
 	
-   }, height = 1600, width = 500)
+   }, height = 1600, width = 800)
    
 	output$genePlot <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -2333,7 +2334,8 @@ function(input, output,session) {
 	  selectInput("selectFactorsHeatmap", label="Sample color bar:",choices=colnames(readSampleInfo())
 	     )   } 
 	})  
-# old heatmap.2 plot, replaced with plotly
+
+	# conventional heatmap.2 plot
 	output$heatmap1 <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
     x <- readData()$data   # x = read.csv("expression1.csv")
@@ -3904,6 +3906,17 @@ function(input, output,session) {
 	     ,selected = "GOBP" )   } 
 	})
 
+	output$selectGO4 <- renderUI({
+	  tem = input$selectOrg
+      if (is.null(input$file1)&& input$goButton == 0 )
+       { selectInput("selectGO4", label = NULL, # h6("Funtional Category"), 
+                  choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
+                                "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else { 
+								
+	  selectInput("selectGO4", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
+	     ,selected = "GOBP" )   } 
+	})
+
 	output$PGSEAplot <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	library(PGSEA)
@@ -5179,7 +5192,7 @@ isolate({
 ################################################################
 #   Biclustering
 ################################################################
-   bioclust <- reactive({
+   biclustering <- reactive({
 	  if (is.null(input$file1) && input$goButton == 0)   return(NULL)
 
 		##################################  
@@ -5192,22 +5205,29 @@ isolate({
 			if(input$dataFileFormat== 2) 
 				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
 		tem = input$CountsDEGMethod;
+		
+		tem = input$nGenesBiclust
+		tem = input$biclustMethod
 		####################################   
    
 		isolate({
+			library(QUBIC)
+			# library(runibic)
+			
 		
-		   x <- convertedData()
-
-			n=input$nGenesBiclust
-	
+			x <- convertedData()
+			n=input$nGenesBiclust	
 			if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-
+			if(n<10) n = 10 
+			if(n> 2000 ) n = 2000 			
 			x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+			write.csv(x,"tem.csv")
+			#res <- biclust::biclust(as.matrix( x), method = BCQU()) 
+			runR = paste( "res <- biclust::biclust(as.matrix( x), method =", input$biclustMethod ,")" )
+			eval(parse(text = runR ) )
 			
 			
-
-		
-		
+			return(list( x=x, res=res)	)	 
 		
 		
 		} )
@@ -5215,7 +5235,271 @@ isolate({
    
    
    } )
+   
+  	output$listBiclusters <- renderUI({
+		tem = input$selectOrg
+		tem = input$biclustMethod
+		tem = input$nGenesBiclust
+		if (is.null(biclustering() ) ){ # if sample info is uploaded and correctly parsed.
+		   return(NULL)	   
+		} else { 
+			if( biclustering()$res@Number == 0 ) { 
+				return(NULL) 
+			}	else  
+					selectInput(	"selectBicluster", 
+									label="Select a cluster",
+									choices= 1:biclustering()$res@Number  
+								)
+
+				
+
+		}			
+	}) 
+
+  	output$biclusterInfo <- renderText({
+		tem = input$nGenesBiclust
+		tem = input$selectBicluster
+		tem = input$biclustMethod
+		if(  is.null(input$selectBicluster)) return("No cluster found! Perhaps sample size is too small." )
+		if (is.null(biclustering()  ) ){ # if sample info is uploaded and correctly parsed.
+		   return("No cluster found! Perhaps sample size is too small." )	   
+		} else {
+			res = biclustering()$res
+			if( res@Number == 0 ) { 
+				return( "No cluster found! Perhaps sample size is too small."  ) 
+			}	else  { 
+					x = biclust::bicluster(biclustering()$x, res, as.numeric( input$selectBicluster)  )[[1]]
+					paste(res@Number,"clusters found. Cluster ",input$selectBicluster, " has", dim(x)[1], "genes correlated across", dim(x)[2], "samples." )	
+				}
+				
+
+		}			
+	}) 
   
+	output$biclustHeatmap <- renderPlot ({
+	  if (is.null(input$file1) && input$goButton == 0)   return(NULL)
+
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		tem = input$CountsDEGMethod;
+		tem = input$nGenesBiclust
+		tem = input$heatColors1
+		tem = input$selectBicluster
+		tem = input$biclustMethod
+		####################################  
+		if( is.null(biclustering() ) ) return(NULL)
+		if( is.null(input$selectBicluster ) ) return(NULL)
+		tem = input$biclustMethod
+		isolate({ 
+			res = biclustering()$res
+			if( res@Number == 0 ) { plot.new(); text(0.5,0.5, "No cluster found!")} else {
+		
+				x = biclust::bicluster(biclustering()$x, res, as.numeric( input$selectBicluster)  )[[1]]
+
+					par(mar = c(5, 4, 1.4, 0.2))
+
+				if( dim(x)[1] <=30 )
+					heatmap.2(x,  Rowv =T,Colv=F, dendrogram ="none",
+					col=heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.2
+					,key=F, #labRow = T,
+					,margins = c(8, 24)
+					,cexRow=1
+					#,srtCol=45
+					,cexCol=1.  # size of font for sample names
+					) else 		
+					heatmap.2(x,  Rowv =T,Colv=F, dendrogram ="none",
+					col=heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.2
+					,key=F, labRow = F,
+					,margins = c(8, 4)
+					,cexRow=1
+					#,srtCol=45
+					,cexCol=1.  # size of font for sample names
+
+					)				
+
+				
+			
+			}
+
+
+		})
+   
+  }, height = 400, width = 400)
+
+	output$geneListBclustGO <- renderTable({		
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if( is.null( input$selectGO4) ) return (NULL)
+		if( input$selectGO4 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
+
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+
+		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+		NoSig = as.data.frame("No significant enrichment found.")
+		
+		if( is.null(biclustering() ) ) return(NULL)
+		if( is.null(input$selectBicluster ) ) return(NULL)
+		tem = input$nGenesBiclust	
+		tem = input$biclustMethod
+		
+		isolate({
+			withProgress(message="GO Enrichment", {
+			
+			res = biclustering()$res
+			if( res@Number == 0 ) return(as.data.frame("No clusters found!") ) 
+			x = biclust::bicluster(biclustering()$x, res, as.numeric( input$selectBicluster)  )[[1]]
+			
+			if( dim(x)[1]  <= minGenesEnrichment) return(NoSig) 
+			query = rownames(x)
+			
+			if(input$selectOrg == "NEW" && !is.null( input$gmtFile) ){
+				result <- findOverlapGMT( query, GeneSets(),1) 
+			} else  { 
+				convertedID <- converted()
+				convertedID$IDs <- query
+				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO4,input$selectOrg,1) }
+				
+			result$Genes = "Up regulated"
+			
+
+			results1 = result
+			if ( is.null( results1) ) return (NoSig)
+			if( dim(results1)[2] <5 ) return(NoSig)  # Returns a data frame: "No significant results found!"
+
+			results1= results1[,c(5,1,2,4)]
+			colnames(results1)= c("List","FDR","Genes","GO terms or pathways")
+			minFDR = 0.01
+			if(min(results1$FDR) > minFDR ) results1 = as.data.frame("No signficant enrichment found.") else
+			results1 = results1[which(results1$FDR < minFDR),]
+			
+			incProgress(1, detail = paste("Done")) 
+			
+			if(dim(results1)[2] != 4) return(NoSig)
+			colnames(results1)= c("Direction","adj.Pval","Genes","Pathways")
+			
+			results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )
+			results1[,1] <- as.character(results1[,1])
+			tem <- results1[,1]
+
+			results1[ duplicated (results1[,1] ),1 ] <- ""
+			
+			results1[,-1]			
+
+
+		 })#progress
+		}) #isolate
+  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })
+
+	output$geneListBicluster <- renderTable({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if( is.null( input$selectGO4) ) return (NULL)
+		if( input$selectGO4 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
+
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+
+		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+		NoSig = as.data.frame("No significant enrichment found.")
+		
+		if( is.null(biclustering() ) ) return(NULL)
+		if( is.null(input$selectBicluster ) ) return(NULL)
+		tem = input$nGenesBiclust
+		tem = input$biclustMethod
+	
+		res = biclustering()$res
+		if( res@Number == 0 ) return(as.data.frame("No clusters found!") ) 
+		top1 = biclust::bicluster(biclustering()$x, res, as.numeric( input$selectBicluster)  )[[1]]	
+		top2 = top1  
+		  # if new species
+		  if( input$selectGO4 == "ID not recognized!" | input$selectOrg == "NEW") return (top1); 
+		  
+		  top1 <- merge(top1, allGeneInfo(), by.x ="row.names", by.y="ensembl_gene_id",all.x=T )
+		  
+		  if ( sum( is.na(top1$band)) == dim(top1)[1] ) top1$chr = top1$chromosome_name else
+			top1$chr = paste( top1$chromosome_name, top1$band,sep="")
+
+		  geneMean = apply(top1[, colnames(top2)  ],1,mean )
+		  top1 = cbind(top1, geneMean)
+		  
+		  top1 <- top1[order(geneMean,decreasing=T),] # sort by the 2nd column
+		  
+		  top1 <- top1[,c('Row.names','geneMean','symbol','chr','gene_biotype')]
+		  
+			top1$geneMean <- sprintf("%-4.2f",as.numeric(top1$geneMean) )
+
+		  colnames(top1) <- c("Ensembl ID", "Mean","Symbol","Chr","Type")
+		  if ( sum( is.na(top1$Symbol)) == dim(top1)[1] ) top1 <- top1[,-3] 
+		  
+		  if(dim(top1)[1] > 1000 ) top1 = top1[1:1000,] # at most 1000 genes are shown
+		  return(top1)
+	
+  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+
+  	biclustData <- reactive({
+  		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if( is.null( input$selectGO4) ) return (NULL)
+		if( input$selectGO4 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
+
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+
+		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+		
+		if( is.null(biclustering() ) ) return(NULL)
+		if( is.null(input$selectBicluster ) ) return(NULL)
+		tem = input$nGenesBiclust
+		tem = input$biclustMethod
+		if(biclustering()$res@Number == 0) return(NULL)
+	 isolate({ 
+		res = biclustering()$res
+		
+		# given a dataframe, cover it to a string object.
+		dataframe2String <- function(x){
+			sampleNames = paste0("\t",paste(colnames(x),collapse="\t"))
+			data = paste(rownames(x),apply(x,1, paste, collapse="\t"),sep="\t")
+			return( paste(c(sampleNames, data),collapse="\n" ) )
+		}
+		
+
+		x = biclust::bicluster(biclustering()$x, res, 1:res@Number)
+		a=paste("Total of ", res@Number, "clusters\n")
+		for ( i in 1:res@Number) {
+		   x1 = x[[i]]
+		   if( input$selectGO4 != "ID not recognized!" & input$selectOrg != "NEW") {
+				  x2 <- merge(x1, allGeneInfo(), by.x ="row.names", by.y="ensembl_gene_id",all.x=T )
+				 rownames(x2)= paste(x2$symbol,  x2$Row.names )
+				 x1 = x2[, 2:(dim(x1)[2]+1) ]
+	
+		   }
+	  
+		   a = paste(a, "\n\nCluster", i,":", dim( x1 )[1], "genes", dim(x1)[2], "samples\n")
+	       a = paste0(a, dataframe2String( round(x1,4)  ) )
+	
+		}
+		return(a)	
+		})
+	})
+
+	output$download.biclust.data <- downloadHandler(
+		filename = function() {"biclustering_result.txt"},
+			content = function(file) {
+			write(biclustData(), file)
+	    }
+	)
   
 ################################################################
 #   Session Info
