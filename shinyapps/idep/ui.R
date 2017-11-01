@@ -483,6 +483,7 @@ tableOutput('species' ),
 					,selectInput("biclustMethod", "Method:", choices = list( #"QUBIC"= "BCQU()"
 																			#,"runibic"= "BCUnibic()"
 																			"BCCC" = "BCCC()"
+																			,"BCXmotifs"="BCXmotifs()"
 																			, "BCPlaid" = "BCPlaid()"
 																			,"BCSpectral" = "BCSpectral()"
 																			,"BCBimax" = "BCBimax()"
