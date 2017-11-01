@@ -5211,8 +5211,9 @@ isolate({
 		####################################   
    
 		isolate({
-			library(QUBIC)
-			# library(runibic)
+			library(biclust)
+			# library(QUBIC) # have trouble installing on Linux
+			# library(runibic) # 
 			
 		
 			x <- convertedData()

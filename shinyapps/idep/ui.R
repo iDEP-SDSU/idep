@@ -478,16 +478,16 @@ tableOutput('species' ),
 ,tabPanel("Biclust",
               sidebarLayout(
                 sidebarPanel(
-					h5("Biclustering can discover genes correlated on subset of samples. Only useful when  sample size is large(>10). Uses methods implemented in the biclust R package and the QUBIC Bioconductor package. ")
+					h5("Biclustering can discover genes correlated on subset of samples. Only useful when  sample size is large(>10). Uses methods implemented in the biclust R package. ")
 					,numericInput("nGenesBiclust", label = h5("Most variable genes to include "), min = 10, max = 2000, value = 1000) 
-					,selectInput("biclustMethod", "Method:", choices = list("QUBIC"= "BCQU()"
+					,selectInput("biclustMethod", "Method:", choices = list( #"QUBIC"= "BCQU()"
 																			#,"runibic"= "BCUnibic()"
-																			,"BCCC" = "BCCC()"
+																			"BCCC" = "BCCC()"
 																			, "BCPlaid" = "BCPlaid()"
 																			,"BCSpectral" = "BCSpectral()"
 																			,"BCBimax" = "BCBimax()"
 																			,"BCQuest" = "BCQuest()" 
-																			), selected = "BCQU()")				
+																			), selected = "BCCC()")				
 	
 					,htmlOutput('listBiclusters')
 					,h5("Enrichment database")
