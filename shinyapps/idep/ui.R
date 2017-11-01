@@ -30,7 +30,7 @@ shinyUI(
 		a(h5("Reset all",align = "right"), href="http://ge-lab.org/idep/"), 
 		radioButtons("dataFileFormat", label = "1. Choose data type", choices = list("Read counts data (recommended)" = 1, "Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2),selected = 1)
 
-		,fileInput('file1', '2. Upload a CSV or text file',
+		,fileInput('file1', '2. Upload expression data (CSV or text)',
                   accept = c(
                     'text/csv',
                     'text/comma-separated-values',
@@ -414,7 +414,7 @@ tableOutput('species' ),
 
 
 ###############################################################################################################################
-   ,tabPanel("Chromosome", 
+   ,tabPanel("Chr.", 
               sidebarLayout(
                 sidebarPanel(
 				h5("The interactive map on the right visualizes gene expression changes on the genome.") 
@@ -474,7 +474,7 @@ tableOutput('species' ),
  
 ###############################################################################################################################
 # 
-,tabPanel("Biclust",
+,tabPanel("Bicluster",
               sidebarLayout(
                 sidebarPanel(
 					h5("Biclustering can discover genes correlated on subset of samples. Only useful when  sample size is large(>10). Uses methods implemented in the biclust R package. ")
