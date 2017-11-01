@@ -5222,7 +5222,7 @@ isolate({
 			if(n<10) n = 10 
 			if(n> 2000 ) n = 2000 			
 			x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-			write.csv(x,"tem.csv")
+	
 			#res <- biclust::biclust(as.matrix( x), method = BCQU()) 
 			runR = paste( "res <- biclust::biclust(as.matrix( x), method =", input$biclustMethod ,")" )
 			eval(parse(text = runR ) )
