@@ -1,10 +1,9 @@
 # iDEP user interface
-
 library(shiny)
 library("shinyAce") # for showing text files, code
 library(shinyBS) # for popup figures
 library(plotly)
-iDEPversion = "iDEP 0.43"
+iDEPversion = "iDEP.43"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -500,7 +499,8 @@ tableOutput('species' ),
 											 font-style: italic;
 											 }"
 									 )
-					)									 
+					)
+					,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/biclustering/",target="_blank")
 				),
 				mainPanel(	
 					plotOutput('biclustHeatmap')

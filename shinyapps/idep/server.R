@@ -7,7 +7,7 @@ iDEPversion = "iDEP 0.43"
 # R packages, installed by:
 # install.packages(c("shiny","RSQLite","gplots","ggplot2","e1071","shinyAce","shinyBS","reshape2","DT","plotly" ) )
 # auto install
-Rlibs = c("shiny","RSQLite","gplots","ggplot2","e1071","shinyAce","shinyBS","reshape2","DT","plotly","statmod" )
+Rlibs = c("shiny","RSQLite","gplots","ggplot2","e1071","shinyAce","shinyBS","reshape2","DT","plotly","statmod","biclust" )
 notInstalled = setdiff(Rlibs, rownames(installed.packages()))
 if(length(notInstalled)>0)
 	install.packages(notInstalled)
