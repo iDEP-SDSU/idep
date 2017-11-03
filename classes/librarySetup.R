@@ -10,8 +10,7 @@ list.of.packages <- c(
   "ggplot2", "dplyr", #"tidyverse",
   "plotly",
   "e1071", "reshape2", "DT",
-  "data.table", "Rcpp",
-  #"RPostgreSQL"
+  "data.table", "Rcpp"
 )
 
 list.of.bio.packages  <- c(

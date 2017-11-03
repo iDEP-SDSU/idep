@@ -75,7 +75,7 @@ colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull do
 #  setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
 
 # relative path to data files
-datapath = "../../data/"   # production server
+datapath = "../../data/data/"   # production server
 #datapath = "../../../go/"  # windows
 #datapath = "../go/" # digital ocean
 
