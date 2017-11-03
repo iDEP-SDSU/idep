@@ -7,10 +7,10 @@ iDEPversion = "iDEP 0.44"
 # R packages, installed by:
 # install.packages(c("shiny","RSQLite","gplots","ggplot2","e1071","shinyAce","shinyBS","reshape2","DT","plotly" ) )
 # auto install
-Rlibs = c("shiny","RSQLite","gplots","ggplot2","e1071","shinyAce","shinyBS","reshape2","DT","plotly","statmod","biclust" )
-notInstalled = setdiff(Rlibs, rownames(installed.packages()))
-if(length(notInstalled)>0)
-	install.packages(notInstalled)
+# Rlibs = c("shiny","RSQLite","gplots","ggplot2","e1071","shinyAce","shinyBS","reshape2","DT","plotly","statmod","biclust")
+# notInstalled = setdiff(Rlibs, rownames(installed.packages()))
+# if(length(notInstalled)>0)
+# 	install.packages(notInstalled)
 
 # To test these packages, start an R session and paste these lines below.
 #library(shiny)   	# for Shiny interface
@@ -28,12 +28,12 @@ library(plotly) 	# for interactive heatmap
 # annotation packages needed by pathview; will be installed automatically if runing on Windows
 #biocLite( c( "org.Ag.eg.db","org.At.tair.db","org.Bt.eg.db","org.Ce.eg.db","org.Cf.eg.db","org.Dm.eg.db","org.Dr.eg.db","org.EcK12.eg.db","org.EcSakai.eg.db","org.Gg.eg.db","org.Hs.eg.db","org.Hs.ipi.db","org.Mm.eg.db","org.Mmu.eg.db","org.Pf.plasmo.db","org.Pt.eg.db","org.Rn.eg.db","org.Sc.sgd.db","org.Sco.eg.db","org.Ss.eg.db","org.Tgondii.eg.db","org.Xl.eg.db")  )
 # auto install 
-biocLibs = c( "limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata","sfsmisc","lokern","multtest","hgu133plus2.db" )
-notInstalled = setdiff(biocLibs, rownames(installed.packages()))
-if(length(notInstalled)>0) { 
-	source("https://bioconductor.org/biocLite.R")
-	biocLite(notInstalled)
-}
+# biocLibs = c( "limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata","sfsmisc","lokern","multtest","hgu133plus2.db" )
+# notInstalled = setdiff(biocLibs, rownames(installed.packages()))
+# if(length(notInstalled)>0) { 
+# 	source("https://bioconductor.org/biocLite.R")
+# 	biocLite(notInstalled)
+# }
 
 #library(DESeq2) # count data analysis
 #library(edgeR) # count data D.E.
@@ -75,8 +75,8 @@ colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull do
 #  setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
 
 # relative path to data files
-#datapath = "../../data/"   # production server
-datapath = "../../../go/"  # windows
+datapath = "../../data/"   # production server
+#datapath = "../../../go/"  # windows
 #datapath = "../go/" # digital ocean
 
 sqlite  <- dbDriver("SQLite")
