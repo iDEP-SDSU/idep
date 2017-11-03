@@ -3,7 +3,7 @@ library(shiny)
 library("shinyAce") # for showing text files, code
 library(shinyBS) # for popup figures
 library(plotly)
-iDEPversion = "iDEP.43"
+iDEPversion = "iDEP.44"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -414,17 +414,21 @@ tableOutput('species' ),
 
 
 ###############################################################################################################################
-   ,tabPanel("Chr.", 
+   ,tabPanel("Genome", 
               sidebarLayout(
                 sidebarPanel(
-				h5("The interactive map on the right visualizes gene expression changes on the genome.") 
+				h5("This interactive map shows DEGs on the genome. 
+				 Red and blue dots represent up- or down-regulated genes, respectively.
+				 Mouse over to see gene symbols. Click and drag to zoom in.") 
 				,htmlOutput("listComparisonsGenome")
 				,tags$style(type='text/css', "#listComparisonsPathway { width:100%;   margin-top:-12px}")	
 				,fluidRow(
 				 column(6,numericInput("limmaPvalViz", label = h5("Filters: FDR "), value = 0.1,min=1e-5,max=1,step=.05)  )
 				 ,column(6, numericInput("limmaFCViz", label = h5("Fold change"), value = 2,min=1,max=100,step=0.5) )
-				) # fluidRow				
-				,br(), h5("To identify genomic regions significatly enriched with up- or down-regulation genes, we can use "
+				) # fluidRow	
+				,tags$style(type='text/css', "#limmaPvalViz { width:100%;   margin-top:-12px}")
+				,tags$style(type='text/css', "#limmaFCViz { width:100%;   margin-top:-12px}")					
+				,br(), h5("To identify genomic regions significatly enriched with up- or down-regulated genes, we can use "
 				,a("PREDA.", href="https://academic.oup.com/bioinformatics/article/27/17/2446/224332/PREDA-an-R-package-to-identify-regional-variations"),
 				"Very slow (5 mins), but may be useful in studying cancer or other diseases that might involve chromosomal gain or loss."	)
 
@@ -436,7 +440,6 @@ tableOutput('species' ),
 				),
                 mainPanel(	
 					plotlyOutput("genomePlotly",height = "700px")
-					,h5("Red and blue dots represent up- or down-regulated genes, respectively. Mouse over to see gene symbols. ")					
 					,bsModal("modalExample111", "Differentially expressed genomic loci", "runPREDA", size="large"
 						,fluidRow( 
 						column(3,numericInput("RegionsPvalCutoff", label = h5("Min. FDR"), value = 0.01,min=1e-20,max=1,step=.05) ),
@@ -504,11 +507,57 @@ tableOutput('species' ),
 				),
 				mainPanel(	
 					plotOutput('biclustHeatmap')
-					,h3("Enriched gene sets")
+					,h3("Enriched gene sets in selected bicluster")
 					,tableOutput('geneListBclustGO')
 					,br(),br()
 					,h3("Genes in this cluster")
 					,tableOutput('geneListBicluster')
+				
+				))
+				
+
+) 
+
+###############################################################################################################################
+# 
+,tabPanel("Network",
+              sidebarLayout(
+                sidebarPanel(
+					h5("Identify co-expression networks and sub-modules using",a( "WGCNA.", href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-559",target="_blank" )  ,"Only useful when  sample size is large(>15). ")
+					,numericInput("nGenesNetwork", label = h5("Most variable genes to include "), min = 10, max = 1000, value = 1000) 
+				,fluidRow(
+				 column(6, numericInput("mySoftPower", label = h5("Soft Threshold"), min = 1, max = 20, value = 6))
+				 ,column(6, numericInput("minModuleSize", label = h5("Min. Module Size"), min = 10, max = 100, value = 20)  )
+				) # fluidRow	
+				,tags$style(type='text/css', "#mySoftPower { width:100%;   margin-top:-12px}")
+				,tags$style(type='text/css', "#minModuleSize { width:100%;   margin-top:-12px}")				
+					,actionButton("chooseSoftThreshold", "Choose soft threshold")	
+					,actionButton("showModuleHeatmap", "Heatmap")					
+					,downloadButton('download.WGCNA.Module.data',"Download all Modules")
+				,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
+				,htmlOutput('listWGCNA.Modules')
+				,fluidRow(
+				 column(6, numericInput("edgeThreshold", label = h5("Edge Threshold"), min = 0, max = 1, value =.5))
+				 ,column(6, numericInput("topGenesNetwork", label = h5("Top genes"), min = 10, max = 1000, value = 50)  )
+				) # fluidRow	
+				,tags$style(type='text/css', "#mySoftPower { width:100%;   margin-top:-12px}")
+				,tags$style(type='text/css', "#minModuleSize { width:100%;   margin-top:-12px}")	
+				,h5("Enrichment database")
+				,htmlOutput('selectGO5')
+				,downloadButton('downloadSelectedModule',"Download selected network")	
+					,h5("The network file can be imported to",a(" VisANT", href="http://visant.bu.edu/",target="_blank"),
+					" or ", a("Cytoscape.",href="http://www.cytoscape.org/",target="_blank" )  )				
+					),
+				mainPanel(	
+					
+					plotOutput('modulePlot')
+					,br(),br()
+					,h3("Enriched gene sets in selected module")					
+					,tableOutput('networkModuleGO')
+					,bsModal("modalExample112", "Choose soft threshold", "chooseSoftThreshold", size="large",plotOutput('softPower') )
+					,bsModal("modalExample116", "Heatmap of identified modules", "showModuleHeatmap", size="large",plotOutput('networkHeatmap') )
+	
+
 				
 				))
 				
@@ -522,7 +571,7 @@ tableOutput('species' ),
      htmlOutput('RsessionInfo')
  ) ))
 
-  ,tags$head(includeScript("ga.js")) # tracking usage  
+  #,tags$head(includeScript("ga.js")) # tracking usage  
   )# Navibar
 
 )

@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.43"
+iDEPversion = "iDEP 0.44"
 ################################################################
 # R packages
 ################################################################
@@ -44,6 +44,7 @@ library(sfsmisc)
 library(lokern)
 library(multtest)
 
+# KEGG and WGCNA generate temporary files. Needs to be deleted regularily. 
 
 ################################################################
 # Global variables
@@ -74,8 +75,8 @@ colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull do
 #  setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
 
 # relative path to data files
-datapath = "../../data/"   # production server
-#datapath = "../../../go/"  # windows
+#datapath = "../../data/"   # production server
+datapath = "../../../go/"  # windows
 #datapath = "../go/" # digital ocean
 
 sqlite  <- dbDriver("SQLite")
@@ -150,10 +151,13 @@ dynamicRange <- function( x ) {
  }
 
 # heatmap with color bar define gene groups
-myheatmap2 <- function (x,bar=NULL,n=-1,mycolor=1,clusterNames=NULL ) {
+myheatmap2 <- function (x,bar=NULL,n=-1,mycolor=1,clusterNames=NULL,sideColors=NULL ) {
 	# number of genes to show
 	ngenes = as.character( table(bar))
 	if(length(bar) >n && n != -1) {ix = sort( sample(1:length(bar),n) ); bar = bar[ix]; x = x[ix,]  }
+	if(! is.null(bar) )
+		if(is.null(sideColors) ) 
+			sideColors = mycolors
 
 	# this will cutoff very large values, which could skew the color 
 	x=as.matrix(x)-apply(x,1,mean)
@@ -164,19 +168,20 @@ myheatmap2 <- function (x,bar=NULL,n=-1,mycolor=1,clusterNames=NULL ) {
 	#colnames(x)= detectGroups(colnames(x))
 	if(is.null(bar)) # no side colors
 		heatmap.2(x,  Rowv =F,Colv=F, dendrogram ="none",
-		col=heatColors[as.integer(mycolor),], density.info="none", trace="none", scale="none", keysize=.3
-		,key=F, labRow = F,
-		#,RowSideColors = mycolors[bar]
-		,margins = c(8, 24)
-		,srtCol=45
+			col=heatColors[as.integer(mycolor),], density.info="none", trace="none", scale="none", keysize=.3
+			,key=F, labRow = F,
+			#,RowSideColors = mycolors[bar]
+			,margins = c(8, 24)
+			,srtCol=45
 		) else
 		heatmap.2(x,  Rowv =F,Colv=F, dendrogram ="none",
-		col=heatColors[as.integer(mycolor),], density.info="none", trace="none", scale="none", keysize=.3
-		,key=F, labRow = F,
-		,RowSideColors = mycolors[bar]
-		,margins = c(8, 24)
-		,srtCol=45
+			col=heatColors[as.integer(mycolor),], density.info="none", trace="none", scale="none", keysize=.3
+			,key=F, labRow = F,
+			,RowSideColors = sideColors[bar]
+			,margins = c(8, 24)
+			,srtCol=45
 		)
+		
 	if(!is.null(bar)) { 
 
 		legend.text = paste("Cluster ", toupper(letters)[unique(bar)], " (N=", ngenes,")", sep="") 
@@ -186,7 +191,7 @@ myheatmap2 <- function (x,bar=NULL,n=-1,mycolor=1,clusterNames=NULL ) {
 		par(lend = 1)           # square line ends for the color legend
 		legend("topright",      # location of the legend on the heatmap plot
 		legend = legend.text, # category labels
-		col = mycolors,  # color key
+		col = sideColors,  # color key
 		lty= 1,             # line style
 		lwd = 10 )           # line width
 		}
@@ -1985,10 +1990,9 @@ function(input, output,session) {
 			internally for enrichment and pathway analyses. iDEP parses column names to define sample groups. To define 3 biological samples (Control,
 		TreatmentA, TreatmentB) with 2 replicates each, column names should be:")
 		i = c(i," <strong> Ctrl_1, Ctrl_2, TrtA_1, TrtA_2, TrtB_1, TrtB_2</strong>.") 
-		i = c(i,"For factorial design, use underscore \"_\" to separate factors such as genetic background 
-		(wide type vs. mutant:WT vs. Mu) and experimental condition (Ctrl vs. Trt). 
-		Currently, only two factors are allowed. To define an 2x2 factorial design, use column names like:")
-		i = c(i,"<strong>WT_Ctrl_1, WT_Ctrl_2, WT_Trt_1, WT_Trt_2, Mu_Ctrl_1, Mu_Ctrl_2, Mu_Trt_1, Mu_Trt_2</strong>") 
+		i = c(i,"For more complex experimental design, users can upload a <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a>  with samples in columns and factors (genotypes and conditions) in rows. 
+		       With such a file, users can define a statistic model according to study design, which enables them to control the effect for batch effects or paired samples. 
+	         or detect interactions between factors (how mutant responds differently to treatment than wild-type).") 
 		
 		HTML(paste(i, collapse='<br/>') )
 	})
@@ -3033,7 +3037,7 @@ function(input, output,session) {
 	output$listModelComparisons <- renderUI({
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
-		
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
 		   { # if using sample names
 		   
@@ -3187,7 +3191,7 @@ function(input, output,session) {
       if (is.null(input$file1)&& input$goButton == 0 )
        { selectInput("selectContrast1", label = NULL, # h6("Funtional Category"), 
                   choices = list("All" = "All"), selected = "All")  }	 else { 
-	  selectInput("selectContrast2", label="Select a comparison to analyze:",choices=limma()$comparisons
+	  selectInput("selectContrast2", label="Select a comparison to visualize:",choices=limma()$comparisons
 	     )   } 
 	})
 	
@@ -3914,6 +3918,17 @@ function(input, output,session) {
                                 "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else { 
 								
 	  selectInput("selectGO4", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
+	     ,selected = "GOBP" )   } 
+	})
+
+	output$selectGO5 <- renderUI({
+	  tem = input$selectOrg
+      if (is.null(input$file1)&& input$goButton == 0 )
+       { selectInput("selectGO4", label = NULL, # h6("Funtional Category"), 
+                  choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
+                                "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else { 
+								
+	  selectInput("selectGO5", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
 	     ,selected = "GOBP" )   } 
 	})
 
@@ -5264,6 +5279,7 @@ isolate({
 		tem = input$nGenesBiclust
 		tem = input$selectBicluster
 		tem = input$biclustMethod
+		if (is.null(input$file1) && input$goButton == 0)   return(NULL)		
 		if(  is.null(input$selectBicluster)) return("No cluster found! Perhaps sample size is too small." )
 		if (is.null(biclustering()  ) ){ # if sample info is uploaded and correctly parsed.
 		   return("No cluster found! Perhaps sample size is too small." )	   
@@ -5504,7 +5520,434 @@ isolate({
 			write(biclustData(), file)
 	    }
 	)
-  
+	
+################################################################
+#   Co-expression network by WGCNA 
+################################################################
+ 
+	wgcna <- reactive ({
+	  if (is.null(input$file1) && input$goButton == 0)   return(NULL)
+
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		tem = input$CountsDEGMethod;
+		
+		tem = input$mySoftPower;
+		tem = input$nGenesNetwork
+		tem = input$minModuleSize
+		####################################   
+   
+		isolate({
+			withProgress(message="Running pathway analysis using GAGE", {
+			
+			#http://pklab.med.harvard.edu/scw2014/WGCNA.html
+			library(WGCNA)
+			incProgress(1/3)
+			x <- convertedData()
+			n=input$nGenesNetwork	
+			if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+			if(n<50) return(NULL)
+			if(n> 2000 ) n = 2000 			
+			#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+			
+			datExpr=t(x[1:n,])
+
+			subGeneNames=colnames(datExpr)
+			
+			#Choosing a soft-threshold to fit a scale-free topology to the network
+			powers = c(c(1:10), seq(from = 12, to=20, by=2));
+			sft=pickSoftThreshold(datExpr,dataIsExpr = TRUE,powerVector = powers,corFnc = cor,corOptions = list(use = 'p'),networkType = "unsigned")
+
+			incProgress(1/2)
+			softPower = input$mySoftPower;
+
+			#calclute the adjacency matrix
+			adj= adjacency(datExpr,type = "unsigned", power = softPower);
+
+			#turn adjacency matrix into topological overlap to minimize the effects of noise and spurious associations
+			TOM=TOMsimilarityFromExpr(datExpr,networkType = "unsigned", TOMType = "unsigned", power = softPower);
+			colnames(TOM) =subGeneNames
+			rownames(TOM) =subGeneNames
+			
+			##########################################
+			# module detection
+
+			library(flashClust)
+
+			geneTree = flashClust(as.dist(1-TOM),method="average");
+
+			# Set the minimum module size
+			minModuleSize = input$minModuleSize;
+
+			# Module identification using dynamic tree cut
+			dynamicMods = cutreeDynamic(dendro = geneTree,  method="tree", minClusterSize = minModuleSize);
+			#dynamicMods = cutreeDynamic(dendro = geneTree, distM = dissTOM, method="hybrid", deepSplit = 2, pamRespectsDendro = FALSE, minClusterSize = minModuleSize);
+			# table(dynamicMods)
+			
+			dynamicColors = labels2colors(dynamicMods)
+			#table(dynamicColors)
+
+			#discard the unassigned genes, and focus on the rest  # this causes problems
+			#restGenes= (dynamicColors != "grey")
+			#diss1=1-TOMsimilarityFromExpr(datExpr[,restGenes], power = softPower)
+			#colnames(diss1) =rownames(diss1) =subGeneNames[restGenes]
+			
+			#colorCode = as.character(dynamicColors[restGenes])
+
+			moduleInfo = cbind( subGeneNames, dynamicColors, dynamicMods)
+			moduleInfo = moduleInfo[which(moduleInfo[,2] != "grey") ,] # remove genes not in any modules
+			moduleInfo = moduleInfo[order(moduleInfo[,3]),] # sort
+			
+			return(list(x = t(datExpr),powers=powers,sft=sft, TOM = TOM, dynamicColors = dynamicColors, moduleInfo = moduleInfo) )
+
+			
+			}) #progress
+		}) # isolate
+	})
+	
+	output$softPower <- renderPlot({
+		if(is.null(wgcna() ) ) return(NULL)
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		tem = input$CountsDEGMethod;
+		tem = input$mySoftPower;
+		
+		####################################  
+		
+		sft = wgcna()$sft;
+		powers=wgcna()$powers;
+		# Plot the results
+		#sizeGrWindow(9, 5)
+		par(mfrow = c(1,2));
+		cex1 = 0.9;
+
+		# Scale-free topology fit index as a function of the soft-thresholding power
+		plot(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2],xlab="Soft Threshold (power)",ylab="Scale Free Topology Model Fit, signed R^2",type="n", main = paste("Scale independence"));
+		text(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2],labels=powers,cex=cex1,col="red");
+
+		# Red line corresponds to using an R^2 cut-off
+		abline(h=0.80,col="red")
+
+		# Mean connectivity as a function of the soft-thresholding power
+		plot(sft$fitIndices[,1], sft$fitIndices[,5],xlab="Soft Threshold (power)",ylab="Mean Connectivity", type="n",main = paste("Mean connectivity"))
+		text(sft$fitIndices[,1], sft$fitIndices[,5], labels=powers, cex=cex1,col="red")
+	})
+
+	output$modulePlot <- renderPlot({
+		if(is.null(wgcna() ) ) return(NULL)
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		tem = input$CountsDEGMethod;
+		tem = input$mySoftPower;
+		tem = input$nGenesNetwork		
+		tem = input$minModuleSize
+		####################################  
+		
+		diss1 = 1-wgcna()$TOM;
+		dynamicColors = wgcna()$dynamicColors
+		
+		hier1=flashClust(as.dist(diss1), method="average" )
+		#set the diagonal of the dissimilarity to NA 
+		diag(diss1) = NA;
+		plotDendroAndColors(hier1, dynamicColors, "Dynamic Tree Cut", dendroLabels = FALSE, hang = 0.03, addGuide = TRUE, guideHang = 0.05, main = "Gene dendrogram and module colors")
+
+		#Visualize the Tom plot. Raise the dissimilarity matrix to the power of 4 to bring out the module structure
+		#TOMplot(diss1, hier1, colorCode)			
+
+
+		})
+
+	output$networkHeatmap <- renderPlot({ # Kmeans clustering
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		####################################
+		tem = input$minModuleSize
+		tem = input$mySoftPower;
+		tem = input$nGenesNetwork
+		if( is.null(wgcna()) ) return(NULL)
+		withProgress(message="Creating heatmap", {
+			x <- convertedData()
+			n=input$nGenesNetwork	
+			if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+			if(n<50) return(NULL)
+			if(n> 2000 ) n = 2000
+			
+			x = x[1:n,]
+			
+			x2 = merge(x,wgcna()$moduleInfo, by.x="row.names",by.y="subGeneNames",all.y=TRUE )
+			#x2 = merge(x,moduleInfo, by.x="row.names",by.y="subGeneNames",all.y=TRUE )		
+			x2 = x2[order(x2$dynamicMods),]
+			bar = as.numeric( x2$dynamicMods )
+
+			x2 = x2[,colnames(x)]
+			
+			clusterNames = paste("Module",1:max(bar))
+			sideColors= standardColors( max(bar) )# WGCNA function for module colors
+	   
+		myheatmap2(  x2-apply(x2,1,mean), bar,1000,mycolor=input$heatColors1, clusterNames=clusterNames, sideColors= sideColors)
+		
+		incProgress(1, detail = paste("Done")) }) #progress 
+  } , height = 500)
+
+  	moduleData <- reactive({
+  		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+
+		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+		
+		if( is.null(wgcna()) ) return(NULL)
+		tem = input$mySoftPower;
+		tem = input$nGenesNetwork		
+		tem = input$minModuleSize
+		
+	 isolate({ 
+			
+			x2 = merge(wgcna()$moduleInfo, wgcna()$x, by.y="row.names",by.x="subGeneNames",all.x=TRUE )
+			x2 = x2[order(x2$dynamicMods),]
+
+			if( !is.null(allGeneInfo() )   ) {
+				x2 <- merge(x2, allGeneInfo(), by.x ="subGeneNames", by.y="ensembl_gene_id",all.x=T )
+				rownames(x2)= paste0(x2$symbol,"__",  x2$subGeneNames )
+				#x1 = x2[, 2:(dim(x1)[2]+1) ]
+			}
+			x2 = x2[order(x2$dynamicMods),]
+			colnames(x2)[1:3] = c("gene id","Module color","Module#")
+		   
+			
+			
+			return(x2)	
+		})
+	})
+
+	output$download.WGCNA.Module.data <- downloadHandler(
+		filename = function() {"WGCNA_modules.csv"},
+			content = function(file) {
+			write.csv(moduleData(), file)
+	    }
+	)	
+
+	output$networkModuleGO <- renderTable({		
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if( is.null( input$selectGO5) ) return (NULL)
+		if( input$selectGO5 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
+
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO5
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+
+		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+		NoSig = as.data.frame("No significant enrichment found.")
+		
+
+		tem = input$mySoftPower;
+		tem = input$nGenesNetwork		
+		tem = input$minModuleSize
+		tem = input$selectWGCNA.Module
+		if( is.null(wgcna()) ) return(NULL)
+		
+		isolate({
+			withProgress(message="GO Enrichment", {
+	
+			module = gsub(".* ","",input$selectWGCNA.Module)
+			moduleColors = wgcna()$dynamicColors 
+			inModule = (moduleColors==module);
+			
+			if( input$selectWGCNA.Module == "Entire network")
+			  inModule = rep(TRUE, length(inModule))
+
+			probes = rownames(wgcna()$x   )
+			query  = probes[inModule];
+		
+			if( length(query)  <= minGenesEnrichment) return(NoSig) 
+
+			
+			if(input$selectOrg == "NEW" && !is.null( input$gmtFile) ){
+				result <- findOverlapGMT( query, GeneSets(),1) 
+			} else  { 
+				convertedID <- converted()
+				convertedID$IDs <- query
+				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO5,input$selectOrg,1) }
+				
+			result$Genes = "Up regulated"
+			
+
+			results1 = result
+			if ( is.null( results1) ) return (NoSig)
+			if( dim(results1)[2] <5 ) return(NoSig)  # Returns a data frame: "No significant results found!"
+
+			results1= results1[,c(5,1,2,4)]
+			colnames(results1)= c("List","FDR","Genes","GO terms or pathways")
+			minFDR = 0.01
+			if(min(results1$FDR) > minFDR ) results1 = as.data.frame("No signficant enrichment found.") else
+			results1 = results1[which(results1$FDR < minFDR),]
+			
+			incProgress(1, detail = paste("Done")) 
+			
+			if(dim(results1)[2] != 4) return(NoSig)
+			colnames(results1)= c("Direction","adj.Pval","Genes","Pathways")
+			
+			results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )
+			results1[,1] <- as.character(results1[,1])
+			tem <- results1[,1]
+
+			results1[ duplicated (results1[,1] ),1 ] <- ""
+			
+			results1[,-1]			
+
+
+		 })#progress
+		}) #isolate
+  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })
+
+
+	
+	output$listWGCNA.Modules <- renderUI({
+		tem = input$selectOrg
+		tem = input$mySoftPower;
+		tem = input$nGenesNetwork		
+		tem = input$minModuleSize
+		if (is.null(wgcna() ) ){ # if sample info is uploaded and correctly parsed.
+		   return(NULL)	   
+		} else { 
+			if( dim(wgcna()$moduleInfo)[1] == 0  ) {  # if no module
+				return(NULL) 
+			}	else  { 
+					modules = unique(wgcna()$moduleInfo[, c("dynamicMods","dynamicColors")] )
+					moduleList = apply(modules,1,paste,collapse=". ")
+					moduleList = c(moduleList,"Entire network")
+					selectInput(	"selectWGCNA.Module", 
+									label="Select a module",
+									choices= moduleList
+								)
+
+				}
+
+		}			
+	}) 
+
+	
+  	exportModuleNetwork <- reactive({
+  		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; 
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+
+		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+		
+		if( is.null(wgcna()) ) return(NULL)
+		tem = input$mySoftPower;
+		tem = input$nGenesNetwork		
+		tem = input$minModuleSize
+		tem = input$selectWGCNA.Module
+		tem=input$edgeThreshold 
+		tem=input$topGenesNetwork;
+		
+	 isolate({ 
+		outfile <- tempfile(fileext='.txt')
+		withProgress(message="Extracting module", {
+
+		module = gsub(".* ","",input$selectWGCNA.Module)
+		
+		
+		moduleColors = wgcna()$dynamicColors 
+		inModule = (moduleColors==module);
+		
+		if( input$selectWGCNA.Module == "Entire network")
+		  inModule = rep(TRUE, length(inModule))
+		
+		datExpr = t(wgcna()$x )
+		probes = colnames(datExpr)
+		modProbes = probes[inModule];
+		
+		modTOM = wgcna()$TOM[inModule, inModule];
+		dimnames(modTOM) = list(modProbes, modProbes)
+
+		nTop = input$topGenesNetwork;
+		
+		if( nTop > 1000) nTop = 1000; 
+		
+		IMConn = softConnectivity(datExpr[, modProbes]);
+		top = (rank(-IMConn) <= nTop)
+		
+		# adding symbols 
+		probeToGene = NULL
+	    if(sum(is.na( allGeneInfo()$symbol ) )/ dim( allGeneInfo() )[1] <.5 ) { # if more than 50% genes has symbol
+			probeToGene = allGeneInfo()[,c("ensembl_gene_id","symbol")]
+			probeToGene$symbol = gsub(" ","",probeToGene$symbol)
+
+			ix = which( is.na(probeToGene$symbol) |
+						nchar(probeToGene$symbol)<2 | 
+						toupper(probeToGene$symbol)=="NA" |  
+						toupper(probeToGene$symbol)=="0"  ) 			
+			probeToGene[ix,2] = probeToGene[ix,1]  # use gene ID
+
+		}
+		
+		
+		
+		incProgress(1/2, "Writing to file")
+		vis = exportNetworkToVisANT(modTOM[top,top],
+			file = outfile,
+			weighted = TRUE,
+			threshold = input$edgeThreshold,
+			probeToGene = probeToGene )
+		
+		return(outfile)	
+		incProgress(1,"Done")
+		})
+		})
+	})
+	
+	output$downloadSelectedModule <- downloadHandler(
+	  filename <- function() {
+	  paste0("Module",input$selectWGCNA.Module,".txt")
+		
+	  },
+	  content <- function(file) {
+		file.copy(exportModuleNetwork() , file)
+	  },
+	  contentType = "text file"
+	)	
+	
+	
 ################################################################
 #   Session Info
 ################################################################
