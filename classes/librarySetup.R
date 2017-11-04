@@ -7,7 +7,7 @@ list.of.packages <- c(
   "ggplot2", "dplyr", #"tidyverse",
   "plotly",
   "e1071", "reshape2", "DT",
-  "data.table", "Rcpp","WGCNA","flashClust","statmod","biclust"
+  "data.table", "Rcpp","WGCNA","flashClust","statmod","biclust","igraph"
 )
 
 list.of.bio.packages  <- c(

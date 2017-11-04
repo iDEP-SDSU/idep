@@ -63,8 +63,11 @@ PREDA_Permutations =1000
 set.seed(2) # seed for random number generator
 mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
 #Each row of this matrix represents a color scheme;
-heatColors = rbind(      greenred(75),     bluered(75),     colorpanel(75,"green","black","magenta"),colorpanel(75,"blue","yellow","red") )
-rownames(heatColors) = c("Green-Black-Red","Blue-White-Red","Green-Black-Magenta","Blue-Yellow-Red")
+
+hmcols <- colorRampPalette(rev(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF",
+"#E0F3F8", "#91BFDB", "#4575B4")))(75)
+heatColors = rbind(      greenred(75),     bluered(75),     colorpanel(75,"green","black","magenta"),colorpanel(75,"blue","yellow","red"),hmcols )
+rownames(heatColors) = c("Green-Black-Red","Blue-White-Red","Green-Black-Magenta","Blue-Yellow-Red","Blue-white-brown")
 colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull down menu
 
 ################################################################
@@ -5226,9 +5229,14 @@ isolate({
 		####################################   
    
 		isolate({
+			withProgress(message="Runing biclustering", {
 			library(biclust)
-			# library(QUBIC) # have trouble installing on Linux
-			# library(runibic) # 
+			
+
+			if(input$biclustMethod == "BCQU()" )
+				library(QUBIC) # have trouble installing on Linux
+			if(input$biclustMethod == "BCUnibic()" )
+				library(runibic) # 
 			
 		
 			x <- convertedData()
@@ -5240,14 +5248,14 @@ isolate({
 			
 			if( input$biclustMethod == "BCXmotifs()"  )
 				x<-discretize(x)
-	
+			incProgress(1/2)
 			#res <- biclust::biclust(as.matrix( x), method = BCQU()) 
 			runR = paste( "res <- biclust::biclust(as.matrix( x), method =", input$biclustMethod ,")" )
 			eval(parse(text = runR ) )
 			
-			
+			incProgress(1)
 			return(list( x=x, res=res)	)	 
-		
+			})
 		
 		} )
    
@@ -5542,10 +5550,11 @@ isolate({
 		tem = input$mySoftPower;
 		tem = input$nGenesNetwork
 		tem = input$minModuleSize
+		
 		####################################   
    
 		isolate({
-			withProgress(message="Running pathway analysis using GAGE", {
+			withProgress(message="Constructing co-expression network using WGCNA", {
 			
 			#http://pklab.med.harvard.edu/scw2014/WGCNA.html
 			library(WGCNA)
@@ -5605,13 +5614,31 @@ isolate({
 			moduleInfo = moduleInfo[which(moduleInfo[,2] != "grey") ,] # remove genes not in any modules
 			moduleInfo = moduleInfo[order(moduleInfo[,3]),] # sort
 			
-			return(list(x = t(datExpr),powers=powers,sft=sft, TOM = TOM, dynamicColors = dynamicColors, moduleInfo = moduleInfo) )
+			n.modules = length(unique(dynamicColors) ); nGenes = dim(moduleInfo)[1]	
+			
+			return(list(x = t(datExpr),powers=powers,sft=sft, TOM = TOM, dynamicColors = dynamicColors, moduleInfo = moduleInfo,n.modules=n.modules, nGenes =nGenes) )
 
 			
 			}) #progress
 		}) # isolate
 	})
-	
+	output$moduleStatistics <- renderText({
+		if(is.null(wgcna() ) ) return(NULL)
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		tem = input$CountsDEGMethod;
+		tem = input$mySoftPower;
+		
+		####################################  
+		paste( "A network of", wgcna()$nGenes,"genes was divided into ",wgcna()$n.modules, "modules." )
+	})	
 	output$softPower <- renderPlot({
 		if(is.null(wgcna() ) ) return(NULL)
 		##################################  
@@ -5678,7 +5705,7 @@ isolate({
 
 		})
 
-	output$networkHeatmap <- renderPlot({ # Kmeans clustering
+	output$networkHeatmap <- renderPlot({ 
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
 		##################################  
@@ -5783,7 +5810,8 @@ isolate({
 		isolate({
 			withProgress(message="GO Enrichment", {
 	
-			module = gsub(".* ","",input$selectWGCNA.Module)
+			#module = gsub(".* ","",input$selectWGCNA.Module)
+			module = unlist(strsplit(input$selectWGCNA.Module," " ) )[2]	
 			moduleColors = wgcna()$dynamicColors 
 			inModule = (moduleColors==module);
 			
@@ -5832,11 +5860,10 @@ isolate({
 
 		 })#progress
 		}) #isolate
-  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T,align="c")
 	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })
 
 
-	
 	output$listWGCNA.Modules <- renderUI({
 		tem = input$selectOrg
 		tem = input$mySoftPower;
@@ -5850,6 +5877,7 @@ isolate({
 			}	else  { 
 					modules = unique(wgcna()$moduleInfo[, c("dynamicMods","dynamicColors")] )
 					moduleList = apply(modules,1,paste,collapse=". ")
+					moduleList  = paste0( moduleList, " (", table(wgcna()$moduleInfo[,"dynamicMods"] )," genes)"  )
 					moduleList = c(moduleList,"Entire network")
 					selectInput(	"selectWGCNA.Module", 
 									label="Select a module",
@@ -5884,8 +5912,8 @@ isolate({
 		outfile <- tempfile(fileext='.txt')
 		withProgress(message="Extracting module", {
 
-		module = gsub(".* ","",input$selectWGCNA.Module)
-		
+		#module = gsub(".* ","",input$selectWGCNA.Module)
+		module = unlist(strsplit(input$selectWGCNA.Module," " ) )[2]		
 		
 		moduleColors = wgcna()$dynamicColors 
 		inModule = (moduleColors==module);
@@ -5946,6 +5974,95 @@ isolate({
 	  },
 	  contentType = "text file"
 	)	
+  	output$moduleNetwork <- renderPlot({
+  		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; 
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+
+		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+		
+		if( is.null(wgcna()) ) return(NULL)
+		tem = input$mySoftPower;
+		tem = input$nGenesNetwork		
+		tem = input$minModuleSize
+		tem = input$selectWGCNA.Module
+		tem=input$edgeThreshold 
+		tem=input$topGenesNetwork;
+		tem = input$networkLayout
+		if(is.null(input$selectWGCNA.Module ) ) return(NULL)
+		
+	 isolate({ 
+		outfile <- tempfile(fileext='.txt')
+		withProgress(message="Extracting module", {
+
+		#module = gsub(".* ","",input$selectWGCNA.Module)
+		module = unlist(strsplit(input$selectWGCNA.Module," " ) )[2]
+		
+		moduleColors = wgcna()$dynamicColors 
+		inModule = (moduleColors==module);
+		
+		if( input$selectWGCNA.Module == "Entire network")
+		  inModule = rep(TRUE, length(inModule))
+		
+		datExpr = t(wgcna()$x )
+		probes = colnames(datExpr)
+		modProbes = probes[inModule];
+		
+		modTOM = wgcna()$TOM[inModule, inModule];
+		dimnames(modTOM) = list(modProbes, modProbes)
+
+		nTop = input$topGenesNetwork;
+		
+		if( nTop > 1000) nTop = 1000; 
+		
+		IMConn = softConnectivity(datExpr[, modProbes]);
+		top = (rank(-IMConn) <= nTop)
+		
+		# adding symbols 
+		probeToGene = NULL
+	    if(sum(is.na( allGeneInfo()$symbol ) )/ dim( allGeneInfo() )[1] <.5 ) { # if more than 50% genes has symbol
+			probeToGene = allGeneInfo()[,c("ensembl_gene_id","symbol")]
+			probeToGene$symbol = gsub(" ","",probeToGene$symbol)
+
+			ix = which( is.na(probeToGene$symbol) |
+						nchar(probeToGene$symbol)<2 | 
+						toupper(probeToGene$symbol)=="NA" |  
+						toupper(probeToGene$symbol)=="0"  ) 			
+			probeToGene[ix,2] = probeToGene[ix,1]  # use gene ID
+
+		}
+		
+		net <- modTOM[top,top] >input$edgeThreshold		
+		for( i in 1:dim(net)[1])  # remove self connection
+			net[i,i] = FALSE
+		if(!is.null(probeToGene) ) { # if gene symbol exist
+			ix = match( colnames(net), probeToGene[,1])		
+			colnames(net) = probeToGene[ix,2]
+			ix = match( rownames(net), probeToGene[,1])		
+			rownames(net) = probeToGene[ix,2]		
+		}
+		library(igraph)
+		#plot(graph_from_data_frame(d=data.frame(1:10,ncol=2)  ,directed=F) )
+		# http://www.kateto.net/wp-content/uploads/2016/01/NetSciX_2016_Workshop.pdf
+		plot( graph_from_adjacency_matrix( net, mod ="undirected" ), vertex.label.color="black", vertex.label.dist=3,vertex.size=7)
+		
+		if(0){ 
+		incProgress(1/2, "Writing to file")
+		vis = exportNetworkToVisANT(,
+			file = outfile,
+			weighted = TRUE,
+			threshold = input$edgeThreshold,
+			probeToGene = probeToGene )
+		
+		return(outfile)
+		}
+		incProgress(1,"Done")
+		})
+		})
+	})
 	
 	
 ################################################################

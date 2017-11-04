@@ -482,14 +482,16 @@ tableOutput('species' ),
                 sidebarPanel(
 					h5("Biclustering can discover genes correlated on subset of samples. Only useful when  sample size is large(>10). Uses methods implemented in the biclust R package. ")
 					,numericInput("nGenesBiclust", label = h5("Most variable genes to include "), min = 10, max = 2000, value = 1000) 
-					,selectInput("biclustMethod", "Method:", choices = list( #"QUBIC"= "BCQU()"
-																			#,"runibic"= "BCUnibic()"
+					,selectInput("biclustMethod", "Method:", choices = list( 
 																			"BCCC" = "BCCC()"
+																			,"QUBIC"= "BCQU()"
+																			,"runibic"= "BCUnibic()"																		
 																			,"BCXmotifs"="BCXmotifs()"
 																			, "BCPlaid" = "BCPlaid()"
 																			,"BCSpectral" = "BCSpectral()"
 																			,"BCBimax" = "BCBimax()"
 																			,"BCQuest" = "BCQuest()" 
+
 																			), selected = "BCCC()")				
 	
 					,htmlOutput('listBiclusters')
@@ -533,18 +535,27 @@ tableOutput('species' ),
 				,tags$style(type='text/css', "#minModuleSize { width:100%;   margin-top:-12px}")				
 					,actionButton("chooseSoftThreshold", "Choose soft threshold")	
 					,actionButton("showModuleHeatmap", "Heatmap")					
-					,downloadButton('download.WGCNA.Module.data',"Download all Modules")
+
+					,textOutput('moduleStatistics')
+					,tags$head(tags$style("#moduleStatistics{color: blue;
+											 font-size: 14px;
+											 font-style: italic;
+											 }"
+							  ))
+													
 				,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
 				,htmlOutput('listWGCNA.Modules')
 				,fluidRow(
-				 column(6, numericInput("edgeThreshold", label = h5("Edge Threshold"), min = 0, max = 1, value =.5))
-				 ,column(6, numericInput("topGenesNetwork", label = h5("Top genes"), min = 10, max = 1000, value = 50)  )
+				 column(6, numericInput("edgeThreshold", label = h5("Edge Threshold"), min = 0, max = 1, value =.5, step=.1))
+				 ,column(6, numericInput("topGenesNetwork", label = h5("Top genes"), min = 10, max = 2000, value = 10, step = 10)  )
 				) # fluidRow	
 				,tags$style(type='text/css', "#mySoftPower { width:100%;   margin-top:-12px}")
-				,tags$style(type='text/css', "#minModuleSize { width:100%;   margin-top:-12px}")	
+				,tags$style(type='text/css', "#minModuleSize { width:100%;   margin-top:-12px}")
+				,actionButton("networkLayout", "Change layout",style="float:center")				
 				,h5("Enrichment database")
 				,htmlOutput('selectGO5')
-				,downloadButton('downloadSelectedModule',"Download selected network")	
+				,downloadButton('download.WGCNA.Module.data',"Download all Modules")
+				,downloadButton('downloadSelectedModule',"Download network for selected module")	
 					,h5("The network file can be imported to",a(" VisANT", href="http://visant.bu.edu/",target="_blank"),
 					" or ", a("Cytoscape.",href="http://www.cytoscape.org/",target="_blank" )  )				
 					),
@@ -552,7 +563,8 @@ tableOutput('species' ),
 					
 					plotOutput('modulePlot')
 					,br(),br()
-					,h3("Enriched gene sets in selected module")					
+					,plotOutput('moduleNetwork')
+					,h3("Enriched pathways among all genes in selected module")					
 					,tableOutput('networkModuleGO')
 					,bsModal("modalExample112", "Choose soft threshold", "chooseSoftThreshold", size="large",plotOutput('softPower') )
 					,bsModal("modalExample116", "Heatmap of identified modules", "showModuleHeatmap", size="large",plotOutput('networkHeatmap') )
