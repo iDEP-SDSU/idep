@@ -5706,7 +5706,7 @@ isolate({
 			moduleInfo = moduleInfo[which(moduleInfo[,2] != "grey") ,] # remove genes not in any modules
 			moduleInfo = moduleInfo[order(moduleInfo[,3]),] # sort
 			
-			n.modules = length(unique(dynamicColors) ); nGenes = dim(moduleInfo)[1]	
+			n.modules = length(unique(dynamicColors) ) -1 ; nGenes = dim(moduleInfo)[1]	
 			
 			return(list(x = t(datExpr),powers=powers,sft=sft, TOM = TOM, dynamicColors = dynamicColors, moduleInfo = moduleInfo,n.modules=n.modules, nGenes =nGenes) )
 
