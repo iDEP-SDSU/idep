@@ -69,7 +69,7 @@ hmcols <- colorRampPalette(rev(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF",
 heatColors = rbind(      greenred(75),     bluered(75),     colorpanel(75,"green","black","magenta"),colorpanel(75,"blue","yellow","red"),hmcols )
 rownames(heatColors) = c("Green-Black-Red","Blue-White-Red","Green-Black-Magenta","Blue-Yellow-Red","Blue-white-brown")
 colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull down menu
-
+workDir = getwd()
 ################################################################
 #   Input files
 ################################################################
@@ -1762,7 +1762,7 @@ function(input, output,session) {
  # geneSets(): gene set as a list for pathway analysis
   
 	options(shiny.maxRequestSize = 50*1024^2) # 50MB file max for upload
-
+	observe({ setwd(workDir) })
 	observe({  updateSelectInput(session, "selectOrg", choices = speciesChoice )      })
 	observe({  updateSelectInput(session, "heatColors1", choices = colorChoices )      })
 	observe({  updateSelectInput(session, "distFunctions", choices = distChoices )      })
@@ -4747,8 +4747,10 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	setwd(tempFolder)
 
 	#pv.out <- mypathview(gene.data = fold, pathway.id = pathID, kegg.dir = tempFolder,  out.suffix = randomString, species = keggSpecies, kegg.native=TRUE)
-	pv.out <- pathview(gene.data = fold, pathway.id = pathID, out.suffix = randomString, species = keggSpecies, kegg.native=TRUE)
-    setwd(wd)
+	try( 
+	 pv.out <- pathview(gene.data = fold, pathway.id = pathID, out.suffix = randomString, species = keggSpecies, kegg.native=TRUE)
+    )
+	setwd(wd)
     # Return a list containing the filename
     list(src = outfile,
          contentType = 'image/png',
