@@ -1,8 +1,8 @@
 # iDEP user interface
-library(shiny)
-library("shinyAce") # for showing text files, code
-library(shinyBS) # for popup figures
-library(plotly)
+library(shiny,verbose=FALSE)
+library("shinyAce",verbose=FALSE) # for showing text files, code
+library(shinyBS,verbose=FALSE) # for popup figures
+library(plotly,verbose=FALSE)
 iDEPversion = "0.45"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
