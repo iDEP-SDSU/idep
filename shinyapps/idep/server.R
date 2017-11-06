@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.45"
+iDEPversion = "iDEP 0.46"
 ################################################################
 # R packages
 ################################################################
@@ -849,7 +849,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 	
 	# check for replicates, removes samples without replicates
 	reps = as.matrix(table(groups)) # number of replicates per biological sample
-	if ( sum( reps[,1] >= 2) <2 ) # if less than 2 samples with replicates
+	if ( sum( reps[,1] >= 2) <2    ) # if less than 2 samples with replicates
 	return( list(results= NULL, comparisons = NULL, Exp.type="Failed to parse sample names to define groups. 
 		Cannot perform DEGs and pathway analysis. Please double check column names! Use WT_Rep1, WT_Rep2 etc. ", topGenes=NULL)) 
 	# remove samples without replicates
@@ -2259,7 +2259,11 @@ function(input, output,session) {
 				x <- x[!duplicated(x[,1]) ,]  # remove duplicated genes
 				rownames(x) <- x[,1]
 				x <- as.matrix(x[,c(-1)])
-
+				
+				# remove "-" or "." from sample names
+				colnames(x) = gsub("-","",colnames(x))
+				colnames(x) = gsub("\\.","",colnames(x))				
+				
 				# missng value for median value
 				if(sum(is.na(x))>0) {# if there is missing values
 					rowMeans <- apply(x,1, function (y)  median(y,na.rm=T))
@@ -2365,7 +2369,10 @@ function(input, output,session) {
 				#---------------Read file
 				x <- read.csv(inFile,row.names=1,header=T,colClasses="character")	# try CSV
 				if(dim(x)[2] <= 2 )   # if less than 3 columns, try tab-deliminated
-					x <- read.table(inFile, row.names=1,sep="\t",header=TRUE,colClasses="character")	
+					x <- read.table(inFile, row.names=1,sep="\t",header=TRUE,colClasses="character")
+				# remove "-" or "." from sample names
+				colnames(x) = gsub("-","",colnames(x))
+				colnames(x) = gsub("\\.","",colnames(x))	
 				#----------------Matching with column names of expression file
 				ix = match(toupper(colnames(readData()$data)), toupper(colnames(x)) ) 
 				ix = ix[which(!is.na(ix))] # remove NA
@@ -2461,7 +2468,7 @@ function(input, output,session) {
 				})
 		})
 	})
-
+	
 	convertedData <- reactive({
 		if (is.null(input$file1) && input$goButton == 0) return()  
 		##################################  
@@ -2480,6 +2487,7 @@ function(input, output,session) {
 				mapping <- converted()$conversionTable
 				# cat (paste( "\nData:",input$selectOrg) )
 				x =readData()$data
+
 				rownames(x) = toupper(rownames(x))
 				# any gene not recognized by the database is disregarded
 				# x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
@@ -2487,7 +2495,7 @@ function(input, output,session) {
 				x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
 				ix = which(is.na(x1[,2]) )
 				x1[ix,2] = x1[ix,1] # original IDs used
-				#write.csv(x1,"tem.csv")
+				
 				#multiple matched IDs, use the one with highest SD
 				tem = apply(x1[,3:(dim(x1)[2])],1,sd)
 				x1 = x1[order(x1[,2],-tem),]
@@ -2501,6 +2509,49 @@ function(input, output,session) {
 		return(x1)
 		})
 	})
+	
+	convertedCounts <- reactive({
+		if (is.null(input$file1) && input$goButton == 0) return()  
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		####################################
+		if( is.null(converted() ) ) return( readData()$data) # if id or species is not recognized use original data.
+		isolate( {  
+			withProgress(message="Converting data ... ", {
+				mapping <- converted()$conversionTable
+				# cat (paste( "\nData:",input$selectOrg) )
+				x =readData()$rawCounts
+				if(is.null(x)) return(NULL)
+				rownames(x) = toupper(rownames(x))
+				# any gene not recognized by the database is disregarded
+				# x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
+				# the 3 lines keeps the unrecogized genes using original IDs
+				x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
+				ix = which(is.na(x1[,2]) )
+				x1[ix,2] = x1[ix,1] # original IDs used
+				
+				#multiple matched IDs, use the one with highest SD
+				tem = apply(x1[,3:(dim(x1)[2])],1,sd)
+				x1 = x1[order(x1[,2],-tem),]
+				x1 = x1[!duplicated(x1[,2]) ,]
+				rownames(x1) = x1[,2]
+				x1 = as.matrix(x1[,c(-1,-2)])
+				tem = apply(x1,1,sd)
+				x1 = x1[order(-tem),]  # sort again by SD
+				incProgress(1, "Done.")
+			})
+		return(x1)
+		})
+	})
+	
+	
 	
 	GeneSets <- reactive({
 		if (is.null(input$file1) && input$goButton == 0)	return()
@@ -3630,11 +3681,11 @@ function(input, output,session) {
 		  # rawCounts = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
 		 # res =DEG.DESeq2(rawCounts, .05, 2) 
 		  # res1 =DEG.limma(rawCounts, .1, 1.5,rawCounts, 2,3) 
-			return( DEG.DESeq2(readData()$rawCounts,input$limmaPval, input$limmaFC, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel)  )
+			return( DEG.DESeq2(convertedCounts(),input$limmaPval, input$limmaFC, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel)  )
 		if(input$CountsDEGMethod < 3 )    # voom or limma-trend
-			return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,readData()$rawCounts, input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel) )
+			return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,convertedCounts(), input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel) )
 	} else { # normalized data
-	 return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,readData()$rawCounts, input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel) )
+	 return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,convertedCounts(), input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel) )
 	}
 	
 	
@@ -3651,33 +3702,52 @@ function(input, output,session) {
 	})	
   
 	output$vennPlot <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	tem=input$CountsDEGMethod
-	tem = input$selectFactorsModel # responsive to changes in model and comparisons
-	tem = input$selectModelComprions
-	if(is.null(input$selectComparisonsVenn) ) return(NULL)
-	####################################
-	
-	isolate({ 
-	
-		results = limma()$results
-		results = results[,input$selectComparisonsVenn,drop=FALSE] # only use selected comparisons
-		if(dim(results)[2] >5) results <- results[,1:5]
-		vennDiagram(results,circle.col=rainbow(5))
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+		tem=input$CountsDEGMethod
+		tem = input$selectFactorsModel # responsive to changes in model and comparisons
+		tem = input$selectModelComprions
+		if(is.null(input$selectComparisonsVenn) ) return(NULL)
+		####################################
+		
+		isolate({ 
+		
+			results = limma()$results
+			ixa = c()
+			for (comps in  input$selectComparisonsVenn) { 
+			if(!grepl("Diff:", comps) ) {  # if not interaction term
+			ix = match(comps, colnames(results)) 
+		  } else {
+			#mismatch in comparison names for interaction terms for DESeq2
+			#Diff:water_Wet.genetic_Hy 	 in the selected Contrast
+			#Diff-water_Wet-genetic_Hy   in column names
+			tem = gsub("Diff-","Diff:" ,colnames(results))
+			tem = gsub("-","\\.",tem)
+			ix = match(comps, tem) 
+			
+			if(is.na(ix) ) # this is for limma package
+				ix = match(comps, colnames(results)) 			
+			
+		  }
+			ixa = c(ixa,ix)
+		  }
+			
+			results = results[,ixa,drop=FALSE] # only use selected comparisons
+			if(dim(results)[2] >5) results <- results[,1:5]
+			vennDiagram(results,circle.col=rainbow(5))
 
-	})
+		})
     }, height = 600, width = 600)
 
 	output$listComparisonsVenn <- renderUI({
@@ -3866,9 +3936,9 @@ function(input, output,session) {
 		 bar = bar[bar!=0]
 
 		 # retreive related data		 
-		 genes = convertedData()[iy,iz]
+		 genes = convertedData()[iy,iz,drop=FALSE]
 		 
-		 genes = genes[order(bar),] # needs to be sorted because myheatmap2 does not reorder genes
+		 genes = genes[order(bar),,drop=FALSE] # needs to be sorted because myheatmap2 does not reorder genes
 		 bar = sort(bar)
 
 

@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "0.45"
+iDEPversion = "iDEP.46"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -565,7 +565,7 @@ tableOutput('species' ),
 				) # fluidRow	
 				,tags$style(type='text/css', "#mySoftPower { width:100%;   margin-top:-12px}")
 				,tags$style(type='text/css', "#minModuleSize { width:100%;   margin-top:-12px}")
-				,actionButton("networkLayout", "Change layout",style="float:center")				
+				,actionButton("networkLayout", "Change network layout",style="float:center")				
 				,h5("Enrichment database")
 				,htmlOutput('selectGO5')
 				,downloadButton('download.WGCNA.Module.data',"Download all Modules")
