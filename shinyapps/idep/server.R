@@ -1,13 +1,12 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.44"
+iDEPversion = "iDEP 0.45"
 ################################################################
 # R packages
 ################################################################
 # R packages, installed by:
-# install.packages(c("shiny","RSQLite","gplots","ggplot2","e1071","shinyAce","shinyBS","reshape2","DT","plotly" ) )
-# auto install
-# Rlibs = c("shiny","RSQLite","gplots","ggplot2","e1071","shinyAce","shinyBS","reshape2","DT","plotly","statmod","biclust")
+#auto install
+# Rlibs = c("shiny","RSQLite","gplots","ggplot2","e1071","shinyAce","shinyBS","reshape2","DT","plotly","statmod","biclust","WGCNA","Rtsne")
 # notInstalled = setdiff(Rlibs, rownames(installed.packages()))
 # if(length(notInstalled)>0)
 # 	install.packages(notInstalled)
@@ -60,6 +59,7 @@ kurtosis.log = 50  # log transform is enforced when kurtosis is big
 kurtosis.warning = 10 # log transformation recommnded 
 minGenesEnrichment = 2 # perform GO or promoter analysis only if more than this many genes
 PREDA_Permutations =1000
+maxGeneClustering = 6000  # max genes for hierarchical clustering and k-Means clustering. Slow if larger
 set.seed(2) # seed for random number generator
 mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
 #Each row of this matrix represents a color scheme;
@@ -1898,6 +1898,7 @@ function(input, output,session) {
 							x <- assay(x)  
 						} else{  # normalized by library sizes and add a constant.
 							x <- log2( counts(dds, normalized=TRUE) + input$countsLogStart )   # log(x+c) 
+							# This is equivalent to below. But the prior counts is more important
 							#x <- cpm(DGEList(counts = x),log=TRUE, prior.count=input$countsLogStart )  #log CPM from edgeR
 							#x <- x-min(x)  # shift values to avoid negative numbers
 						}
@@ -2338,7 +2339,7 @@ function(input, output,session) {
 	
     if (is.null(input$file2) ) # if sample info is uploaded and correctly parsed.
        { return(NULL) }	 else { 
-	  selectInput("selectFactorsHeatmap", label="Sample color bar:",choices=colnames(readSampleInfo())
+	  selectInput("selectFactorsHeatmap", label="Sample color bar:",choices= c(colnames(readSampleInfo()), "Sample_Type")
 	     )   } 
 	})  
 
@@ -2371,8 +2372,11 @@ function(input, output,session) {
 	# if sample info file is uploaded us that info:
 
 	if(!is.null(input$file2) &&  !is.null(input$selectFactorsHeatmap) ) { 
-		ix = match(input$selectFactorsHeatmap, colnames(readSampleInfo() ) ) 
-		groups = readSampleInfo()[,ix]
+		if(input$selectFactorsHeatmap == "Sample_Type" )
+			groups = detectGroups(colnames(x) ) else 
+			{ 	ix = match(input$selectFactorsHeatmap, colnames(readSampleInfo() ) ) 
+				groups = readSampleInfo()[,ix]
+			}
 	}	
 	
 	groups.colors = rainbow(length(unique(groups) ) )
@@ -2588,7 +2592,7 @@ function(input, output,session) {
 	
       if (is.null(input$file2) )
        { return(HTML("Upload a sample info file to customize this plot.") ) }	 else { 
-	  selectInput("selectFactors", label="Color:",choices=colnames(readSampleInfo())
+	  selectInput("selectFactors", label="Color:",choices=c( colnames(readSampleInfo()), "Sample_Type")
 	     )   } 
 	})
 	output$listFactors2 <- renderUI({
@@ -2597,7 +2601,7 @@ function(input, output,session) {
 	
       if (is.null(input$file2) )
        { return(NULL) }	 else { 
-	   tem <- colnames(readSampleInfo() )
+	   tem <- c( colnames(readSampleInfo()), "Sample_Type")
 	   if(length(tem)>1) { tem2 = tem[1]; tem[1] <- tem[2]; tem[1] = tem2; } # swap 2nd factor with first
 	  selectInput("selectFactors2", label="Shape:",choices=tem)
 	        } 
@@ -2617,10 +2621,10 @@ function(input, output,session) {
 		}
 		
 	pcaData = as.data.frame(pca.object$x[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
-	colnames(pcaData) = c("PC1", "PC2", "Type")
+	colnames(pcaData) = c("PC1", "PC2", "Sample_Type")
 	percentVar=round(100*summary(pca.object)$importance[2,1:2],0)
 	if(is.null(input$file2)) { 
-		p=ggplot(pcaData, aes(PC1, PC2, color=Type, shape = Type)) + geom_point(size=5) 
+		p=ggplot(pcaData, aes(PC1, PC2, color=Sample_Type, shape = Sample_Type)) + geom_point(size=5) 
 		} else {
 		pcaData = cbind(pcaData,readSampleInfo() )
 		p=ggplot(pcaData, aes_string("PC1", "PC2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
@@ -2640,8 +2644,7 @@ function(input, output,session) {
 	# variance chart
 	# plot(pca.object,type="bar", xlab="Principal Components", main ="Variances explained")
 	
-	# pathways
-	if(input$PCA_MDS ==2) {  
+	if(input$PCA_MDS ==2) {  # pathway
 	withProgress(message="Running pathway analysis", {
 	library(PGSEA)
 	pca.object <- prcomp(t(x))
@@ -2694,11 +2697,11 @@ function(input, output,session) {
 	 text( fit$points[,1], fit$points[,2],  pos=4, labels =colnames(x), offset=.5, cex=1)
 	}
 	pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
-	colnames(pcaData) = c("x1", "x2", "Type")
+	colnames(pcaData) = c("x1", "x2", "Sample_Type")
 	
 
 	if(is.null(input$file2)) { 
-	p=ggplot(pcaData, aes(x1, x2, color=Type, shape = Type)) + geom_point(size=5) 
+	p=ggplot(pcaData, aes(x1, x2, color=Sample_Type, shape = Sample_Type)) + geom_point(size=5) 
 	} else {
 		pcaData = cbind(pcaData,readSampleInfo() )
 		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
@@ -2715,7 +2718,36 @@ function(input, output,session) {
 	   print(p)
 	
 	 }
-	  
+
+	if(input$PCA_MDS ==4) {  # t-SNE
+	 library(Rtsne)
+	 set.seed(input$tsneSeed2)
+	 tsne <- Rtsne(t(x), dims = 2, perplexity=1, verbose=FALSE, max_iter = 400)
+
+	pcaData = as.data.frame(tsne$Y); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+	colnames(pcaData) = c("x1", "x2", "Sample_Type")
+	
+
+	if(is.null(input$file2)) { 
+	p=ggplot(pcaData, aes(x1, x2, color=Sample_Type, shape = Sample_Type)) + geom_point(size=5) 
+	} else {
+		pcaData = cbind(pcaData,readSampleInfo() )
+		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
+		}
+	p=p+xlab("Dimension 1") 
+	p=p+ylab("Dimension 2") 
+	p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
+     theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
+	 	 theme(axis.text.x = element_text( size = 16),
+	       axis.text.y = element_text( size = 16),
+		   axis.title.x = element_text( size = 16),
+		   axis.title.y = element_text( size = 16) ) +
+	theme(legend.text=element_text(size=16))
+	   print(p)
+	
+	 }
+	
+	 
   }, height = 500, width = 500)
 
 	PCAdata <- reactive({
@@ -2725,7 +2757,14 @@ function(input, output,session) {
 	 result = prcomp(t(x))$x[,1:2]
 	 fit = cmdscale( dist2(t(x) ), eig=T, k=2)
      result = cbind( result, fit$points[,1:2] )
-	 colnames(result) = c("PCA.x","PCA.y","MDS.x", "MDS.y")
+	 library(Rtsne)
+	 set.seed(input$tsneSeed2)
+	 tsne <- Rtsne(t(x), dims = 2, perplexity=1, verbose=FALSE, max_iter = 400)
+	
+	result = cbind( result, tsne$Y)
+	 
+	 
+	 colnames(result) = c("PCA.x","PCA.y","MDS.x", "MDS.y", "tSNE.x", "tSNE.y")
 	 return( result)		  
   })
  
@@ -2761,16 +2800,23 @@ function(input, output,session) {
 	#x <- readData()
 	#par(mfrow=c(1,2))
 	n=input$nGenesKNN
-	#if(n>6000) n = 6000 # max
+	if(n>maxGeneClustering) n = maxGeneClustering # max
 	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
 	#x1 <- x;
 	#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
 	#x = 100* x[1:n,] / apply(x[1:n,],1,sum) 
-	x = 100* x[1:n,] / apply(x[1:n,],1,function(y) sum(abs(y))) # L1 norm
-	#x = x - apply(x,1,mean)  # this is causing problem??????
+	x = x[1:n,]
+	if( input$kmeansNormalization == 'L1Norm')
+		x = 100* x / apply(x,1,function(y) sum(abs(y))) else # L1 norm
+	if( input$kmeansNormalization == 'geneMean')
+		x = x - apply(x,1,mean)  else # this is causing problem??????
+	if( input$kmeansNormalization == 'geneStandardization')	
+		x = (x - apply(x,1,mean) ) / apply(x,1,sd)
 	#colnames(x) = gsub("_.*","",colnames(x))
 	set.seed(2)
 	k=input$nClusters
+	
+
 	
 	cl = kmeans(x,k,iter.max = 50)
 	#myheatmap(cl$centers)	
@@ -2855,7 +2901,7 @@ function(input, output,session) {
 	#myheatmap2(x, bar)
 	Cluster <- toupper(letters)[Kmeans()$bar]
 	x <- cbind(Cluster,Kmeans()$x)
-	
+
 		# add gene symbol
 	if( input$selectOrg != "NEW") 
 	{ ix <- match( rownames(x), allGeneInfo()[,1])
@@ -2865,6 +2911,52 @@ function(input, output,session) {
 	 #progress 
   })
   
+  	output$tSNEgenePlot <- renderPlot({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if( is.null(Kmeans()) ) return(NULL)
+
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+				
+		tem = input$colorGenes; tem = input$seedTSNE
+		####################################
+		withProgress(message="Runing t-SNE algorithm", {
+		isolate({ 
+			Cluster <- Kmeans()$bar
+			train <- as.data.frame( cbind(Cluster,Kmeans()$x) )
+
+			library(Rtsne)
+			incProgress(1/3)
+			train = unique(train)
+			Cluster = train$Cluster	
+			set.seed(input$seedTSNE)
+			
+			## Executing the algorithm on curated data
+			tsne <- Rtsne(train[,-1], dims = 2, perplexity=30, verbose=FALSE, max_iter = 400)
+			incProgress(2/3)
+
+			nClusters = length(unique(Cluster) )
+			if(input$colorGenes) {			
+				plot(tsne$Y[,1], tsne$Y[,2], pch = (0:(nClusters-1))[Cluster], cex = 1.,col = mycolors[Cluster], xlab="X",ylab="Y")
+				legend("topright",toupper(letters)[1:nClusters], pch = 0:(nClusters-1), col=mycolors, title="Cluster"  )
+			} else
+				plot(tsne$Y[,1], tsne$Y[,2],  cex = 1., xlab="X",ylab="Y")
+
+			incProgress(1)
+		})
+	
+	})
+	
+	
+	 #progress 
+  }, height = 700, width = 700 )
 	output$downloadDataKmeans <- downloadHandler(
 		filename = function() {"Kmeans.csv"},
 			content = function(file) {
@@ -5860,7 +5952,7 @@ isolate({
 
 		 })#progress
 		}) #isolate
-  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T,align="c")
+  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })
 
 

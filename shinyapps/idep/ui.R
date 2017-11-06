@@ -3,7 +3,7 @@ library(shiny)
 library("shinyAce") # for showing text files, code
 library(shinyBS) # for popup figures
 library(plotly)
-iDEPversion = "iDEP.44"
+iDEPversion = "0.45"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -121,11 +121,11 @@ tableOutput('species' ),
 					,tags$style(type='text/css', "#NminSamples { width:100%;   margin-top:-12px}")
 							
 					,radioButtons("CountsTransform", "Transform counts data for clustering & PCA.",  c("VST: variance stabilizing transform"=2, 
-					"rlog: regularized log (slow) "= 3,"edgeR's logCPM with prior count" = 1),selected = 1 )
+					"rlog: regularized log (slow) "= 3,"Log transformatoin: log2(x+c)" = 1),selected = 1 )
 					,conditionalPanel("input.CountsTransform == 1",
 						fluidRow(
-							column(5, h5("Prior count:")  )
-							,column(7, numericInput("countsLogStart", label = NULL, value = 1) )
+							column(5, h5("Constant c:")  )
+							,column(7, numericInput("countsLogStart", label = NULL, value = 4) )
 						)
 					        
 					
@@ -223,7 +223,9 @@ tableOutput('species' ),
    				sliderInput("nGenesKNN", label = h4("Most variable genes to include "), min = 10, max = 6000, value = 2000,step=100) 
 				,sliderInput("nClusters", label = h4("Number of Clusters"), min = 2, max = 20, value = 4,step=1) 
 				,actionButton("NClusters", "How many clusters?")
-				,br(),br(),actionButton("showMotifKmeans", "Promoter analysis of each cluster")
+				,actionButton("geneTSNE", "t-SNE map")
+				,selectInput("kmeansNormalization", h5("Normalize by gene:"), choices = list("Mean center"="geneMean","Standardization"= "geneStandardization","L1 Norm"= "L1Norm"), selected = "geneMean")				
+				,actionButton("showMotifKmeans", "Promoter analysis of each cluster")
 				,br(),br(),downloadButton('downloadDataKmeans', 'Download K-means data')
 				,h5("Pathway database")
 				,htmlOutput("selectGO3"),tags$style(type='text/css', "#selectGO3 { width:100%;   margin-top:-9px}")
@@ -243,6 +245,12 @@ tableOutput('species' ),
 				  h5("Following the elbow method, one should choose k so that adding another cluster does not substantially reduce the within groups sum of squares."
 			,a("Wikipedia", href="https://en.wikipedia.org/wiki/Determining_the_number_of_clusters_in_a_data_set"))
 				  ,plotOutput("KmeansNclusters"))
+				  ,bsModal("modalExample229", "t-SNE plot of genes", "geneTSNE", size = "large",
+				  h5("We use the dimension reduction algorith "
+				,a("t-SNE", href="https://lvdmaaten.github.io/tsne/"), "to map the top genes. Examine the distribution can help choose the nubmer of clusters in k-Means. ")
+				  ,checkboxInput("colorGenes", "Color genes by the results of k-Means", value = TRUE)
+				  ,actionButton("seedTSNE", "Re-calculate using different random numbers")
+				  ,plotOutput("tSNEgenePlot"))
 
                 )
               )       
@@ -254,9 +262,15 @@ tableOutput('species' ),
               sidebarLayout(
                 sidebarPanel(
 				radioButtons("PCA_MDS", "Methods", c("Principal Component Analysis"=1, "Pathway Analysis of PCA rotation" =2, 
-				"Multidimensional Scaling"=3))
-				,downloadButton('downloadPCAData', 'Download Coordinates')
+				"Multidimensional Scaling"=3,"t-SNE"=4 ))
+
+				,conditionalPanel("input.PCA_MDS == 4", # only show if PCA or MDS (not pathway)
+					actionButton("tsneSeed2", "Re-calculate tSNE")
+				)
+				,br(),br()
+			,downloadButton('downloadPCAData', 'Download Coordinates')
  					#sliderInput("nGenes1", label = h4("Most variable genes to include"), min = 40, max = 2000, value = 200,step=20) 
+			
 			,br(),br()
 			,conditionalPanel("input.PCA_MDS != 2" # only show if PCA or MDS (not pathway)
 				,htmlOutput('listFactors')
