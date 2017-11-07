@@ -2781,11 +2781,58 @@ function(input, output,session) {
 			
 		}
 	  })
-  
+
+	processedCountsData <- reactive({
+      if (is.null(input$file1) && input$goButton == 0)    return()
+	  
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+	####################################
+		
+		if(input$selectOrg == "NEW") return(  convertedData() ) else { 
+
+			withProgress(message="Preparing data for download ", {
+
+			if(is.null(convertedCounts() ) ) return(NULL) else 
+			{
+				tem <-  merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], convertedCounts(),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )   
+				tem[,2] = paste(" ",tem[,2]) # add space to gene symbol to avoid auto convertion of symbols to dates by Excel 
+				incProgress(1/2, "mapping")
+				#tem[,1] = paste(" ",tem[,1]) # add space
+				 tem2 = merge( converted()$conversionTable, tem, by.x = "ensembl_gene_id",by.y="ensembl_gene_id")
+				 tem2 <- tem2[,-3] # remove species column
+				 ix = which( tem2[,3] == "  NA") # remove NA's 
+				 tem2[ix,3] <- ""
+				 incProgress(1, "Done.")
+				 # add original data
+				# tem3 <- merge( readData()$data, tem2, by.x = "row.names", by.y = "User_input", all.x=TRUE )
+				# return(converted()$conversionTable) #return(readData()$data)
+				# colnames(tem)[1] = "Ensembl_or_Original_ID"
+				
+				return(tem2)
+			}
+
+			}) # progress
+			
+		}
+	  })  
 	output$downloadProcessedData <- downloadHandler(
-		filename = function() {"processed_Data.csv"},
+		filename = function() {"Processed_Data.csv"},
 		content = function(file) {
       write.csv( processedData(), file, row.names=FALSE )	    
+	})
+ 
+	output$downloadConvertedCounts <- downloadHandler(
+		filename = function() {"Converted_Counts_Data.csv"},
+		content = function(file) {
+      write.csv( processedCountsData(), file, row.names=FALSE )	    
 	})
  
 	output$examineData <- DT::renderDataTable({
@@ -3036,41 +3083,55 @@ function(input, output,session) {
 	)
 
 	output$correlationMatrix <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-    # heatmap of correlation matrix
-	x <- readData()$data
-	maxGene <- apply(x,1,max)
-	x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
-	
-   melted_cormat <- melt(round(cor(x),2), na.rm = TRUE)
-# melted_cormat <- melted_cormat[which(melted_cormat[,1] != melted_cormat[,2] ) , ]
-	# Create a ggheatmap
-	ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
-	 geom_tile(color = "white")+
-	 scale_fill_gradient2(low = "green", high = "red",  mid = "white", 
-		space = "Lab",  limit = c(min(melted_cormat[,3]) ,max(melted_cormat[,3])), midpoint = median(melted_cormat[,3]),
-		name="Pearson\nCorrelation"
-	  ) +
-	  theme_minimal()+ # minimal theme
-	 theme(axis.text.x = element_text(angle = 45, vjust = 1, 
-		size = 15, hjust = 1))+
-	 theme(axis.text.y = element_text( 
-		size = 15))+
-	 coord_fixed()
-	# print(ggheatmap)
-	 ggheatmap + 
-	geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
-	theme(
-	  axis.title.x = element_blank(),
-	  axis.title.y = element_blank(),
-	  panel.grid.major = element_blank(),
-	  panel.border = element_blank(),
-	  panel.background = element_blank(),
-	  axis.ticks = element_blank(),
-	 legend.justification = c(1, 0),
-	  legend.position = c(0.6, 0.7),
-	 legend.direction = "horizontal")+
-	 guides(fill = FALSE) # + ggtitle("Pearson's Correlation Coefficient (all genes)")
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		# heatmap of correlation matrix
+		x <- readData()$data
+		maxGene <- apply(x,1,max)
+		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
+		
+	   melted_cormat <- melt(round(cor(x),2), na.rm = TRUE)
+	# melted_cormat <- melted_cormat[which(melted_cormat[,1] != melted_cormat[,2] ) , ]
+		# Create a ggheatmap
+		ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+		 geom_tile(color = "white")+
+		 scale_fill_gradient2(low = "green", high = "red",  mid = "white", 
+			space = "Lab",  limit = c(min(melted_cormat[,3]) ,max(melted_cormat[,3])), midpoint = median(melted_cormat[,3]),
+			name="Pearson\nCorrelation"
+		  ) +
+		  theme_minimal()+ # minimal theme
+		 theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+			size = 15, hjust = 1))+
+		 theme(axis.text.y = element_text( 
+			size = 15))+
+		 coord_fixed()
+		# print(ggheatmap)
+		 ggheatmap + 
+		geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
+		theme(
+		  axis.title.x = element_blank(),
+		  axis.title.y = element_blank(),
+		  panel.grid.major = element_blank(),
+		  panel.border = element_blank(),
+		  panel.background = element_blank(),
+		  axis.ticks = element_blank(),
+		 legend.justification = c(1, 0),
+		  legend.position = c(0.6, 0.7),
+		 legend.direction = "horizontal")+
+		 guides(fill = FALSE) # + ggtitle("Pearson's Correlation Coefficient (all genes)")
+		 
+		 
+
+ 
+  }  )#, height = 500, width = 500)
+	output$sampleTree <- renderPlot({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		# heatmap of correlation matrix
+		x <- readData()$data
+		maxGene <- apply(x,1,max)
+		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
+		
+		plot(as.dendrogram(hclust2( dist2(t(x)))), xlab="", ylab="1 - Pearson C.C.", type = "rectangle")
+		 
 
  
   }  )#, height = 500, width = 500)

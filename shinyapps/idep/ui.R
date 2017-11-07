@@ -77,7 +77,7 @@ tableOutput('species' ),
       mainPanel(
       tableOutput('sampleInfoTable')
      ,tableOutput('contents')
-		
+		,h3("Dear users, Thank you for using iDEP. We are actively developing and testing iDEP. Please help us by sending us any error messages, feedbacks, or requests of additional features or functionalities. Or just tell us iDEP is cool.",a("Email now.",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"))
 		,h5("Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data.  See ",
 			a(" documentation", href="https://idepsite.wordpress.com/"), "and",
 			a(" manuscript.", href="http://biorxiv.org/content/biorxiv/early/2017/06/09/148411.full.pdf"),
@@ -138,6 +138,8 @@ tableOutput('species' ),
 				,actionButton("examineDataB", "Search processed data")
                  ,br(),br()
 				 ,downloadButton('downloadProcessedData', 'Download processed data') 
+				 ,conditionalPanel("input.dataFileFormat == 1",downloadButton('downloadConvertedCounts', 'Download converted counts data') )
+
 				 ,br(),br()
 				 ,textOutput('nGenesFilter')
 				,tags$head(tags$style("#nGenesFilter{color: blue;
@@ -173,7 +175,8 @@ tableOutput('species' ),
    					sliderInput("nGenes", label = h4("Most variable genes to include:"), min = 10, max = 6000, value = 1000,step=50) 
 					,actionButton("showStaticHeatmap", "Interactive heatmap")
 					,br()
-					,actionButton("showCorrelation", "Correlation matrix")			
+					,actionButton("showCorrelation", "Correlation matrix")	
+					,actionButton("showSampleTree", "Sample Tree")						
 					,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
 					,strong("Customize hierarchical clustering (Default values work well):")
 					,fluidRow(
@@ -204,7 +207,9 @@ tableOutput('species' ),
 						plotOutput("heatmap1")
 
 						# ,verbatimTextOutput("event")
-						,bsModal("modalExample8", "Correlation matrix using all genes", "showCorrelation", size = "large",plotOutput("correlationMatrix"))
+						,bsModal("modalExample8", "Correlation matrix using top 75% genes", "showCorrelation", size = "large",plotOutput("correlationMatrix"))
+						,bsModal("modalExample228", "Hierarchical clustering using top 75% genes", "showSampleTree", size = "large",plotOutput("sampleTree"))
+
 						,bsModal("modalExample28", "Heatmap with hierarchical clustering tree", "showStaticHeatmap", size = "large",
 						sliderInput("nGenesPlotly", label = h4("Most variable genes to include:"), min = 10, max = 6000, value = 50,step=50),
 						h4("Mouse over to see gene names. To zoom, click and drag up or downward and release."),
