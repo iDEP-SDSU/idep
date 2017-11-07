@@ -2522,32 +2522,35 @@ function(input, output,session) {
 			if(input$dataFileFormat== 2) 
 				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
 		####################################
-		if( is.null(converted() ) ) return( readData()$data) # if id or species is not recognized use original data.
+		if( is.null(converted() ) ) return( readData()$rawCounts) # if id or species is not recognized use original data.
 		isolate( {  
 			withProgress(message="Converting data ... ", {
 				mapping <- converted()$conversionTable
 				# cat (paste( "\nData:",input$selectOrg) )
 				x =readData()$rawCounts
-				if(is.null(x)) return(NULL)
-				rownames(x) = toupper(rownames(x))
-				# any gene not recognized by the database is disregarded
-				# x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
-				# the 3 lines keeps the unrecogized genes using original IDs
-				x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
-				ix = which(is.na(x1[,2]) )
-				x1[ix,2] = x1[ix,1] # original IDs used
-				
-				#multiple matched IDs, use the one with highest SD
-				tem = apply(x1[,3:(dim(x1)[2])],1,sd)
-				x1 = x1[order(x1[,2],-tem),]
-				x1 = x1[!duplicated(x1[,2]) ,]
-				rownames(x1) = x1[,2]
-				x1 = as.matrix(x1[,c(-1,-2)])
-				tem = apply(x1,1,sd)
-				x1 = x1[order(-tem),]  # sort again by SD
-				incProgress(1, "Done.")
+				if(is.null(x)) return(NULL) else 
+				{ 
+					rownames(x) = toupper(rownames(x))
+					# any gene not recognized by the database is disregarded
+					# x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
+					# the 3 lines keeps the unrecogized genes using original IDs
+					x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
+					ix = which(is.na(x1[,2]) )
+					x1[ix,2] = x1[ix,1] # original IDs used
+					
+					#multiple matched IDs, use the one with highest SD
+					tem = apply(x1[,3:(dim(x1)[2])],1,sd)
+					x1 = x1[order(x1[,2],-tem),]
+					x1 = x1[!duplicated(x1[,2]) ,]
+					rownames(x1) = x1[,2]
+					x1 = as.matrix(x1[,c(-1,-2)])
+					tem = apply(x1,1,sd)
+					x1 = x1[order(-tem),]  # sort again by SD
+					incProgress(1, "Done.")
+					return(x1)
+				} # here
 			})
-		return(x1)
+		
 		})
 	})
 	
