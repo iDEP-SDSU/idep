@@ -24,6 +24,11 @@ RUN mkdir -p /srv/data/motif
 RUN mkdir -p /srv/data/pathwayDB
 RUN mkdir -p /srv/data/data_go
 
+# Install R libraries
+RUN R -e 'install.packages(c("devtools"))'
+RUN R -e 'install.packages(c("method", "RSQLite","gplots","ggplot2","e1071","reshape2","DT","RPostgreSQL", "dplyr", "uuid"))'
+RUN R -e 'source("https://bioconductor.org/biocLite.R"); biocLite(c("limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata", "sfsmisc","lokern","multtest","hgu133plus2.db"), suppressUpdates = T)'
+
 # Download Required Data
 RUN wget -qO- -O tmp.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2FgeneInfo.zip?alt=media&token=a281e5cf-6900-493c-81e4-89ce423c26bb'\
   && unzip tmp.zip -d /srv/data && rm tmp.zip
