@@ -367,9 +367,13 @@ tableOutput('species' ),
 						 column(6, htmlOutput('listFactorsDE'))
 						,column(6, htmlOutput('listBlockFactorsDE') ) 
 					)				   
-						
-						
-						,br(),br()
+
+					,fluidRow(
+						 column(6, htmlOutput('selectReferenceLevels1'))
+						,column(6, htmlOutput('selectReferenceLevels2') ) 
+					)					
+
+						,br()
 						,htmlOutput('listModelComparisons')
 						,br(),br()
 						,actionButton("submitModelButton", "Submit & re-calculate",style="float:center")

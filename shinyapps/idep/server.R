@@ -1156,7 +1156,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 }
 
 # Differential expression using DESeq2
-DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedComparisons=NULL, sampleInfo = NULL,modelFactors=NULL, blockFactor = NULL){
+DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedComparisons=NULL, sampleInfo = NULL,modelFactors=NULL, blockFactor = NULL, referenceLevels=NULL){
 	library(DESeq2,verbose=FALSE) # count data analysis
 	groups = as.character ( detectGroups( colnames( rawCounts ) ) )
 	g = unique(groups)# order is reversed
@@ -1207,6 +1207,31 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 		factorsCoded = toupper(letters )[1: dim(colData)[2] ]   # Factors are encoded as "A", "B", "C"; this avoid illigal letters
 		names(factorsCoded) =  colnames(colData)  # this is for look up; each column of sampleInfo  
 		colnames(colData) = factorsCoded # all columns named A B C D 
+
+		colData = as.data.frame(colData)
+		
+		cat( "factors: ", factors)
+		cat("   Reference levels: ",referenceLevels)
+		
+		# set reference levels for factors
+		if(! is.null( referenceLevels) ) {
+			# first factor
+			if(! is.null( referenceLevels[1]) ) {
+				ix = match(factors[1], colnames(sampleInfo) ) # corresponding column id for factor
+				colData[,ix] = as.factor( colData[,ix] )
+				colData[,ix] = relevel(colData[,ix],referenceLevels[1]  )
+				
+			}
+			# second factor
+			if(length(referenceLevels) >1 & length(factors) >1)
+			if(! is.null( referenceLevels[2]) ) {
+				ix = match(factors[2], colnames(sampleInfo) )
+				colData[,ix] = as.factor( colData[,ix] )
+				colData[,ix] = relevel(colData[,ix],referenceLevels[2]  )		
+			}
+		
+		}
+				
 		# base model
         DESeq2.Object= paste("dds = DESeqDataSetFromMatrix(countData=rawCounts, colData=colData, design=~ ", 
 							 paste( factorsCoded[factors],collapse="+")) # only use selected factors		
@@ -3698,8 +3723,8 @@ function(input, output,session) {
     if (is.null(input$file2) ) {# if sample info is uploaded and correctly parsed.
         return(HTML("<font size = \"3\">A <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a> 
 	     can be uploaded to build a linear model according to experiment design. </font>")) 
-	# } else {
-	} else if ( !(input$dataFileFormat==1& input$CountsDEGMethod==3 )  ){  # disable factor choosing for DESeq2	   
+	 } else {
+	#} else if ( !(input$dataFileFormat==1& input$CountsDEGMethod==3 )  ){  # disable factor choosing for DESeq2	   
 		factors = colnames(readSampleInfo())
 		choices = setNames(factors, factors  )
 		interactions = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=":"))
@@ -3719,8 +3744,8 @@ function(input, output,session) {
 	 # Note that " in HTML needs to be denoted with \"    with  the escape character \.
     if (is.null(input$file2) ) {# if sample info is uploaded and correctly parsed.
 		return(NULL)		   
-		# } else { 
-	   } else if ( !(input$dataFileFormat==1& input$CountsDEGMethod==3 )  ){ 
+		 } else { 
+	  # } else if ( !(input$dataFileFormat==1& input$CountsDEGMethod==3 )  ){ 
 		factors = colnames(readSampleInfo())
 		choices = setNames(factors, factors  )
 		checkboxGroupInput("selectBlockFactorsModel", 
@@ -3760,7 +3785,8 @@ function(input, output,session) {
 					comparisons = sort(comparisons)
 					comparisons = paste0(selectedFactors,": ",comparisons)
 					choices = append( choices, setNames(comparisons, comparisons ))
-				}
+					
+				} # for each factor
 				if(length(choices)==0 ) return(NULL) else
 				checkboxGroupInput("selectModelComprions", 
 									  h4("2. Select one or more comparisons:"), 
@@ -3769,6 +3795,62 @@ function(input, output,session) {
 				} 
 	}) 
 
+	
+	output$selectReferenceLevels1 <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
+
+				selectedFactors = input$selectFactorsModel
+				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
+				if(length(selectedFactors)==0 ) return(NULL) 
+				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
+				# for ( i in 1:length(selectedFactors) ) {
+				 i = 1; 
+				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
+				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
+
+				 selectInput(  paste0("referenceLevelFactor",i), 
+									  label=paste ("Reference level for",selectedFactors[i]),
+									  choices= setNames(as.list( factorLevels ), factorLevels ))
+									  
+					
+				
+				
+				} #else 
+	}) 
+
+	output$selectReferenceLevels2 <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
+
+				selectedFactors = input$selectFactorsModel
+				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
+				if(length(selectedFactors) < 2 ) return(NULL) 
+				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
+				 i = 2; 
+				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
+				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
+
+				 selectInput(  paste0("referenceLevelFactor",i), 
+									  label=paste ("Reference level for",selectedFactors[i]),
+									  choices= setNames(as.list( factorLevels ), factorLevels ))
+									  
+					
+				
+				
+				} #else 
+	})	
+	
 	limma <- reactive({  
 	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg
@@ -3790,12 +3872,19 @@ function(input, output,session) {
 	isolate({ 
 	withProgress(message="Identifying Differentially expressed genes", {
 	if(input$dataFileFormat == 1 ) {  # if count data
-		 if(input$CountsDEGMethod == 3 )   # if DESeq2 method
-		  # rawCounts = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
-		 # res =DEG.DESeq2(rawCounts, .05, 2) 
-		  # res1 =DEG.limma(rawCounts, .1, 1.5,rawCounts, 2,3) 
-			return( DEG.DESeq2(convertedCounts(),input$limmaPval, input$limmaFC, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel)  )
-		if(input$CountsDEGMethod < 3 )    # voom or limma-trend
+		 if(input$CountsDEGMethod == 3 ) {    # if DESeq2 method
+				# rawCounts = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
+				# res =DEG.DESeq2(rawCounts, .05, 2) 
+				# res1 =DEG.limma(rawCounts, .1, 1.5,rawCounts, 2,3) 
+				referenceLevels = NULL
+				if( !is.null(input$referenceLevelFactor1 ) )
+					referenceLevels = input$referenceLevelFactor1
+				if( !is.null(input$referenceLevelFactor2 ) )
+					referenceLevels = c(referenceLevels, input$referenceLevelFactor2)				
+				
+			return( DEG.DESeq2(convertedCounts(),input$limmaPval, input$limmaFC, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel, referenceLevels)  )
+			}
+			if(input$CountsDEGMethod < 3 )    # voom or limma-trend
 			return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,convertedCounts(), input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel) )
 	} else { # normalized data
 	 return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,convertedCounts(), input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel) )
