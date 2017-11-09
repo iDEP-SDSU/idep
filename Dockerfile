@@ -26,8 +26,17 @@ RUN mkdir -p /srv/data/data_go
 
 # Install R libraries
 RUN R -e 'install.packages(c("devtools"))'
-RUN R -e 'install.packages(c("method", "RSQLite","gplots","ggplot2","e1071","reshape2","DT","RPostgreSQL", "dplyr", "uuid"))'
-RUN R -e 'source("https://bioconductor.org/biocLite.R"); biocLite(c("limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata", "sfsmisc","lokern","multtest","hgu133plus2.db"), suppressUpdates = T)'
+RUN R -e 'install.packages(c("shiny", "shinyAce", "shinyBS", "plotly",
+  "RSQLite", "gplots", "ggplot2", "dplyr", #"tidyverse","plotly",
+  "e1071", "reshape2", "DT","data.table", "Rcpp","WGCNA","flashClust","statmod","biclust","igraph","Rtsne"))'
+RUN R -e 'source("https://bioconductor.org/biocLite.R"); biocLite(c("limma", "DESeq2", "edgeR", "gage", "PGSEA", "fgsea", "ReactomePA", "pathview", "PREDA",
+  "impute", "runibic","QUBIC","rhdf5",
+  "PREDAsampledata", "sfsmisc", "lokern", "multtest", "hgu133plus2.db", 
+  "org.Ag.eg.db","org.At.tair.db","org.Bt.eg.db","org.Ce.eg.db","org.Cf.eg.db",
+  "org.Dm.eg.db","org.Dr.eg.db","org.EcK12.eg.db","org.EcSakai.eg.db","org.Gg.eg.db",
+  "org.Hs.eg.db","org.Hs.ipi.db","org.Mm.eg.db","org.Mmu.eg.db","org.Pf.plasmo.db",
+  "org.Pt.eg.db","org.Rn.eg.db","org.Sc.sgd.db","org.Sco.eg.db","org.Ss.eg.db",
+  "org.Tgondii.eg.db","org.Xl.eg.db"), suppressUpdates = T)'
 
 # Download Required Data
 RUN wget -qO- -O tmp.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2FgeneInfo.zip?alt=media&token=a281e5cf-6900-493c-81e4-89ce423c26bb'\
