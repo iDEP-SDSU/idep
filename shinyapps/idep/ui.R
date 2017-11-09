@@ -310,7 +310,7 @@ tableOutput('species' ),
                 sidebarPanel(
 				h5("Identifying Differential Expressed Genes (DEGs)"),
 				conditionalPanel("input.dataFileFormat == 1",
-				selectInput("CountsDEGMethod", "Method:", choices = list("DESeq2"= 3,"limma-voom"=2,"limma-trend"=1), selected = 3)				
+				selectInput("CountsDEGMethod", "Method:", choices = list("DESeq2"= 3,"limma-voom"=2,"limma-trend"=1), selected = 2)				
 				,tags$style(type='text/css', "#CountsDEGMethod { width:100%;   margin-top:-12px}")
 				)	
 				,conditionalPanel("input.dataFileFormat == 2", h5("Using the limma package")				)				
@@ -616,7 +616,7 @@ tableOutput('species' ),
      htmlOutput('RsessionInfo')
  ) ))
 
-  ,tags$head(includeScript("ga.js")) # tracking usage  
+  #,tags$head(includeScript("ga.js")) # tracking usage  
   )# Navibar
 
 )

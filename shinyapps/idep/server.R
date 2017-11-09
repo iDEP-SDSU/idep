@@ -3697,8 +3697,9 @@ function(input, output,session) {
 	 # Note that " in HTML needs to be denoted with \"    with  the escape character \.
     if (is.null(input$file2) ) {# if sample info is uploaded and correctly parsed.
         return(HTML("<font size = \"3\">A <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a> 
-	     can be uploaded to build a linear model according to experiment design. </font>"))          
-	} else { 	   
+	     can be uploaded to build a linear model according to experiment design. </font>")) 
+	# } else {
+	} else if ( !(input$dataFileFormat==1& input$CountsDEGMethod==3 )  ){  # disable factor choosing for DESeq2	   
 		factors = colnames(readSampleInfo())
 		choices = setNames(factors, factors  )
 		interactions = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=":"))
@@ -3718,8 +3719,8 @@ function(input, output,session) {
 	 # Note that " in HTML needs to be denoted with \"    with  the escape character \.
     if (is.null(input$file2) ) {# if sample info is uploaded and correctly parsed.
 		return(NULL)		   
-		} else { 
-	   
+		# } else { 
+	   } else if ( !(input$dataFileFormat==1& input$CountsDEGMethod==3 )  ){ 
 		factors = colnames(readSampleInfo())
 		choices = setNames(factors, factors  )
 		checkboxGroupInput("selectBlockFactorsModel", 
