@@ -616,7 +616,7 @@ tableOutput('species' ),
      htmlOutput('RsessionInfo')
  ) ))
 
-  #,tags$head(includeScript("ga.js")) # tracking usage  
+  ,tags$head(includeScript("ga.js")) # tracking usage  
   )# Navibar
 
 )
