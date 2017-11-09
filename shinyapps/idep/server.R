@@ -2232,6 +2232,7 @@ function(input, output,session) {
 				tem = input$transform; 
 				tem = input$logStart; 
 				tem= input$lowFilter 
+				tem = input$NminSamples2
 		}
 
 		isolate({
@@ -2280,8 +2281,11 @@ function(input, output,session) {
 					if ( is.integer(x) ) dataTypeWarning = 1;  # Data appears to be read counts
 
 					#-------------filtering
-					tem <- apply(x,1,max)
-					x <- x[which(tem > input$lowFilter),]  # max by row is at least 		
+					#tem <- apply(x,1,max)
+					#x <- x[which(tem > input$lowFilter),]  # max by row is at least 
+					x <- x[ which( apply( x, 1,  function(y) sum(y >= input$lowFilter)) >= input$NminSamples2 ) , ] 
+
+					
 					x <- x[which(apply(x,1, function(y) max(y)- min(y) ) > 0  ),]  # remove rows with all the same levels
 
 					#--------------Log transform
@@ -2405,13 +2409,13 @@ function(input, output,session) {
 		})
 	},include.rownames=TRUE) 	
 	
-	output$text.transform <- renderText({
+	output$textTransform <- renderText({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		inFile <- input$file1
 		k.value =  readData()$mean.kurtosis	  
 		tem = paste( "Mean Kurtosis =  ", round(k.value,2), ".\n",sep = "")
-		if( k.value > kurtosis.log) tem = paste(tem, " Detected extremely large numbers with kurtosis >", kurtosis.log,
-		". Log transformation is automatically applied, even user selects otherwise.", sep="") else if (k.value>kurtosis.warning)
+		if( k.value > kurtosis.log) tem = paste(tem, " Detected extremely large values.  When kurtosis >", kurtosis.log,
+		", log transformation is automatically applied.", sep="") else if (k.value>kurtosis.warning)
 		{tem = paste(tem, " Detected  large numbers with kurtosis >",
 		kurtosis.warning,". Log transformation is recommended.", sep="") }
 		if(readData()$dataTypeWarning == 1 ) {
@@ -2426,8 +2430,14 @@ function(input, output,session) {
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		inFile <- input$file1
 		if( is.null(readData()) ) return(NULL)
+		if( is.null(convertedData() ) ) return(NULL)
 		tem = readData()$dataSize
-		return( paste(tem[4], "samples.", tem[3], "of the ", tem[1], "genes pased filter."  ) )
+		ix = match( toupper( rownames(convertedData())), toupper(converted()$conversionTable$ensembl_gene_id  ) )
+		nMatched = sum( !is.na(ix) )
+		
+		return( paste(tem[1], "genes in", tem[4], "samples. Of the", tem[3], " genes passed filter (see above), ", 
+			nMatched, " were converted to Ensembl gene IDs in our database. 
+			  The remaining ", tem[3]-nMatched, "genes were kept in the data using original IDs." ) )
 	})	
 
 	# Show info on file format	
@@ -2451,10 +2461,15 @@ function(input, output,session) {
 		if (is.null(input$file1) && input$goButton == 0)    return(NULL)
 		tem = input$selectOrg;
 		isolate( {
-		#   withProgress(message="Converting gene ids", {
-		# cat (paste("\nID:",input$selectOrg) )
+		
 		convertID(rownames(readData()$data ),input$selectOrg, input$selectGO );
-		# })
+
+		# converted()$conversionTable: Not matched is skipped
+		#User_input	ensembl_gene_id	Species
+		#MTURN	ENSMUSG00000038065	Mouse
+		#MTUS1	ENSMUSG00000045636	Mouse
+
+
 		}) 
 	})
 
@@ -2479,7 +2494,7 @@ function(input, output,session) {
 				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
 		if( !is.null(input$dataFileFormat) )
 			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 		####################################
 		if( is.null(converted() ) ) return( readData()$data) # if id or species is not recognized use original data.
 		isolate( {  
@@ -2493,8 +2508,10 @@ function(input, output,session) {
 				# x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
 				# the 3 lines keeps the unrecogized genes using original IDs
 				x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
+
+				# original IDs used if ID is not matched in database
 				ix = which(is.na(x1[,2]) )
-				x1[ix,2] = x1[ix,1] # original IDs used
+				x1[ix,2] = x1[ix,1] 
 				
 				#multiple matched IDs, use the one with highest SD
 				tem = apply(x1[,3:(dim(x1)[2])],1,sd)
@@ -2520,7 +2537,7 @@ function(input, output,session) {
 				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
 		if( !is.null(input$dataFileFormat) )
 			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2 }
 		####################################
 		if( is.null(converted() ) ) return( readData()$rawCounts) # if id or species is not recognized use original data.
 		isolate( {  
@@ -2553,8 +2570,6 @@ function(input, output,session) {
 		
 		})
 	})
-	
-	
 	
 	GeneSets <- reactive({
 		if (is.null(input$file1) && input$goButton == 0)	return()
@@ -2603,7 +2618,7 @@ function(input, output,session) {
 # show first 20 rows of processed data; not used
 	output$debug <- renderTable({
       if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	  tem = input$selectOrg; tem = input$lowFilter ; tem = input$transform
+	  tem = input$selectOrg; tem = input$lowFilter ; tem =input$NminSamples2; tem = input$transform
 	x <- convertedData()
 	#tem = GeneSets()
 	
@@ -2626,7 +2641,7 @@ function(input, output,session) {
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2 }
 	####################################
 
 	
@@ -2660,7 +2675,7 @@ function(input, output,session) {
     		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
 
 	
 	tem = input$geneSearch ; tem = input$genePlotBox; tem = input$useSD
@@ -2745,85 +2760,118 @@ function(input, output,session) {
    
 
 	processedData <- reactive({
-      if (is.null(input$file1) && input$goButton == 0)    return()
-	  
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	####################################
-	 
-		if(input$selectOrg == "NEW") return(  convertedData() ) else { 
+		  if (is.null(input$file1) && input$goButton == 0)    return()
+		  
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+		####################################
+		 
+			if(input$selectOrg == "NEW") return(  convertedData() ) else { 
 
-			withProgress(message="Preparing data for download ", {
-			
-			tem <-  merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], round(convertedData(),4),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )   
-			tem[,2] = paste(" ",tem[,2]) # add space to gene symbol to avoid auto convertion of symbols to dates by Excel 
-			incProgress(1/2, "mapping")
-			#tem[,1] = paste(" ",tem[,1]) # add space
-			 tem2 = merge( converted()$conversionTable, tem, by.x = "ensembl_gene_id",by.y="ensembl_gene_id")
-			 tem2 <- tem2[,-3] # remove species column
-			 ix = which( tem2[,3] == "  NA") # remove NA's 
-			 tem2[ix,3] <- ""
-			 incProgress(1, "Done.")
-			 # add original data
-			# tem3 <- merge( readData()$data, tem2, by.x = "row.names", by.y = "User_input", all.x=TRUE )
-			# return(converted()$conversionTable) #return(readData()$data)
-			# colnames(tem)[1] = "Ensembl_or_Original_ID"
-			})
-			return(tem2)
-			
+				withProgress(message="Preparing data for download ", {
+				
+				tem <-  merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], round(convertedData(),4),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )   
+				tem[,2] = paste(" ",tem[,2]) # add space to gene symbol to avoid auto convertion of symbols to dates by Excel 
+				incProgress(1/2, "mapping")
+				#tem[,1] = paste(" ",tem[,1]) # add space
+				 tem2 = merge( converted()$conversionTable, tem, by.x = "ensembl_gene_id",by.y="ensembl_gene_id", all.y=TRUE)
+				 tem2 <- tem2[,-3] # remove species column
+				 ix = which( tem2[,3] == "  NA") # remove NA's 
+				 tem2[ix,3] <- ""
+				 
+				 ix = which(is.na(tem2[,2]) ) # not in mapping table
+				 userIDs = tem2[,2]; userIDs[ix]=tem2[ix,1]	; userIDs = paste0(" ",userIDs)	# prevents Excel auto conversion		 
+				 tem2[,2] = tem2[,1]; tem2[ix,2]= ""
+				 tem2[,1]= userIDs;
+				 colnames(tem2)[1:2]= c("User_ID sorted by SD","Ensembl_gene_id")
+				 
+				 # sort by sd
+				 tem2 = tem2[ order( -apply(tem2[,-3:-1],1,sd )   )  ,]
+				 
+				 
+				 
+				 incProgress(1, "Done.")
+				 # add original data
+				# tem3 <- merge( readData()$data, tem2, by.x = "row.names", by.y = "User_input", all.x=TRUE )
+				# return(converted()$conversionTable) #return(readData()$data)
+				# colnames(tem)[1] = "Ensembl_or_Original_ID"
+				})
+				return(tem2)
+				
 			
 		}
 	  })
 
 	processedCountsData <- reactive({
-      if (is.null(input$file1) && input$goButton == 0)    return()
-	  
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
-	####################################
-		
+		  if (is.null(input$file1) && input$goButton == 0)    return()
+		  
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+		####################################
+			
 		if(input$selectOrg == "NEW") return(  convertedData() ) else { 
 
 			withProgress(message="Preparing data for download ", {
 
 			if(is.null(convertedCounts() ) ) return(NULL) else 
 			{
-				tem <-  merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], convertedCounts(),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )   
+
+				withProgress(message="Preparing data for download ", {
+				
+				tem <-  merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], round(convertedCounts(),4),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )   
 				tem[,2] = paste(" ",tem[,2]) # add space to gene symbol to avoid auto convertion of symbols to dates by Excel 
 				incProgress(1/2, "mapping")
 				#tem[,1] = paste(" ",tem[,1]) # add space
-				 tem2 = merge( converted()$conversionTable, tem, by.x = "ensembl_gene_id",by.y="ensembl_gene_id")
+				 tem2 = merge( converted()$conversionTable, tem, by.x = "ensembl_gene_id",by.y="ensembl_gene_id", all.y=TRUE)
 				 tem2 <- tem2[,-3] # remove species column
 				 ix = which( tem2[,3] == "  NA") # remove NA's 
 				 tem2[ix,3] <- ""
+				 
+				 ix = which(is.na(tem2[,2]) ) # not in mapping table
+				 userIDs = tem2[,2]; userIDs[ix]=tem2[ix,1]	; userIDs = paste0(" ",userIDs)	# prevents Excel auto conversion		 
+				 tem2[,2] = tem2[,1]; tem2[ix,2]= ""
+				 tem2[,1]= userIDs;
+				 colnames(tem2)[1:2]= c("User_ID sorted by SD","Ensembl_gene_id")
+				 # sort by sd
+				 tem2 = tem2[ order( -apply(log2(10+ tem2[,-3:-1]),1,sd )   )  ,]
 				 incProgress(1, "Done.")
 				 # add original data
 				# tem3 <- merge( readData()$data, tem2, by.x = "row.names", by.y = "User_input", all.x=TRUE )
 				# return(converted()$conversionTable) #return(readData()$data)
 				# colnames(tem)[1] = "Ensembl_or_Original_ID"
-				
+				})
 				return(tem2)
+				
+				
+				
+				
+				
+				
+				
+				
+				
 			}
 
 			}) # progress
 			
 		}
 	  })  
-	output$downloadProcessedData <- downloadHandler(
+
+	  output$downloadProcessedData <- downloadHandler(
 		filename = function() {"Processed_Data.csv"},
 		content = function(file) {
       write.csv( processedData(), file, row.names=FALSE )	    
@@ -2858,7 +2906,7 @@ function(input, output,session) {
     		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	####################################
 	
     par(mar=c(16,2,2,2))
@@ -3344,7 +3392,7 @@ function(input, output,session) {
 		}
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) { 
-			tem = input$transform; tem = input$logStart; tem= input$lowFilter 
+			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
 		}
 	####################################
 	
@@ -3395,7 +3443,7 @@ function(input, output,session) {
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
 	####################################
 	
 	if( is.null(Kmeans()) ) return(NULL)
@@ -3448,7 +3496,7 @@ function(input, output,session) {
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
 	####################################
 	
 	#myheatmap2(x, bar)
@@ -3476,7 +3524,7 @@ function(input, output,session) {
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 		if( !is.null(input$dataFileFormat) )
 			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
 				
 		tem = input$colorGenes; tem = input$seedTSNE
 		####################################
@@ -3532,7 +3580,7 @@ function(input, output,session) {
     		{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
 	####################################
 	withProgress(message="GO Enrichment", {
 		# GO
@@ -3587,7 +3635,7 @@ function(input, output,session) {
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	####################################
 
 	isolate({ 
@@ -3657,7 +3705,7 @@ function(input, output,session) {
 		choices = append( choices,setNames( interactions, paste(interactions,"interaction") ))
 							  
 		checkboxGroupInput("selectFactorsModel", 
-                              h4("1. Select one or two main factors for the model"), 
+                              h4("1. Select one or two main factors for the model. Or leave it blank and just choose pairs of sample groups below. "), 
                               choices = choices,
                               selected = NULL)	   
 	  
@@ -3733,7 +3781,7 @@ function(input, output,session) {
     		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem=input$CountsDEGMethod
 	tem = input$submitModelButton  # this is used to make it responsive only when model and comparisons are completed
 	####################################
@@ -3778,7 +3826,7 @@ function(input, output,session) {
 				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
 		if( !is.null(input$dataFileFormat) )
 			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
 		tem=input$CountsDEGMethod
 		tem = input$selectFactorsModel # responsive to changes in model and comparisons
 		tem = input$selectModelComprions
@@ -3876,7 +3924,7 @@ function(input, output,session) {
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 		if( !is.null(input$dataFileFormat) )
 			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 		####################################
 		
 		isolate({ 
@@ -3909,7 +3957,7 @@ function(input, output,session) {
     		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	####################################
 	
 	withProgress(message="Generating heatmap", {
@@ -3944,7 +3992,7 @@ function(input, output,session) {
     		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	####################################
 	
 
@@ -4041,7 +4089,7 @@ function(input, output,session) {
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	####################################
 	
 	noSig = as.data.frame("No significant genes find!")
@@ -4062,7 +4110,7 @@ function(input, output,session) {
 			tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-		tem = input$minCounts; tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+		tem = input$minCounts; tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 		noSig = as.data.frame("No significant genes find!")
 		if( is.null(input$selectContrast) ) return(NULL)
 		if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
@@ -4085,7 +4133,7 @@ function(input, output,session) {
 			tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 		tem = input$selectFactorsModel # responsive to changes in model and comparisons
 		tem = input$selectModelComprions
 		noSig = as.data.frame("No significant genes find!")
@@ -4143,7 +4191,7 @@ function(input, output,session) {
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem=input$transform; tem = input$logStart
+	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
@@ -4181,7 +4229,7 @@ function(input, output,session) {
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem=input$transform; tem = input$logStart
+	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
@@ -4244,7 +4292,7 @@ function(input, output,session) {
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
@@ -4326,7 +4374,7 @@ function(input, output,session) {
 		tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
@@ -4423,7 +4471,7 @@ function(input, output,session) {
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 		if( is.null(limma()$results) ) return(NULL)
 		if( is.null(selectedHeatmap.data()) ) return(NULL) # this has to be outside of isolate() !!!
 		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
@@ -4493,7 +4541,7 @@ function(input, output,session) {
 	tem = input$selectOrg; tem = input$radio.promoter
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem=input$transform; tem = input$logStart
+	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 	if( is.null(limma()$results) ) return(NULL)
 	if( is.null(selectedHeatmap.data()  ) ) return(NULL)
 	#if( !is.data.frame(selectedHeatmap.data()  ) ) return(NULL)
@@ -4615,7 +4663,7 @@ function(input, output,session) {
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
 	
@@ -4665,7 +4713,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
 	
@@ -4709,7 +4757,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
 	tem = input$CountsDEGMethod;
 	####################################
 			
@@ -4736,7 +4784,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
 	
@@ -4820,7 +4868,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
 	
@@ -4847,7 +4895,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
 	
@@ -4937,7 +4985,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
 	
@@ -5044,7 +5092,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
 	
@@ -5065,7 +5113,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
 
@@ -5114,7 +5162,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
 			
@@ -5146,7 +5194,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
 	
@@ -5195,7 +5243,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
     isolate({ 
@@ -5364,7 +5412,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 		if( !is.null(input$dataFileFormat) )
 			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 		tem = input$CountsDEGMethod;
 		tem=input$limmaPvalViz; 
 		tem=input$limmaFCViz
@@ -5505,7 +5553,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
 	
@@ -5623,7 +5671,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
 	
@@ -5767,7 +5815,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
 
@@ -5809,7 +5857,7 @@ isolate({
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
   
@@ -5838,7 +5886,7 @@ isolate({
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
   
@@ -5863,7 +5911,7 @@ isolate({
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
 	####################################
   
@@ -5892,7 +5940,7 @@ isolate({
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 		if( !is.null(input$dataFileFormat) )
 			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 		tem = input$CountsDEGMethod;
 		
 		tem = input$nGenesBiclust
@@ -5986,7 +6034,7 @@ isolate({
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 		if( !is.null(input$dataFileFormat) )
 			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 		tem = input$CountsDEGMethod;
 		tem = input$nGenesBiclust
 		tem = input$heatColors1
@@ -6040,7 +6088,7 @@ isolate({
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 
 		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
 		NoSig = as.data.frame("No significant enrichment found.")
@@ -6107,7 +6155,7 @@ isolate({
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 
 		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
 		NoSig = as.data.frame("No significant enrichment found.")
@@ -6154,7 +6202,7 @@ isolate({
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 
 		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
 		
@@ -6215,7 +6263,7 @@ isolate({
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 		if( !is.null(input$dataFileFormat) )
 			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 		tem = input$CountsDEGMethod;
 		
 		tem = input$mySoftPower;
@@ -6303,7 +6351,7 @@ isolate({
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 		if( !is.null(input$dataFileFormat) )
 			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2; tem =input$NminSamples2; tem =input$NminSamples2; tem =input$NminSamples2 }
 		tem = input$CountsDEGMethod;
 		tem = input$mySoftPower;
 		
@@ -6355,7 +6403,7 @@ isolate({
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 		if( !is.null(input$dataFileFormat) )
 			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 		tem = input$CountsDEGMethod;
 		tem = input$mySoftPower;
 		tem = input$nGenesNetwork		
@@ -6387,7 +6435,7 @@ isolate({
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
 		if( !is.null(input$dataFileFormat) )
 			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter }
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 		####################################
 		tem = input$minModuleSize
 		tem = input$mySoftPower;
@@ -6423,7 +6471,7 @@ isolate({
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 
 		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
 		
@@ -6466,7 +6514,7 @@ isolate({
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO5
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 
 		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
 		NoSig = as.data.frame("No significant enrichment found.")
@@ -6567,7 +6615,7 @@ isolate({
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; 
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 
 		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
 		
@@ -6651,7 +6699,7 @@ isolate({
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; 
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem=input$transform; tem = input$logStart
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 
 		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
 		

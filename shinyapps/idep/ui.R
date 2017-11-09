@@ -77,7 +77,7 @@ tableOutput('species' ),
       mainPanel(
       tableOutput('sampleInfoTable')
      ,tableOutput('contents')
-		,h3("Dear users, Thank you for using iDEP. We are actively developing and testing iDEP. Please help us by sending us any error messages, feedbacks, or requests of additional features or functionalities. Or just tell us iDEP is cool.",a("Email now.",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"))
+		,h3("Dear users, Thank you for using iDEP. We are actively developing and testing iDEP. Please help us by sending us any error messages, feedbacks, or requests of additional features or functionalities. We can also answer your questions on how to use iDEP to analyze your data.",a("Just email us.",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"))
 		,h5("Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data.  See ",
 			a(" documentation", href="https://idepsite.wordpress.com/"), "and",
 			a(" manuscript.", href="http://biorxiv.org/content/biorxiv/early/2017/06/09/148411.full.pdf"),
@@ -104,11 +104,24 @@ tableOutput('species' ),
     ,tabPanel("Pre-Process",
              sidebarLayout(
                sidebarPanel(
-			     conditionalPanel("input.dataFileFormat == 2"
-					,numericInput("lowFilter", label = h5("Only keep genes with expression at least:"), value = 1)
+			     conditionalPanel("input.dataFileFormat == 2",
+				 strong("Only keep genes above this level in at least n samples:" )
+				 ,fluidRow(
+					column(6, numericInput("lowFilter", label = h5(" Min. level"), value = 1))
+					,column(6, numericInput("NminSamples2", label = h5("n samples"), value = 1) )					
+				)
+					,tags$style(type='text/css', "#lowFilter { width:100%;   margin-top:-12px}")
+					,tags$style(type='text/css', "#NminSamples2 { width:100%;   margin-top:-12px}")			
 					,radioButtons("transform", "Log Transformation",c("No"=FALSE,"Yes"=TRUE) )
 					,numericInput("logStart", label = h5("Constant c for started log: log(x+c)"), value = 1)
-					,br(),h4( textOutput("text.transform") )
+					,tags$style(type='text/css', "#logStart { width:100%;   margin-top:-12px}")
+					,textOutput("textTransform") 
+						,tags$head(tags$style("#textTransform{color: blue;
+								 font-size: 16px;
+								 font-style: italic;
+								 }"
+						 ) )
+					
 				)
 				,conditionalPanel("input.dataFileFormat == 1",
 					 
@@ -229,7 +242,8 @@ tableOutput('species' ),
 				,sliderInput("nClusters", label = h4("Number of Clusters"), min = 2, max = 20, value = 4,step=1) 
 				,actionButton("NClusters", "How many clusters?")
 				,actionButton("geneTSNE", "t-SNE map")
-				,selectInput("kmeansNormalization", h5("Normalize by gene:"), choices = list("Mean center"="geneMean","Standardization"= "geneStandardization","L1 Norm"= "L1Norm"), selected = "geneMean")				
+				,selectInput("kmeansNormalization", h5("Normalize by gene:"), choices = list("Mean center"="geneMean","Standardization"= "geneStandardization","L1 Norm"= "L1Norm"), selected = "geneMean")	
+				,tags$style(type='text/css', "#kmeansNormalization { width:100%;   margin-top:-9px}")
 				,actionButton("showMotifKmeans", "Promoter analysis of each cluster")
 				,br(),br(),downloadButton('downloadDataKmeans', 'Download K-means data')
 				,h5("Pathway database")
