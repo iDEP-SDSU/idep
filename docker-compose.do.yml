@@ -1,45 +1,13 @@
 version: '3'
 services:
-    nginx:
-        build: ./nginx
-        links:
-            - node1:node1
-            - node2:node2
-            - node3:node3
-        ports:
-            - "80:80"
-    node1:
-        build: ./node
-        links:
-            - redis
-        ports:
-            - "8080"
-        volumes:
-            - ./node/:/src
-        environment:
-            - NODE_SERVER=production1
-        cpu_limit : 1 
-    node2:
-        build: ./node
-        links:
-            - redis
-        ports:
-            - "8080"
-        volumes:
-            - ./node/:/src
-        environment:
-            - NODE_SERVER=production2
-    node3:
-        build: ./node
-        links:
-            - redis
-        ports:
-            - "8080"
-        volumes:
-            - ./node/:/src
-        environment:
-            - NODE_SERVER=production3
-    redis:
-        image: redis
-        ports:
-            - "6379"
+    web:
+    build: .
+    ports:
+      - "3838:3838"
+    volumes:
+      - ./shinyapps/:/srv/shiny-server/
+      #- ./data/:/srv/data/
+      - ./shinylog/:/var/log/shiny-server/
+      - ./config/:/etc/shiny-server/
+      - ./classes/:/usr/local/src/myscripts/
+    command: ["/usr/bin/shiny-server.sh"]

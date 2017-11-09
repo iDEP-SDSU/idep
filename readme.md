@@ -95,3 +95,6 @@ open docker terminal
 ```
 > Rscript librarySetup.R
 ```
+
+## production server 
+docker-compose -f docker-compose.yml -f docker-compose.do.yml up -d
