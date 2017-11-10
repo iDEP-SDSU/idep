@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.46"
+iDEPversion = "iDEP 0.47"
 ################################################################
 # R packages
 ################################################################
@@ -200,7 +200,14 @@ myheatmap2 <- function (x,bar=NULL,n=-1,mycolor=1,clusterNames=NULL,sideColors=N
 		}
 }
 
-
+ #Change comparison names from "KO_ko-WT_ko" to    "ko:KO-WT" 
+ changeNames <- function (comp) {
+ 	 if( !grepl(".*_.*-.*_.*",comp )) return(comp)
+	 levels4 = unlist( strsplit( unlist( strsplit(comp,"-") ), "_") ) #double split!
+	 if(length(levels4)!=4) return(comp)
+	 ix = which(duplicated(levels4))
+	 return( paste0(levels4[ix], "_", paste0( levels4[-c(ix, ix-2)] ,collapse ="-") ) )
+ }
 
 # adding sample legends to heatmap; this is for the main heatmap
 # https://stackoverflow.com/questions/3932038/plot-a-legend-outside-of-the-plotting-area-in-base-graphics
@@ -952,7 +959,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 				if( treatments[kp]== treatments[kk] ) 
 				{  
 					contrast1 = cbind(contrast1, contrast1[,kp]- contrast1[,kk] )
-					contrast.names = c(contrast.names, paste("Diff:",  genotypes[kp], "-", genotypes[kk],"(",gsub("-",".vs.",treatments[kp]),")",sep="" ) )
+					contrast.names = c(contrast.names, paste("I:",  genotypes[kp], "-", genotypes[kk],"(",gsub("-",".vs.",treatments[kp]),")",sep="" ) )
 				}   
 			}
 			colnames(contrast1)=contrast.names
@@ -1029,7 +1036,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 							contrast2 = contrast1[,kp]- contrast1[,kk]  else					
 							contrast2 = cbind(contrast2, contrast1[,kp]- contrast1[,kk] )
 							
-							contrast.names = c(contrast.names, paste0("Diff:",  colnames(contrast1)[kp], ".vs.", colnames(contrast1)[kk] ) )
+							contrast.names = c(contrast.names, paste0("I:",  colnames(contrast1)[kp], ".vs.", colnames(contrast1)[kk] ) )
 						}   
 					}
 					colnames(contrast2)=contrast.names[-1]
@@ -1122,6 +1129,8 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 		#topTable(fit2, coef=1, adjust="BH")
 		results <- decideTests(fit2, p.value=maxP_limma, lfc= log2(minFC_limma ))
 		#vennDiagram(results[,1:5],circle.col=rainbow(5))
+		#colnames(results) = unlist(sapply( colnames(results), changeNames  ) )
+		#comparisons2 =  toupper( unlist(sapply( comparisons, changeNames  ) ) )
 
 		# extract fold change for each comparison
 		# there is issues with direction of foldchange. Sometimes opposite
@@ -1148,6 +1157,9 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 			
 		topGenes <- lapply(comparisons, top)
 		topGenes <- setNames(topGenes, comparisons )
+		cat("\n", names(topGenes) )
+		cat("\n", colnames(results))
+		cat("\n", comparisons2)
 		ix <- which( unlist( lapply(topGenes, class) ) == "numeric")
 		if( length(ix)>0) topGenes <- topGenes[ - ix ]
 		# if (length(topGenes) == 0) topGenes = NULL;
@@ -1191,8 +1203,7 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 	# Set up the DESeqDataSet Object and run the DESeq pipeline
 	dds = DESeqDataSetFromMatrix(countData=rawCounts,
 								colData=colData,
-								design=~groups)
-								
+								design=~groups)								
 	
 	if( is.null(modelFactors)  ) 
 		dds = DESeq(dds)  	else  
@@ -1210,26 +1221,15 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 
 		colData = as.data.frame(colData)
 		
-		cat( "factors: ", factors)
-		cat("   Reference levels: ",referenceLevels)
-		
 		# set reference levels for factors
-		if(! is.null( referenceLevels) ) {
+		if(! is.null( referenceLevels) ) {   # c("genotype:wt", "treatment:control" )
 			# first factor
-			if(! is.null( referenceLevels[1]) ) {
-				ix = match(factors[1], colnames(sampleInfo) ) # corresponding column id for factor
-				colData[,ix] = as.factor( colData[,ix] )
-				colData[,ix] = relevel(colData[,ix],referenceLevels[1]  )
-				
-			}
-			# second factor
-			if(length(referenceLevels) >1 & length(factors) >1)
-			if(! is.null( referenceLevels[2]) ) {
-				ix = match(factors[2], colnames(sampleInfo) )
-				colData[,ix] = as.factor( colData[,ix] )
-				colData[,ix] = relevel(colData[,ix],referenceLevels[2]  )		
-			}
-		
+			for ( refs in referenceLevels)
+				if(! is.null( refs) ) {
+					ix = match(gsub(":.*","",refs), colnames(sampleInfo) ) # corresponding column id for factor
+					colData[,ix] = as.factor( colData[,ix] )
+					colData[,ix] = relevel(colData[,ix],gsub(".*:","",refs)  )
+				}
 		}
 				
 		# base model
@@ -1238,6 +1238,7 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 		Exp.type = paste("Model: ~", paste(modelFactors,collapse="+") )
 		# interaction terms like strain:treatment
 		Interactions = modelFactors[ grepl(":",modelFactors )]
+		
 		# create model
 		if( length(Interactions)>0 ) { # if there is interaction
 			for( interactionTerms in Interactions) {
@@ -1256,8 +1257,12 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 		comparisons = gsub(".*: ","",selectedComparisons)
 		comparisons = gsub(" vs\\. ","-",comparisons)
 		factorsVector= gsub(":.*","",selectedComparisons) # corresponding factors for each comparison
-		comparisons2 = comparisons
-
+		
+		# comparison2 holds names for display with real factor names
+		# comparison  is used in calculation it is A, B, C for factors
+		comparisons2 = comparisons    
+		#comparisons2 = gsub(" vs\\. ","-",selectedComparisons) 
+		#comparisons2 = gsub(":","_",comparisons2)		
 		# Note that with interaction terms, not all meaningful comparisons is listed for selection. 
 		# this is complex. Only under reference level.
 		
@@ -1274,7 +1279,7 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 				tem = unlist(strsplit(interactionComparisons2[i],"\\." ) )
 				tem_factors = substr(tem,1,1) 
 				tem_factors = names(factorsCoded)[factorsCoded == tem_factors]  # get the first letters and translate into real factor names
-				interactionComparisons2[i] <- paste0( "Diff:",tem_factors[1], "_",substr(tem[1],2,nchar(tem[1]) ),".",
+				interactionComparisons2[i] <- paste0( "I:",tem_factors[1], "_",substr(tem[1],2,nchar(tem[1]) ),".",
 													          tem_factors[2], "_",substr(tem[2],2,nchar(tem[2]) ) 
 													)				
 			}
@@ -1282,16 +1287,17 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 		}
 	}	
 	
+	# extract contrasts according to comprisons defined above
 	result1 = NULL; allCalls = NULL;
 	topGenes = list(); pk = 1 # counter
 	pp=0 # first results?
 	for( kk in 1:length(comparisons) ) {
 		tem = unlist( strsplit(comparisons[kk],"-") )
 		
-		if(is.null(modelFactors)) 
+		if(is.null(modelFactors)) # if just group comparison using sample names
 			selected = results(dds, contrast=c("groups", tem[1], tem[2]) )   else {
 			if(!grepl("\\.", comparisons[kk] ) )    # if not interaction term: they contain .  interaction term
-				selected = results(dds, contrast=c( factorsCoded[ factorsVector[kk]  ],tem[1], tem[2]) ) else # either A, B, C ...
+				selected = results(dds, contrast=c( factorsCoded[ factorsVector[kk] ],tem[1], tem[2]) ) else # either A, B, C ...
 				selected = results(dds, name=comparisons[kk] ) # interaction term
 			}
 
@@ -1311,7 +1317,7 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 				pk= pk+1; 
 				# selected[,2] <- -1 * selected[,2] # reverse fold change direction
 				topGenes[[pk]] = selected[,c(2,6)]; 
-				names(topGenes)[pk] = comparisons2[kk]; 
+				names(topGenes)[pk] = comparisons2[kk];  # assign name to comprison
 			}
 	}
 	#if( length(comparisons) == 1) topGenes <- topGenes[[1]] # if only one comparison, topGenes is not a list, just a data frame itself.
@@ -1320,6 +1326,7 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 	allCalls = as.matrix( result1[,grep("calls",colnames(result1)), drop = FALSE  ] )
 	colnames(allCalls)= gsub("___.*","", colnames(allCalls))
 	colnames(allCalls)= gsub("\\.","-", colnames(allCalls)) # note that samples names should have no "."
+	colnames(allCalls)= gsub("^I-","I:", colnames(allCalls))
 	}
 	return( list(results= allCalls, comparisons = comparisons2, Exp.type=Exp.type, topGenes=topGenes)) 
 }
@@ -2097,7 +2104,7 @@ attributes(my.keggview.native) <- attributes(tmpfun)  # don't know if this is re
 		keggSpecies <- as.character( keggSpeciesID[which(keggSpeciesID[,1] == Species),3] )
 		
 		if(nchar( keggSpecies) <=2 ) return(blank) # not in KEGG
-	cat("here5  ",keggSpecies, " ",Species," ",input$sigPathways)
+	 #cat("here5  ",keggSpecies, " ",Species," ",input$sigPathways)
 		# kegg pathway id
 	pathID = keggPathwayID(selectedPathway, Species, "KEGG",selectOrg)
 
@@ -2276,7 +2283,11 @@ function(input, output,session) {
 					dataType = c( dataType, is.numeric(x[,i]) )
 				if(sum(dataType) <=2) return (NULL)  # only less than 2 columns are numbers
 				x <- x[,dataType]  # only keep numeric columns
-
+				
+				# rows with all missing values
+				ix = which( apply(x[,-1],1, function(y) sum( is.na(y) ) ) != dim(x)[2]-1 )
+				x <- x[ix,]
+				
 				dataSizeOriginal = dim(x); dataSizeOriginal[2] = dataSizeOriginal[2] -1
 				
 				x[,1] <- toupper(x[,1])
@@ -2289,7 +2300,7 @@ function(input, output,session) {
 				# remove "-" or "." from sample names
 				colnames(x) = gsub("-","",colnames(x))
 				colnames(x) = gsub("\\.","",colnames(x))				
-				
+				cat("\nhere",dim(x))
 				# missng value for median value
 				if(sum(is.na(x))>0) {# if there is missing values
 					rowMeans <- apply(x,1, function (y)  median(y,na.rm=T))
@@ -2951,7 +2962,7 @@ function(input, output,session) {
 	
     if (is.null(input$file2) ) # if sample info is uploaded and correctly parsed.
        { return(NULL) }	 else { 
-	  selectInput("selectFactorsHeatmap", label="Sample color bar:",choices= c(colnames(readSampleInfo()), "Sample_Type")
+	  selectInput("selectFactorsHeatmap", label="Sample color bar:",choices= c(colnames(readSampleInfo()), "Sample_Name")
 	     )   } 
 	})  
 
@@ -2984,7 +2995,7 @@ function(input, output,session) {
 	# if sample info file is uploaded us that info:
 
 	if(!is.null(input$file2) &&  !is.null(input$selectFactorsHeatmap) ) { 
-		if(input$selectFactorsHeatmap == "Sample_Type" )
+		if(input$selectFactorsHeatmap == "Sample_Name" )
 			groups = detectGroups(colnames(x) ) else 
 			{ 	ix = match(input$selectFactorsHeatmap, colnames(readSampleInfo() ) ) 
 				groups = readSampleInfo()[,ix]
@@ -3218,7 +3229,7 @@ function(input, output,session) {
 	
       if (is.null(input$file2) )
        { return(HTML("Upload a sample info file to customize this plot.") ) }	 else { 
-	  selectInput("selectFactors", label="Color:",choices=c( colnames(readSampleInfo()), "Sample_Type")
+	  selectInput("selectFactors", label="Color:",choices=c( colnames(readSampleInfo()), "Sample_Name")
 	     )   } 
 	})
 	output$listFactors2 <- renderUI({
@@ -3227,7 +3238,7 @@ function(input, output,session) {
 	
       if (is.null(input$file2) )
        { return(NULL) }	 else { 
-	   tem <- c( colnames(readSampleInfo()), "Sample_Type")
+	   tem <- c( colnames(readSampleInfo()), "Sample_Name")
 	   if(length(tem)>1) { tem2 = tem[1]; tem[1] <- tem[2]; tem[1] = tem2; } # swap 2nd factor with first
 	  selectInput("selectFactors2", label="Shape:",choices=tem)
 	        } 
@@ -3247,10 +3258,10 @@ function(input, output,session) {
 		}
 		
 	pcaData = as.data.frame(pca.object$x[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
-	colnames(pcaData) = c("PC1", "PC2", "Sample_Type")
+	colnames(pcaData) = c("PC1", "PC2", "Sample_Name")
 	percentVar=round(100*summary(pca.object)$importance[2,1:2],0)
 	if(is.null(input$file2)) { 
-		p=ggplot(pcaData, aes(PC1, PC2, color=Sample_Type, shape = Sample_Type)) + geom_point(size=5) 
+		p=ggplot(pcaData, aes(PC1, PC2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
 		} else {
 		pcaData = cbind(pcaData,readSampleInfo() )
 		p=ggplot(pcaData, aes_string("PC1", "PC2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
@@ -3323,11 +3334,11 @@ function(input, output,session) {
 	 text( fit$points[,1], fit$points[,2],  pos=4, labels =colnames(x), offset=.5, cex=1)
 	}
 	pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
-	colnames(pcaData) = c("x1", "x2", "Sample_Type")
+	colnames(pcaData) = c("x1", "x2", "Sample_Name")
 	
 
 	if(is.null(input$file2)) { 
-	p=ggplot(pcaData, aes(x1, x2, color=Sample_Type, shape = Sample_Type)) + geom_point(size=5) 
+	p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
 	} else {
 		pcaData = cbind(pcaData,readSampleInfo() )
 		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
@@ -3351,11 +3362,11 @@ function(input, output,session) {
 	 tsne <- Rtsne(t(x), dims = 2, perplexity=1, verbose=FALSE, max_iter = 400)
 
 	pcaData = as.data.frame(tsne$Y); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
-	colnames(pcaData) = c("x1", "x2", "Sample_Type")
+	colnames(pcaData) = c("x1", "x2", "Sample_Name")
 	
 
 	if(is.null(input$file2)) { 
-	p=ggplot(pcaData, aes(x1, x2, color=Sample_Type, shape = Sample_Type)) + geom_point(size=5) 
+	p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
 	} else {
 		pcaData = cbind(pcaData,readSampleInfo() )
 		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
@@ -3712,7 +3723,6 @@ function(input, output,session) {
   }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
 
-
 ################################################################
 #   Differential gene expression
 ################################################################
@@ -3731,10 +3741,9 @@ function(input, output,session) {
 		choices = append( choices,setNames( interactions, paste(interactions,"interaction") ))
 							  
 		checkboxGroupInput("selectFactorsModel", 
-                              h4("1. Select one or two main factors for the model. Or leave it blank and just choose pairs of sample groups below. "), 
+                              h4("1. Select one or two main factors and any interactions. Or just choose pairs of sample groups below. "), 
                               choices = choices,
-                              selected = NULL)	   
-	  
+                              selected = NULL)	   	  
 	        } 
 	})  
 
@@ -3749,7 +3758,7 @@ function(input, output,session) {
 		factors = colnames(readSampleInfo())
 		choices = setNames(factors, factors  )
 		checkboxGroupInput("selectBlockFactorsModel", 
-                              h4("Select a factor for batch effect or paired samples, if needed. (Slow)"), 
+                              h4("Select a factor for batch effect or paired samples, if needed."), 
                               choices = choices,
                               selected = NULL)  
 	  
@@ -3795,7 +3804,7 @@ function(input, output,session) {
 				} 
 	}) 
 
-	
+
 	output$selectReferenceLevels1 <- renderUI({
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
@@ -3816,7 +3825,7 @@ function(input, output,session) {
 
 				 selectInput(  paste0("referenceLevelFactor",i), 
 									  label=paste ("Reference level for",selectedFactors[i]),
-									  choices= setNames(as.list( factorLevels ), factorLevels ))
+									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
 									  
 					
 				
@@ -3843,8 +3852,8 @@ function(input, output,session) {
 
 				 selectInput(  paste0("referenceLevelFactor",i), 
 									  label=paste ("Reference level for",selectedFactors[i]),
-									  choices= setNames(as.list( factorLevels ), factorLevels ))
-									  
+									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
+									                             # "genotype:wt"
 					
 				
 				
@@ -3928,26 +3937,27 @@ function(input, output,session) {
 			results = limma()$results
 			ixa = c()
 			for (comps in  input$selectComparisonsVenn) { 
-			if(!grepl("Diff:", comps) ) {  # if not interaction term
-			ix = match(comps, colnames(results)) 
-		  } else {
-			#mismatch in comparison names for interaction terms for DESeq2
-			#Diff:water_Wet.genetic_Hy 	 in the selected Contrast
-			#Diff-water_Wet-genetic_Hy   in column names
-			tem = gsub("Diff-","Diff:" ,colnames(results))
-			tem = gsub("-","\\.",tem)
-			ix = match(comps, tem) 
-			
-			if(is.na(ix) ) # this is for limma package
-				ix = match(comps, colnames(results)) 			
-			
-		  }
-			ixa = c(ixa,ix)
-		  }
-			
+				 if(!grepl("^I:|^I-", comps) ) {  # if not interaction term
+					ix = match(comps, colnames(results)) 
+				  } else {
+						#mismatch in comparison names for interaction terms for DESeq2
+						#I:water_Wet.genetic_Hy 	 in the selected Contrast
+						#Diff-water_Wet-genetic_Hy   in column names
+						tem = gsub("^I-","I:" ,colnames(results))
+						tem = gsub("-","\\.",tem)
+						ix = match(comps, tem) 
+
+						if(is.na(ix) ) # this is for limma package
+							ix = match(comps, colnames(results)) 			
+						
+					  }
+					ixa = c(ixa,ix)
+				  }
+					
 			results = results[,ixa,drop=FALSE] # only use selected comparisons
 			if(dim(results)[2] >5) results <- results[,1:5]
-			vennDiagram(results,circle.col=rainbow(5))
+			colnames(results) = gsub("^I-","I:" ,colnames(results))		
+			vennDiagram(results,circle.col=rainbow(5), cex=c(1.,1, 0.7) ) # part of limma package
 
 		})
     }, height = 600, width = 600)
@@ -3976,7 +3986,7 @@ function(input, output,session) {
       if (is.null(input$file1)&& input$goButton == 0 )
        { selectInput("selectContrast", label = NULL, # h6("Funtional Category"), 
                   choices = list("All" = "All"), selected = "All")  }	 else { 
-	  selectInput("selectContrast", label="Select a comparison to examine. A-B means A vs. B.",choices=limma()$comparisons
+	  selectInput("selectContrast", label="Select a comparison to examine. \"A-B\" means A vs. B comparison. Interaction terms start with \"I:\"",choices=limma()$comparisons
 	     )   } 
 	})
 
@@ -4083,8 +4093,7 @@ function(input, output,session) {
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	####################################
-	
+	####################################	
 
 	if( is.null(input$selectContrast)) return(NULL)
 	if( is.null(limma()$results)) return(NULL)
@@ -4092,13 +4101,13 @@ function(input, output,session) {
 	isolate({ 
 		  genes <- limma()$results
 		  if( is.null(genes) ) return(NULL)
-		  if(!grepl("Diff:", input$selectContrast) ) {  # if not interaction term
+		  if(!grepl("I:", input$selectContrast) ) {  # if not interaction term
 			ix = match(input$selectContrast, colnames(genes)) 
 		  } else {
 			#mismatch in comparison names for interaction terms for DESeq2
-			#Diff:water_Wet.genetic_Hy 	 in the selected Contrast
+			#I:water_Wet.genetic_Hy 	 in the selected Contrast
 			#Diff-water_Wet-genetic_Hy   in column names
-			tem = gsub("Diff-","Diff:" ,colnames(genes))
+			tem = gsub("I-","I:" ,colnames(genes))
 			tem = gsub("-","\\.",tem)
 			ix = match(input$selectContrast, tem) 
 			
@@ -4130,8 +4139,8 @@ function(input, output,session) {
 			}		 
 		 }
 
-		 if (grepl("Diff:",input$selectContrast)) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
-		 if( is.na(iz)[1] | length(iz)<=1 ) iz=1:(dim(convertedData())[2]) 
+		 if (grepl("I:",input$selectContrast)) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
+		 if( is.na(iz)[1] | length(iz)<=1 )    iz=1:(dim(convertedData())[2]) 
 
 		# color bar
 		 bar = genes[,ix]
@@ -4386,7 +4395,7 @@ function(input, output,session) {
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
-	if(grepl("Diff:", input$selectContrast) ) 	return(NULL) # if interaction term related comparison
+	if(grepl("I:", input$selectContrast) ) 	return(NULL) # if interaction term related comparison
 	isolate({ 
 
 	withProgress(message="Generating scatter plot with all genes",{ 
@@ -4408,7 +4417,7 @@ function(input, output,session) {
 	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
 
      incProgress(1/2)
-	 if (grepl("Diff:",input$selectContrast) == 1) return(NULL) # iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
+	 if (grepl("I:",input$selectContrast) == 1) return(NULL) # iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
   	 # average expression
      samples = unlist(strsplit( input$selectContrast, "-"))
      iz= match( detectGroups(colnames(convertedData())), samples[1]	  )
@@ -4468,7 +4477,7 @@ function(input, output,session) {
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
-	if(grepl("Diff:", input$selectContrast) ) 	return(NULL) # if interaction term related comparison
+	if(grepl("I:", input$selectContrast) ) 	return(NULL) # if interaction term related comparison
 	isolate({ 
 	withProgress(message="Generating scatter plot with all genes",{ 
 	if(length( limma()$comparisons)  ==1 )  
@@ -4489,7 +4498,7 @@ function(input, output,session) {
 	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
 
      incProgress(1/2)
-	 if (grepl("Diff:",input$selectContrast) == 1) return(NULL) # iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
+	 if (grepl("I:",input$selectContrast) == 1) return(NULL) # iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
   	 # average expression
      samples = unlist(strsplit( input$selectContrast, "-"))
      iz= match( detectGroups(colnames(convertedData())), samples[1]	  )
@@ -4770,7 +4779,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	#if(0){
 	iz= match( detectGroups(colnames(genes)), unlist(strsplit( input$selectContrast1, "-"))	  )
     iz = which(!is.na(iz))
-	if (grepl("Diff:",input$selectContrast1) == 1) iz=1:(dim(genes)[2]) 
+	if (grepl("I:",input$selectContrast1) == 1) iz=1:(dim(genes)[2]) 
 	genes = genes[,iz]
 	#}
 	subtype = detectGroups(colnames(genes )) 
@@ -5217,7 +5226,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	#if(0){
 	iz= match( detectGroups(colnames(genes)), unlist(strsplit( input$selectContrast1, "-"))	  )
     iz = which(!is.na(iz))
-	if (grepl("Diff:",input$selectContrast1) == 1) iz=1:(dim(genes)[2]) 
+	if (grepl("I:",input$selectContrast1) == 1) iz=1:(dim(genes)[2]) 
 	genes = genes[,iz]
 	#}
 	subtype = detectGroups(colnames(genes )) 

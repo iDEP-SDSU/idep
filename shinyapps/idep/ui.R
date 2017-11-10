@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.46"
+iDEPversion = "iDEP.47"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -310,7 +310,7 @@ tableOutput('species' ),
                 sidebarPanel(
 				h5("Identifying Differential Expressed Genes (DEGs)"),
 				conditionalPanel("input.dataFileFormat == 1",
-				selectInput("CountsDEGMethod", "Method:", choices = list("DESeq2"= 3,"limma-voom"=2,"limma-trend"=1), selected = 2)				
+				selectInput("CountsDEGMethod", "Method:", choices = list("DESeq2"= 3,"limma-voom"=2,"limma-trend"=1), selected = 3)				
 				,tags$style(type='text/css', "#CountsDEGMethod { width:100%;   margin-top:-12px}")
 				)	
 				,conditionalPanel("input.dataFileFormat == 2", h5("Using the limma package")				)				
