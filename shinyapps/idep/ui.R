@@ -150,6 +150,7 @@ tableOutput('species' ),
 				,br(),br()
 				,actionButton("examineDataB", "Search processed data")
                  ,br(),br()
+				 ,checkboxInput("noIDConversion", "Do not convert gene IDs to Ensembl.", value = FALSE)
 				 ,downloadButton('downloadProcessedData', 'Download processed data') 
 				 ,conditionalPanel("input.dataFileFormat == 1",downloadButton('downloadConvertedCounts', 'Download converted counts data') )
 

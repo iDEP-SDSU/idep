@@ -708,7 +708,7 @@ gmtCategory <- function (converted, convertedData, selectOrg,gmtFile) {
 		if (length(ix) == 0 ) {return(idNotRecognized )}
 	}
 	pathway <- dbConnect(sqlite,gmtFiles[ix])
-	cat(paste("selectOrg:",selectOrg) )
+	#cat(paste("selectOrg:",selectOrg) )
 	# Generate a list of geneset categories such as "GOBP", "KEGG" from file
 	geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
 	geneSetCategory  <- geneSetCategory[,1]
@@ -1157,9 +1157,9 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 			
 		topGenes <- lapply(comparisons, top)
 		topGenes <- setNames(topGenes, comparisons )
-		cat("\n", names(topGenes) )
-		cat("\n", colnames(results))
-		cat("\n", comparisons2)
+		#cat("\n", names(topGenes) )
+		#cat("\n", colnames(results))
+		#cat("\n", comparisons2)
 		ix <- which( unlist( lapply(topGenes, class) ) == "numeric")
 		if( length(ix)>0) topGenes <- topGenes[ - ix ]
 		# if (length(topGenes) == 0) topGenes = NULL;
@@ -1749,9 +1749,9 @@ my.keggview.native <- function ( plot.data.gene = NULL, plot.data.cpd = NULL, co
     for (np in 1:nplots) {
         img.file = paste(kegg.dir,"/",pathway.name, ".",pn.suffix[np], ".png", 
             sep = "")
-		message("here:",img.file)
+		#message("here:",img.file)
         out.msg = sprintf(out.fmt, img.file)
-        message("Info: ", out.msg)
+        #message("Info: ", out.msg)
         png(img.file, width = width, height = height, res = res)
         op = par(mar = c(0, 0, 0, 0))
         plot(c(0, width), c(0, height), type = "n", xlab = "", 
@@ -2231,8 +2231,7 @@ function(input, output,session) {
  # allGeneInfo(): returns all information in the geneInfo file for each gene
  # geneSets(): gene set as a list for pathway analysis
   
-	options(shiny.maxRequestSize = 50*1024^2) # 50MB file max for upload
-	#observe({ setwd(workDir) })
+	options(shiny.maxRequestSize = 100*1024^2) # 100MB file max for upload
 	observe({  updateSelectInput(session, "selectOrg", choices = speciesChoice )      })
 	observe({  updateSelectInput(session, "heatColors1", choices = colorChoices )      })
 	observe({  updateSelectInput(session, "distFunctions", choices = distChoices )      })
@@ -2300,7 +2299,7 @@ function(input, output,session) {
 				# remove "-" or "." from sample names
 				colnames(x) = gsub("-","",colnames(x))
 				colnames(x) = gsub("\\.","",colnames(x))				
-				cat("\nhere",dim(x))
+				#cat("\nhere",dim(x))
 				# missng value for median value
 				if(sum(is.na(x))>0) {# if there is missing values
 					rowMeans <- apply(x,1, function (y)  median(y,na.rm=T))
@@ -2467,13 +2466,18 @@ function(input, output,session) {
 		inFile <- input$file1
 		if( is.null(readData()) ) return(NULL)
 		if( is.null(convertedData() ) ) return(NULL)
+		tem = input$noIDConversion
 		tem = readData()$dataSize
 		ix = match( toupper( rownames(convertedData())), toupper(converted()$conversionTable$ensembl_gene_id  ) )
 		nMatched = sum( !is.na(ix) )
-		
+		if( input$noIDConversion) 
+		return( paste(tem[1], "genes in", tem[4], "samples.", tem[3], " genes passed filter (see above). Original gene IDs used." ) )  else
 		return( paste(tem[1], "genes in", tem[4], "samples. Of the", tem[3], " genes passed filter (see above), ", 
 			nMatched, " were converted to Ensembl gene IDs in our database. 
-			  The remaining ", tem[3]-nMatched, "genes were kept in the data using original IDs." ) )
+			  The remaining ", tem[3]-nMatched, "genes were kept in the data using original IDs." ) ) 	  
+			  
+			  
+			  
 	})	
 
 	# Show info on file format	
@@ -2512,7 +2516,7 @@ function(input, output,session) {
 	# this defines an reactive object that can be accessed from other rendering functions
 	allGeneInfo <- reactive({
 		if (is.null(input$file1) && input$goButton == 0)    return(NULL)
-		tem = input$selectOrg;
+		tem = input$selectOrg; 
 		isolate( {
 		withProgress(message="Looking up gene annotation", {
 		geneInfo(converted(),input$selectOrg); 
@@ -2524,7 +2528,7 @@ function(input, output,session) {
 		if (is.null(input$file1) && input$goButton == 0) return()  
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -2535,6 +2539,9 @@ function(input, output,session) {
 		if( is.null(converted() ) ) return( readData()$data) # if id or species is not recognized use original data.
 		isolate( {  
 			withProgress(message="Converting data ... ", {
+			
+				if(input$noIDConversion) return( readData()$data )
+				
 				mapping <- converted()$conversionTable
 				# cat (paste( "\nData:",input$selectOrg) )
 				x =readData()$data
@@ -2558,8 +2565,9 @@ function(input, output,session) {
 				tem = apply(x1,1,sd)
 				x1 = x1[order(-tem),]  # sort again by SD
 				incProgress(1, "Done.")
-			})
-		return(x1)
+			
+				return(x1)
+		})
 		})
 	})
 	
@@ -2567,7 +2575,7 @@ function(input, output,session) {
 		if (is.null(input$file1) && input$goButton == 0) return()  
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -2577,7 +2585,10 @@ function(input, output,session) {
 		####################################
 		if( is.null(converted() ) ) return( readData()$rawCounts) # if id or species is not recognized use original data.
 		isolate( {  
+			if(input$noIDConversion) return( readData()$rawCounts )
 			withProgress(message="Converting data ... ", {
+
+				
 				mapping <- converted()$conversionTable
 				# cat (paste( "\nData:",input$selectOrg) )
 				x =readData()$rawCounts
@@ -2671,7 +2682,7 @@ function(input, output,session) {
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -2705,7 +2716,7 @@ function(input, output,session) {
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat ; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -2800,7 +2811,7 @@ function(input, output,session) {
 		  
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -2850,7 +2861,7 @@ function(input, output,session) {
 		  
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -2891,15 +2902,6 @@ function(input, output,session) {
 				# colnames(tem)[1] = "Ensembl_or_Original_ID"
 				})
 				return(tem2)
-				
-				
-				
-				
-				
-				
-				
-				
-				
 			}
 
 			}) # progress
@@ -2924,7 +2926,7 @@ function(input, output,session) {
 	inFile <- inFile$datapath
     if (is.null(input$file1) && input$goButton == 0)   return(NULL)
 
-	tem = input$selectOrg
+	tem = input$selectOrg; tem = input$noIDConversion
 	isolate({
 	merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], round(convertedData(),2),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )
 	})
@@ -2957,7 +2959,7 @@ function(input, output,session) {
 ################################################################
 
 	output$listFactorsHeatmap <- renderUI({
-	tem = input$selectOrg
+	tem = input$selectOrg; 
 	tem=input$limmaPval; tem=input$limmaFC
 	
     if (is.null(input$file2) ) # if sample info is uploaded and correctly parsed.
@@ -2969,6 +2971,19 @@ function(input, output,session) {
 	# conventional heatmap.2 plot
 	output$heatmap1 <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  {  
+			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
+		}
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) { 
+			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
+		}
+	####################################
+		
     x <- readData()$data   # x = read.csv("expression1.csv")
 	withProgress(message="Reading and pre-processing ", {
 	n=input$nGenes
@@ -3071,8 +3086,19 @@ function(input, output,session) {
 # interactive heatmap with plotly
 	output$heatmap <- renderPlotly({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-   # x <- readData()$data   # x = read.csv("expression1.csv")
-    x <- convertedData()
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  {  
+			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
+		}
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) { 
+			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
+		}
+	####################################
+	   x <- convertedData()
 	withProgress(message="Rendering heatmap ", {
 	n=input$nGenesPlotly
 	#if(n>6000) n = 6000 # max
@@ -3232,6 +3258,7 @@ function(input, output,session) {
 	  selectInput("selectFactors", label="Color:",choices=c( colnames(readSampleInfo()), "Sample_Name")
 	     )   } 
 	})
+
 	output$listFactors2 <- renderUI({
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
@@ -3243,9 +3270,22 @@ function(input, output,session) {
 	  selectInput("selectFactors2", label="Shape:",choices=tem)
 	        } 
 	})
+
 	output$PCA <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  {  
+			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
+		}
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) { 
+			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
+		}
+	####################################
+	
 	x <- convertedData();
      if(input$PCA_MDS ==1) {   #PCA
 	 pca.object <- prcomp(t(x))
@@ -3421,7 +3461,7 @@ function(input, output,session) {
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  {  
 			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
@@ -3473,7 +3513,7 @@ function(input, output,session) {
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -3526,7 +3566,7 @@ function(input, output,session) {
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -3554,7 +3594,7 @@ function(input, output,session) {
 
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -3610,7 +3650,7 @@ function(input, output,session) {
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -3649,7 +3689,8 @@ function(input, output,session) {
 		results = results[which(results$FDR < minFDR),]
 		incProgress(1, detail = paste("Done")) 
 	}) #progress
-
+	if( is.null(results) )  return ( as.matrix("No significant enrichment.") )	
+	if( class(results) != "data.frame")  return ( as.matrix("No significant enrichment.") )
 	if( dim(results)[2] ==1)  return ( as.matrix("No significant enrichment.") )
 	colnames(results)[2] = "adj.Pval"
 	results$Genes <- as.character(results$Genes)
@@ -3665,7 +3706,7 @@ function(input, output,session) {
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -3867,7 +3908,7 @@ function(input, output,session) {
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -3906,7 +3947,7 @@ function(input, output,session) {
 
 	output$text.limma <- renderText({
       if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
- 	tem = input$selectOrg
+ 	tem = input$selectOrg; tem = input$noIDConversion
 	tem=input$limmaPval; tem=input$limmaFC
 	  limma()$Exp.type
   
@@ -3919,7 +3960,7 @@ function(input, output,session) {
 		
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4018,7 +4059,7 @@ function(input, output,session) {
 			tem = input$CountsDEGMethod; 	
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4051,7 +4092,7 @@ function(input, output,session) {
 	tem = input$CountsDEGMethod; 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4086,7 +4127,7 @@ function(input, output,session) {
 	tem = input$CountsDEGMethod; 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4182,7 +4223,7 @@ function(input, output,session) {
 	tem = input$CountsDEGMethod; 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4206,7 +4247,7 @@ function(input, output,session) {
   
 	geneListDataExport <- reactive({
 		if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-			tem = input$selectOrg
+			tem = input$selectOrg; tem = input$noIDConversion
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts; tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -4229,7 +4270,7 @@ function(input, output,session) {
 
 	geneListData <- reactive({
 		if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-			tem = input$selectOrg
+			tem = input$selectOrg; tem = input$noIDConversion
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -4287,7 +4328,7 @@ function(input, output,session) {
 
 	output$volcanoPlot <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-		tem = input$selectOrg
+		tem = input$selectOrg; tem = input$noIDConversion
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -4323,9 +4364,11 @@ function(input, output,session) {
 	}) })
 
   },height=450, width=500)
+  
+  
 	output$volcanoPlotly <- renderPlotly({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-		tem = input$selectOrg
+		tem = input$selectOrg; tem = input$noIDConversion
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -4388,7 +4431,7 @@ function(input, output,session) {
 
 	output$scatterPlot <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-		tem = input$selectOrg
+		tem = input$selectOrg; tem = input$noIDConversion
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -4470,7 +4513,7 @@ function(input, output,session) {
 
 	output$scatterPlotly <- renderPlotly({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-		tem = input$selectOrg
+		tem = input$selectOrg; tem = input$noIDConversion
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -4567,7 +4610,7 @@ function(input, output,session) {
 		if( is.null( input$selectGO2) ) return (NULL)
 		if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
 
-		tem = input$selectOrg
+		tem = input$selectOrg; tem = input$noIDConversion
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -4637,7 +4680,7 @@ function(input, output,session) {
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	if( is.null(input$selectContrast)) return(NULL)
 
-	tem = input$selectOrg; tem = input$radio.promoter
+	tem = input$selectOrg; tem = input$radio.promoter; tem = input$noIDConversion
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -4692,7 +4735,7 @@ function(input, output,session) {
  
 # this updates geneset categories based on species and file
 	output$selectGO1 <- renderUI({
-	  tem = input$selectOrg
+	  tem = input$selectOrg;
       if (is.null(input$file1)&& input$goButton == 0 )
        { selectInput("selectGO", label = NULL, # h6("Funtional Category"), 
                   choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
@@ -4756,7 +4799,7 @@ function(input, output,session) {
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4806,7 +4849,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4850,7 +4893,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4877,7 +4920,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4961,7 +5004,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4988,7 +5031,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5078,7 +5121,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5185,7 +5228,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5206,7 +5249,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5255,7 +5298,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5287,7 +5330,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5336,7 +5379,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	# cat(input$sigPathways)
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5409,7 +5452,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     if (is.null(input$file1)&& input$goButton == 0)   return(blank)
 
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
-	tem = input$selectGO
+	tem = input$selectGO; tem = input$noIDConversion
 	tem = input$selectContrast
 	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
 	tem=input$nPathwayShow; tem=input$absoluteFold	
@@ -5505,7 +5548,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 		
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5519,120 +5562,127 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 		
 	  isolate({ 
 		withProgress(message="Visualzing expression on the genome", {
-
-		
-		if(length( limma()$comparisons)  ==1 )  
-		{ top1=limma()$topGenes[[1]]  
+		# default plot
+		p <- ggplot(mtcars, aes(x = wt, y = mpg)) +
+							 geom_blank() + ggtitle("No genes with position info.") +
+							 theme(axis.title.x=element_blank(),axis.title.y=element_blank())
+							 
+		if(length( limma()$comparisons)  ==1 )  {
+			top1=limma()$topGenes[[1]]  
 		} else {
 		  top = limma()$topGenes
 		  ix = match(input$selectContrast2, names(top))
-		  if( is.na(ix)) return (NULL)
+		  if( is.na(ix)) return (ggplotly(p))
 		  top1 <- top[[ix]]; 
-		  }
-		  if(dim(top1)[1] == 0 ) return (NULL)
+		}
+		  if(dim(top1)[1] == 0 ) return (ggplotly(p))
 		  colnames(top1)= c("Fold","FDR")
 		  
 		 # write.csv(merge(top1,allGeneInfo(), by.x="row.names",by.y="ensembl_gene_id"  ),"tem.csv"  )
 		 x <- merge(top1,allGeneInfo(), by.x="row.names",by.y="ensembl_gene_id"  )
-		 
-		 x <- x[order(x$chromosome_name,x$start_position),]
-		 tem = sort( table( x$chromosome_name), decreasing=T) 
-		 chromosomes <- names( tem[tem >= 5 ] )  # chromosomes with less than 100 genes are excluded
-		 if(length(chromosomes) > 50) chromosomes <- chromosomes[1:50]  # at most 50 chromosomes
-		 chromosomes <- chromosomes[ nchar(chromosomes)<=12] # chr. name less than 10 characters
-		 chromosomes = chromosomes[order(as.numeric(chromosomes) ) ]
-		 # chromosomes = chromosomes[!is.na(as.numeric(chromosomes) ) ]
-		 chromosomesNumbers = as.numeric(chromosomes)
-		 # convert chr.x to numbers
-		  j = max( chromosomesNumbers,na.rm=T) 
-		  for( i in 1:length( chromosomes)) {
-		   if ( is.na(chromosomesNumbers[i]) ) 
-		   { chromosomesNumbers[i] <- j+1; j <- j+1; }
-		 }
-		  
-		 x <- x[which(x$chromosome_name %in% chromosomes   ),]
-		 x <- droplevels(x)
-		 
-		# find the number coding for chromosome 
-		 getChrNumber <- function (chrName){
-		 return( chromosomesNumbers[ which( chromosomes == chrName)] )
-		 }
-		  x$chrNum = 1 # numeric coding
-		  x$chrNum <- unlist( lapply( x$chromosome_name, getChrNumber) )
-		 
-		 x$Row.names <- as.character( x$Row.names)
-	 
-		 # if symbol is missing use Ensembl id
-		 x$symbol = as.character(x$symbol)	 
-		 ix = which(is.na(x$symbol))
-		 ix2 = which(nchar(as.character(x$symbol))<= 2 )
-		 ix3 = which( duplicated(x$symbol))
-		 ix = unique( c(ix,ix2,ix3))
-		 x$symbol[ix] <- x$Row.names[ix] 
-					 
-	 
-		 ##################################
-		 # plotting
-		# x = read.csv("tem_genome.csv")
-		x = x[!is.na(x$chromosome_name),]
-		x = x[!is.na(x$start_position),]	
-		# only keep significant genes
-		#x = x[which(x$FDR<input$limmaPval),]
-		# x = x[which(abs(x$Fold) > log2( input$limmaFC)),]
-		
-		ix = which( (x$FDR< as.numeric(input$limmaPvalViz)) & (abs(x$Fold) > as.numeric(input$limmaFCViz) ) )
-		
-		if (length(ix) == 0) { 
-				p <- ggplot(mtcars, aes(x = wt, y = mpg)) +
-							 geom_blank() + ggtitle("No genes found.") +
-							 theme(axis.title.x=element_blank(),axis.title.y=element_blank())
-		} else { 
-			x = x[ix,]		
-			
-			x$start_position = x$start_position/1000000 # Mbp
-			chrD = 20 # distance between chrs.
-			foldCutoff = 3   # max log2 fold 
-			
-			x$Fold = x$Fold / sd(x$Fold)  # standardize fold change
-			
-			x$Fold[which(x$Fold > foldCutoff )] = foldCutoff   # log2fold within -5 to 5
-			x$Fold[which(x$Fold <   -1*foldCutoff )] = -1*foldCutoff 
-			x$Fold = 4* x$Fold
-			
 
-			
-			x$y = x$chrNum*chrD + x$Fold
-			chrLengthTable = aggregate(start_position~chrNum, data=x,max )
-			chrTotal = dim(chrLengthTable)[1]	
-			x$R = as.factor(sign(x$Fold))
-			
-			colnames(x)[ which(colnames(x) == "start_position")] = "x"
-
-			p= ggplot(x, aes(x = x, y = y, colour = R, text = symbol ) ) + geom_point(shape = 20, size = .2)
-			
-				#label y with chr names
-			p <- p +  scale_y_continuous(labels = paste("chr",chromosomes[chrLengthTable$chrNum],sep=""), breaks = chrD* (1:chrTotal), limits = c(0, 
-				chrD*chrTotal + 5) )
-			# draw horizontal lines for each chr.
-			for( i in 1:dim(chrLengthTable)[1] )
-				p = p+ annotate( "segment",x = 0, xend = chrLengthTable$start_position[i],
-					y = chrLengthTable$chrNum[i]*chrD, yend = chrLengthTable$chrNum[i]*chrD)
-			# change legend		http://ggplot2.tidyverse.org/reference/scale_manual.html
-			p=p+scale_colour_manual(name="",   # customize legend text
-				values=c("blue", "red"),
-				breaks=c("1","-1"),
-				labels=c("Up", "Dn"))	
-			p = p + xlab("Position on chrs. (Mbp)") +	 theme(axis.title.y=element_blank())					 
-			p= p + theme(legend.position="none")
-			# p <- ggplot(mtcars, aes(x=hp, y=mpg)) + geom_point(shape=20, size=17)
-		   # p=p+ geom_smooth(method = "lm",se=FALSE)
-			#p+ geom_line(aes(y=rollmean(y,7, na.pad=TRUE)))
-		  
-		   # Customize hover text https://cran.r-project.org/web/packages/plotly/plotly.pdf
-		   # style(ggplotly(p),hoverinfo="text")  # not working
-		  }  # if no genes else
-			ggplotly(p)
+		 # if no chromosomes found. For example if user do not convert gene IDs.
+		 if( dim(x)[1] >5  ) { 
 		
+			 x <- x[order(x$chromosome_name,x$start_position),]
+	 
+			 tem = sort( table( x$chromosome_name), decreasing=T)
+
+			 chromosomes <- names( tem[tem >= 5 ] )  # chromosomes with less than 100 genes are excluded
+			 if(length(chromosomes) > 50) chromosomes <- chromosomes[1:50]  # at most 50 chromosomes
+			 chromosomes <- chromosomes[ nchar(chromosomes)<=12] # chr. name less than 10 characters
+			 chromosomes = chromosomes[order(as.numeric(chromosomes) ) ]
+			 # chromosomes = chromosomes[!is.na(as.numeric(chromosomes) ) ]
+			 chromosomesNumbers = as.numeric(chromosomes)
+
+			 # convert chr.x to numbers		 
+			  j = max( chromosomesNumbers,na.rm=T) 
+			  for( i in 1:length( chromosomes)) {
+			   if ( is.na(chromosomesNumbers[i]) ) 
+			   { chromosomesNumbers[i] <- j+1; j <- j+1; }
+			 }
+			  
+			 x <- x[which(x$chromosome_name %in% chromosomes   ),]
+			 x <- droplevels(x)
+			 
+			# find the number coding for chromosome 
+			 getChrNumber <- function (chrName){
+			 return( chromosomesNumbers[ which( chromosomes == chrName)] )
+			 }
+			  x$chrNum = 1 # numeric coding
+			  x$chrNum <- unlist( lapply( x$chromosome_name, getChrNumber) )
+			 
+			 x$Row.names <- as.character( x$Row.names)
+		 
+			 # if symbol is missing use Ensembl id
+			 x$symbol = as.character(x$symbol)	 
+			 ix = which(is.na(x$symbol))
+			 ix2 = which(nchar(as.character(x$symbol))<= 2 )
+			 ix3 = which( duplicated(x$symbol))
+			 ix = unique( c(ix,ix2,ix3))
+			 x$symbol[ix] <- x$Row.names[ix] 
+						 
+		 
+			 ##################################
+			 # plotting
+			# x = read.csv("tem_genome.csv")
+			x = x[!is.na(x$chromosome_name),]
+			x = x[!is.na(x$start_position),]	
+			# only keep significant genes
+			#x = x[which(x$FDR<input$limmaPval),]
+			# x = x[which(abs(x$Fold) > log2( input$limmaFC)),]
+			
+			ix = which( (x$FDR< as.numeric(input$limmaPvalViz)) & (abs(x$Fold) > as.numeric(input$limmaFCViz) ) )
+			
+			if (length(ix) > 5) { 
+
+				x = x[ix,]		
+				
+				x$start_position = x$start_position/1000000 # Mbp
+				chrD = 20 # distance between chrs.
+				foldCutoff = 3   # max log2 fold 
+				
+				x$Fold = x$Fold / sd(x$Fold)  # standardize fold change
+				
+				x$Fold[which(x$Fold > foldCutoff )] = foldCutoff   # log2fold within -5 to 5
+				x$Fold[which(x$Fold <   -1*foldCutoff )] = -1*foldCutoff 
+				x$Fold = 4* x$Fold
+				
+
+				
+				x$y = x$chrNum*chrD + x$Fold
+				chrLengthTable = aggregate(start_position~chrNum, data=x,max )
+				chrTotal = dim(chrLengthTable)[1]	
+				x$R = as.factor(sign(x$Fold))
+				
+				colnames(x)[ which(colnames(x) == "start_position")] = "x"
+
+				p= ggplot(x, aes(x = x, y = y, colour = R, text = symbol ) ) + geom_point(shape = 20, size = .2)
+				
+					#label y with chr names
+				p <- p +  scale_y_continuous(labels = paste("chr",chromosomes[chrLengthTable$chrNum],sep=""), breaks = chrD* (1:chrTotal), limits = c(0, 
+					chrD*chrTotal + 5) )
+				# draw horizontal lines for each chr.
+				for( i in 1:dim(chrLengthTable)[1] )
+					p = p+ annotate( "segment",x = 0, xend = chrLengthTable$start_position[i],
+						y = chrLengthTable$chrNum[i]*chrD, yend = chrLengthTable$chrNum[i]*chrD)
+				# change legend		http://ggplot2.tidyverse.org/reference/scale_manual.html
+				p=p+scale_colour_manual(name="",   # customize legend text
+					values=c("blue", "red"),
+					breaks=c("1","-1"),
+					labels=c("Up", "Dn"))	
+				p = p + xlab("Position on chrs. (Mbp)") +	 theme(axis.title.y=element_blank())					 
+				p= p + theme(legend.position="none")
+				# p <- ggplot(mtcars, aes(x=hp, y=mpg)) + geom_point(shape=20, size=17)
+			   # p=p+ geom_smooth(method = "lm",se=FALSE)
+				#p+ geom_line(aes(y=rollmean(y,7, na.pad=TRUE)))
+			  
+			   # Customize hover text https://cran.r-project.org/web/packages/plotly/plotly.pdf
+			   # style(ggplotly(p),hoverinfo="text")  # not working
+			  }  # if no genes else
+			
+		}
+		ggplotly(p)
 			}) # progress
 		}) # isloate
 	  })
@@ -5646,7 +5696,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5764,7 +5814,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5908,7 +5958,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5950,7 +6000,7 @@ isolate({
 
   	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5979,7 +6029,7 @@ isolate({
   
  	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6004,7 +6054,7 @@ isolate({
   
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6033,7 +6083,7 @@ isolate({
 
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6082,7 +6132,7 @@ isolate({
    } )
    
   	output$listBiclusters <- renderUI({
-		tem = input$selectOrg
+		tem = input$selectOrg; tem = input$noIDConversion
 		tem = input$biclustMethod
 		tem = input$nGenesBiclust
 		if (is.null(biclustering() ) ){ # if sample info is uploaded and correctly parsed.
@@ -6127,7 +6177,7 @@ isolate({
 
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6184,7 +6234,7 @@ isolate({
 		if( is.null( input$selectGO4) ) return (NULL)
 		if( input$selectGO4 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
 
-		tem = input$selectOrg
+		tem = input$selectOrg; tem = input$noIDConversion
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -6251,7 +6301,7 @@ isolate({
 		if( is.null( input$selectGO4) ) return (NULL)
 		if( input$selectGO4 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
 
-		tem = input$selectOrg
+		tem = input$selectOrg; tem = input$noIDConversion
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -6298,7 +6348,7 @@ isolate({
 		if( is.null( input$selectGO4) ) return (NULL)
 		if( input$selectGO4 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
 
-		tem = input$selectOrg
+		tem = input$selectOrg; tem = input$noIDConversion
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -6356,7 +6406,7 @@ isolate({
 
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6444,7 +6494,7 @@ isolate({
 		if(is.null(wgcna() ) ) return(NULL)
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6461,7 +6511,7 @@ isolate({
 		if(is.null(wgcna() ) ) return(NULL)
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6496,7 +6546,7 @@ isolate({
 		if(is.null(wgcna() ) ) return(NULL)
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6528,7 +6578,7 @@ isolate({
 
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1; tem = input$noIDConversion
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6567,7 +6617,7 @@ isolate({
   	moduleData <- reactive({
   		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
-		tem = input$selectOrg
+		tem = input$selectOrg; tem = input$noIDConversion
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -6610,7 +6660,7 @@ isolate({
 		if( is.null( input$selectGO5) ) return (NULL)
 		if( input$selectGO5 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
 
-		tem = input$selectOrg
+		tem = input$selectOrg; tem = input$noIDConversion
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO5
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -6683,7 +6733,7 @@ isolate({
 
 
 	output$listWGCNA.Modules <- renderUI({
-		tem = input$selectOrg
+		tem = input$selectOrg; tem = input$noIDConversion
 		tem = input$mySoftPower;
 		tem = input$nGenesNetwork		
 		tem = input$minModuleSize
@@ -6711,7 +6761,7 @@ isolate({
   	exportModuleNetwork <- reactive({
   		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
-		tem = input$selectOrg
+		tem = input$selectOrg; tem = input$noIDConversion
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; 
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -6758,23 +6808,26 @@ isolate({
 	    if(sum(is.na( allGeneInfo()$symbol ) )/ dim( allGeneInfo() )[1] <.5 ) { # if more than 50% genes has symbol
 			probeToGene = allGeneInfo()[,c("ensembl_gene_id","symbol")]
 			probeToGene$symbol = gsub(" ","",probeToGene$symbol)
-
 			ix = which( is.na(probeToGene$symbol) |
 						nchar(probeToGene$symbol)<2 | 
 						toupper(probeToGene$symbol)=="NA" |  
 						toupper(probeToGene$symbol)=="0"  ) 			
 			probeToGene[ix,2] = probeToGene[ix,1]  # use gene ID
 
-		}
-		
-		
-		
+		}		
+	
 		incProgress(1/2, "Writing to file")
-		vis = exportNetworkToVisANT(modTOM[top,top],
-			file = outfile,
-			weighted = TRUE,
-			threshold = input$edgeThreshold,
-			probeToGene = probeToGene )
+		if(input$noIDConversion) { 
+			vis = exportNetworkToVisANT(modTOM[top,top],
+				file = outfile,
+				weighted = TRUE,
+				threshold = input$edgeThreshold )	
+		} else 				
+			vis = exportNetworkToVisANT(modTOM[top,top],
+				file = outfile,
+				weighted = TRUE,
+				threshold = input$edgeThreshold,
+				probeToGene = probeToGene )
 		
 		return(outfile)	
 		incProgress(1,"Done")
@@ -6795,7 +6848,7 @@ isolate({
   	output$moduleNetwork <- renderPlot({
   		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
-		tem = input$selectOrg
+		tem = input$selectOrg; tem = input$noIDConversion
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; 
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -6853,10 +6906,12 @@ isolate({
 
 		}
 		
-		net <- modTOM[top,top] >input$edgeThreshold		
+		net <- modTOM[top,top] >input$edgeThreshold	
+
+		
 		for( i in 1:dim(net)[1])  # remove self connection
 			net[i,i] = FALSE
-		if(!is.null(probeToGene) ) { # if gene symbol exist
+		if(!is.null(probeToGene) & !input$noIDConversion) { # if gene symbol exist
 			ix = match( colnames(net), probeToGene[,1])		
 			colnames(net) = probeToGene[ix,2]
 			ix = match( rownames(net), probeToGene[,1])		
