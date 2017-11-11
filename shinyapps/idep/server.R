@@ -5563,7 +5563,8 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	  isolate({ 
 		withProgress(message="Visualzing expression on the genome", {
 		# default plot
-		p <- ggplot(mtcars, aes(x = wt, y = mpg)) +
+		fake = data.frame(a=1:3,b=1:3)
+		p <- ggplot(fake, aes(x = a, y = b)) +
 							 geom_blank() + ggtitle("No genes with position info.") +
 							 theme(axis.title.x=element_blank(),axis.title.y=element_blank())
 							 
