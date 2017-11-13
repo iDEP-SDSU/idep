@@ -25,10 +25,10 @@ shinyUI(
                                  }"
                          )
               ),	
-        h5(" and click all the tabs for results!",  style = "color:red"),	
-		br(),
-		a(h5("Reset all",align = "right"), href="http://ge-lab.org/idep/"), 
-		radioButtons("dataFileFormat", label = "1. Choose data type", choices = list("Read counts data (recommended)" = 1, "Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2),selected = 1)
+        h5(" and click all the tabs for results!",  style = "color:red")	
+		,p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))
+		#a(h5("Reset all",align = "right"), href="http://ge-lab.org/idep/"), 
+		,radioButtons("dataFileFormat", label = "1. Choose data type", choices = list("Read counts data (recommended)" = 1, "Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2),selected = 1)
 
 		,fileInput('file1', '2. Upload expression data (CSV or text)',
                   accept = c(

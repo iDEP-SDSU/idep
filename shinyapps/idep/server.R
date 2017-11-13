@@ -1362,7 +1362,6 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 
 
 		for( kk in 1:length(NoneInterTerms) ) { # for each none interaction term
-
 			if(!is.null(modelFactors) ) {# if not just group comparison using sample names
 					#current factor
 					cFactor = gsub("_.*","",NoneInterTerms[kk] )
@@ -1373,7 +1372,7 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 						if (cFactor != splited[1] & cFactor != splited[3]  ) 
 							next;						
 						
-						selected = results(dds, list(NoneInterTerms[kk],interactionTerm  ) ) 
+						selected = results(dds, list(c( NoneInterTerms[kk],interactionTerm ) ) ) 
 						comparisonName = paste0( NoneInterTerms[kk],"__", gsub("\\.","",interactionTerm) )
 						
 						if( cFactor == splited[1] )
