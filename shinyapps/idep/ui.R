@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.47"
+iDEPversion = "iDEP.48"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -77,7 +77,7 @@ tableOutput('species' ),
       mainPanel(
       tableOutput('sampleInfoTable')
      ,tableOutput('contents')
-		,h3("Dear users, Thank you for using iDEP. We are actively developing and testing iDEP. Please help us by sending us any error messages, feedbacks, or requests of additional features or functionalities. We can also answer your questions on how to use iDEP to analyze your data.",a("Just email us.",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"))
+		,h3("Dear users, Thank you for using iDEP. Please help make it better by sending us criticisms, suggestions or feature/functionality requests. We also answer your questions on how to use iDEP to analyze your data.",a("Just email us.",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"))
 		,h5("Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data.  See ",
 			a(" documentation", href="https://idepsite.wordpress.com/"), "and",
 			a(" manuscript.", href="http://biorxiv.org/content/biorxiv/early/2017/06/09/148411.full.pdf"),
@@ -321,8 +321,8 @@ tableOutput('species' ),
 				) # fluidRow
 				,tags$style(type='text/css', "#limmaPval { width:100%;   margin-top:-12px}")
 				,tags$style(type='text/css', "#limmaFC { width:100%;   margin-top:-12px}")
-				,actionButton("modelAndComparisons", "Select factors and comparisons")
-				,tags$head(tags$style("#modelAndComparisons{color: blue;}"))				
+				,actionButton("modelAndComparisons", "Select factors & comparisons")
+				,tags$head(tags$style("#modelAndComparisons{color: blue;font-size: 15px;}"))				
 				,br(),br() 
 				,fluidRow(
 				   column(6,actionButton("showVenn", "Venn Diagram") )
@@ -363,23 +363,30 @@ tableOutput('species' ),
 				   ,bsModal("modalExample", "Venn Diagram", "showVenn", size = "large",
 						htmlOutput('listComparisonsVenn')
 						,plotOutput("vennPlot"))
-				   ,bsModal("modalExample21", "Model and comparisons", "modelAndComparisons", size = "large",	
-					fluidRow(
+				   ,bsModal("modalExample21", "Build model and/or select comparisons", "modelAndComparisons", size = "large",
+					textOutput('experimentDesign')
+					,tags$head(tags$style("#experimentDesign{color: green;font-size: 18px;}"))
+					,fluidRow(
 						 column(6, htmlOutput('listFactorsDE'))
 						,column(6, htmlOutput('listBlockFactorsDE') ) 
 					)				   
-
 					,fluidRow(
 						 column(6, htmlOutput('selectReferenceLevels1'))
 						,column(6, htmlOutput('selectReferenceLevels2') ) 
-					)					
-
-						,br()
+					)
+					,fluidRow(
+						 column(6, htmlOutput('selectReferenceLevels3'))
+						,column(6, htmlOutput('selectReferenceLevels4') ) 
+					)
+					,fluidRow(
+						 column(6, htmlOutput('selectReferenceLevels5'))
+						,column(6, htmlOutput('selectReferenceLevels6') ) 
+					)						
+					,htmlOutput('listInteractionTerms')
 						,htmlOutput('listModelComparisons')
-						,br(),br()
 						,actionButton("submitModelButton", "Submit & re-calculate",style="float:center")
-						,tags$head(tags$style("#submitModelButton{color: blue;font-size: 16px;}"))
-						,br(),br(),h5("Close this window to see results.")
+						,tags$head(tags$style("#submitModelButton{color: blue;font-size: 20px;}"))
+						,h5("Close this window to see results.")
 						)
 				   ,bsModal("modalExample4", "Volcano plot", "showVolcano", size = "large",
 						checkboxInput("volcanoPlotBox", label = "Show interactive version w/ gene symbols", value = FALSE)
@@ -584,7 +591,7 @@ tableOutput('species' ),
 				,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
 				,htmlOutput('listWGCNA.Modules')
 				,fluidRow(
-				 column(6, numericInput("edgeThreshold", label = h5("Edge Threshold"), min = 0, max = 1, value =.5, step=.1))
+				 column(6, numericInput("edgeThreshold", label = h5("Edge Threshold"), min = 0, max = 1, value =.4, step=.1))
 				 ,column(6, numericInput("topGenesNetwork", label = h5("Top genes"), min = 10, max = 2000, value = 10, step = 10)  )
 				) # fluidRow	
 				,tags$style(type='text/css', "#mySoftPower { width:100%;   margin-top:-12px}")
@@ -592,7 +599,7 @@ tableOutput('species' ),
 				,actionButton("networkLayout", "Change network layout",style="float:center")				
 				,h5("Enrichment database")
 				,htmlOutput('selectGO5')
-				,downloadButton('download.WGCNA.Module.data',"Download all Modules")
+				,downloadButton('download.WGCNA.Module.data',"Download all modules")
 				,downloadButton('downloadSelectedModule',"Download network for selected module")	
 					,h5("The network file can be imported to",a(" VisANT", href="http://visant.bu.edu/",target="_blank"),
 					" or ", a("Cytoscape.",href="http://www.cytoscape.org/",target="_blank" )  )				

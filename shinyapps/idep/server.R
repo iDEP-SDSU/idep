@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.47"
+iDEPversion = "iDEP 0.48"
 ################################################################
 # R packages
 ################################################################
@@ -60,6 +60,7 @@ kurtosis.warning = 10 # log transformation recommnded
 minGenesEnrichment = 2 # perform GO or promoter analysis only if more than this many genes
 PREDA_Permutations =1000
 maxGeneClustering = 6000  # max genes for hierarchical clustering and k-Means clustering. Slow if larger
+maxFactors =6  # max number of factors in DESeq2 models
 set.seed(2) # seed for random number generator
 mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
 #Each row of this matrix represents a color scheme;
@@ -970,7 +971,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 
 		# if sample information is uploaded and user selected factors and comparisons
 		if( !is.null(modelFactors) & length( selectedComparisons) >0  ) {
-			Exp.type = paste("Model: ~", paste(modelFactors,collapse="+") )
+			Exp.type = paste("Model: ~", paste(modelFactors,collapse=" + ") )
 			interactionTerm = FALSE # default value to be re-write if needed
 			
 			# model factors that does not contain interaction terms
@@ -1104,8 +1105,10 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 			#Then this inter-subject correlation is input into the linear model fit:
 			# fit <- lmFit(eset,design,block=targets$Subject,correlation=corfit$consensus)
 
-			if(length(blockFactor) == 1 ) { # if a factor is selected as block
-				#blockFactor = modelFactors[ which( is.na(ix) ) ]
+			if(length(blockFactor) >= 1 ) { # if a factor is selected as block
+				if(length(blockFactor) >= 1 ) 
+					blockFactor = blockFactor[1] # if multiple use the first one
+
 				block = sampleInfo[, blockFactor]  # the column not used
 			
 				if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
@@ -1117,7 +1120,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 					fit <- lmFit(eset, design,block=block,correlation=corfit$consensus)
 				}
 				fit <- eBayes(fit, trend=limmaTrend)			
-	
+				
 			} # block factors
 
 
@@ -1210,9 +1213,11 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 	{    # using selected factors and comparisons
 		# build model
 		modelFactors = c(modelFactors,blockFactor) # block factor is just added in. 
-		
-		factors = modelFactors   # selected facters and interactions: c( "strain", "treatment",  "strain:treatment")
+
+		factors = modelFactors   # selected factors and interactions: c( "strain", "treatment",  "strain:treatment")
 		factors = factors[ !grepl(":",factors )]   # non-interaction terms
+		# interaction terms like strain:treatment
+		Interactions = modelFactors[ grepl(":",modelFactors )]
 		
 		colData = sampleInfo  
 		factorsCoded = toupper(letters )[1: dim(colData)[2] ]   # Factors are encoded as "A", "B", "C"; this avoid illigal letters
@@ -1235,16 +1240,15 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 		# base model
         DESeq2.Object= paste("dds = DESeqDataSetFromMatrix(countData=rawCounts, colData=colData, design=~ ", 
 							 paste( factorsCoded[factors],collapse="+")) # only use selected factors		
-		Exp.type = paste("Model: ~", paste(modelFactors,collapse="+") )
-		# interaction terms like strain:treatment
-		Interactions = modelFactors[ grepl(":",modelFactors )]
+		Exp.type = paste("Model: ~", paste(modelFactors,collapse=" + ") )
+
 		
 		# create model
 		if( length(Interactions)>0 ) { # if there is interaction
 			for( interactionTerms in Interactions) {
 				interactingFactors = unlist(strsplit(interactionTerms,":" ) )  # split strain:treatment as "strain" and "mutant"
 				tem = paste(factorsCoded [ interactingFactors ],collapse=":")   # convert "strain:mutant" to "A:B"
-				DESeq2.Object = paste(DESeq2.Object, "+",tem)
+				DESeq2.Object = paste(DESeq2.Object, " + ",tem)
 			}			
 		}
 		DESeq2.Object= paste( DESeq2.Object, ")") # ends the model
@@ -1278,14 +1282,17 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 			for ( i in 1:length(interactionComparisons2 ) ) {
 				tem = unlist(strsplit(interactionComparisons2[i],"\\." ) )
 				tem_factors = substr(tem,1,1) 
-				tem_factors = names(factorsCoded)[factorsCoded == tem_factors]  # get the first letters and translate into real factor names
+				
+				tem_factors[1] = names(factorsCoded)[factorsCoded == tem_factors[1]]  # get the first letter and translate into real factor names
+				tem_factors[2] = names(factorsCoded)[factorsCoded == tem_factors[2]]  # get the 2nd letters and translate into real factor names
+
 				interactionComparisons2[i] <- paste0( "I:",tem_factors[1], "_",substr(tem[1],2,nchar(tem[1]) ),".",
 													          tem_factors[2], "_",substr(tem[2],2,nchar(tem[2]) ) 
 													)				
 			}
 			comparisons2 = c(comparisons2,interactionComparisons2 )
 		}
-	}	
+	} # if selected factors	
 	
 	# extract contrasts according to comprisons defined above
 	result1 = NULL; allCalls = NULL;
@@ -1320,6 +1327,92 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 				names(topGenes)[pk] = comparisons2[kk];  # assign name to comprison
 			}
 	}
+
+	Interactions = c()
+	if( !is.null(modelFactors) )
+		Interactions = modelFactors[ grepl(":",modelFactors )]
+		
+#---  add comprisons for non-reference levels. It adds to the results1 object.	
+	if( length(Interactions)>0 ) { # if there is interaction
+		factorLookup=c() # a factor whose values are factors and names are factor and level combination conditionTreated, genotypeWT
+		levelLookup = c()
+		
+		for( i in 1:dim(sampleInfo)[2]) {
+			sampleInfo2 = unique(sampleInfo)
+			tem = rep(toupper(letters)[i],dim(sampleInfo2)[1]  )
+			names(tem) = paste0(toupper(letters)[i],sampleInfo2[,i])
+			factorLookup = c(factorLookup,tem)  
+			
+			tem = as.character( sampleInfo2[,i] )
+			names(tem) = paste0(toupper(letters)[i],sampleInfo2[,i])
+			levelLookup = c(levelLookup, tem)
+		}
+		
+		# split  genotypeI.conditionTrt --> c("genotype","I","conditoin","Trt")
+		splitInteractionTerms <- function (term) {
+			if(!grepl("\\.",term) ) return(NULL)
+			terms2 = unlist(strsplit(term,"\\.") )
+					 # factor1, level1, factor2, level2
+			return(c(factorLookup[terms2[1]], levelLookup[terms2[1]],factorLookup[terms2[2]], levelLookup[terms2[2]]   ) )
+		}
+		# none interaction terms 
+		NoneInterTerms = resultsNames(dds)[ !grepl( "\\.", resultsNames(dds)) ]
+		NoneInterTerms=NoneInterTerms[-1]
+		allInteractionTerms = resultsNames(dds)[ grepl( "\\.", resultsNames(dds)) ]
+
+
+		for( kk in 1:length(NoneInterTerms) ) { # for each none interaction term
+
+			if(!is.null(modelFactors) ) {# if not just group comparison using sample names
+					#current factor
+					cFactor = gsub("_.*","",NoneInterTerms[kk] )
+				
+					for(interactionTerm in allInteractionTerms ) {
+					
+						splited = splitInteractionTerms (interactionTerm)  # 4 components
+						if (cFactor != splited[1] & cFactor != splited[3]  ) 
+							next;						
+						
+						selected = results(dds, list(NoneInterTerms[kk],interactionTerm  ) ) 
+						comparisonName = paste0( NoneInterTerms[kk],"__", gsub("\\.","",interactionTerm) )
+						
+						if( cFactor == splited[1] )
+							otherLevel = splited[4] else otherLevel = splited[2]
+							
+						comparisonName = paste0(#names(factorsCoded)[which(factorsCoded==cFactor)], # real factor name
+												gsub("_vs_","-", substr(NoneInterTerms[kk], 3, nchar(NoneInterTerms[kk]  )  )), # the comparison
+												"_for_",otherLevel)
+						comparisons2 = c(comparisons2, comparisonName)
+						selected$calls =0   
+						selected$calls [which( selected$log2FoldChange > log2(minFC_limma) & selected$padj < maxP_limma ) ]  <-  1
+						selected$calls [ which( selected$log2FoldChange <  -log2(minFC_limma) & selected$padj < maxP_limma ) ] <-  -1
+						colnames(selected)= paste( comparisonName, "___",colnames(selected),sep="" )
+						selected = as.data.frame(selected)
+						if (pp==0){  # if first one with significant genes, collect gene list and Pval+ fold
+							result1 = selected; pp = 1; 
+							# selected[,2] <- -1 * selected[,2] # reverse fold change direction
+							topGenes[[1]] = selected[,c(2,6)]; 
+							names(topGenes)[1] = comparisonName; } else 
+							{ result1 = merge(result1,selected,by="row.names"); 
+								rownames(result1) = result1[,1]; 
+								result1 <- result1[,-1]
+								pk= pk+1; 
+								# selected[,2] <- -1 * selected[,2] # reverse fold change direction
+								topGenes[[pk]] = selected[,c(2,6)]; 
+								names(topGenes)[pk] = comparisonName;  # assign name to comprison
+							}
+					} #for	
+						
+			} #if
+		} #for
+	
+	
+	} #if
+
+
+
+
+#---
 	#if( length(comparisons) == 1) topGenes <- topGenes[[1]] # if only one comparison, topGenes is not a list, just a data frame itself.
 	if(! is.null(result1)) { 
 	# note that when you only select 1 column from a data frame it automatically converts to a vector. drop =FALSE prevents that.
@@ -2298,7 +2391,9 @@ function(input, output,session) {
 				
 				# remove "-" or "." from sample names
 				colnames(x) = gsub("-","",colnames(x))
-				colnames(x) = gsub("\\.","",colnames(x))				
+				colnames(x) = gsub("\\.","",colnames(x))
+
+				
 				#cat("\nhere",dim(x))
 				# missng value for median value
 				if(sum(is.na(x))>0) {# if there is missing values
@@ -2412,6 +2507,7 @@ function(input, output,session) {
 				# remove "-" or "." from sample names
 				colnames(x) = gsub("-","",colnames(x))
 				colnames(x) = gsub("\\.","",colnames(x))	
+				
 				#----------------Matching with column names of expression file
 				ix = match(toupper(colnames(readData()$data)), toupper(colnames(x)) ) 
 				ix = ix[which(!is.na(ix))] # remove NA
@@ -2421,15 +2517,23 @@ function(input, output,session) {
 				       & dim(x)[1]>=1  # at least one row
 					 ,"Error!!! Sample information file not recognized. Sample names must be exactly the same. Each row is a factor. Each column represent a sample.  Please see documentation on format.")
 				)
-				if( length(unique(ix) ) == dim(readData()$data)[2]) { # matches exactly
-				x = x[,ix]
-				# if the levels of different factors are the same, it may cause problems
-				if( sum( apply(x, 1, function(y) length(unique(y)))) > length(unique(unlist(x) ) ) ) {
-					tem2 =apply(x,2, function(y) paste0( names(y),y)) # factor names are added to levels
-					rownames(tem2) = rownames(x)
-					x <- tem2				
+				
+				#-----------Double check factor levels, change if needed
+				# remove "-" or "." from factor levels
+				for( i in 1:dim(x)[1]) {
+				   x[i,] = gsub("-","",x[i,])
+				   x[i,] = gsub("\\.","",x[i,])				
 				}
-				return(t( x ) )			
+				# if levels from different factors match
+				if( length(unique(ix) ) == dim(readData()$data)[2]) { # matches exactly
+					x = x[,ix]
+					# if the levels of different factors are the same, it may cause problems
+					if( sum( apply(x, 1, function(y) length(unique(y)))) > length(unique(unlist(x) ) ) ) {
+						tem2 =apply(x,2, function(y) paste0( names(y),y)) # factor names are added to levels
+						rownames(tem2) = rownames(x)
+						x <- tem2				
+					}
+					return(t( x ) )			
 				} else retrun(NULL)
 							
 				
@@ -3772,17 +3876,19 @@ function(input, output,session) {
 	tem=input$limmaPval; tem=input$limmaFC
 	 # Note that " in HTML needs to be denoted with \"    with  the escape character \.
     if (is.null(input$file2) ) {# if sample info is uploaded and correctly parsed.
-        return(HTML("<font size = \"3\">A <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a> 
+        return(HTML("<font size = \"2\">A <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a> 
 	     can be uploaded to build a linear model according to experiment design. </font>")) 
 	 } else {
 	#} else if ( !(input$dataFileFormat==1& input$CountsDEGMethod==3 )  ){  # disable factor choosing for DESeq2	   
 		factors = colnames(readSampleInfo())
 		choices = setNames(factors, factors  )
-		interactions = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=":"))
-		choices = append( choices,setNames( interactions, paste(interactions,"interaction") ))
-							  
+		#interactions = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=":"))
+		#choices = append( choices,setNames( interactions, paste(interactions,"interaction") ))
+		title1 = "1. Select 1 or 2 main factors. Or leave it blank and just choose pairs of sample groups below."	
+		if ( input$dataFileFormat==1& input$CountsDEGMethod==3  )
+					title1 = "1. Select 6 or less main factors. Or skip this step and just choose pairs of sample groups below."	
 		checkboxGroupInput("selectFactorsModel", 
-                              h4("1. Select one or two main factors and any interactions. Or just choose pairs of sample groups below. "), 
+                              h5(title1), 
                               choices = choices,
                               selected = NULL)	   	  
 	        } 
@@ -3797,9 +3903,19 @@ function(input, output,session) {
 		 } else { 
 	  # } else if ( !(input$dataFileFormat==1& input$CountsDEGMethod==3 )  ){ 
 		factors = colnames(readSampleInfo())
+		
+		#only show factors not in main modelFactors
+		
+		factors = setdiff(factors, input$selectFactorsModel  )
+		if(length(factors) == 0 ) return(NULL)
 		choices = setNames(factors, factors  )
+		
+		title1 = "Select a factor for batch effect or paired samples, if needed."	
+		if ( input$dataFileFormat==1& input$CountsDEGMethod==3  )
+			title1 = "Select factors for batch effects or paired samples, if needed."	
+		
 		checkboxGroupInput("selectBlockFactorsModel", 
-                              h4("Select a factor for batch effect or paired samples, if needed."), 
+                              h5(title1), 
                               choices = choices,
                               selected = NULL)  
 	  
@@ -3820,7 +3936,7 @@ function(input, output,session) {
 			comparisons = sort(comparisons)
 			choices =  setNames(gsub(" vs\\. ","-",comparisons), comparisons )
 			checkboxGroupInput("selectModelComprions", 
-									  h4("Select comparisons among sample groups:"), 
+									  h5("Select comparisons among sample groups:"), 
 									  choices = choices,
 									  selected = choices[[1]])	
 	   
@@ -3839,13 +3955,72 @@ function(input, output,session) {
 				} # for each factor
 				if(length(choices)==0 ) return(NULL) else
 				checkboxGroupInput("selectModelComprions", 
-									  h4("2. Select one or more comparisons:"), 
+									  h5("2. Select one or more comparisons:"), 
 									  choices = choices,
 									  selected = choices[[1]])	   
 				} 
 	}) 
 
+	output$listInteractionTerms <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
 
+				selectedFactors = input$selectFactorsModel
+				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
+				if(length(selectedFactors)<=1 ) return(NULL) 
+				#if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
+				# for ( i in 1:length(selectedFactors) ) {
+				interactions = apply(t(combn(selectedFactors,2)),1, function(x) paste(x,collapse=":"))
+				
+				choices = setNames(interactions,interactions)
+
+				 checkboxGroupInput(  'selectInteractions', 
+									  label=h5("Interaction terms between factors(e.g. genotypes repond differently to treatment?):"),
+									  choices= choices,selected = NULL)
+									  
+					
+				
+				
+				} #else 
+	}) 
+
+	# set limits for selections of factors. 
+	observe({
+		if(length(input$selectFactorsModel) > maxFactors) # less than 4 factors
+			updateCheckboxGroupInput(session, "selectFactorsModel", selected= tail(input$selectFactorsModel,4))
+		
+		if( input$CountsDEGMethod !=3 ) { # if using the limma package
+			if(length(input$selectFactorsModel) > 2) # less than 2 factors
+				updateCheckboxGroupInput(session, "selectFactorsModel", selected= tail(input$selectFactorsModel,2))
+
+			if(length(input$selectBlockFactorsModel) > 1) # less than 1 factors
+				updateCheckboxGroupInput(session, "selectBlockFactorsModel", selected= tail(input$selectBlockFactorsModel,2))
+				
+		}
+	})
+	
+	
+	output$experimentDesign <- renderText({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
+					model = paste("Model: expression ~ ",  paste(input$selectFactorsModel, collapse=" + "  ))
+					if(!is.null(input$selectBlockFactorsModel )  )
+						model = paste0(model," + ", paste(input$selectBlockFactorsModel, collapse=" + " )    )					
+					if(!is.null(input$selectInteractions )  )
+						model = paste0(model," + ", paste(input$selectInteractions, collapse=" + " )    )
+					return( model  )									
+				} #else 
+	})
 	output$selectReferenceLevels1 <- renderUI({
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
@@ -3865,7 +4040,7 @@ function(input, output,session) {
 				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
 
 				 selectInput(  paste0("referenceLevelFactor",i), 
-									  label=paste ("Reference level for",selectedFactors[i]),
+									  label=h5(paste ("Reference/baseline level for",selectedFactors[i])),
 									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
 									  
 					
@@ -3892,7 +4067,7 @@ function(input, output,session) {
 				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
 
 				 selectInput(  paste0("referenceLevelFactor",i), 
-									  label=paste ("Reference level for",selectedFactors[i]),
+									  label=h5( paste ("Reference/baseline level for",selectedFactors[i])),
 									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
 									                             # "genotype:wt"
 					
@@ -3900,7 +4075,115 @@ function(input, output,session) {
 				
 				} #else 
 	})	
-	
+
+	output$selectReferenceLevels3 <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
+
+				selectedFactors = input$selectFactorsModel
+				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
+				if(length(selectedFactors) < 2 ) return(NULL) 
+				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
+				 i = 3; 
+				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
+				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
+
+				 selectInput(  paste0("referenceLevelFactor",i), 
+									  label=h5( paste ("Reference/baseline level for",selectedFactors[i])),
+									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
+									                             # "genotype:wt"
+					
+				
+				
+				} #else 
+	})
+
+	output$selectReferenceLevels4 <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
+
+				selectedFactors = input$selectFactorsModel
+				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
+				if(length(selectedFactors) < 2 ) return(NULL) 
+				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
+				 i = 4; 
+				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
+				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
+
+				 selectInput(  paste0("referenceLevelFactor",i), 
+									  label=h5( paste ("Reference/baseline level for",selectedFactors[i])),
+									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
+									                             # "genotype:wt"
+					
+				
+				
+				} #else 
+	})	
+
+	output$selectReferenceLevels5 <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
+
+				selectedFactors = input$selectFactorsModel
+				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
+				if(length(selectedFactors) < 2 ) return(NULL) 
+				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
+				 i = 5; 
+				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
+				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
+
+				 selectInput(  paste0("referenceLevelFactor",i), 
+									  label=h5( paste ("Reference/baseline level for",selectedFactors[i])),
+									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
+									                             # "genotype:wt"
+					
+				
+				
+				} #else 
+	})	
+
+	output$selectReferenceLevels6 <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
+
+				selectedFactors = input$selectFactorsModel
+				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
+				if(length(selectedFactors) < 2 ) return(NULL) 
+				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
+				 i = 6; 
+				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
+				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
+
+				 selectInput(  paste0("referenceLevelFactor",i), 
+									  label=h5( paste ("Reference/baseline level for",selectedFactors[i])),
+									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
+									                             # "genotype:wt"
+					
+				
+				
+				} #else 
+	})	
+
 	limma <- reactive({  
 	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg
@@ -3920,7 +4203,7 @@ function(input, output,session) {
 	####################################
 	
 	isolate({ 
-	withProgress(message="Identifying Differentially expressed genes", {
+	withProgress(message="Identifying differentially expressed genes", {
 	if(input$dataFileFormat == 1 ) {  # if count data
 		 if(input$CountsDEGMethod == 3 ) {    # if DESeq2 method
 				# rawCounts = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
@@ -3931,13 +4214,34 @@ function(input, output,session) {
 					referenceLevels = input$referenceLevelFactor1
 				if( !is.null(input$referenceLevelFactor2 ) )
 					referenceLevels = c(referenceLevels, input$referenceLevelFactor2)				
-				
-			return( DEG.DESeq2(convertedCounts(),input$limmaPval, input$limmaFC, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel, referenceLevels)  )
+				if( !is.null(input$referenceLevelFactor3 ) )
+					referenceLevels = c(referenceLevels, input$referenceLevelFactor3)	
+				if( !is.null(input$referenceLevelFactor4 ) )
+					referenceLevels = c(referenceLevels, input$referenceLevelFactor4)	
+				if( !is.null(input$referenceLevelFactor5 ) )
+					referenceLevels = c(referenceLevels, input$referenceLevelFactor5)	
+				if( !is.null(input$referenceLevelFactor6 ) )
+					referenceLevels = c(referenceLevels, input$referenceLevelFactor6)
+					
+			return(   DEG.DESeq2( convertedCounts(),input$limmaPval, input$limmaFC,
+									input$selectModelComprions, readSampleInfo(),
+									c(input$selectFactorsModel,input$selectInteractions), 
+									input$selectBlockFactorsModel, referenceLevels)  )
 			}
 			if(input$CountsDEGMethod < 3 )    # voom or limma-trend
-			return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,convertedCounts(), input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel) )
+				return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,
+									convertedCounts(), input$CountsDEGMethod,
+									priorCounts=input$countsLogStart,input$dataFileFormat,
+									input$selectModelComprions, readSampleInfo(),
+									c(input$selectFactorsModel,input$selectInteractions),
+									input$selectBlockFactorsModel) )
 	} else { # normalized data
-	 return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,convertedCounts(), input$CountsDEGMethod,priorCounts=input$countsLogStart,input$dataFileFormat, input$selectModelComprions, readSampleInfo(),input$selectFactorsModel, input$selectBlockFactorsModel) )
+	 return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,
+						convertedCounts(), input$CountsDEGMethod,
+						priorCounts=input$countsLogStart,input$dataFileFormat,
+						input$selectModelComprions, readSampleInfo(),
+						c(input$selectFactorsModel,input$selectInteractions),
+						input$selectBlockFactorsModel) )
 	}
 	
 	
