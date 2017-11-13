@@ -346,7 +346,8 @@ tableOutput('species' ),
 				 ,br(),br(),downloadButton('download.selectedHeatmap.data', "Download gene list & data" )
 				  ,tags$style(type='text/css', "#download.selectedHeatmap.data { width:100%;   margin-top:-12px}")				 
 				,h5("Also try",  a("ShinyGO", href="http://ge-lab.org:3838/go/") )	
-				,br(),h4( textOutput("text.limma") )										
+				,br(),h4( textOutput("textLimma") )
+				,tags$head(tags$style("#textLimma{color: blue;font-size: 15px;}"))	
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/degs/",target="_blank")
 				, width = 4),
 				

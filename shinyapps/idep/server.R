@@ -3013,7 +3013,7 @@ function(input, output,session) {
 		}
 	  })  
 
-	  output$downloadProcessedData <- downloadHandler(
+	output$downloadProcessedData <- downloadHandler(
 		filename = function() {"Processed_Data.csv"},
 		content = function(file) {
       write.csv( processedData(), file, row.names=FALSE )	    
@@ -4021,6 +4021,7 @@ function(input, output,session) {
 					return( model  )									
 				} #else 
 	})
+
 	output$selectReferenceLevels1 <- renderUI({
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
@@ -4249,11 +4250,13 @@ function(input, output,session) {
 	})
 	})	
 
-	output$text.limma <- renderText({
+	output$textLimma <- renderText({
       if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
  	tem = input$selectOrg; tem = input$noIDConversion
 	tem=input$limmaPval; tem=input$limmaFC
-	  limma()$Exp.type
+	tem = input$submitModelButton 
+	limma()$Exp.type
+	
   
 	})	
   
@@ -4274,6 +4277,8 @@ function(input, output,session) {
 		tem=input$CountsDEGMethod
 		tem = input$selectFactorsModel # responsive to changes in model and comparisons
 		tem = input$selectModelComprions
+		tem = input$submitModelButton 
+
 		if(is.null(input$selectComparisonsVenn) ) return(NULL)
 		####################################
 		
@@ -4310,6 +4315,7 @@ function(input, output,session) {
 	output$listComparisonsVenn <- renderUI({
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
+	tem = input$submitModelButton 
 	
       if (is.null(input$file1)&& input$goButton == 0 )
        { selectInput("selectContrast", label = NULL, # h6("Funtional Category"), 
@@ -4327,7 +4333,7 @@ function(input, output,session) {
 	output$listComparisons <- renderUI({
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
-	
+	tem = input$submitModelButton 	
       if (is.null(input$file1)&& input$goButton == 0 )
        { selectInput("selectContrast", label = NULL, # h6("Funtional Category"), 
                   choices = list("All" = "All"), selected = "All")  }	 else { 
@@ -4337,7 +4343,7 @@ function(input, output,session) {
 
 	output$listComparisonsPathway <- renderUI({
 	tem = input$selectOrg
-
+	tem = input$submitModelButton 
       if (is.null(input$file1)&& input$goButton == 0 )
        { selectInput("selectContrast1", label = NULL, # h6("Funtional Category"), 
                   choices = list("All" = "All"), selected = "All")  }	 else { 
@@ -4347,7 +4353,7 @@ function(input, output,session) {
 
 	output$listComparisonsGenome <- renderUI({
 	tem = input$selectOrg
-
+	tem = input$submitModelButton 
       if (is.null(input$file1)&& input$goButton == 0 )
        { selectInput("selectContrast1", label = NULL, # h6("Funtional Category"), 
                   choices = list("All" = "All"), selected = "All")  }	 else { 
@@ -4370,7 +4376,12 @@ function(input, output,session) {
 		if( !is.null(input$dataFileFormat) )
 			if(input$dataFileFormat== 2) 
 				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-		####################################
+		tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+		tem= input$selectModelComprions;  tem= input$selectInteractions
+		tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+		tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+		tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+    	####################################
 		
 		isolate({ 
 		  genes = limma()$results
@@ -4555,6 +4566,12 @@ function(input, output,session) {
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts; tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+		tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+		tem= input$selectModelComprions;  tem= input$selectInteractions
+		tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+		tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+		tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+
 		noSig = as.data.frame("No significant genes find!")
 		if( is.null(input$selectContrast) ) return(NULL)
 		if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
@@ -4580,6 +4597,13 @@ function(input, output,session) {
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 		tem = input$selectFactorsModel # responsive to changes in model and comparisons
 		tem = input$selectModelComprions
+		tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+		tem= input$selectModelComprions;  tem= input$selectInteractions
+		tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+		tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+		tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+		####################################
+		
 		noSig = as.data.frame("No significant genes find!")
 		if( is.null(input$selectContrast) ) return(NULL)
 		if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
@@ -4636,6 +4660,12 @@ function(input, output,session) {
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
@@ -4676,6 +4706,12 @@ function(input, output,session) {
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
@@ -4739,6 +4775,12 @@ function(input, output,session) {
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
@@ -4821,6 +4863,12 @@ function(input, output,session) {
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
 	if( is.null(input$selectContrast) ) return(NULL)
 	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 	if( length(limma()$topGenes) == 0 ) return(NULL)
@@ -4918,6 +4966,7 @@ function(input, output,session) {
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+		####################################
 		if( is.null(limma()$results) ) return(NULL)
 		if( is.null(selectedHeatmap.data()) ) return(NULL) # this has to be outside of isolate() !!!
 		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
@@ -4988,6 +5037,13 @@ function(input, output,session) {
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	
 	if( is.null(limma()$results) ) return(NULL)
 	if( is.null(selectedHeatmap.data()  ) ) return(NULL)
 	#if( !is.data.frame(selectedHeatmap.data()  ) ) return(NULL)
@@ -5111,8 +5167,12 @@ function(input, output,session) {
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
-	####################################
-	
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################	
 	if(is.null(input$selectGO ) ) return (NULL)
 	if(input$selectGO == "ID not recognized!" ) return( NULL)
 	isolate({ 
@@ -5161,6 +5221,11 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
 	####################################
 	
 	if(is.null(input$selectGO ) ) return (NULL)
@@ -5205,6 +5270,11 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
 	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
 	####################################
 			
 	isolate({ 
@@ -5232,6 +5302,11 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
 	####################################
 	
 	if(is.null(input$selectGO ) ) return (NULL)
@@ -5316,6 +5391,11 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
 	####################################
 	
 	isolate({ 
@@ -5343,6 +5423,11 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
 	####################################
 	
 	isolate({ 
@@ -5433,6 +5518,11 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
 	####################################
 	
 	isolate({ 
@@ -5540,6 +5630,11 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
 	####################################
 	
 	isolate({ 
@@ -5561,6 +5656,11 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
 	####################################
 
 	isolate({ 
@@ -5610,6 +5710,11 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
 	####################################
 			
 
@@ -5642,6 +5747,11 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
 	####################################
 	
 	#cat(input$sigPathways)
@@ -5691,6 +5801,11 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
 	####################################
     isolate({ 
 	x = selectedPathwayData()
@@ -5761,6 +5876,12 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
 	tem=input$nPathwayShow; tem=input$absoluteFold	
 	tem = input$sigPathways; 
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
 	if(is.null( input$selectGO ) ) return(blank)
 	if(input$selectGO != "KEGG") return(blank)
 	if(is.null(gagePathwayData() ) ) return(blank)
@@ -5862,6 +5983,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 		tem = input$CountsDEGMethod;
 		tem=input$limmaPvalViz; 
 		tem=input$limmaFCViz
+		tem = input$submitModelButton 
 		####################################
 		
 	  isolate({ 
@@ -6009,6 +6131,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem = input$submitModelButton 
 	####################################
 	
   isolate({ 
@@ -6127,6 +6250,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem = input$submitModelButton
 	####################################
 	
   isolate({ 
@@ -6271,6 +6395,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem = input$submitModelButton
 	####################################
 
 isolate({ 
@@ -6313,6 +6438,7 @@ isolate({
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem = input$submitModelButton
 	####################################
   
   tem = input$selectContrast2
@@ -6342,6 +6468,7 @@ isolate({
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem = input$submitModelButton
 	####################################
   
   tem = input$selectContrast2
@@ -6367,6 +6494,7 @@ isolate({
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	tem = input$CountsDEGMethod;
+	tem = input$submitModelButton
 	####################################
   
   tem = input$selectContrast2
