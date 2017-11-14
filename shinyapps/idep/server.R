@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.48"
+iDEPversion = "iDEP 0.49"
 ################################################################
 # R packages
 ################################################################
@@ -93,7 +93,11 @@ geneInfoFiles = list.files(path = paste0(datapath,"geneInfo"),pattern=".*GeneInf
 geneInfoFiles = paste(datapath,"geneInfo/",geneInfoFiles,sep="")
 motifFiles = list.files(path = paste0(datapath,"motif"),pattern=".*\\.db")
 motifFiles = paste(datapath,"motif/",motifFiles,sep="")
-demoDataFile = paste0(datapath,"data_go/GSE37704_sailfish_genecounts.csv") #"expression1_no_duplicate.csv"
+#demoDataFile = paste0(datapath,"data_go/GSE37704_sailfish_genecounts.csv") #"expression1_no_duplicate.csv"
+#demoDataFile = paste0(datapath,"data_go/BcellGSE71176_p53.csv") # GSE71176
+#demoDataFile2 = paste0(datapath,"data_go/BcellGSE71176_p53_sampleInfo.csv") # sample Info file
+demoDataFile = paste0("BcellGSE71176_p53.csv") # GSE71176
+demoDataFile2 = paste0("BcellGSE71176_p53_sampleInfo.csv") # sample Info file
 
 ################################################################
 #   Utility functions
@@ -773,11 +777,15 @@ PGSEApathway <- function (converted,convertedData, selectOrg,GO,gmt, myrange,Pva
 	Pvalue = 0.01  # cut off to report in PGSEA. Otherwise NA
 	#Pval_pathway = 0.2   # cut off for P value of ANOVA test  to writ to file 
 	# top = 30   # number of pathways to show
-	if(length(gmt) ==0 ) return( list(pg3 = NULL, best = best ) )
+	if(length(gmt) ==0 ) return( list(pg3 = NULL, best = 1 ) )
     # centering by mean
 	#pg = myPGSEA (convertedData - rowMeans(convertedData),
 	 #            cl=gmt,range=myrange,p.value=TRUE, weighted=FALSE,nPermutation=100)
-	pg = PGSEA (convertedData - rowMeans(convertedData),cl=gmt,range=myrange,p.value=TRUE, weighted=FALSE)
+
+	#if( class(convertedData) != "data.frame" | class(convertedData) != "matarix") return( list(pg3 = NULL, best = 1 ) )
+	#if( dim(convertedData)[2] <2 ) return( list(pg3 = NULL, best = 1 ) )
+	
+	 pg = PGSEA (convertedData - rowMeans(convertedData),cl=gmt,range=myrange,p.value=TRUE, weighted=FALSE)
 	
 	pg2 = pg$results;
 	pg2 = pg2[rowSums(is.na(pg2))<ncol(pg2) ,]  # remove se/wrts with all missing(non-signficant)
@@ -2481,19 +2489,26 @@ function(input, output,session) {
 				}
 				dataSize = dim(x);
 				incProgress(1, "Done.")
-				finalResult <- list(data = as.matrix(x), mean.kurtosis = mean.kurtosis, rawCounts = rawCounts, dataTypeWarning=dataTypeWarning, dataSize=c(dataSizeOriginal,dataSize) )
+				
+				sampleInfoDemo=NULL
+				if( input$goButton >0)
+					sampleInfoDemo <- t( read.csv(demoDataFile2,row.names=1,header=T,colClasses="character") )
+
+					finalResult <- list(data = as.matrix(x), mean.kurtosis = mean.kurtosis, rawCounts = rawCounts, dataTypeWarning=dataTypeWarning, dataSize=c(dataSizeOriginal,dataSize),sampleInfoDemo=sampleInfoDemo )
 				return(finalResult)
 			})
 		})
 	})
 
 	readSampleInfo <- reactive ({
+		if( !is.null( readData()$sampleInfoDemo ) ) return( readData()$sampleInfoDemo   )
 		inFile <- input$file2
 		inFile <- inFile$datapath
 
 		if(is.null(input$file2) && input$goButton == 0)   return(NULL)
 		if(is.null(readData() ) ) return(NULL)
-
+		#if(input$goButton2 > 0 )   inFile = demoDataFile2
+		
 		isolate({
 				if (is.null( input$dataFileFormat )) return(NULL)
 				dataTypeWarning =0
@@ -2506,7 +2521,7 @@ function(input, output,session) {
 				# remove "-" or "." from sample names
 				colnames(x) = gsub("-","",colnames(x))
 				colnames(x) = gsub("\\.","",colnames(x))	
-				
+
 				#----------------Matching with column names of expression file
 				ix = match(toupper(colnames(readData()$data)), toupper(colnames(x)) ) 
 				ix = ix[which(!is.na(ix))] # remove NA
@@ -2541,11 +2556,14 @@ function(input, output,session) {
 	
 	output$sampleInfoTable <- renderTable({
 
-		if (is.null(input$file2) )   return(NULL)
+		if (is.null(readSampleInfo() ) )   return(NULL)
 		isolate({
-			t(readSampleInfo() )
+			tem = t(readSampleInfo() )
+			tem = cbind(rownames(tem),tem)
+			colnames(tem)[1] <- "Study_design"
+			return(tem)
 		})
-	},include.rownames=TRUE) 	
+	},include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T) 	
 	
 	output$textTransform <- renderText({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -2733,6 +2751,17 @@ function(input, output,session) {
 		return( readGeneSets( converted(), convertedData(), input$selectGO,input$selectOrg,c(input$minSetSize, input$maxSetSize)  ) ) }) 
 	})
 
+output$downloadSampleInfoData <- downloadHandler(
+  filename <- function() {
+		paste("sampleInformation.csv")
+	  },
+
+	  content <- function(file) {
+		file.copy(demoDataFile2 , file)
+	  },
+	  contentType = "application/zip"
+	)	
+	
 ####### [TODO] Kevin Indentation Work 10/5 #######
 
 	output$contents <- renderTable({
@@ -2749,7 +2778,7 @@ function(input, output,session) {
 		#x <- readData()$data
 		 x[1:20,]
 		})
-	  },include.rownames=FALSE)
+	  },include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
 # show first 20 rows of data
 	output$species <-renderTable({   
@@ -3065,7 +3094,7 @@ function(input, output,session) {
 	tem = input$selectOrg; 
 	tem=input$limmaPval; tem=input$limmaFC
 	
-    if (is.null(input$file2) ) # if sample info is uploaded and correctly parsed.
+    if (is.null(readSampleInfo() ) ) # if sample info is uploaded and correctly parsed.
        { return(NULL) }	 else { 
 	  selectInput("selectFactorsHeatmap", label="Sample color bar:",choices= c(colnames(readSampleInfo()), "Sample_Name")
 	     )   } 
@@ -3112,7 +3141,7 @@ function(input, output,session) {
     groups = detectGroups(colnames(x) )
 	# if sample info file is uploaded us that info:
 
-	if(!is.null(input$file2) &&  !is.null(input$selectFactorsHeatmap) ) { 
+	if(!is.null(readSampleInfo()) &&  !is.null(input$selectFactorsHeatmap) ) { 
 		if(input$selectFactorsHeatmap == "Sample_Name" )
 			groups = detectGroups(colnames(x) ) else 
 			{ 	ix = match(input$selectFactorsHeatmap, colnames(readSampleInfo() ) ) 
@@ -3356,7 +3385,7 @@ function(input, output,session) {
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
 	
-      if (is.null(input$file2) )
+      if (is.null(readSampleInfo()) )
        { return(HTML("Upload a sample info file to customize this plot.") ) }	 else { 
 	  selectInput("selectFactors", label="Color:",choices=c( colnames(readSampleInfo()), "Sample_Name")
 	     )   } 
@@ -3366,7 +3395,7 @@ function(input, output,session) {
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
 	
-      if (is.null(input$file2) )
+      if (is.null(readSampleInfo()) )
        { return(NULL) }	 else { 
 	   tem <- c( colnames(readSampleInfo()), "Sample_Name")
 	   if(length(tem)>1) { tem2 = tem[1]; tem[1] <- tem[2]; tem[1] = tem2; } # swap 2nd factor with first
@@ -3403,7 +3432,7 @@ function(input, output,session) {
 	pcaData = as.data.frame(pca.object$x[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
 	colnames(pcaData) = c("PC1", "PC2", "Sample_Name")
 	percentVar=round(100*summary(pca.object)$importance[2,1:2],0)
-	if(is.null(input$file2)) { 
+	if(is.null(readSampleInfo())) { 
 		p=ggplot(pcaData, aes(PC1, PC2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
 		} else {
 		pcaData = cbind(pcaData,readSampleInfo() )
@@ -3480,7 +3509,7 @@ function(input, output,session) {
 	colnames(pcaData) = c("x1", "x2", "Sample_Name")
 	
 
-	if(is.null(input$file2)) { 
+	if(is.null(readSampleInfo())) { 
 	p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
 	} else {
 		pcaData = cbind(pcaData,readSampleInfo() )
@@ -3508,7 +3537,7 @@ function(input, output,session) {
 	colnames(pcaData) = c("x1", "x2", "Sample_Name")
 	
 
-	if(is.null(input$file2)) { 
+	if(is.null(readSampleInfo())) { 
 	p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
 	} else {
 		pcaData = cbind(pcaData,readSampleInfo() )
@@ -3874,7 +3903,7 @@ function(input, output,session) {
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
 	 # Note that " in HTML needs to be denoted with \"    with  the escape character \.
-    if (is.null(input$file2) ) {# if sample info is uploaded and correctly parsed.
+    if (is.null(readSampleInfo()) ) {# if sample info is uploaded and correctly parsed.
         return(HTML("<font size = \"2\">A <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a> 
 	     can be uploaded to build a linear model according to experiment design. </font>")) 
 	 } else {
@@ -3897,7 +3926,7 @@ function(input, output,session) {
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
 	 # Note that " in HTML needs to be denoted with \"    with  the escape character \.
-    if (is.null(input$file2) ) {# if sample info is uploaded and correctly parsed.
+    if (is.null(readSampleInfo()) ) {# if sample info is uploaded and correctly parsed.
 		return(NULL)		   
 		 } else { 
 	  # } else if ( !(input$dataFileFormat==1& input$CountsDEGMethod==3 )  ){ 
@@ -3925,7 +3954,7 @@ function(input, output,session) {
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
 		   { # if using sample names
 		   
 		   	factors = as.character ( detectGroups( colnames( readData()$data ) ) )
@@ -3964,7 +3993,7 @@ function(input, output,session) {
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
 		   {  return(NULL)
 	   
 		   }	 else { 
@@ -4008,7 +4037,7 @@ function(input, output,session) {
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
 		   {  return(NULL)
 	   
 		   }	 else { 
@@ -4025,7 +4054,7 @@ function(input, output,session) {
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
 		   {  return(NULL)
 	   
 		   }	 else { 
@@ -4053,7 +4082,7 @@ function(input, output,session) {
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
 		   {  return(NULL)
 	   
 		   }	 else { 
@@ -4080,7 +4109,7 @@ function(input, output,session) {
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
 		   {  return(NULL)
 	   
 		   }	 else { 
@@ -4107,7 +4136,7 @@ function(input, output,session) {
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
 		   {  return(NULL)
 	   
 		   }	 else { 
@@ -4134,7 +4163,7 @@ function(input, output,session) {
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
 		   {  return(NULL)
 	   
 		   }	 else { 
@@ -4161,7 +4190,7 @@ function(input, output,session) {
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(input$file2) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
 		   {  return(NULL)
 	   
 		   }	 else { 
@@ -4482,7 +4511,7 @@ function(input, output,session) {
 		  # find sample related to the comparison
 		 iz= match( detectGroups(colnames(convertedData())), unlist(strsplit( input$selectContrast, "-"))	  )
 		 iz = which(!is.na(iz))		 
-		 if ( !is.null(input$file2) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
+		 if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
 			comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
 			comparisons = gsub(" vs\\. ","-",comparisons)		
 			factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
@@ -4811,7 +4840,7 @@ function(input, output,session) {
      iz= match( detectGroups(colnames(convertedData())), samples[1]	  )
      iz = which(!is.na(iz))
 	# find sample using sample info file 
-	if ( !is.null(input$file2) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
+	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
 		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
 		comparisons = gsub(" vs\\. ","-",comparisons)		
 		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
@@ -4830,7 +4859,7 @@ function(input, output,session) {
      iz= match( detectGroups(colnames(convertedData())), samples[2]	  )
      iz = which(!is.na(iz))
 	# find sample using sample info file 
-	if ( !is.null(input$file2) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
+	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
 		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
 		comparisons = gsub(" vs\\. ","-",comparisons)		
 		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
@@ -4898,7 +4927,7 @@ function(input, output,session) {
      iz= match( detectGroups(colnames(convertedData())), samples[1]	  )
      iz = which(!is.na(iz))
 	# find sample using sample info file 
-	if ( !is.null(input$file2) & !is.null(input$selectFactorsModel) ) {
+	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) ) {
 		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
 		comparisons = gsub(" vs\\. ","-",comparisons)		
 		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
@@ -4917,7 +4946,7 @@ function(input, output,session) {
      iz = which(!is.na(iz))
 
 	# find sample using sample info file 
-	if ( !is.null(input$file2) & !is.null(input$selectFactorsModel) ) {
+	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) ) {
 		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
 		comparisons = gsub(" vs\\. ","-",comparisons)		
 		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
@@ -5182,12 +5211,45 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	incProgress(1/4,"Retrieving gene sets")
 	gmt = GeneSets()
 	incProgress(2/4,"Runing PGSEA.")
-	#if(0){
+	if(0){
 	iz= match( detectGroups(colnames(genes)), unlist(strsplit( input$selectContrast1, "-"))	  )
     iz = which(!is.na(iz))
 	if (grepl("I:",input$selectContrast1) == 1) iz=1:(dim(genes)[2]) 
-	genes = genes[,iz]
-	#}
+
+	}
+	
+			  # find sample related to the comparison
+		 iz= match( detectGroups(colnames(convertedData())), unlist(strsplit( input$selectContrast1, "-"))	  )
+		 iz = which(!is.na(iz))		 
+		 if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
+			comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
+			comparisons = gsub(" vs\\. ","-",comparisons)		
+			factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
+			ik = match( input$selectContrast1, comparisons )   # selected contrast lookes like: "mutant-control"
+			if (is.na(ik)) iz=1:(dim(convertedData())[2])  else {  # interaction term, use all samples		
+				selectedfactor= factorsVector[ ik ] # corresponding factors
+				iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast1, "-"))	  )
+				iz = which(!is.na(iz))
+			}	
+			cat("\nfactorsVector:",factorsVector)
+			cat("\nselectedfactor:",selectedfactor)
+			cat("\n IZ:",iz)				
+		 }
+
+		 if (grepl("I:",input$selectContrast1)) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
+		 if( is.na(iz)[1] | length(iz)<=1 )    iz=1:(dim(convertedData())[2]) 
+
+
+	
+		cat("\n IZ:",iz)	
+	
+	
+	
+	
+	
+	
+	genes = genes[,iz]	
+	
 	subtype = detectGroups(colnames(genes )) 
     if(length( GeneSets() )  == 0)  { plot.new(); text(0.5,0.5, "No gene sets!")} else {
 	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
@@ -5669,12 +5731,47 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 if (is.null(input$selectContrast1 ) ) return(NULL)
 	gmt = GeneSets()
 	incProgress(2/8)
-	#if(0){
+
+	if(0) { 
 	iz= match( detectGroups(colnames(genes)), unlist(strsplit( input$selectContrast1, "-"))	  )
     iz = which(!is.na(iz))
 	if (grepl("I:",input$selectContrast1) == 1) iz=1:(dim(genes)[2]) 
+	if (length(iz) == 0) iz=1:(dim(genes)[2]) 
+	}
+	
+			  # find sample related to the comparison
+		 iz= match( detectGroups(colnames(convertedData())), unlist(strsplit( input$selectContrast1, "-"))	  )
+		 iz = which(!is.na(iz))		 
+		 if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
+			comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
+			comparisons = gsub(" vs\\. ","-",comparisons)		
+			factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
+			ik = match( input$selectContrast1, comparisons )   # selected contrast lookes like: "mutant-control"
+			if (is.na(ik)) iz=1:(dim(convertedData())[2])  else {  # interaction term, use all samples		
+				selectedfactor= factorsVector[ ik ] # corresponding factors
+				iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast1, "-"))	  )
+				iz = which(!is.na(iz))				
+			}
+			
+		
+
+
+			
+		 }
+
+		 if (grepl("I:",input$selectContrast1)) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
+		 if( is.na(iz)[1] | length(iz)<=1 )    iz=1:(dim(convertedData())[2]) 
+
+
+	
+		cat("\n IZ:",iz)
+	
+	
+	
+	
+	
 	genes = genes[,iz]
-	#}
+
 	subtype = detectGroups(colnames(genes )) 
     if(length( GeneSets() )  == 0)  { plot.new(); text(0,1, "No gene sets!")} else {
 	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,

@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.48"
+iDEPversion = "iDEP.49"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -18,18 +18,17 @@ shinyUI(
 	     	titlePanel("Upload Files"),
     sidebarLayout(
       sidebarPanel(
-	    actionButton("goButton", "Click here to load demo data"),
+	    actionButton("goButton", "Use demo data"),
 		    tags$head(tags$style("#goButton{color: red;
                                  font-size: 16px;
                                  font-style: italic;
                                  }"
                          )
-              ),	
-        h5(" and click all the tabs for results!",  style = "color:red")	
+              )	
+		,h5(" and click all the tabs for results!",  style = "color:red")
 		,p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))
-		#a(h5("Reset all",align = "right"), href="http://ge-lab.org/idep/"), 
-		,radioButtons("dataFileFormat", label = "1. Choose data type", choices = list("Read counts data (recommended)" = 1, "Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2),selected = 1)
-
+		,radioButtons("dataFileFormat", label = "1. Choose data type", choices = list("Read counts data (recommended)" = 1, 
+													"Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2),selected = 1)
 		,fileInput('file1', '2. Upload expression data (CSV or text)',
                   accept = c(
                     'text/csv',
@@ -38,9 +37,9 @@ shinyUI(
                     'text/plain',
                     '.csv',
                     '.tsv'					
-                  )
+                  ) 
         )		
-		,fileInput('file2', h5('Optional: Upload sample info file (CSV or text)'),
+		,fileInput('file2', h5('Optional: Upload an experiment design file(CSV or text)'),
                   accept = c(
                     'text/csv',
                     'text/comma-separated-values',
@@ -50,7 +49,10 @@ shinyUI(
                     '.tsv'					
                   )
         )
-		
+		#,div(downloadButton('downloadSampleInfoData', 'Example'), style="float:right")
+		#,downloadButton('downloadSampleInfoData', 'Example')
+		#,tags$style(type='text/css', "#downloadSampleInfoData { width:100%;   margin-top:-22px}")
+		#,br(),br()
 		# tags$hr(),
 		#actionButton("goButton2", "Change Species"),
 		,strong("3. Verify guessed species. Change if neccessary."),
@@ -415,7 +417,12 @@ tableOutput('species' ),
                 sidebarPanel(
 				htmlOutput("listComparisonsPathway")
 				,tags$style(type='text/css', "#listComparisonsPathway { width:100%;   margin-top:-12px}")
-			,selectInput("pathwayMethod", label = "Select method and genesets:", choices = list("GAGE" = 1,  "GSEA (preranked fgsea)" =3,"PGSEA" = 2, "PGSEA w/ all samples" =4, "ReactomePA" = 5), selected = 1) #
+			,selectInput("pathwayMethod", label = "Select method and genesets:", choices = list("GAGE" = 1, 
+																								"GSEA (preranked fgsea)" =3,
+																								#"PGSEA" = 2, 
+																								"PGSEA w/ all samples" =4, 
+																								"ReactomePA" = 5
+																								), selected = 1) #
 				,tags$style(type='text/css', "#pathwayMethod { width:100%;   margin-top:-12px}")
 				,htmlOutput("selectGO1")
 				,tags$style(type='text/css', "#selectGO1 { width:100%;   margin-top:-12px}")
