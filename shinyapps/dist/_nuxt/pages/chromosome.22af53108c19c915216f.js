@@ -1,0 +1,2 @@
+webpackJsonp([12],{XfBx:function(e,t,n){"use strict";var r=function(){var e=this,t=e.$createElement;return(e._self._c||t)("div",{staticClass:"f3"},[e._v(" Chromosome")])},s=[],l={render:r,staticRenderFns:s};t.a=l},bZ1u:function(e,t,n){"use strict";Object.defineProperty(t,"__esModule",{value:!0});var r=n("XfBx"),s=n("VU/8"),l=s(null,r.a,!1,null,null,null);t.default=l.exports}});
+//# sourceMappingURL=chromosome.22af53108c19c915216f.js.map
