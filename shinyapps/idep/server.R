@@ -7014,13 +7014,13 @@ isolate({
 
 			library(flashClust,verbose=FALSE)
 
-			geneTree = flashClust(as.dist(1-TOM),method="average");
+			geneTree = flashClust(as.dist(1-TOM),method="complete");
 
 			# Set the minimum module size
 			minModuleSize = input$minModuleSize;
 
 			# Module identification using dynamic tree cut
-			dynamicMods = cutreeDynamic(dendro = geneTree,  method="hybrid", minClusterSize = minModuleSize);
+			dynamicMods = cutreeDynamic(dendro = geneTree,  method="tree", minClusterSize = minModuleSize);
 			#dynamicMods = cutreeDynamic(dendro = geneTree, distM = dissTOM, method="hybrid", deepSplit = 2, pamRespectsDendro = FALSE, minClusterSize = minModuleSize);
 			# table(dynamicMods)
 			
