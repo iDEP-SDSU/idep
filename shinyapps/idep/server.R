@@ -2528,7 +2528,7 @@ function(input, output,session) {
 	})
 
 	readSampleInfo <- reactive ({
-		if( !is.null( readData()$sampleInfoDemo ) ) return( readData()$sampleInfoDemo   )
+		if( is.null(input$file2) && !is.null( readData()$sampleInfoDemo ) ) return( readData()$sampleInfoDemo   )
 		inFile <- input$file2
 		inFile <- inFile$datapath
 
