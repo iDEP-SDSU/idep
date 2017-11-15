@@ -7020,7 +7020,7 @@ isolate({
 			minModuleSize = input$minModuleSize;
 
 			# Module identification using dynamic tree cut
-			dynamicMods = cutreeDynamic(dendro = geneTree,  method="tree", minClusterSize = minModuleSize);
+			dynamicMods = cutreeDynamic(dendro = as.hclust(geneTree),  method="tree", minClusterSize = minModuleSize);
 			#dynamicMods = cutreeDynamic(dendro = geneTree, distM = dissTOM, method="hybrid", deepSplit = 2, pamRespectsDendro = FALSE, minClusterSize = minModuleSize);
 			# table(dynamicMods)
 			
