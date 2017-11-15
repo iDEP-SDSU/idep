@@ -148,6 +148,10 @@ tableOutput('species' ),
  				#,radioButtons("CountsDEGMethod", "Detect differntial expression using:",  c("limma-voom"=2,"limma-trend"=1,"DESeq2"= 3) )
 				
 				)
+				,selectInput("missingValue", label = "Missing values inputation:",choices = list("Gene median"="geneMedian",
+																							"Treat as zero"="treatAsZero", 
+																							"Median within sample groups"="geneMedianInGroup"),
+																							selected = "geneMedian")
 				,actionButton("genePlot1", "Barplot for one or more genes")
 				,br(),br()
 				,actionButton("examineDataB", "Search processed data")

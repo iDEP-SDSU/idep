@@ -2350,7 +2350,7 @@ function(input, output,session) {
 
 		if(is.null(input$file1) && input$goButton == 0)   return(NULL)
 		if(is.null(input$file1) && input$goButton > 0 )   inFile = demoDataFile
-		tem = input$dataFileFormat
+		tem = input$dataFileFormat; tem=input$missingValue
 		if(!is.null(input$dataFileFormat)) # these are needed to make it responsive to changes
 			if(input$dataFileFormat== 1){  
 				tem = input$minCounts 
@@ -2404,9 +2404,36 @@ function(input, output,session) {
 				#cat("\nhere",dim(x))
 				# missng value for median value
 				if(sum(is.na(x))>0) {# if there is missing values
-					rowMeans <- apply(x,1, function (y)  median(y,na.rm=T))
-					for( i in 1:dim(x)[1] )
-					x[i, which( is.na(x[i,]) )  ]  <- rowMeans[i]
+					if(input$missingValue =="geneMedian") { 
+						rowMedians <- apply(x,1, function (y)  median(y,na.rm=T))
+						for( i in 1:dim(x)[2] ) {
+							ix = which(is.na(x[,i]) )
+							x[ix,i] <- rowMedians[ix]						
+						}
+							
+					} else if(input$missingValue =="treatAsZero") {
+						x[is.na(x) ] <- 0					
+					} else if (input$missingValue =="geneMedianInGroup") {
+						sampleGroups = detectGroups( colnames(x))
+						for (group in unique( sampleGroups) ){		
+							samples = which( sampleGroups == group )
+							rowMedians <- apply(x[,samples, drop=F],1, function (y)  median(y,na.rm=T))
+							for( i in  samples ) { 
+								ix = which(is.na(x[ ,i] ) )	
+								if(length(ix) >0 )
+									x[ix, i  ]  <- rowMedians[ix]
+							}										
+						}
+						
+						# missing for entire sample group, use median for all samples
+						if(sum(is.na(x) )>0 ) { 
+							rowMedians <- apply(x,1, function (y)  median(y,na.rm=T))
+							for( i in 1:dim(x)[2] ) {
+								ix = which(is.na(x[,i]) )
+								x[ix,i] <- rowMedians[ix]						
+							}						
+						}
+					}
 				}
 
 				# Compute kurtosis
@@ -2587,7 +2614,7 @@ function(input, output,session) {
 		inFile <- input$file1
 		if( is.null(readData()) ) return(NULL)
 		if( is.null(convertedData() ) ) return(NULL)
-		tem = input$noIDConversion
+		tem = input$noIDConversion; tem=input$missingValue
 		tem = readData()$dataSize
 		ix = match( toupper( rownames(convertedData())), toupper(converted()$conversionTable$ensembl_gene_id  ) )
 		nMatched = sum( !is.na(ix) )
@@ -2649,7 +2676,7 @@ function(input, output,session) {
 		if (is.null(input$file1) && input$goButton == 0) return()  
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -2696,7 +2723,7 @@ function(input, output,session) {
 		if (is.null(input$file1) && input$goButton == 0) return()  
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -2814,7 +2841,7 @@ output$downloadSampleInfoData <- downloadHandler(
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -2848,7 +2875,7 @@ output$downloadSampleInfoData <- downloadHandler(
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat ; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat ; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -2943,7 +2970,7 @@ output$downloadSampleInfoData <- downloadHandler(
 		  
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -2993,7 +3020,7 @@ output$downloadSampleInfoData <- downloadHandler(
 		  
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -3058,7 +3085,7 @@ output$downloadSampleInfoData <- downloadHandler(
 	inFile <- inFile$datapath
     if (is.null(input$file1) && input$goButton == 0)   return(NULL)
 
-	tem = input$selectOrg; tem = input$noIDConversion
+	tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 	isolate({
 	merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], round(convertedData(),2),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )
 	})
@@ -3105,7 +3132,7 @@ output$downloadSampleInfoData <- downloadHandler(
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  {  
 			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
@@ -3220,7 +3247,7 @@ output$downloadSampleInfoData <- downloadHandler(
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  {  
 			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
@@ -3407,7 +3434,7 @@ output$downloadSampleInfoData <- downloadHandler(
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  {  
 			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
@@ -3593,7 +3620,7 @@ output$downloadSampleInfoData <- downloadHandler(
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  {  
 			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
@@ -3645,7 +3672,7 @@ output$downloadSampleInfoData <- downloadHandler(
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -3698,7 +3725,7 @@ output$downloadSampleInfoData <- downloadHandler(
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -3726,7 +3753,7 @@ output$downloadSampleInfoData <- downloadHandler(
 
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -3782,7 +3809,7 @@ output$downloadSampleInfoData <- downloadHandler(
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -3838,7 +3865,7 @@ output$downloadSampleInfoData <- downloadHandler(
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4220,7 +4247,7 @@ output$downloadSampleInfoData <- downloadHandler(
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4280,7 +4307,7 @@ output$downloadSampleInfoData <- downloadHandler(
 
 	output$textLimma <- renderText({
       if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
- 	tem = input$selectOrg; tem = input$noIDConversion
+ 	tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 	tem=input$limmaPval; tem=input$limmaFC
 	tem = input$submitModelButton 
 	limma()$Exp.type
@@ -4397,7 +4424,7 @@ output$downloadSampleInfoData <- downloadHandler(
 			tem = input$CountsDEGMethod; 	
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4435,7 +4462,7 @@ output$downloadSampleInfoData <- downloadHandler(
 	tem = input$CountsDEGMethod; 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4470,7 +4497,7 @@ output$downloadSampleInfoData <- downloadHandler(
 	tem = input$CountsDEGMethod; 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4566,7 +4593,7 @@ output$downloadSampleInfoData <- downloadHandler(
 	tem = input$CountsDEGMethod; 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -4590,7 +4617,7 @@ output$downloadSampleInfoData <- downloadHandler(
   
 	geneListDataExport <- reactive({
 		if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-			tem = input$selectOrg; tem = input$noIDConversion
+			tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts; tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -4619,7 +4646,7 @@ output$downloadSampleInfoData <- downloadHandler(
 
 	geneListData <- reactive({
 		if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-			tem = input$selectOrg; tem = input$noIDConversion
+			tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -4684,7 +4711,7 @@ output$downloadSampleInfoData <- downloadHandler(
 
 	output$volcanoPlot <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-		tem = input$selectOrg; tem = input$noIDConversion
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -4730,7 +4757,7 @@ output$downloadSampleInfoData <- downloadHandler(
   
 	output$volcanoPlotly <- renderPlotly({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-		tem = input$selectOrg; tem = input$noIDConversion
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -4887,7 +4914,7 @@ output$downloadSampleInfoData <- downloadHandler(
 
 	output$scatterPlotly <- renderPlotly({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-		tem = input$selectOrg; tem = input$noIDConversion
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -4990,7 +5017,7 @@ output$downloadSampleInfoData <- downloadHandler(
 		if( is.null( input$selectGO2) ) return (NULL)
 		if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
 
-		tem = input$selectOrg; tem = input$noIDConversion
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -5061,7 +5088,7 @@ output$downloadSampleInfoData <- downloadHandler(
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	if( is.null(input$selectContrast)) return(NULL)
 
-	tem = input$selectOrg; tem = input$radio.promoter; tem = input$noIDConversion
+	tem = input$selectOrg; tem = input$radio.promoter; tem = input$noIDConversion; tem=input$missingValue
 	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
 	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -5187,7 +5214,7 @@ output$downloadSampleInfoData <- downloadHandler(
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5274,7 +5301,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5323,7 +5350,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5355,7 +5382,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5444,7 +5471,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5476,7 +5503,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5571,7 +5598,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5683,7 +5710,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5709,7 +5736,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5798,7 +5825,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5835,7 +5862,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5889,7 +5916,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	# cat(input$sigPathways)
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -5967,7 +5994,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     if (is.null(input$file1)&& input$goButton == 0)   return(blank)
 
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
-	tem = input$selectGO; tem = input$noIDConversion
+	tem = input$selectGO; tem = input$noIDConversion; tem=input$missingValue
 	tem = input$selectContrast
 	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
 	tem=input$nPathwayShow; tem=input$absoluteFold	
@@ -6069,7 +6096,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 		
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6219,7 +6246,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6338,7 +6365,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6483,7 +6510,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6526,7 +6553,7 @@ isolate({
 
   	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6556,7 +6583,7 @@ isolate({
   
  	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6582,7 +6609,7 @@ isolate({
   
 	##################################  
 	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  
     		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6612,7 +6639,7 @@ isolate({
 
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6661,7 +6688,7 @@ isolate({
    } )
    
   	output$listBiclusters <- renderUI({
-		tem = input$selectOrg; tem = input$noIDConversion
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem = input$biclustMethod
 		tem = input$nGenesBiclust
 		if (is.null(biclustering() ) ){ # if sample info is uploaded and correctly parsed.
@@ -6706,7 +6733,7 @@ isolate({
 
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -6763,7 +6790,7 @@ isolate({
 		if( is.null( input$selectGO4) ) return (NULL)
 		if( input$selectGO4 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
 
-		tem = input$selectOrg; tem = input$noIDConversion
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -6830,7 +6857,7 @@ isolate({
 		if( is.null( input$selectGO4) ) return (NULL)
 		if( input$selectGO4 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
 
-		tem = input$selectOrg; tem = input$noIDConversion
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -6877,7 +6904,7 @@ isolate({
 		if( is.null( input$selectGO4) ) return (NULL)
 		if( input$selectGO4 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
 
-		tem = input$selectOrg; tem = input$noIDConversion
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -6935,7 +6962,7 @@ isolate({
 
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -7023,7 +7050,7 @@ isolate({
 		if(is.null(wgcna() ) ) return(NULL)
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -7040,7 +7067,7 @@ isolate({
 		if(is.null(wgcna() ) ) return(NULL)
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -7075,7 +7102,7 @@ isolate({
 		if(is.null(wgcna() ) ) return(NULL)
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -7107,7 +7134,7 @@ isolate({
 
 		##################################  
 		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1; tem = input$noIDConversion
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1; tem = input$noIDConversion; tem=input$missingValue
 		if( !is.null(input$dataFileFormat) ) 
 			if(input$dataFileFormat== 1)  
 				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
@@ -7146,7 +7173,7 @@ isolate({
   	moduleData <- reactive({
   		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
-		tem = input$selectOrg; tem = input$noIDConversion
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO4
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -7189,7 +7216,7 @@ isolate({
 		if( is.null( input$selectGO5) ) return (NULL)
 		if( input$selectGO5 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
 
-		tem = input$selectOrg; tem = input$noIDConversion
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO5
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -7262,7 +7289,7 @@ isolate({
 
 
 	output$listWGCNA.Modules <- renderUI({
-		tem = input$selectOrg; tem = input$noIDConversion
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem = input$mySoftPower;
 		tem = input$nGenesNetwork		
 		tem = input$minModuleSize
@@ -7290,7 +7317,7 @@ isolate({
   	exportModuleNetwork <- reactive({
   		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
-		tem = input$selectOrg; tem = input$noIDConversion
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; 
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
@@ -7377,7 +7404,7 @@ isolate({
   	output$moduleNetwork <- renderPlot({
   		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
-		tem = input$selectOrg; tem = input$noIDConversion
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; 
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
