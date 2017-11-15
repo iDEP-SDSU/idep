@@ -585,7 +585,7 @@ tableOutput('species' ),
 					h5("Identify co-expression networks and sub-modules using",a( "WGCNA.", href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-559",target="_blank" )  ,"Only useful when  sample size is large(>15). ")
 					,numericInput("nGenesNetwork", label = h5("Most variable genes to include "), min = 10, max = 1000, value = 1000) 
 				,fluidRow(
-				 column(6, numericInput("mySoftPower", label = h5("Soft Threshold"), min = 1, max = 20, value = 6))
+				 column(6, numericInput("mySoftPower", label = h5("Soft Threshold"), min = 1, max = 20, value = 5))
 				 ,column(6, numericInput("minModuleSize", label = h5("Min. Module Size"), min = 10, max = 100, value = 20)  )
 				) # fluidRow	
 				,tags$style(type='text/css', "#mySoftPower { width:100%;   margin-top:-12px}")
