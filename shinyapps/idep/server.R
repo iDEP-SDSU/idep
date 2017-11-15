@@ -7168,7 +7168,7 @@ isolate({
 		myheatmap2(  x2-apply(x2,1,mean), bar,1000,mycolor=input$heatColors1, clusterNames=clusterNames, sideColors= sideColors)
 		
 		incProgress(1, detail = paste("Done")) }) #progress 
-  } , height = 500)
+  } ,height = 500,width = 500)
 
   	moduleData <- reactive({
   		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
