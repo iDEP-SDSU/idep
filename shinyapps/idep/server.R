@@ -7014,7 +7014,7 @@ isolate({
 
 			library(flashClust,verbose=FALSE)
 
-			geneTree = flashClust(as.dist(1-TOM),method="complete");
+			geneTree = flashClust(as.dist(1-TOM),method="average");
 
 			# Set the minimum module size
 			minModuleSize = input$minModuleSize;
