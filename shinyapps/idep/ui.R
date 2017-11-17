@@ -3,16 +3,16 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.49"
-
+iDEPversion = "iDEP.50"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
    # change colors for heatmap 
    # fix error with voom; also changed method to TMM, see https://www.bioconductor.org/help/workflows/RNAseq123/#transformations-from-the-raw-scale
+   
 shinyUI(
+  
   navbarPage(iDEPversion,
-    
 			id='navBar',
             tabPanel("Load Data",
 	     	titlePanel("Upload Files"),
@@ -79,7 +79,7 @@ tableOutput('species' ),
       mainPanel(
       tableOutput('sampleInfoTable')
      ,tableOutput('contents')
-		,h3("Dear users, Thank you for using iDEP. Please help make it better by sending us criticisms, suggestions or feature/functionality requests. We also answer your questions on how to use iDEP to analyze your data.",a("Just email us.",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"))
+		#,h3("Dear users, Thank you for using iDEP. Please help make it better by sending us criticisms, suggestions or feature/functionality requests. We also answer your questions on how to use iDEP to analyze your data.",a("Just email us.",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"))
 		,h5("Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data.  See ",
 			a(" documentation", href="https://idepsite.wordpress.com/"), "and",
 			a(" manuscript.", href="http://biorxiv.org/content/biorxiv/early/2017/06/09/148411.full.pdf"),
@@ -94,6 +94,7 @@ tableOutput('species' ),
 			,a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=iDEP" )
 			, "or visit our",a(" homepage.", href="http://ge-lab.org/")
 			, "Send us suggestions or any error message to help improve iDEP."
+			,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions")
          )
 		,h3("Loading R packages ... ...")
 		,htmlOutput('fileFormat')
@@ -214,9 +215,11 @@ tableOutput('species' ),
 					,fluidRow(
 						column(8, h5("Cut-off Z score")  )
 						,column(4, numericInput("heatmapCutoff", label = NULL, value = 4,min=2,step=1) )
-					)					
-					,checkboxInput("geneNormalize", "Normalize by gene", value = FALSE)
-					,checkboxInput("sampleNormalize", "Normalize by sample", value = FALSE)
+					)
+					,checkboxInput("geneCentering", "Center genes (substract mean)", value = TRUE)					
+					,checkboxInput("geneNormalize", "Normalize genes (divide by SD)", value = FALSE)
+					,checkboxInput("sampleCentering", "Center samples (substract mean)", value = FALSE)	
+					,checkboxInput("sampleNormalize", "Normalize samples(divide by SD)", value = FALSE)
 					,checkboxInput("noSampleClustering", "Do not re-order or cluster samples", value = FALSE)
 					,htmlOutput('listFactorsHeatmap')
 
@@ -371,12 +374,12 @@ tableOutput('species' ),
 						htmlOutput('listComparisonsVenn')
 						,plotOutput("vennPlot"))
 				   ,bsModal("modalExample21", "Build model and/or select comparisons", "modelAndComparisons", size = "large",
-					textOutput('experimentDesign')
-					,tags$head(tags$style("#experimentDesign{color: green;font-size: 18px;}"))
-					,fluidRow(
+
+					fluidRow(
 						 column(6, htmlOutput('listFactorsDE'))
 						,column(6, htmlOutput('listBlockFactorsDE') ) 
-					)				   
+					)
+			
 					,fluidRow(
 						 column(6, htmlOutput('selectReferenceLevels1'))
 						,column(6, htmlOutput('selectReferenceLevels2') ) 
@@ -390,10 +393,13 @@ tableOutput('species' ),
 						,column(6, htmlOutput('selectReferenceLevels6') ) 
 					)						
 					,htmlOutput('listInteractionTerms')
+					,textOutput('experimentDesign')
+					,tags$head(tags$style("#experimentDesign{color: red;font-size: 16px;}"))		
 						,htmlOutput('listModelComparisons')
 						,actionButton("submitModelButton", "Submit & re-calculate",style="float:center")
 						,tags$head(tags$style("#submitModelButton{color: blue;font-size: 20px;}"))
 						,h5("Close this window to see results.")
+
 						)
 				   ,bsModal("modalExample4", "Volcano plot", "showVolcano", size = "large",
 						checkboxInput("volcanoPlotBox", label = "Show interactive version w/ gene symbols", value = FALSE)
@@ -423,7 +429,7 @@ tableOutput('species' ),
 				,tags$style(type='text/css', "#listComparisonsPathway { width:100%;   margin-top:-12px}")
 			,selectInput("pathwayMethod", label = "Select method and genesets:", choices = list("GAGE" = 1, 
 																								"GSEA (preranked fgsea)" =3,
-																								#"PGSEA" = 2, 
+																								"PGSEA" = 2, 
 																								"PGSEA w/ all samples" =4, 
 																								"ReactomePA" = 5
 																								), selected = 1) #
@@ -625,7 +631,12 @@ tableOutput('species' ),
 					,tableOutput('networkModuleGO')
 					,bsModal("modalExample112", "Choose soft threshold", "chooseSoftThreshold", size="large",plotOutput('softPower') )
 					,bsModal("modalExample116", "Heatmap of identified modules", "showModuleHeatmap", size="large",plotOutput('networkHeatmap') )
+	
+
+				
 				))
+				
+
 ) 
 ###############################################################################################################################
  
@@ -634,8 +645,8 @@ tableOutput('species' ),
        column(12,
      htmlOutput('RsessionInfo')
  ) ))
+
   ,tags$head(includeScript("ga.js")) # tracking usage  
-  ,tags$head(includeScript("https://www.gstatic.com/firebasejs/4.6.2/firebase.js"))
-  ,tags$head(includeScript("fb.js")) # tracking usage
   )# Navibar
+
 )
