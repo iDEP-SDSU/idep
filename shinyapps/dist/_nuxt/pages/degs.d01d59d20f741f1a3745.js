@@ -1,0 +1,2 @@
+webpackJsonp([12],{lg3e:function(e,t,n){"use strict";Object.defineProperty(t,"__esModule",{value:!0});var l=n("ohXB"),s=n("VU/8"),r=s(null,l.a,!1,null,null,null);t.default=r.exports},ohXB:function(e,t,n){"use strict";var l=function(){var e=this,t=e.$createElement;return(e._self._c||t)("div",{staticClass:"f3"},[e._v(" DEGs ")])},s=[],r={render:l,staticRenderFns:s};t.a=r}});
+//# sourceMappingURL=degs.d01d59d20f741f1a3745.js.map
