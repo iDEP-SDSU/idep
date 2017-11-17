@@ -13,7 +13,9 @@
     "precommit": "npm run lint"
   },
   "dependencies": {
-    "nuxt": "^1.0.0-rc11"
+    "firebase": "4.6.2",
+    "nuxt": "^1.0.0-rc11",
+    "tachyons": "^4.9.0"
   },
   "devDependencies": {
     "babel-eslint": "^7.2.3",
