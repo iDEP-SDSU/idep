@@ -3,11 +3,11 @@
 library(shiny)
 library(DT) # for renderDataTable
 library("rhdf5")
-    destination_fileH = "../../countsData/human_matrix.h5"
-    destination_fileM = "../../countsData/mouse_matrix.h5"
-    sampleInfoFile = "sampleInfo.txt"
-	GSEInfoFile = "../../countsData/GSEinfo.txt"
-	
+
+destination_fileH = "../../countsData/human_matrix.h5"
+destination_fileM = "../../countsData/mouse_matrix.h5"
+sampleInfoFile = "sampleInfo.txt"
+GSEInfoFile = "../../countsData/GSEinfo.txt"
 
 
   if(file.exists(sampleInfoFile)) 
