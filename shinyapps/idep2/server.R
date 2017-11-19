@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.49"
+iDEPversion = "iDEP 0.51"
 ################################################################
 # R packages
 ################################################################
@@ -17,7 +17,6 @@ library(RSQLite,verbose=FALSE)	# for database connection
 library(gplots,verbose=FALSE)		# for hierarchical clustering
 library(ggplot2,verbose=FALSE)	# graphics
 library(e1071,verbose=FALSE) 		# computing kurtosis
-library(reshape2,verbose=FALSE) 	# for melt correlation matrix in heatmap
 library(DT,verbose=FALSE) 		# for renderDataTable
 library(plotly,verbose=FALSE) 	# for interactive heatmap
 
@@ -39,9 +38,9 @@ library(plotly,verbose=FALSE) 	# for interactive heatmap
 
 #library(PGSEA) # pathway 
 
-library(sfsmisc,verbose=FALSE)
-library(lokern,verbose=FALSE)
-library(multtest,verbose=FALSE)
+#library(sfsmisc,verbose=FALSE)   #required by PREDA
+#library(lokern,verbose=FALSE)	#required by PREDA
+#library(multtest,verbose=FALSE)	#required by PREDA
 
 # KEGG and WGCNA generate temporary files. Needs to be deleted regularily. 
 
@@ -60,6 +59,7 @@ kurtosis.warning = 10 # log transformation recommnded
 minGenesEnrichment = 2 # perform GO or promoter analysis only if more than this many genes
 PREDA_Permutations =1000
 maxGeneClustering = 6000  # max genes for hierarchical clustering and k-Means clustering. Slow if larger
+maxGeneWGCNA = 2000 # max genes for co-expression network
 maxFactors =6  # max number of factors in DESeq2 models
 set.seed(2) # seed for random number generator
 mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
@@ -205,13 +205,13 @@ myheatmap2 <- function (x,bar=NULL,n=-1,mycolor=1,clusterNames=NULL,sideColors=N
 		}
 }
 
- #Change comparison names from "KO_ko-WT_ko" to    "ko:KO-WT" 
- changeNames <- function (comp) {
+ #Change comparison names in limma from "KO_ko-WT_ko" to    "KO-WT_for_ko" 
+changeNames <- function (comp) {
  	 if( !grepl(".*_.*-.*_.*",comp )) return(comp)
 	 levels4 = unlist( strsplit( unlist( strsplit(comp,"-") ), "_") ) #double split!
 	 if(length(levels4)!=4) return(comp)
 	 ix = which(duplicated(levels4))
-	 return( paste0(levels4[ix], "_", paste0( levels4[-c(ix, ix-2)] ,collapse ="-") ) )
+	 return( paste0( paste0( levels4[-c(ix, ix-2)] ,collapse ="-"), "_for_",levels4[ix] ) )
  }
 
 # adding sample legends to heatmap; this is for the main heatmap
@@ -270,6 +270,8 @@ readGMTRobust <- function (file1) {   # size restriction
 
 	return(y)
 }
+
+
 
 ################################################################
 #   Main functions
@@ -1140,8 +1142,9 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 		#topTable(fit2, coef=1, adjust="BH")
 		results <- decideTests(fit2, p.value=maxP_limma, lfc= log2(minFC_limma ))
 		#vennDiagram(results[,1:5],circle.col=rainbow(5))
+
 		#colnames(results) = unlist(sapply( colnames(results), changeNames  ) )
-		#comparisons2 =  toupper( unlist(sapply( comparisons, changeNames  ) ) )
+		#comparisons3 <-  unlist(sapply( comparisons, changeNames  ) ) 
 
 		# extract fold change for each comparison
 		# there is issues with direction of foldchange. Sometimes opposite
@@ -1152,30 +1155,30 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 				# compute fold change for the first gene (ranked by absolute value)
 				tem2 = as.numeric( x[ which(rownames(x)== rownames(tem)[1]) , ] )
 				names(tem2) = colnames(x) 
-				
-				if( 0){ # if not interaction term
-					# compute real fold change in A-B comparison
-					realFC =  mean ( tem2[which( groups == gsub("-.*","",comp))] ) - # average in A
-								mean ( tem2[which( groups == gsub(".*-","",comp))] ) # average in B
-					if( realFC * tem[1,1] <0 ) # if reversed
-						tem[,1] <- -1*tem[,1]; # reverse direction if needed
-				}				
+					
 				return( tem[,c(1,5)]) 
 			}  
 													
 		}  # no significant gene returns 1, otherwise a data frame
 		
-			
+		
 		topGenes <- lapply(comparisons, top)
 		topGenes <- setNames(topGenes, comparisons )
-		#cat("\n", names(topGenes) )
-		#cat("\n", colnames(results))
-		#cat("\n", comparisons2)
+
 		ix <- which( unlist( lapply(topGenes, class) ) == "numeric")
 		if( length(ix)>0) topGenes <- topGenes[ - ix ]
 		# if (length(topGenes) == 0) topGenes = NULL;
 	}
-	return( list(results= results, comparisons = comparisons, Exp.type=Exp.type, topGenes=topGenes)) 
+	
+	#cat("\n", names(topGenes) )
+	#cat("\n", colnames(results))
+	#cat("\n", comparisons3)
+	#comparisons <- comparisons3
+	# it does not make any sense! comparisons can not be changed!
+	#comparisons =comparisons3	
+	#cat("\n", comparisons)		
+		
+	return( list(results= results, comparisons=comparisons, Exp.type=Exp.type, topGenes=topGenes)) 
 }
 
 # Differential expression using DESeq2
@@ -1493,6 +1496,4493 @@ promoter <- function (converted,selectOrg, radio){
 	return( TFs )
 	}
 }
+
+# find sample index for selected comparisons
+findContrastSamples <- function(selectContrast, allSampleNames,sampleInfo=NULL, selectFactorsModel=NULL,selectModelComprions =NULL , referenceLevels=NULL, countsDEGMethod=NULL, dataFileFormat=NULL ){
+	iz= match( detectGroups(allSampleNames), unlist(strsplit( selectContrast, "-"))	  )
+	iz = which(!is.na(iz))		 
+	if ( !is.null(sampleInfo) & !is.null(selectFactorsModel) & length(selectModelComprions)>0 ) {
+
+		comparisons = gsub(".*: ","",selectModelComprions)   # strings like: "groups: mutant vs. control"
+		comparisons = gsub(" vs\\. ","-",comparisons)		
+		factorsVector= gsub(":.*","",selectModelComprions) # corresponding factors
+
+		  # if read counts data and DESeq2
+		if(dataFileFormat==1 & countsDEGMethod == 3) { # if DESeq2
+			contrast = gsub("_for_.*","",selectContrast) # could be "wt-mu"   or "wt-mu_for_conditionB"
+			ik = match( contrast, comparisons )   # selected contrast lookes like: "mutant-control"
+
+			otherFactorLevel = gsub(".*_for_","",selectContrast)
+			# find the corresponding factor for the other factor
+			otherFactor=" "
+			if(nchar( otherFactorLevel ) >0){
+				for( eachFactor in colnames(sampleInfo) )
+					if ( otherFactorLevel %in%  sampleInfo[,eachFactor ] )
+						otherFactor = eachFactor		
+			}
+			
+			if (is.na(ik)) iz=1:(length(allSampleNames))  else {  # interaction term, use all samples		
+				selectedfactor= factorsVector[ ik ] # corresponding factors
+
+				iz = which(sampleInfo[,selectedfactor] %in%  unlist(strsplit( contrast, "-")) )
+
+				#filter by other factors: reference level
+				if(! is.null( referenceLevels) ) {   # c("genotype:wt", "treatment:control" )
+					for ( refs in referenceLevels)
+						if(! is.null( refs) & gsub(":.*","",refs) != selectedfactor ) {
+							currentFactor = gsub(":.*","",refs)
+							if(nchar( otherFactorLevel ) >0 & currentFactor == otherFactor ) { # if not reference level
+								iz = intersect( iz, which(sampleInfo[,currentFactor] == otherFactorLevel  ) )
+							} else
+								iz = intersect( iz, which(sampleInfo[,currentFactor] == gsub(".*:","",refs)  ) )
+							
+						}
+				}			
+				iz = iz[which(!is.na(iz))]
+				
+			# switching from limma to DESeq2 causes problem, as reference level is not defined.
+
+			} 
+			
+		} else {  # not DESeq2
+			
+					# given level find corresponding sample ids
+				    findIDsFromLevel <- function (aLevel){
+						# find factor
+						currentFactor=""
+						for( eachFactor in colnames(sampleInfo) )
+							if ( aLevel %in%  sampleInfo[,eachFactor ] )
+								currentFactor = eachFactor			
+						if(nchar(currentFactor) >0 ) 
+							return( which(sampleInfo[,currentFactor ] %in% aLevel   )  ) else return(NULL)
+					}		
+					
+					if( !grepl(".*_.*-.*_.*",selectContrast )) iz = c()
+					levels4 = unlist( strsplit( unlist( strsplit(selectContrast,"-") ), "_") ) #double split!
+					if(length(levels4)!=4) { 
+						iz = c() 
+					} else {
+						iz = intersect( findIDsFromLevel(levels4[1]),  findIDsFromLevel(levels4[2])  ) # first sample
+						iz = c(iz, intersect( findIDsFromLevel(levels4[3]),  findIDsFromLevel(levels4[4])  )   ) # 2nd sample
+						}
+				} #else
+			
+			
+			
+		}	
+	 
+	 if (grepl("I:",selectContrast)) iz=1:length(allSampleNames) # if it is factor design use all samples
+	 if( is.na(iz)[1] | length(iz)<=1 )    iz=1:length(allSampleNames)
+
+	return(iz)
+}
+
+
+ if(0 ){ # pathway testing
+	x = read.csv("expression.csv")
+	x = read.csv("expression1_no_duplicate.csv")
+	x = read.csv("mouse1.csv")
+	x = read.csv("GSE40261.csv")
+	x = read.csv("GSE52778_All_Sample_FPKM_Matrix.csv")
+	x = read.csv("exampleData/GSE87194.csv")
+	x = read.csv("exampleData/expression_3groups.csv")
+	x = x[order(x[,1]),]
+	x = x[!duplicated(x[,1]),]
+	rownames(x)= x[,1]
+	x = x[,-1]
+
+	tem = apply(x,1,max)
+	x = x[which(tem> 1),] 
+
+	x = log(x+abs( 1),2)
+	tem = apply(x,1,sd)
+	x = x[order(-tem),]
+
+	selectOrg = "BestMatch"; GO="GOBP"; 
+	myrange = c(15,1000)
+
+	converted = convertID(rownames(x),selectOrg)
+
+	head(converted$conversionTable)
+	mapping = converted$conversionTable
+
+	rownames(x) = toupper(rownames(x))
+	x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
+	tem = apply(x1[,3:(dim(x1)[2]-2)],1,sd)
+	x1 = x1[order(x1[,2],-tem),]
+	x1 = x1[!duplicated(x1[,2]) ,]
+	rownames(x1) = x1[,2]
+	x1 = as.matrix(x1[,c(-1,-2)])
+
+	convertedData = x1
+	gmt = readGeneSets(converted, convertedData, GO,selectOrg, myrange)
+
+	subtype = detectGroups(colnames(convertedData))
+	Pvalue = 1  # cut off to report in PGSEA. Otherwise NA
+	Pval_pathway = 0.05   # cut off for P value of ANOVA test  to writ to file 
+	top = 30   # number of pathways to show
+	myrange = c(10,2000)
+
+	pg = myPGSEA (x,cl=gmt,range=myrange,p.value=TRUE, weighted=FALSE,nPermutation=1)
+	result = PGSEApathway (converted,convertedData, selectOrg,GO,gmt, myrange,.05,30)
+	smcPlot(result$pg3,factor(subtype),scale = c(-result$best, result$best), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5)
+	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5)
+
+	pca = 100*prcomp(t(x))$rotation 
+	Npca = 10
+	if (Npca > dim(pca)[2]) { Npca = dim(pca)[2] } else pca <-  pca[,1:Npca]
+	#pca = pca[,1:5]
+	pg = myPGSEA (pca,cl=gmt,range=myrange,p.value=TRUE, weighted=FALSE,nPermutation=1)
+
+	# correcting for multiple testing
+	p.matrix = pg$p.result
+	tem = p.adjust(as.numeric(p.matrix),"fdr")
+	p.matrix = matrix(tem, nrow=dim(p.matrix)[1], ncol = dim(p.matrix)[2] )
+	rownames(p.matrix) = rownames(pg$p.result); colnames(p.matrix) = colnames(pg$p.result)
+
+	# using absolute value to rank 
+	#selected = unlist( apply(pg$result, 2, function(y) which( rank(y) >= length(y)-3.1)   ) )
+
+	# using p value to rank #
+	#selected = unlist( apply(p.matrix, 2, function(x) which( rank(x,ties.method='first') <= 5)   ) )
+	selected =c()
+	for( i in 1:dim(p.matrix)[2]) {
+		tem = which( rank(p.matrix[,i],ties.method='first') <= 3) 
+		#tem = which( rank(pg$result[,i],ties.method='first') >= dim(p.matrix)[1]-3.1)
+		names(tem) = paste("PC",i," ", rownames(p.matrix)[tem], sep="" )
+		selected = c(selected, tem)
+	}
+	rowids = gsub(" .*","",names(selected))
+	rowids = as.numeric( gsub("PC","",rowids) )
+	pvals = p.matrix[ cbind(selected,rowids) ]
+	a=sprintf("%-1.0e",pvals)
+	tem = pg$result[selected,]
+	rownames(tem) = paste(a,names(selected)); #colnames(tem)= paste("PC",colnames(tem),sep="")
+
+	tem = tem[!duplicated(selected),] 
+	#tem = t(tem); tem = t( (tem - apply(tem,1,mean)) ) #/apply(tem,1,sd) )
+	smcPlot(tem,scale =  c(-max(tem), max(tem)), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5)
+
+	############  testing D.E.G.
+	limma = DEG.limma(convertedData, .1, .5,rawCounts=NULL,countsDEGMethods=1,priorCounts=3, dataFormat=2)
+	genes = limma$results
+		if( is.null(genes) ) return(NULL)
+		ix = match(limma$comparisons, colnames(genes)) 
+		query = rownames(genes)[which(genes[,ix] != 0)]
+		iy = match(query, rownames(convertedData  ) )
+		convertedData[iy,]
+		iz= match( detectGroups(colnames(convertedData)), unlist(strsplit( limma$comparisons, "-"))	  )
+		iz = which(!is.na(iz))
+		myheatmap( convertedData[iy,iz] )
+		# convertedData()[iy,iz]
+
+		# rawCounts = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
+		x = read.csv("exampleData/GSE87194.csv") ; x[,1] = toupper(x[,1]);   x = x[order(x[,1]),];    x = x[!duplicated(x[,1]),] #rownames(x)= x[,1]; rawCounts= x[,-1]
+		rawCounts = rawCounts[which(apply(rawCounts,1,max )>10 ) ,]
+		# res =DEG.DESeq2(rawCounts, .05, 2)
+		# res = 
+		# tem = res$topGenes
+		# head( res$results )
+		
+		# res2= DEG.limma(rawCounts, .05, 2,rawCounts, 1 ,3) 
+
+	######### testing GAGE
+	fc = apply(x1[,4:6],1,mean)- apply(x1[,1:3],1,mean)
+	paths <- gage(fc, gsets = gmt, ref = NULL, samp = NULL)
+
+	paths <- as.data.frame(paths)
+	path1 <- rownames(paths)[1]
+
+
+
+		x = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
+		#x = read.csv("exampleData/GSE87194.csv") ; 
+		x=read.csv("GSE37704_sailfish_genecounts.csv");
+		#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
+		x = read.csv("exampleData/hoppe 2 samples.csv")
+		
+		x[,1] = toupper(x[,1]);  
+		colnames(x)[1]= "User_input"
+
+
+	selectOrg = "BestMatch"; GO="KEGG"; 
+	myrange = c(15,2000)
+
+	converted = convertID(x[,1],selectOrg)
+	mapping = converted$conversionTable
+	x = merge(mapping[,1:2],x,   by = 'User_input')
+	tem = apply(x[,3:(dim(x)[2]-2)],1,sum)
+	x = x[order(x[,2],-tem),]
+	x = x[!duplicated(x[,2]) ,]
+	rownames(x) = x[,2]
+	x = as.matrix(x[,c(-1,-2)])
+
+	convertedData = x
+	gmt = readGeneSets(converted, convertedData, GO,selectOrg, myrange)
+
+	res =DEG.DESeq2(x, .25, 1)
+
+	res <- DEG.limma (x, maxP_limma=.2, minFC_limma=2, x,countsDEGMethods=2,priorCounts=3, dataFormat=1)
+
+	top1 <- res$topGenes[[1]]
+
+	head(top1)	
+
+		paths <- gage(top1[,1,drop=F], gsets = gmt, ref = NULL, samp = NULL)
+		paths <-  rbind(paths$greater,paths$less)
+		if(dim(paths)[1] < 1 | dim(paths)[2]< 6 ) return( noSig )
+		top1 <- paths[,c('stat.mean','set.size','q.val')]
+		colnames(top1)= c("stat.mean","Set Size","FDR")
+		top1 <- top1[order(top1[,3]) ,]  
+		if ( length( which( top1[,3] <=  .9   ) ) == 0 )
+		return( noSig)
+		top1 <- top1[which(top1[,3] <=  .9 ) ,]
+		if(dim(top1)[1] > 30 ) 
+			top1 <- top1[1:30,]
+		top1
+
+
+	res = DEG.limma(x, .05, 2,NULL, 1,3 )
+
+	## fgsea
+		top1 <- res$topGenes[[1]]
+	head(top1)	
+	colnames(top1)= c("Fold","FDR")
+	fold = top1[,1]; names(fold) <- rownames(top1)
+		paths <- fgsea(pathways = gmt, 
+					stats = fold,
+					minSize=15,
+					maxSize=2000,
+					nperm=10000)
+	if(dim(paths)[1] < 1  ) return( noSig )
+		paths <- as.data.frame(paths)
+		top1 <- paths[,c(4,5,7,3)]
+		rownames(top1) <- paths[,1]
+		colnames(top1)= c("ES","NES","Set Size","FDR")
+		top1 <- top1[order(top1[,4]) ,]  
+		if ( length( which( top1[,4] <=  input$pathwayPvalCutoff   ) ) == 0 )
+		return( noSig)
+		top1 <- top1[which(top1[,4] <=  input$pathwayPvalCutoff ) ,]
+		if(dim(top1)[1] > input$nPathwayShow ) 
+			top1 <- top1[1:input$nPathwayShow,]
+			
+		top1
+		
+	# testing visualize KEGG pathway
+
+	query = x[1:500,1]
+		fc= convertEnsembl2Entrez (query, Species)  
+		
+		fc = log2(fc/mean(fc))
+		
+			top1 <- res$topGenes[[1]]
+		top1 <- top1[,1]; names(top1)= rownames(res$topGenes[[1]] )
+		Species = converted$species[1,1] 	
+		
+	system.time(  fc <- convertEnsembl2Entrez (top1, Species)  )
+			fc = sort(fc,decreasing =T)
+		
+		head(fc)
+		
+		system.time ( y<- gsePathway(fc, nPerm=1000,
+				minGSSize=15, pvalueCutoff=0.5,
+				pAdjustMethod="BH", verbose=FALSE) )
+		res <- as.data.frame(y)
+		head(res)
+		
+		
+		# testing mouse 
+		top1 = limma$topGenes[[1]]
+		top1 <- top1[,1]; names(top1)= rownames(limma$topGenes[[1]] )
+		Species = converted$species[1,1] 	
+		system.time(  fc <- convertEnsembl2Entrez (top1, Species)  )
+				fc = sort(fc,decreasing =T)
+				system.time ( y<- gsePathway(fc, nPerm=1000,organism = "mouse",
+				minGSSize=15, pvalueCutoff=0.5,
+				pAdjustMethod="BH", verbose=FALSE) )
+		res <- as.data.frame(y)
+		head(res)
+		ensemblSpecies <- c("hsapiens_gene_ensembl","rnorvegicus_gene_ensembl", "mmusculus_gene_ensembl",
+		"celegans_gene_ensembl","scerevisiae_gene_ensembl", "drerio_gene_ensembl", "dmelanogaster_gene_ensembl")
+			ReactomePASpecies= c("human", "rat", "mouse", "celegans", "yeast", "zebrafish", "fly" )
+
+
+	#### testing KEGG pathway graph
+	x=read.csv("GSE37704_sailfish_genecounts.csv");
+		#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
+		x[,1] = toupper(x[,1]);  
+		colnames(x)[1]= "User_input"
+
+
+	selectOrg = "BestMatch"; GO="KEGG"; 
+	myrange = c(15,2000)
+
+	converted = convertID(x[,1],selectOrg)
+	mapping = converted$conversionTable
+	x = merge(mapping[,1:2],x,   by = 'User_input')
+	tem = apply(x[,3:(dim(x)[2]-2)],1,sum)
+	x = x[order(x[,2],-tem),]
+	x = x[!duplicated(x[,2]) ,]
+	rownames(x) = x[,2]
+	x = as.matrix(x[,c(-1,-2)])
+
+	convertedData = x
+	gmt = readGeneSets(converted, convertedData, GO,selectOrg, myrange)
+
+	res =DEG.DESeq2(x, .25, 1)
+
+	top1 <- res$topGenes[[1]]
+
+	head(top1)	
+
+		paths <- gage(top1[,1,drop=F], gsets = gmt, ref = NULL, samp = NULL)
+		paths <-  rbind(paths$greater,paths$less)
+		
+	selectedPathway = rownames(paths)[1]
+	# [1] "Cytokine-cytokine receptor interaction"
+
+		Species <- converted$species[1,1]
+		
+		fold = top1[,1]; names(fold) <- rownames(top1)
+		fold <- convertEnsembl2Entrez(fold,Species)
+		
+		keggSpecies <- as.character( keggSpeciesID[which(keggSpeciesID[,1] == Species),3] )
+		
+		if(nchar( keggSpecies) <=2 ) return(blank) # not in KEGG
+	 #cat("here5  ",keggSpecies, " ",Species," ",input$sigPathways)
+		# kegg pathway id
+	pathID = keggPathwayID(selectedPathway, Species, "KEGG",selectOrg)
+
+	cat("\n",fold[1:5],"\n",keggSpecies,"\n",pathID)
+	if(is.null(pathID) ) return(blank) # kegg pathway id not found.	
+	pv.out <- pathview(gene.data = fold, pathway.id = pathID, species = keggSpecies, kegg.native=TRUE)
+
+
+
+
+	#######################################
+	# testing for species not recognized 
+	x=read.csv("exampleData/Wu_wet_vs_control - new species.csv");
+		#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
+		x[,1] = toupper(x[,1]);  
+		colnames(x)[1]= "User_input"
+	selectOrg = "BestMatch"; GO="KEGG"; 
+	myrange = c(15,2000)
+	converted = convertID(x[,1],selectOrg)
+	mapping = converted$conversionTable	  
+ }
+ 
+if(0) {  # testing
+
+	inFile = "C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/expression1_no_duplicate.csv"
+	# inFile = "C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/GSE52778_All_Sample_FPKM_Matrix.csv"
+	lowFilter = 1; logStart = 1
+	x = read.csv(inFile)
+	x[,1] = toupper(x[,1])
+	x = x[order(x[,1]),]
+	x = x[!duplicated(x[,1]),]
+	rownames(x)= x[,1]
+	x = x[,-1]
+
+	tem = apply(x,1,max)
+	x = x[which(tem> lowFilter),] 
+
+	tem = apply(x,1,function(y) sum(y>2) )
+	
+	
+	x = log(x+abs( logStart),2)
+	tem = apply(x,1,sd)
+	x = x[order(-tem),]
+
+	###########Converted data
+	convertedID = convertID(rownames(x ),selectOrg="BestMatch", selectGO = "GOBP" );#"gmax_eg_gene"
+
+	mapping <- convertedID$conversionTable
+
+		rownames(x) = toupper(rownames(x))
+		x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
+		tem = apply(x1[,3:(dim(x1)[2]-2)],1,sd)
+		x1 = x1[order(x1[,2],-tem),]
+		x1 = x1[!duplicated(x1[,2]) ,]
+		rownames(x1) = x1[,2]
+		x1 = as.matrix(x1[,c(-1,-2)])
+
+		
+		tem = apply(x1,1,sd)
+	x1 = x1[order(-tem),]
+	x=x1
+		head(x)
+		
+	#################################
+	#testing Kmeans
+
+	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+	#x = 100* x / apply(x,1,sum)  # this is causing problem??????
+	#x = x - apply(x,1,mean)  # this is causing problem??????
+	#colnames(x) = gsub("_.*","",colnames(x))
+	set.seed(2)
+	# determining number of clusters
+	k=6
+
+	cl = kmeans(x,k,iter.max = 50)
+	#myheatmap(cl$centers)	
+
+	hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
+	tem = match(cl$cluster,hc$order) #  new order 
+
+	x = x[order(tem),]
+
+	bar = sort(tem)
+	#myheatmap2(x, bar)
+	# GO
+	pp=0
+	for( i in 1:k) {
+		#incProgress(1/k, , detail = paste("Cluster",toupper(letters)[i]) )
+		query = rownames(x)[which(bar == i)]
+		convertedID = convertID(query,"BestMatch", selectGO = "GOBP" );#"gmax_eg_gene"
+		tem = geneInfo(convertedID,"BestMatch") #input$selectOrg ) ;
+		tem <- tem[which( tem$Set == "List"),] 
+
+
+		#selectOrg = input$selectOrg
+		selectOrg ="BestMatch"
+
+		result = FindOverlap (convertedID,tem, "GOBP",selectOrg,1) 
+		if( dim(result)[2] ==1) next;   # result could be NULL
+		result$Genes = toupper(letters)[i] 
+		if (pp==0 ) { results = result; pp = 1;} else  results = rbind(results,result)
+	}
+	results= results[,c(5,1,2,4)]
+	colnames(results)= c("Cluster","FDR","Genes","GO BP Terms")
+	minFDR = 0.05
+	if(min(results$FDR) > minFDR ) results = as.matrix("No signficant enrichment found.") else
+	results = results[which(results$FDR < minFDR),]
+}
+
+
+
+################################################################
+#   Server function
+################################################################
+	
+shinyServer(
+function(input, output,session) {
+  
+ #----------------------------------------------- 
+ # Available datasets 
+ # readData()$data: transformed data, readData()$rawCounts: Counts data. NULL if non-count data.
+ # converted():id conversion results with many components such as: converted()$originalIDs,  converted()$IDs: converted IDs
+               #,converted()$species,   converted()$speciesMatched,  converted()$conversionTable
+ # allGeneInfo(): returns all information in the geneInfo file for each gene
+ # geneSets(): gene set as a list for pathway analysis
+  
+options(shiny.maxRequestSize = 100*1024^2) # 100MB file max for upload
+observe({  updateSelectInput(session, "selectOrg", choices = speciesChoice )      })
+observe({  updateSelectInput(session, "heatColors1", choices = colorChoices )      })
+observe({  updateSelectInput(session, "distFunctions", choices = distChoices )      })
+observe({  updateSelectInput(session, "hclustFunctions", choices = hclustChoices )      })
+
+	################################################################
+	#   Read data
+	################################################################
+ 
+	# read data file and do filtering and transforming
+readData <- reactive ({
+		inFile <- input$file1
+		inFile <- inFile$datapath
+
+		if(is.null(input$file1) && input$goButton == 0)   return(NULL)
+		if(is.null(input$file1) && input$goButton > 0 )   inFile = demoDataFile
+		tem = input$dataFileFormat; tem=input$missingValue
+		if(!is.null(input$dataFileFormat)) # these are needed to make it responsive to changes
+			if(input$dataFileFormat== 1){  
+				tem = input$minCounts 
+				tem= input$NminSamples
+				tem = input$countsLogStart
+				tem = input$CountsTransform 
+			}
+		if(!is.null(input$dataFileFormat))
+			if(input$dataFileFormat== 2){ 
+				tem = input$transform; 
+				tem = input$logStart; 
+				tem= input$lowFilter 
+				tem = input$NminSamples2
+		}
+
+		isolate({
+			withProgress(message="Reading and pre-processing ", {
+				# these packages moved here to reduce loading time
+				library(edgeR,verbose=FALSE) # count data D.E.
+				library(DESeq2,verbose=FALSE) # count data analysis
+
+				if (is.null( input$dataFileFormat )) return(NULL)
+				dataTypeWarning =0
+				dataType =c(TRUE)
+
+				#---------------Read file
+				x <- read.csv(inFile)	# try CSV
+				if(dim(x)[2] <= 2 )   # if less than 3 columns, try tab-deliminated
+					x <- read.table(inFile, sep="\t",header=TRUE)	
+				#-------Remove non-numeric columns, except the first column
+				
+				for(i in 2:dim(x)[2])
+					dataType = c( dataType, is.numeric(x[,i]) )
+				if(sum(dataType) <=2) return (NULL)  # only less than 2 columns are numbers
+				x <- x[,dataType]  # only keep numeric columns
+				
+				# rows with all missing values
+				ix = which( apply(x[,-1],1, function(y) sum( is.na(y) ) ) != dim(x)[2]-1 )
+				x <- x[ix,]
+				
+				dataSizeOriginal = dim(x); dataSizeOriginal[2] = dataSizeOriginal[2] -1
+				
+				x[,1] <- toupper(x[,1])
+				x[,1] <- gsub(" ","",x[,1]) # remove spaces in gene ids
+				x = x[order(- apply(x[,2:dim(x)[2]],1,sd) ),]  # sort by SD
+				x <- x[!duplicated(x[,1]) ,]  # remove duplicated genes
+				rownames(x) <- x[,1]
+				x <- as.matrix(x[,c(-1)])
+				
+				# remove "-" or "." from sample names
+				colnames(x) = gsub("-","",colnames(x))
+				colnames(x) = gsub("\\.","",colnames(x))
+
+				
+				#cat("\nhere",dim(x))
+				# missng value for median value
+				if(sum(is.na(x))>0) {# if there is missing values
+					if(input$missingValue =="geneMedian") { 
+						rowMedians <- apply(x,1, function (y)  median(y,na.rm=T))
+						for( i in 1:dim(x)[2] ) {
+							ix = which(is.na(x[,i]) )
+							x[ix,i] <- rowMedians[ix]						
+						}
+							
+					} else if(input$missingValue =="treatAsZero") {
+						x[is.na(x) ] <- 0					
+					} else if (input$missingValue =="geneMedianInGroup") {
+						sampleGroups = detectGroups( colnames(x))
+						for (group in unique( sampleGroups) ){		
+							samples = which( sampleGroups == group )
+							rowMedians <- apply(x[,samples, drop=F],1, function (y)  median(y,na.rm=T))
+							for( i in  samples ) { 
+								ix = which(is.na(x[ ,i] ) )	
+								if(length(ix) >0 )
+									x[ix, i  ]  <- rowMedians[ix]
+							}										
+						}
+						
+						# missing for entire sample group, use median for all samples
+						if(sum(is.na(x) )>0 ) { 
+							rowMedians <- apply(x,1, function (y)  median(y,na.rm=T))
+							for( i in 1:dim(x)[2] ) {
+								ix = which(is.na(x[,i]) )
+								x[ix,i] <- rowMedians[ix]						
+							}						
+						}
+					}
+				}
+
+				# Compute kurtosis
+				mean.kurtosis = mean(apply(x,2, kurtosis))
+				rawCounts = NULL
+				pvals= NULL
+				if (input$dataFileFormat == 2 ) {  # if FPKM, microarray
+					incProgress(1/3,"Pre-processing data")
+
+					if ( is.integer(x) ) dataTypeWarning = 1;  # Data appears to be read counts
+
+					#-------------filtering
+					#tem <- apply(x,1,max)
+					#x <- x[which(tem > input$lowFilter),]  # max by row is at least 
+					x <- x[ which( apply( x, 1,  function(y) sum(y >= input$lowFilter)) >= input$NminSamples2 ) , ] 
+
+					
+					x <- x[which(apply(x,1, function(y) max(y)- min(y) ) > 0  ),]  # remove rows with all the same levels
+
+					#--------------Log transform
+					# Takes log if log is selected OR kurtosis is big than 100
+					if ( (input$transform == TRUE) | (mean.kurtosis > kurtosis.log ) ) 
+						x = log(x+abs( input$logStart),2)
+
+					tem <- apply(x,1,sd) 
+					x <- x[order(-tem),]  # sort by SD
+
+				} else 
+					if( input$dataFileFormat == 1) {  # counts data
+					incProgress(1/3, "Pre-processing counts data")
+					tem = input$CountsDEGMethod; tem = input$countsTransform
+					# data not seems to be read counts
+					if(!is.integer(x) & mean.kurtosis < kurtosis.log ) {
+						dataTypeWarning = -1
+					}
+					# not used as some counts data like those from CRISPR screen
+					#validate(   # if Kurtosis is less than a threshold, it is not read-count
+					#	need(mean.kurtosis > kurtosis.log, "Data does not seem to be read count based on distribution. Please double check.")
+					# )
+					x <- round(x,0) # enforce the read counts to be integers. Sailfish outputs has decimal points.
+					#x <- x[ which( apply(x,1,max) >= input$minCounts ) , ] # remove all zero counts
+					
+
+					# remove genes if it does not at least have minCounts in at least NminSamples
+					#x <- x[ which( apply(x,1,function(y) sum(y>=input$minCounts)) >= input$NminSamples ) , ]  # filtering on raw counts
+					# using counts per million (CPM) for filtering out genes.
+                                             # CPM matrix                  #N samples > minCounts
+					x <- x[ which( apply( cpm(DGEList(counts = x)), 1,  function(y) sum(y>=input$minCounts)) >= input$NminSamples ) , ] 
+					
+
+					if(0){  # disabled
+						# remove genes with low expression by counts per million (CPM)
+						dge <- DGEList(counts=x); dge <- calcNormFactors(dge)
+						myCPM <- cpm(dge, prior.counts = 3 )
+						x <- x[which(rowSums(  myCPM > input$minCounts)  > 1 ),]  # at least two samples above this level
+						rm(dge); rm(myCPM)
+					}
+					rawCounts = x; # ??? 
+					# construct DESeqExpression Object
+					# colData = cbind(colnames(x), as.character(detectGroups( colnames(x) )) )
+					tem = rep("A",dim(x)[2]); tem[1] <- "B"   # making a fake design matrix to allow process, even when there is no replicates
+					colData = cbind(colnames(x), tem )
+					colnames(colData)  = c("sample", "groups")
+					dds <- DESeqDataSetFromMatrix(countData = x, colData = colData, design = ~ groups)
+					dds <- estimateSizeFactors(dds) # estimate size factor for use in normalization later for started log method
+
+					incProgress(1/2,"transforming raw counts")
+					# regularized log  or VST transformation
+					if( input$CountsTransform == 3 ) { # rlog is slow, only do it with 10 samples
+						x <- rlog(dds, blind=TRUE); x <- assay(x) } 
+					else {
+						if ( input$CountsTransform == 2 ) {    # vst is fast but aggressive
+							x <- vst(dds, blind=TRUE)
+							x <- assay(x)  
+						} else{  # normalized by library sizes and add a constant.
+							x <- log2( counts(dds, normalized=TRUE) + input$countsLogStart )   # log(x+c) 
+							# This is equivalent to below. But the prior counts is more important
+							#x <- cpm(DGEList(counts = x),log=TRUE, prior.count=input$countsLogStart )  #log CPM from edgeR
+							#x <- x-min(x)  # shift values to avoid negative numbers
+						}
+					}
+				} else 
+					if( input$dataFileFormat == 3)	{  # other data type
+
+						#neg_lfc neg_fdr pos_lfc pos_fdr 
+						#11       1      11       1 
+						
+						n2 = ( dim(x)[2] %/% 2) # 5 --> 2
+						# It looks like it contains P values
+						# ranges of columns add 0.2 and round to whole. For P value columns this should be 1
+						tem = round( apply(x, 2, function( y) max(y)- min(y))  + .2)     
+						if( sum(tem[(1:n2)*2  ] ==  1 ) == n2 | 
+							sum(tem[(1:n2)*2-1  ] ==  1 ) == n2 ) { 		
+							x = x[,1:(2*n2) ,drop=FALSE ] # if 5, change it to 4			
+							if(tem[2] == 1) { # FDR follows Fold-change
+								pvals = x [,2*(1:n2 ),drop=FALSE ]  # 2, 4, 6
+								x = x[, 2*(1:n2 )-1,drop=FALSE]   # 1, 3, 5
+
+							} else {	# FDR follows Fold-change
+								pvals = x [,2*(1:n2 )-1,drop=FALSE ]  # 2, 4, 6		
+								x = x[, 2*(1: n2 ),drop=FALSE]   # 1, 3, 5
+							}
+						}
+					ix =  which(apply(x,1, function(y) max(y)- min(y) ) > 0  )
+					x <- x[ix,]  # remove rows with all the same levels
+					if(!is.null(pvals) )
+						pvals = pvals[ix,]
+						
+					}
+					
+					
+				dataSize = dim(x);
+				validate( need(dim(x)[1]>5 & dim(x)[2]>1 , 
+					"Data file not recognized. Please double check."))
+
+				incProgress(1, "Done.")
+				
+				sampleInfoDemo=NULL
+				if( input$goButton >0)
+					sampleInfoDemo <- t( read.csv(demoDataFile2,row.names=1,header=T,colClasses="character") )
+
+					finalResult <- list(data = as.matrix(x), mean.kurtosis = mean.kurtosis, rawCounts = rawCounts, dataTypeWarning=dataTypeWarning, dataSize=c(dataSizeOriginal,dataSize),sampleInfoDemo=sampleInfoDemo, pvals =pvals )
+				return(finalResult)
+			})
+		})
+	})
+
+readSampleInfo <- reactive ({
+		if( is.null(input$file2) && !is.null( readData()$sampleInfoDemo ) ) return( readData()$sampleInfoDemo   )
+		inFile <- input$file2
+		inFile <- inFile$datapath
+
+		if(is.null(input$file2) && input$goButton == 0)   return(NULL)
+		if(is.null(readData() ) ) return(NULL)
+		#if(input$goButton2 > 0 )   inFile = demoDataFile2
+		
+		isolate({
+				if (is.null( input$dataFileFormat )) return(NULL)
+				dataTypeWarning =0
+				dataType =c(TRUE)
+
+				#---------------Read file
+				x <- read.csv(inFile,row.names=1,header=T,colClasses="character")	# try CSV
+				if(dim(x)[2] <= 2 )   # if less than 3 columns, try tab-deliminated
+					x <- read.table(inFile, row.names=1,sep="\t",header=TRUE,colClasses="character")
+				# remove "-" or "." from sample names
+				colnames(x) = gsub("-","",colnames(x))
+				colnames(x) = gsub("\\.","",colnames(x))	
+
+				#----------------Matching with column names of expression file
+				ix = match(toupper(colnames(readData()$data)), toupper(colnames(x)) ) 
+				ix = ix[which(!is.na(ix))] # remove NA
+
+				validate(
+				  need(length(unique(ix) ) == dim(readData()$data)[2] 
+				       & dim(x)[1]>=1  # at least one row
+					 ,"Error!!! Sample information file not recognized. Sample names must be exactly the same. Each row is a factor. Each column represent a sample.  Please see documentation on format.")
+				)
+				
+				#-----------Double check factor levels, change if needed
+				# remove "-" or "." from factor levels
+				for( i in 1:dim(x)[1]) {
+				   x[i,] = gsub("-","",x[i,])
+				   x[i,] = gsub("\\.","",x[i,])				
+				}
+				# if levels from different factors match
+				if( length(unique(ix) ) == dim(readData()$data)[2]) { # matches exactly
+					x = x[,ix]
+					# if the levels of different factors are the same, it may cause problems
+					if( sum( apply(x, 1, function(y) length(unique(y)))) > length(unique(unlist(x) ) ) ) {
+						tem2 =apply(x,2, function(y) paste0( names(y),y)) # factor names are added to levels
+						rownames(tem2) = rownames(x)
+						x <- tem2				
+					}
+					return(t( x ) )			
+				} else retrun(NULL)
+							
+				
+		})
+	})
+	
+output$sampleInfoTable <- renderTable({
+
+		if (is.null(readSampleInfo() ) )   return(NULL)
+		isolate({
+			tem = t(readSampleInfo() )
+			tem = cbind(rownames(tem),tem)
+			colnames(tem)[1] <- "Study_design"
+			return(tem)
+		})
+	},include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T) 	
+	
+output$textTransform <- renderText({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		inFile <- input$file1
+		k.value =  readData()$mean.kurtosis	  
+		tem = paste( "Mean Kurtosis =  ", round(k.value,2), ".\n",sep = "")
+		if( k.value > kurtosis.log) tem = paste(tem, " Detected extremely large values.  When kurtosis >", kurtosis.log,
+		", log transformation is automatically applied.", sep="") else if (k.value>kurtosis.warning)
+		{tem = paste(tem, " Detected  large numbers with kurtosis >",
+		kurtosis.warning,". Log transformation is recommended.", sep="") }
+		if(readData()$dataTypeWarning == 1 ) {
+			tem = paste (tem, " ------Warning!!! Data matrix contains all integers. It seems to be read counts!!! Please select appropriate data type in the previous page and reload file.")}
+		if(readData()$dataTypeWarning == -1 ) {
+			tem = paste (tem, "  ------Warning!!! Data does not look like read counts data. Please select appropriate data type in the previous page and reload file.")}
+		tem
+	})	
+
+	# provide info on number of genes passed filter
+output$nGenesFilter <- renderText({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		inFile <- input$file1
+		if( is.null(readData()) ) return(NULL)
+		if( is.null(convertedData() ) ) return(NULL)
+		tem = input$noIDConversion; tem=input$missingValue
+		tem = readData()$dataSize
+		ix = match( toupper( rownames(convertedData())), toupper(converted()$conversionTable$ensembl_gene_id  ) )
+		nMatched = sum( !is.na(ix) )
+		if( input$noIDConversion) 
+		return( paste(tem[1], "genes in", tem[4], "samples.", tem[3], " genes passed filter (see above). Original gene IDs used." ) )  else
+		return( paste(tem[1], "genes in", tem[4], "samples. Of the", tem[3], " genes passed filter (see above), ", 
+			nMatched, " were converted to Ensembl gene IDs in our database. 
+			  The remaining ", tem[3]-nMatched, "genes were kept in the data using original IDs." ) ) 	  
+			  
+			  
+			  
+	})	
+
+	# Show info on file format	
+output$fileFormat <- renderUI({
+		i = "<h3>Done. Ready to load data files.</h3>"
+		i = c(i,"Users can upload a CSV or tab-delimited text file with the first column as gene IDs. 
+		For RNA-seq data, read count per gene is recommended.
+		Also accepted are normalized expression data based on FPKM, RPKM, or DNA microarray data. iDEP can convert most types of common gene IDs to Ensembl gene IDs, which is used 
+			internally for enrichment and pathway analyses. iDEP parses column names to define sample groups. To define 3 biological samples (Control,
+		TreatmentA, TreatmentB) with 2 replicates each, column names should be:")
+		i = c(i," <strong> Ctrl_1, Ctrl_2, TrtA_1, TrtA_2, TrtB_1, TrtB_2</strong>.") 
+		i = c(i,"For more complex experimental design, users can upload a <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a>  with samples in columns and factors (genotypes and conditions) in rows. 
+		       With such a file, users can define a statistic model according to study design, which enables them to control the effect for batch effects or paired samples. 
+	         or detect interactions between factors (how mutant responds differently to treatment than wild-type).") 
+		
+		HTML(paste(i, collapse='<br/>') )
+	})
+	# this defines an reactive object that can be accessed from other rendering functions
+
+converted <- reactive({
+		if (is.null(input$file1) && input$goButton == 0)    return(NULL)
+		tem = input$selectOrg;
+		isolate( {
+		
+		convertID(rownames(readData()$data ),input$selectOrg, input$selectGO );
+
+		# converted()$conversionTable: Not matched is skipped
+		#User_input	ensembl_gene_id	Species
+		#MTURN	ENSMUSG00000038065	Mouse
+		#MTUS1	ENSMUSG00000045636	Mouse
+
+
+		}) 
+	})
+
+	# this defines an reactive object that can be accessed from other rendering functions
+allGeneInfo <- reactive({
+		if (is.null(input$file1) && input$goButton == 0)    return(NULL)
+		tem = input$selectOrg; 
+		isolate( {
+		withProgress(message="Looking up gene annotation", {
+		geneInfo(converted(),input$selectOrg); 
+				})
+		})
+	})
+	
+convertedData <- reactive({
+		if (is.null(input$file1) && input$goButton == 0) return()  
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+		####################################
+		if( is.null(converted() ) ) return( readData()$data) # if id or species is not recognized use original data.
+		isolate( {  
+			withProgress(message="Converting data ... ", {
+			
+				if(input$noIDConversion) return( readData()$data )
+				
+				mapping <- converted()$conversionTable
+				# cat (paste( "\nData:",input$selectOrg) )
+				x =readData()$data
+
+				rownames(x) = toupper(rownames(x))
+				# any gene not recognized by the database is disregarded
+				# x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
+				# the 3 lines keeps the unrecogized genes using original IDs
+				x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
+
+				# original IDs used if ID is not matched in database
+				ix = which(is.na(x1[,2]) )
+				x1[ix,2] = x1[ix,1] 
+				
+				#multiple matched IDs, use the one with highest SD
+				tem = apply(x1[,3:(dim(x1)[2])],1,sd)
+				x1 = x1[order(x1[,2],-tem),]
+				x1 = x1[!duplicated(x1[,2]) ,]
+				rownames(x1) = x1[,2]
+				x1 = as.matrix(x1[,c(-1,-2)])
+				tem = apply(x1,1,sd)
+				x1 = x1[order(-tem),]  # sort again by SD
+				incProgress(1, "Done.")
+			
+				return(x1)
+		})
+		})
+	})
+	
+convertedCounts <- reactive({
+		if (is.null(input$file1) && input$goButton == 0) return()  
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2 }
+		####################################
+		if( is.null(converted() ) ) return( readData()$rawCounts) # if id or species is not recognized use original data.
+		isolate( {  
+			if(input$noIDConversion) return( readData()$rawCounts )
+			withProgress(message="Converting data ... ", {
+
+				
+				mapping <- converted()$conversionTable
+				# cat (paste( "\nData:",input$selectOrg) )
+				x =readData()$rawCounts
+				if(is.null(x)) return(NULL) else 
+				{ 
+					rownames(x) = toupper(rownames(x))
+					# any gene not recognized by the database is disregarded
+					# x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
+					# the 3 lines keeps the unrecogized genes using original IDs
+					x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
+					ix = which(is.na(x1[,2]) )
+					x1[ix,2] = x1[ix,1] # original IDs used
+					
+					#multiple matched IDs, use the one with highest SD
+					tem = apply(x1[,3:(dim(x1)[2])],1,sd)
+					x1 = x1[order(x1[,2],-tem),]
+					x1 = x1[!duplicated(x1[,2]) ,]
+					rownames(x1) = x1[,2]
+					x1 = as.matrix(x1[,c(-1,-2)])
+					tem = apply(x1,1,sd)
+					x1 = x1[order(-tem),]  # sort again by SD
+					incProgress(1, "Done.")
+					return(x1)
+				} # here
+			})
+		
+		})
+	})
+
+convertedPvals <- reactive({
+		if (is.null(input$file1) && input$goButton == 0) return()  
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+		####################################
+		if( is.null(converted() ) ) return( readData()$pvals) # if id or species is not recognized use original data.
+		if( is.null(readData()$pvals) ) return(NULL)
+		isolate( {  
+			withProgress(message="Converting data ... ", {
+			
+				if(input$noIDConversion) return( readData()$pvals )
+				
+				mapping <- converted()$conversionTable
+				# cat (paste( "\nData:",input$selectOrg) )
+				x =readData()$pvals
+
+				rownames(x) = toupper(rownames(x))
+				# any gene not recognized by the database is disregarded
+				# x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
+				# the 3 lines keeps the unrecogized genes using original IDs
+				x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
+
+				# original IDs used if ID is not matched in database
+				ix = which(is.na(x1[,2]) )
+				x1[ix,2] = x1[ix,1] 
+				
+				#multiple matched IDs, use the one with highest SD
+				tem = apply(x1[,3:(dim(x1)[2])],1,sd)
+				x1 = x1[order(x1[,2],-tem),]
+				x1 = x1[!duplicated(x1[,2]) ,]
+				rownames(x1) = x1[,2]
+				x1 = as.matrix(x1[,c(-1,-2)])
+				tem = apply(x1,1,sd)
+				x1 = x1[order(-tem),]  # sort again by SD
+				incProgress(1, "Done.")
+			
+				return(x1)
+		})
+		})
+	})
+	
+GeneSets <- reactive({
+		if (is.null(input$file1) && input$goButton == 0)	return()
+		tem = input$selectOrg
+		tem = input$selectGO
+		tem =input$minSetSize; tem= input$maxSetSize; 
+		isolate( {
+			if(input$selectOrg == "NEW" && !is.null(input$gmtFile) ) # new species 
+			{     inFile <- input$gmtFile; inFile <- inFile$datapath
+				return( readGMTRobust(inFile) ) }else
+		return( readGeneSets( converted(), convertedData(), input$selectGO,input$selectOrg,c(input$minSetSize, input$maxSetSize)  ) ) }) 
+	})
+
+output$downloadSampleInfoData <- downloadHandler(
+  filename <- function() {
+		paste("sampleInformation.csv")
+	  },
+
+content <- function(file) {
+		file.copy(demoDataFile2 , file)
+	  },
+	  contentType = "application/zip"
+	)	
+	
+####### [TODO] Kevin Indentation Work 10/5 #######
+
+output$contents <- renderTable({
+	   inFile <- input$file1
+		inFile <- inFile$datapath
+		if (is.null(input$file1) && input$goButton == 0)   return(NULL)
+	#    if (is.null(input$file1) && input$goButton > 0 )   inFile = "expression1_no_duplicate.csv"
+		if (is.null(input$file1) && input$goButton > 0 )   inFile = demoDataFile
+
+		tem = input$selectOrg
+		isolate({
+		x <- read.csv(inFile)
+		if(dim(x)[2] <= 2 ) x <- read.table(inFile, sep="\t",header=TRUE)	# not CSV
+		#x <- readData()$data
+		 x[1:20,]
+		})
+	  },include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+
+# show first 20 rows of data
+output$species <-renderTable({   
+      if (is.null(input$file1) && input$goButton == 0)    return()
+      isolate( {  #tem <- convertID(input$input_text,input$selectOrg );
+	  	  withProgress(message="Converting gene IDs", {
+                  tem <- converted()
+			incProgress(1, detail = paste("Done"))	  })
+		  
+				  if( is.null(tem)) {as.data.frame("ID not recognized.")} else {
+	              tem$speciesMatched }
+
+      }) # avoid showing things initially         
+    }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+
+# show first 20 rows of processed data; not used
+output$debug <- renderTable({
+      if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	  tem = input$selectOrg; tem = input$lowFilter ; tem =input$NminSamples2; tem = input$transform
+	x <- convertedData()
+	#tem = GeneSets()
+	
+	return( as.data.frame (x[1:20,] ))
+	},include.rownames=TRUE)
+
+
+################################################################
+#   Pre-process
+################################################################
+	
+output$EDA <- renderPlot({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2 }
+	####################################
+
+	
+    x <- readData()$data
+	 par(mfrow=c(3,1))
+	par(mar=c(14,6,4,4))
+	myColors = rainbow(dim(x)[2])
+	plot(density(x[,1]),col = myColors[1], lwd=2,
+	  xlab="Expresson values", ylab="Density", main= "Distribution of transformed data",
+	  cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2, ylim=c(0, max(density(x[,1])$y)+.02 ) )
+	  
+	for( i in 2:dim(x)[2] )
+	lines(density(x[,i]),col=myColors[i], lwd=2 )
+	if(dim(x)[2]< 31 ) # if too many samples do not show legends
+		legend("topright", cex=1.2,colnames(x), lty=rep(1,dim(x)[2]), col=myColors )	
+   # boxplot of first two samples, often technical replicates
+   
+	boxplot(x, las = 2, ylab="Transformed expression levels", main="Distribution of transformed data"
+		,cex.lab=1.5, cex.axis=1.5, cex.main=2, cex.sub=2)
+	plot(x[,1:2],xlab=colnames(x)[1],ylab=colnames(x)[2], main="Scatter plot of first two samples",cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2)
+	
+   }, height = 1600, width = 800)
+   
+output$genePlot <- renderPlot({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat ; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+
+	
+	tem = input$geneSearch ; tem = input$genePlotBox; tem = input$useSD
+	isolate({
+    x <- convertedData()
+	
+	Symbols <- rownames(x)
+	if( input$selectOrg != "NEW") {
+		ix = match( rownames(x), allGeneInfo()[,1])
+		if( sum( is.na(allGeneInfo()$symbol )) != dim(allGeneInfo() )[1] ) {  # symbol really exists? 
+			Symbols = as.character( allGeneInfo()$symbol[ix] )
+			Symbols[which( nchar(Symbols) <= 2 ) ] <- rownames(x) [which( nchar(Symbols) <= 2 ) ] 
+			}
+	   }
+	x = as.data.frame(x)
+	x$Genes = Symbols
+    #write.csv(x,"tem.csv")
+	# Search for genes
+	#ix = grep("HOXA",toupper(x$Genes) )
+	# ix = grep(toupper(input$geneSearch),toupper(x$Genes))  # sox --> Tsox  
+	# matching from the beginning of symbol
+	ix = which(regexpr(  paste("^" , toupper(input$geneSearch),sep="")   ,toupper(x$Genes)) > 0)
+	
+	if(grepl(" ", input$geneSearch)  )  # if there is space character, do exact match
+		ix = match(gsub(" ","", toupper(input$geneSearch)),x$Genes)
+	
+	# too few or too many genes found
+	if(length(ix) == 0 | length(ix) > 50 ) return(NULL)
+	  # no genes found
+	 	 
+	mdf = melt(x[ix,],id.vars="Genes", value.name="value", variable.name="samples")
+	# bar plot of individual samples
+	p1 <- ggplot(data=mdf, aes(x=samples, y=value, group = Genes, shape=Genes, colour = Genes)) +
+		geom_line() +
+		geom_point( size=5,  fill="white")+ #shape=21  circle
+		#theme(axis.text.x = element_text(size=16,angle = 45, hjust = 1)) +
+		labs(y="Transformed expression level") +
+		coord_cartesian(ylim = c(0, max(mdf$value)))
+	p1 <- p1 + theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
+	 theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
+	       axis.text.y = element_text( size = 16),
+		   axis.title.x = element_blank(),
+		   axis.title.y = element_text( size = 16) ) +
+	theme(legend.text=element_text(size=12))	
+		
+		
+	#ggplotly(p) %>% layout(margin = list(b = 250,l=100))  # prevent cutoff of sample names
+
+	# Barplot with error bars
+	mdf$count = 1
+	g = detectGroups(mdf$samples)
+	Means = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = mean, na.rm=TRUE  )
+	SDs = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = sd, na.rm=TRUE  )
+	Ns = aggregate(mdf$count, by= list(g, mdf$Genes) , FUN = sum  )
+	summarized = cbind(Means,SDs[,3],Ns[,3])
+	colnames(summarized)= c("Samples","Genes","Mean","SD","N")
+	summarized$SE = summarized$SD / sqrt(summarized$N)	
+		
+	#http://www.sthda.com/english/wiki/ggplot2-barplots-quick-start-guide-r-software-and-data-visualization
+	p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
+		geom_bar(stat="identity", position=position_dodge()) + # bars represent average
+		geom_errorbar(aes(ymin=Mean-SE, ymax=Mean+SE), width=0.2,position=position_dodge(.9)) +
+		labs(y="Expression Level") 
+	if(input$useSD == 1) { 
+	p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
+		geom_bar(stat="identity", position=position_dodge()) + # bars represent average
+		geom_errorbar(aes(ymin=Mean-SD, ymax=Mean+SD), width=0.2,position=position_dodge(.9)) +
+		labs(y="Expression Level") 
+	}
+	
+	p2 <- p2 +  theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
+	 theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
+	       axis.text.y = element_text( size = 16),
+		   axis.title.x = element_blank(),
+		   axis.title.y = element_text( size = 16) ) +
+	theme(legend.text=element_text(size=16))
+	
+	if( input$genePlotBox == 1)  p1 else p2
+	
+	})
+   })
+   
+
+processedData <- reactive({
+		  if (is.null(input$file1) && input$goButton == 0)    return()
+		  
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+		####################################
+		 
+			if(input$selectOrg == "NEW") return(  convertedData() ) else { 
+
+				withProgress(message="Preparing data for download ", {
+				
+				tem <-  merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], round(convertedData(),4),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )   
+				tem[,2] = paste(" ",tem[,2]) # add space to gene symbol to avoid auto convertion of symbols to dates by Excel 
+				incProgress(1/2, "mapping")
+				#tem[,1] = paste(" ",tem[,1]) # add space
+				 tem2 = merge( converted()$conversionTable, tem, by.x = "ensembl_gene_id",by.y="ensembl_gene_id", all.y=TRUE)
+				 tem2 <- tem2[,-3] # remove species column
+				 ix = which( tem2[,3] == "  NA") # remove NA's 
+				 tem2[ix,3] <- ""
+				 
+				 ix = which(is.na(tem2[,2]) ) # not in mapping table
+				 userIDs = tem2[,2]; userIDs[ix]=tem2[ix,1]	; userIDs = paste0(" ",userIDs)	# prevents Excel auto conversion		 
+				 tem2[,2] = tem2[,1]; tem2[ix,2]= ""
+				 tem2[,1]= userIDs;
+				 colnames(tem2)[1:2]= c("User_ID sorted by SD","Ensembl_gene_id")
+				 
+				 # sort by sd
+				 tem2 = tem2[ order( -apply(tem2[,-3:-1],1,sd )   )  ,]
+				 
+				 
+				 
+				 incProgress(1, "Done.")
+				 # add original data
+				# tem3 <- merge( readData()$data, tem2, by.x = "row.names", by.y = "User_input", all.x=TRUE )
+				# return(converted()$conversionTable) #return(readData()$data)
+				# colnames(tem)[1] = "Ensembl_or_Original_ID"
+				})
+				return(tem2)
+				
+			
+		}
+	  })
+
+processedCountsData <- reactive({
+		  if (is.null(input$file1) && input$goButton == 0)    return()
+		  
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+		####################################
+			
+		if(input$selectOrg == "NEW") return(  convertedData() ) else { 
+
+			withProgress(message="Preparing data for download ", {
+
+			if(is.null(convertedCounts() ) ) return(NULL) else 
+			{
+
+				withProgress(message="Preparing data for download ", {
+				
+				tem <-  merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], round(convertedCounts(),4),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )   
+				tem[,2] = paste(" ",tem[,2]) # add space to gene symbol to avoid auto convertion of symbols to dates by Excel 
+				incProgress(1/2, "mapping")
+				#tem[,1] = paste(" ",tem[,1]) # add space
+				 tem2 = merge( converted()$conversionTable, tem, by.x = "ensembl_gene_id",by.y="ensembl_gene_id", all.y=TRUE)
+				 tem2 <- tem2[,-3] # remove species column
+				 ix = which( tem2[,3] == "  NA") # remove NA's 
+				 tem2[ix,3] <- ""
+				 
+				 ix = which(is.na(tem2[,2]) ) # not in mapping table
+				 userIDs = tem2[,2]; userIDs[ix]=tem2[ix,1]	; userIDs = paste0(" ",userIDs)	# prevents Excel auto conversion		 
+				 tem2[,2] = tem2[,1]; tem2[ix,2]= ""
+				 tem2[,1]= userIDs;
+				 colnames(tem2)[1:2]= c("User_ID sorted by SD","Ensembl_gene_id")
+				 # sort by sd
+				 tem2 = tem2[ order( -apply(log2(10+ tem2[,-3:-1]),1,sd )   )  ,]
+				 incProgress(1, "Done.")
+				 # add original data
+				# tem3 <- merge( readData()$data, tem2, by.x = "row.names", by.y = "User_input", all.x=TRUE )
+				# return(converted()$conversionTable) #return(readData()$data)
+				# colnames(tem)[1] = "Ensembl_or_Original_ID"
+				})
+				return(tem2)
+			}
+
+			}) # progress
+			
+		}
+	  })  
+
+output$downloadProcessedData <- downloadHandler(
+		filename = function() {"Processed_Data.csv"},
+		content = function(file) {
+      write.csv( processedData(), file, row.names=FALSE )	    
+	})
+
+	
+output$downloadConvertedCounts <- downloadHandler(
+		filename = function() {"Converted_Counts_Data.csv"},
+		content = function(file) {
+      write.csv( processedCountsData(), file, row.names=FALSE )	    
+	})
+ 
+
+output$examineData <- DT::renderDataTable({
+   inFile <- input$file1
+	inFile <- inFile$datapath
+    if (is.null(input$file1) && input$goButton == 0)   return(NULL)
+
+	tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
+	isolate({
+	merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], round(convertedData(),2),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )
+	})
+  })
+
+  
+output$totalCounts <- renderPlot({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+    if (is.null(readData()$rawCounts))   return(NULL)
+	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	####################################
+	
+    par(mar=c(16,2,2,2))
+    x <- readData()$rawCounts
+	barplot( colSums(x)/1e6, col="green",las=3, cex.axis=1.3, cex =1.5, main="Total read counts (millions)")
+
+},width=400) # height is automatic, this enables the display of other plots below.
+
+
+################################################################
+#   Heatmaps
+################################################################
+
+output$listFactorsHeatmap <- renderUI({
+	tem = input$selectOrg; 
+	tem=input$limmaPval; tem=input$limmaFC
+	
+    if (is.null(readSampleInfo() ) ) # if sample info is uploaded and correctly parsed.
+       { return(NULL) }	 else { 
+	  selectInput("selectFactorsHeatmap", label="Sample color bar:",choices= c(colnames(readSampleInfo()), "Sample_Name")
+	     )   } 
+	})  
+
+	# conventional heatmap.2 plot
+output$heatmap1 <- renderPlot({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  {  
+			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
+		}
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) { 
+			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
+		}
+	####################################
+		
+    x <- readData()$data   # x = read.csv("expression1.csv")
+	withProgress(message="Runing hierarchical clustering ", {
+	n=input$nGenes
+	#if(n>6000) n = 6000 # max
+	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+	# this will cutoff very large values, which could skew the color 
+	if(input$geneCentering)
+		x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+	
+	# standardize by gene
+	if(input$geneNormalize) 
+		x <- x / apply(x,1,sd)
+		
+	# row centering and normalize
+	x <- scale(x, center = input$sampleCentering, scale = input$sampleNormalize) 
+
+	
+	
+	cutoff = median(unlist(x)) + input$heatmapCutoff * sd (unlist(x)) 
+	x[x>cutoff] <- cutoff
+	cutoff = median(unlist(x)) - input$heatmapCutoff *sd (unlist(x)) 
+	x[x< cutoff] <- cutoff
+	
+    groups = detectGroups(colnames(x) )
+	# if sample info file is uploaded us that info:
+
+	if(!is.null(readSampleInfo()) &&  !is.null(input$selectFactorsHeatmap) ) { 
+		if(input$selectFactorsHeatmap == "Sample_Name" )
+			groups = detectGroups(colnames(x) ) else 
+			{ 	ix = match(input$selectFactorsHeatmap, colnames(readSampleInfo() ) ) 
+				groups = readSampleInfo()[,ix]
+			}
+	}	
+	
+	groups.colors = rainbow(length(unique(groups) ) )
+
+	#http://stackoverflow.com/questions/15351575/moving-color-key-in-r-heatmap-2-function-of-gplots-package
+	lmat = rbind(c(0,4),c(0,1),c(3,2),c(5,0))
+	lwid = c(2,6) # width of gene tree; width of heatmap
+	lhei = c(1.5,.2,8,1.1)
+	#layout matrix
+	#		 [,1] [,2]
+	#	[1,]    0    4
+	#	[2,]    0    1
+	#	[3,]    3    2
+	#	[4,]    5    0
+	# 4--> column tree; 1--> column color bar; 2--> heatmap; 3-> row tree; 5--> color key.
+	# height of 4 rows is specified by lhei; width of columns is given by lwid
+
+
+	par(mar = c(5, 4, 1.4, 0.2))
+	
+
+	if( n>110) 
+	heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
+		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
+		,Colv=!input$noSampleClustering
+		#col=colorpanel(75,"green","black","magenta")  ,
+		#col=bluered(75),
+		#col=greenred(75), 
+		,col= heatColors[as.integer(input$heatColors1),]
+		,density.info="none", trace="none", scale="none", keysize=.5
+		,key=T, symkey=F
+		,ColSideColors=groups.colors[ as.factor(groups)]
+		,labRow=""
+		,margins=c(10,0)
+		,srtCol=45
+		,cexCol=2  # size of font for sample names
+		,lmat = lmat, lwid = lwid, lhei = lhei
+		)
+
+	if( n<=110) 
+	heatmap.2(x, distfun =  distFuns[[as.integer(input$distFunctions)]]
+		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
+		,Colv=!input$noSampleClustering		
+		,col= heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.5
+		,key=T, symkey=F,
+		#,labRow=labRow
+		,ColSideColors=groups.colors[ as.factor(groups)]
+		,margins=c(18,12)
+		,cexRow=1
+		,srtCol=45
+		,cexCol=1.8  # size of font for sample names
+		,lmat = lmat, lwid = lwid, lhei = lhei
+	)
+	
+	
+	par(lend = 1)           # square line ends for the color legend
+	add_legend("topleft",
+		legend = unique(groups), # category labels
+		col = groups.colors[ unique(as.factor(groups))],  # color key
+		lty= 1,             # line style
+		lwd = 10            # line width
+	)
+	
+	incProgress(1,"Done")
+	})
+
+} , height = 800, width = 400 )  
+
+
+# interactive heatmap with plotly
+output$heatmap <- renderPlotly({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  {  
+			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
+		}
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) { 
+			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
+		}
+	####################################
+	   x <- convertedData()
+	withProgress(message="Rendering heatmap ", {
+	n=input$nGenesPlotly
+	#if(n>6000) n = 6000 # max
+	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+
+	if(input$geneCentering)
+		x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+	# standardize by gene
+	if(input$geneNormalize) 
+		x <- x / apply(x,1,sd)
+	# row centering and normalize
+	x <- scale(x, center = input$sampleCentering, scale = input$sampleNormalize) 
+
+	cutoff = median(unlist(x)) + 3*sd (unlist(x)) 
+	x[x>cutoff] <- cutoff
+	cutoff = median(unlist(x)) - 3*sd (unlist(x)) 
+	x[x< cutoff] <- cutoff
+
+	# adding gene symbol
+	ix <- match( rownames(x), allGeneInfo()[,1])
+	geneSymbols <- as.character( allGeneInfo()$symbol)[ix]
+	# if missing or duplicated, use Ensembl ID
+	ix <- which(nchar( geneSymbols) <=1 | duplicated(geneSymbols ) );	geneSymbols[ ix ] <- rownames(x)[ix]
+	rownames( x) = geneSymbols;
+
+	incProgress(1/2, "Clustering of genes")	
+	clust <- x %>% 
+	  dist2() %>% 
+	  hclust2()
+
+	# Get order
+	ord <- clust$order
+
+	# Re-arrange based on order
+	df <- t( x[ord,] )%>%
+	   melt()
+	   
+	colnames(df)[1:2] <- c("X","Y")
+    colorNames = unlist(strsplit(tolower(rownames(heatColors)[ as.integer(input$heatColors1)   ]),"-" ) )
+	p <- df %>%
+	  ggplot(aes(X, Y, fill = value)) + 
+		   geom_tile()+ scale_fill_gradient2(low = colorNames[1], mid = colorNames[2],high = colorNames[3]) +
+		   theme(axis.title.y=element_blank(),   # remove y labels
+		   # axis.text.y=element_blank(),  # keep gene names for zooming
+			axis.ticks.y=element_blank(),
+			axis.title.x=element_blank()) +
+			theme(axis.text.x = element_text(size=10,angle = 45, hjust = 1))
+
+		incProgress(1,"Done")
+	ggplotly(p) %>% 
+		layout(margin = list(b = 150,l=200))  # prevent cutoff of sample names
+
+	})
+  })  
+  
+heatmapData <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+    x <- readData()$data
+
+	
+	n=input$nGenes
+	#if(n>6000) n = 6000 # max
+	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+	# this will cutoff very large values, which could skew the color 
+	x1 = x[1:n,] 
+	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+	cutoff = median(unlist(x)) + 4*sd (unlist(x)) 
+	x[x>cutoff] <- cutoff
+	cutoff = median(unlist(x)) - 4*sd (unlist(x)) 
+	x[x< cutoff] <- cutoff
+	
+	groups = detectGroups(colnames(x) )
+	groups.colors = rainbow(length(unique(groups) ) )
+
+	#pdf(file=NULL,width =700, height =700)
+	hy <- heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
+		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
+		,density.info="none", trace="none", scale="none")
+    #dev.off()
+	
+	# if not new species, add gene symbol
+	if( input$selectOrg == "NEW") return(NULL) else { 
+		x1 <- x1[ rev( hy$rowInd),hy$colInd]
+		# add gene symbol
+		ix = match( rownames(x1), allGeneInfo()[,1])
+		x1 <- cbind(as.character( allGeneInfo()$symbol)[ix],x1)
+		return( x1 )
+	}
+	
+
+	
+  })  
+  
+output$downloadData <- downloadHandler(
+		filename = function() {"heatmap.csv"},
+		content = function(file) {
+			write.csv(heatmapData(), file)
+	    }
+	)
+
+output$correlationMatrix <- renderPlot({
+		library(reshape2,verbose=FALSE) 	# for melt correlation matrix in heatmap
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		# heatmap of correlation matrix
+		x <- readData()$data
+		maxGene <- apply(x,1,max)
+		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
+		
+	   melted_cormat <- melt(round(cor(x),2), na.rm = TRUE)
+	# melted_cormat <- melted_cormat[which(melted_cormat[,1] != melted_cormat[,2] ) , ]
+		# Create a ggheatmap
+		ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+		 geom_tile(color = "white")+
+		 scale_fill_gradient2(low = "green", high = "red",  mid = "white", 
+			space = "Lab",  limit = c(min(melted_cormat[,3]) ,max(melted_cormat[,3])), midpoint = median(melted_cormat[,3]),
+			name="Pearson\nCorrelation"
+		  ) +
+		  theme_minimal()+ # minimal theme
+		 theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+			size = 15, hjust = 1))+
+		 theme(axis.text.y = element_text( 
+			size = 15))+
+		 coord_fixed()
+		# print(ggheatmap)
+		 ggheatmap + 
+		geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
+		theme(
+		  axis.title.x = element_blank(),
+		  axis.title.y = element_blank(),
+		  panel.grid.major = element_blank(),
+		  panel.border = element_blank(),
+		  panel.background = element_blank(),
+		  axis.ticks = element_blank(),
+		 legend.justification = c(1, 0),
+		  legend.position = c(0.6, 0.7),
+		 legend.direction = "horizontal")+
+		 guides(fill = FALSE) # + ggtitle("Pearson's Correlation Coefficient (all genes)")
+		 
+		 
+
+ 
+  }  )#, height = 500, width = 500)
+
+  
+output$sampleTree <- renderPlot({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		# heatmap of correlation matrix
+		x <- readData()$data
+		maxGene <- apply(x,1,max)
+		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
+		
+		plot(as.dendrogram(hclust2( dist2(t(x)))), xlab="", ylab="1 - Pearson C.C.", type = "rectangle")
+		 
+
+ 
+  }  )#, height = 500, width = 500)
+
+################################################################
+#   PCA
+################################################################
+output$listFactors <- renderUI({
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC
+	
+      if (is.null(readSampleInfo()) )
+       { return(HTML("Upload a sample info file to customize this plot.") ) }	 else { 
+	  selectInput("selectFactors", label="Color:",choices=c( colnames(readSampleInfo()), "Sample_Name")
+	     )   } 
+	})
+
+	
+output$listFactors2 <- renderUI({
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC
+	
+      if (is.null(readSampleInfo()) )
+       { return(NULL) }	 else { 
+	   tem <- c( colnames(readSampleInfo()), "Sample_Name")
+	   if(length(tem)>1) { tem2 = tem[1]; tem[1] <- tem[2]; tem[1] = tem2; } # swap 2nd factor with first
+	  selectInput("selectFactors2", label="Shape:",choices=tem)
+	        } 
+	})
+
+	
+output$PCA <- renderPlot({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  {  
+			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
+		}
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) { 
+			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
+		}
+	####################################
+	
+	x <- convertedData();
+     if(input$PCA_MDS ==1) {   #PCA
+	 pca.object <- prcomp(t(x))
+	 # par(mfrow=c(2,1))
+	if(0){
+     plot( pca.object$x[,1], pca.object$x[,2], pch = 1,cex = 2,col = detectGroups(colnames(x)),
+	     xlim=c(min(pca.object$x[,1]),max(pca.object$x[,1])*1.5   ),
+		xlab = "First principal component", ylab="Second Principal Component")
+		text( pca.object$x[,1], pca.object$x[,2],  pos=4, labels =colnames(x), offset=.5, cex=.8)
+		}
+		
+	pcaData = as.data.frame(pca.object$x[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+	colnames(pcaData) = c("PC1", "PC2", "Sample_Name")
+	percentVar=round(100*summary(pca.object)$importance[2,1:2],0)
+	if(is.null(readSampleInfo())) { 
+		p=ggplot(pcaData, aes(PC1, PC2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
+		} else {
+		pcaData = cbind(pcaData,readSampleInfo() )
+		p=ggplot(pcaData, aes_string("PC1", "PC2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
+		
+		}
+	p=p+xlab(paste0("PC1: ",percentVar[1],"% variance")) 
+	p=p+ylab(paste0("PC2: ",percentVar[2],"% variance")) 
+	p=p+ggtitle("Principal component analysis (PCA)")+coord_fixed(ratio=1.0)+ 
+     theme(plot.title = element_text(size = 16,hjust = 0.5)) + theme(aspect.ratio=1) +
+	 theme(axis.text.x = element_text( size = 16),
+	       axis.text.y = element_text( size = 16),
+		   axis.title.x = element_text( size = 16),
+		   axis.title.y = element_text( size = 16) ) +
+	theme(legend.text=element_text(size=16))
+	   print(p)
+	   }
+	# variance chart
+	# plot(pca.object,type="bar", xlab="Principal Components", main ="Variances explained")
+	
+	if(input$PCA_MDS ==2) {  # pathway
+	withProgress(message="Running pathway analysis", {
+	library(PGSEA,verbose=FALSE)
+	pca.object <- prcomp(t(x))
+	pca = 100*pca.object$rotation 
+	Npca = 5
+	if (Npca > dim(pca)[2]) { Npca = dim(pca)[2] } else pca <-  pca[,1:Npca]
+	#pca = pca[,1:5]
+	if(is.null(GeneSets() ) ) return(NULL)  # no species recognized
+	if(length(GeneSets() ) <= 1 ) return(NULL)
+	#cat("\n\nGene Sets:",length( GeneSets()))
+	pg = myPGSEA (pca,cl=GeneSets(),range=c(15,2000),p.value=TRUE, weighted=FALSE,nPermutation=1)
+	incProgress(2/8)
+	# correcting for multiple testing
+	p.matrix = pg$p.result
+	tem = p.adjust(as.numeric(p.matrix),"fdr")
+	p.matrix = matrix(tem, nrow=dim(p.matrix)[1], ncol = dim(p.matrix)[2] )
+	rownames(p.matrix) = rownames(pg$p.result); colnames(p.matrix) = colnames(pg$p.result)
+
+
+	selected =c()
+	for( i in 1:dim(p.matrix)[2]) {
+	  tem = which( rank(p.matrix[,i],ties.method='first') <= 5)  # rank by P value
+	 #tem = which( rank(pg$result[,i],ties.method='first') >= dim(p.matrix)[1]-3.1) # rank by mean
+	 names(tem) = paste("PC",i," ", rownames(p.matrix)[tem], sep="" )
+	 selected = c(selected, tem)
+	}
+	rowids = gsub(" .*","",names(selected))
+	rowids = as.numeric( gsub("PC","",rowids) )
+	pvals = p.matrix[ cbind(selected,rowids) ]
+	a=sprintf("%-1.0e",pvals)
+	tem = pg$result[selected,]
+	rownames(tem) = paste(a,names(selected)); #colnames(tem)= paste("PC",colnames(tem),sep="")
+	
+	tem = tem[!duplicated(selected),] 
+	incProgress(3/8)
+	#tem = t(tem); tem = t( (tem - apply(tem,1,mean)) ) #/apply(tem,1,sd) )
+
+	smcPlot(tem,scale =  c(-max(tem), max(tem)), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5, main="Pathways analysis on PCA")
+	 } )
+	 }
+	 
+	if(input$PCA_MDS ==3) {  # MDS
+	 fit = cmdscale( dist2(t(x) ), eig=T, k=2)
+	 
+	# par(pin=c(5,5))
+	if(0) {
+	plot( fit$points[,1],fit$points[,2],pch = 1,cex = 2,col = detectGroups(colnames(x)),
+	     xlim=c(min(fit$points[,1]),max(fit$points[,1])*1.5   ),
+	  xlab = "First dimension", ylab="Second dimension"  )
+	 text( fit$points[,1], fit$points[,2],  pos=4, labels =colnames(x), offset=.5, cex=1)
+	}
+	pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+	colnames(pcaData) = c("x1", "x2", "Sample_Name")
+	
+
+	if(is.null(readSampleInfo())) { 
+	p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
+	} else {
+		pcaData = cbind(pcaData,readSampleInfo() )
+		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
+		}
+	p=p+xlab("Dimension 1") 
+	p=p+ylab("Dimension 2") 
+	p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
+     theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
+	 	 theme(axis.text.x = element_text( size = 16),
+	       axis.text.y = element_text( size = 16),
+		   axis.title.x = element_text( size = 16),
+		   axis.title.y = element_text( size = 16) ) +
+	theme(legend.text=element_text(size=16))
+	   print(p)
+	
+	 }
+
+	if(input$PCA_MDS ==4) {  # t-SNE
+	 library(Rtsne,verbose=FALSE)
+	 set.seed(input$tsneSeed2)
+	 tsne <- Rtsne(t(x), dims = 2, perplexity=1, verbose=FALSE, max_iter = 400)
+
+	pcaData = as.data.frame(tsne$Y); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+	colnames(pcaData) = c("x1", "x2", "Sample_Name")
+	
+
+	if(is.null(readSampleInfo())) { 
+	p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
+	} else {
+		pcaData = cbind(pcaData,readSampleInfo() )
+		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
+		}
+	p=p+xlab("Dimension 1") 
+	p=p+ylab("Dimension 2") 
+	p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
+     theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
+	 	 theme(axis.text.x = element_text( size = 16),
+	       axis.text.y = element_text( size = 16),
+		   axis.title.x = element_text( size = 16),
+		   axis.title.y = element_text( size = 16) ) +
+	theme(legend.text=element_text(size=16))
+	   print(p)
+	
+	 }
+	
+	 
+  }, height = 500, width = 500)
+
+  
+PCAdata <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+    x <- readData()$data
+	
+	 result = prcomp(t(x))$x[,1:2]
+	 fit = cmdscale( dist2(t(x) ), eig=T, k=2)
+     result = cbind( result, fit$points[,1:2] )
+	 library(Rtsne,verbose=FALSE)
+	 set.seed(input$tsneSeed2)
+	 tsne <- Rtsne(t(x), dims = 2, perplexity=1, verbose=FALSE, max_iter = 400)
+	
+	result = cbind( result, tsne$Y)
+	 
+	 
+	 colnames(result) = c("PCA.x","PCA.y","MDS.x", "MDS.y", "tSNE.x", "tSNE.y")
+	 return( result)		  
+  })
+ 
+ 
+output$downloadPCAData <- downloadHandler(
+		filename = function() {"PCA_and_MDS.csv"},
+		content = function(file) {
+          write.csv(PCAdata(), file) 
+	    }
+	)
+
+################################################################
+#   K-means
+################################################################
+  
+Kmeans <- reactive({ # Kmeans clustering
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  {  
+			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
+		}
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) { 
+			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
+		}
+	####################################
+	
+	withProgress(message="k-means clustering", {
+    x <- convertedData()
+	#x <- readData()
+	#par(mfrow=c(1,2))
+	n=input$nGenesKNN
+	if(n>maxGeneClustering) n = maxGeneClustering # max
+	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+	#x1 <- x;
+	#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+	#x = 100* x[1:n,] / apply(x[1:n,],1,sum) 
+	x = x[1:n,]
+	if( input$kmeansNormalization == 'L1Norm')
+		x = 100* x / apply(x,1,function(y) sum(abs(y))) else # L1 norm
+	if( input$kmeansNormalization == 'geneMean')
+		x = x - apply(x,1,mean)  else # this is causing problem??????
+	if( input$kmeansNormalization == 'geneStandardization')	
+		x = (x - apply(x,1,mean) ) / apply(x,1,sd)
+	#colnames(x) = gsub("_.*","",colnames(x))
+	set.seed(2)
+	k=input$nClusters
+	
+
+	
+	cl = kmeans(x,k,iter.max = 50)
+	#myheatmap(cl$centers)	
+ 
+   incProgress(.3, detail = paste("Heatmap..."))
+	hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
+	tem = match(cl$cluster,hc$order) #  new order 
+	x = x[order(tem),] ; 	bar = sort(tem)
+		incProgress(1, detail = paste("Done")) }) #progress 
+	#myheatmap2(x-apply(x,1,mean), bar,1000)
+	return(list( x = x, bar = bar)) 
+
+  } )
+  
+  
+output$KmeansHeatmap <- renderPlot({ # Kmeans clustering
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+	####################################
+	
+	if( is.null(Kmeans()) ) return(NULL)
+	withProgress(message="Creating heatmap", {
+   
+	myheatmap2(Kmeans()$x-apply(Kmeans()$x,1,mean), Kmeans()$bar,1000,mycolor=input$heatColors1)
+	
+	incProgress(1, detail = paste("Done")) }) #progress 
+  } , height = 500)
+  
+  
+output$KmeansNclusters <- renderPlot({ # Kmeans clustering
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	withProgress(message="k-means clustering", {
+    x <- convertedData()
+	#x <- readData()
+	#par(mfrow=c(1,2))
+	n=input$nGenesKNN
+	#if(n>6000) n = 6000 # max
+	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+	#x1 <- x;
+	#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+	x = 100* x[1:n,] / apply(x[1:n,],1,sum)  # this is causing problem??????
+	#x = x - apply(x,1,mean)  # this is causing problem??????
+	#colnames(x) = gsub("_.*","",colnames(x))
+	set.seed(2)
+	# determining number of clusters
+	incProgress(.3, detail = paste("Performing k-means..."))
+	
+	k = 30
+	wss <- (nrow(x)-1)*sum(apply(x,2,var))
+	  for (i in 2:k) wss[i] <- sum(kmeans(x,centers=i,iter.max = 30)$withinss)
+		par(mar=c(4,5,4,4))
+	plot(1:k, wss, type="b", xlab="Number of Clusters (k)",
+		 ylab="Within groups sum of squares",
+		 cex=2,cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	,xaxt="n"	 )
+	axis(1, at = seq(1, 30, by = 2),cex.axis=1.5,cex=1.5)
+	
+	incProgress(1, detail = paste("Done")) }) #progress 
+  } , height = 500, width = 550)
+  
+  
+KmeansData <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	if( is.null(Kmeans()) ) return(NULL)
+
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+	####################################
+	
+	#myheatmap2(x, bar)
+	Cluster <- toupper(letters)[Kmeans()$bar]
+	x <- cbind(Cluster,Kmeans()$x)
+
+		# add gene symbol
+	if( input$selectOrg != "NEW") 
+	{ ix <- match( rownames(x), allGeneInfo()[,1])
+	  x <- cbind(as.character( allGeneInfo()$symbol)[ix],x) }
+	return(x)
+	
+	 #progress 
+  })
+  
+  
+output$tSNEgenePlot <- renderPlot({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if( is.null(Kmeans()) ) return(NULL)
+
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+				
+		tem = input$colorGenes; tem = input$seedTSNE
+		####################################
+		withProgress(message="Runing t-SNE algorithm", {
+		isolate({ 
+			Cluster <- Kmeans()$bar
+			train <- as.data.frame( cbind(Cluster,Kmeans()$x) )
+
+			library(Rtsne,verbose=FALSE)
+			incProgress(1/3)
+			train = unique(train)
+			Cluster = train$Cluster	
+			set.seed(input$seedTSNE)
+			
+			## Executing the algorithm on curated data
+			tsne <- Rtsne(train[,-1], dims = 2, perplexity=30, verbose=FALSE, max_iter = 400)
+			incProgress(2/3)
+
+			nClusters = length(unique(Cluster) )
+			if(input$colorGenes) {			
+				plot(tsne$Y[,1], tsne$Y[,2], pch = (0:(nClusters-1))[Cluster], cex = 1.,col = mycolors[Cluster], xlab="X",ylab="Y")
+				legend("topright",toupper(letters)[1:nClusters], pch = 0:(nClusters-1), col=mycolors, title="Cluster"  )
+			} else
+				plot(tsne$Y[,1], tsne$Y[,2],  cex = 1., xlab="X",ylab="Y")
+
+			incProgress(1)
+		})
+	
+	})
+	
+	
+	 #progress 
+  }, height = 700, width = 700 )
+
+  
+output$downloadDataKmeans <- downloadHandler(
+		filename = function() {"Kmeans.csv"},
+			content = function(file) {
+      write.csv(KmeansData(), file)
+	    }
+	)
+	
+	
+output$KmeansGO <- renderTable({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectGO3
+	if( is.null(input$selectGO3 ) ) return (NULL)
+	if( input$selectGO3 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.") )#No matching species
+   	if( is.null(Kmeans()) ) return(NULL)
+	if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+	####################################
+	withProgress(message="GO Enrichment", {
+		# GO
+		pp=0
+		minFDR = 0.01
+
+		for( i in 1:input$nClusters) {
+			incProgress(1/input$nClusters, , detail = paste("Cluster",toupper(letters)[i]) )
+
+			query = rownames(Kmeans()$x)[which(Kmeans()$bar == i)]
+			if(input$selectOrg == "NEW" && !is.null( input$gmtFile) ){ 
+				result <- findOverlapGMT( query, GeneSets(),1) 
+			} else {
+				convertedID <- converted()
+				convertedID$IDs <- query
+				result = FindOverlap (convertedID,allGeneInfo(),input$selectGO3,input$selectOrg,1) 
+			}
+			if( dim(result)[2] ==1) next;   # result could be NULL
+			result$Genes = toupper(letters)[i] 
+			if (pp==0 ) { results <- result; pp <- 1;
+			} else {
+				results <- rbind(results,result)
+			}
+		}
+
+		if(pp == 0) return( as.data.frame("No enrichment found."))
+		results= results[,c(5,1,2,4)]
+		colnames(results)= c("Cluster","FDR","Genes","Pathways")
+		if(min(results$FDR) > minFDR ) results = as.data.frame("No signficant enrichment found.") else
+		results = results[which(results$FDR < minFDR),]
+		incProgress(1, detail = paste("Done")) 
+	}) #progress
+	if( is.null(results) )  return ( as.matrix("No significant enrichment.") )	
+	if( class(results) != "data.frame")  return ( as.matrix("No significant enrichment.") )
+	if( dim(results)[2] ==1)  return ( as.matrix("No significant enrichment.") )
+	colnames(results)[2] = "adj.Pval"
+	results$Genes <- as.character(results$Genes)
+	results$Cluster[which( duplicated(results$Cluster) ) ] <- ""
+	results
+  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+
+  
+output$KmeansPromoter <- renderTable({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectGO3; tem = input$radioPromoterKmeans; tem=input$nGenesKNN; tem=input$nClusters
+	if( is.null(input$selectGO3 ) ) return (NULL)
+	if( is.null(limma()$results) ) return(NULL)
+	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	####################################
+
+	isolate({ 
+   	withProgress(message="Promoter analysis", {
+	x <- convertedData()
+	#x <- readData()
+	#par(mfrow=c(2,1))
+	n=input$nGenesKNN
+	# if(n>6000) n = 6000 # max
+	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+	
+	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+	#x = 100* x / apply(x,1,sum)  # this is causing problem??????
+	#x = x - apply(x,1,mean)  # this is causing problem??????
+	#colnames(x) = gsub("_.*","",colnames(x))
+	set.seed(2)
+	# determining number of clusters
+	k=input$nClusters
+	cl = kmeans(x,k,iter.max = 50)
+
+	hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
+	tem = match(cl$cluster,hc$order) #  new order 
+	x = x[order(tem),]
+	bar = sort(tem)
+	
+	results1 <- NULL; result <- NULL 
+	pp<- 0
+	for( i in 1:k ) {
+	incProgress(1/k, , detail = paste("Cluster",toupper(letters)[i]) )
+	query = rownames(x)[which(bar == i)]
+	
+	convertedID = convertID(query,input$selectOrg, input$selectGO2 );#"gmax_eg_gene"
+	result <- promoter( convertedID,input$selectOrg,input$radioPromoterKmeans )
+	
+	if( is.null(result)  ) next;   # result could be NULL
+	if(  dim(result)[2] ==1) next;
+	result$List = toupper(letters)[i]    
+	if (pp==0 ) { results1 <- result; pp <- 1 } else  { results1 = rbind(results1,result) }
+	}
+
+	incProgress(1, detail = paste("Done")) 
+	}) #progress
+	
+	if( is.null(results1) ) {as.data.frame("No significant motif enrichment found.")} else {
+		results1[ duplicated (results1[,4] ),4 ] <- ""
+	  results1[,c(4,1:3,5)]
+	  }
+	})
+  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+
+
+################################################################
+#   Differential gene expression
+################################################################
+output$listFactorsDE <- renderUI({
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC
+	 # Note that " in HTML needs to be denoted with \"    with  the escape character \.
+    if (is.null(readSampleInfo()) ) {# if sample info is uploaded and correctly parsed.
+        return(HTML("<font size = \"2\">A <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a> 
+	     can be uploaded to build a linear model according to experiment design. </font>")) 
+	 } else {
+	#} else if ( !(input$dataFileFormat==1& input$CountsDEGMethod==3 )  ){  # disable factor choosing for DESeq2	   
+		factors = colnames(readSampleInfo())
+		choices = setNames(factors, factors  )
+		#interactions = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=":"))
+		#choices = append( choices,setNames( interactions, paste(interactions,"interaction") ))
+		title1 = "1. Select 1 or 2 main factors. Or leave it blank and just choose pairs of sample groups below."	
+		if ( input$dataFileFormat==1& input$CountsDEGMethod==3  )
+					title1 = "1. Select 6 or less main factors. Or skip this step and just choose pairs of sample groups below."	
+		checkboxGroupInput("selectFactorsModel", 
+                              h5(title1), 
+                              choices = choices,
+                              selected = NULL)	   	  
+	        } 
+	})  
+
+	
+output$listBlockFactorsDE <- renderUI({
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC
+	 # Note that " in HTML needs to be denoted with \"    with  the escape character \.
+    if (is.null(readSampleInfo()) ) {# if sample info is uploaded and correctly parsed.
+		return(NULL)		   
+		 } else { 
+	  # } else if ( !(input$dataFileFormat==1& input$CountsDEGMethod==3 )  ){ 
+		factors = colnames(readSampleInfo())
+		
+		#only show factors not in main modelFactors
+		
+		factors = setdiff(factors, input$selectFactorsModel  )
+		if(length(factors) == 0 ) return(NULL)
+		choices = setNames(factors, factors  )
+		
+		title1 = "Select a factor for batch effect or paired samples, if needed."	
+		if ( input$dataFileFormat==1& input$CountsDEGMethod==3  )
+			title1 = "Select factors for batch effects or paired samples, if needed."	
+		
+		checkboxGroupInput("selectBlockFactorsModel", 
+                              h5(title1), 
+                              choices = choices,
+                              selected = NULL)  
+	  
+	        } 
+	})	
+	
+	
+output$listModelComparisons <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   { # if using sample names
+		   
+		   	factors = as.character ( detectGroups( colnames( readData()$data ) ) )
+			factors = unique(factors)# order is reversed
+			comparisons = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=" vs. "))
+			comparisons = c(comparisons, apply(t(combn(rev(factors),2)),1, function(x) paste(x,collapse=" vs. ")) )	
+			comparisons = sort(comparisons)
+			choices =  setNames(gsub(" vs\\. ","-",comparisons), comparisons )
+			checkboxGroupInput("selectModelComprions", 
+									  h5("Select comparisons among sample groups:"), 
+									  choices = choices,
+									  selected = choices[[1]])	
+	   
+		   }	 else { 
+				choices = list()
+				for( selectedFactors in input$selectFactorsModel) { 
+					ix = match(selectedFactors, colnames(readSampleInfo() ) )
+					if(is.na(ix) ) next;   # if column not found, skip
+					factors = unique( readSampleInfo()[,ix])
+					comparisons = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=" vs. "))
+					comparisons = c(comparisons, apply(t(combn(rev(factors),2)),1, function(x) paste(x,collapse=" vs. ")) )	
+					comparisons = sort(comparisons)
+					comparisons = paste0(selectedFactors,": ",comparisons)
+					choices = append( choices, setNames(comparisons, comparisons ))
+					
+				} # for each factor
+				if(length(choices)==0 ) return(NULL) else
+				checkboxGroupInput("selectModelComprions", 
+									  h5("2. Select one or more comparisons:"), 
+									  choices = choices,
+									  selected = choices[[1]])	   
+				} 
+	}) 
+
+	
+output$listInteractionTerms <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
+
+				selectedFactors = input$selectFactorsModel
+				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
+				if(length(selectedFactors)<=1 ) return(NULL) 
+				#if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
+				# for ( i in 1:length(selectedFactors) ) {
+				interactions = apply(t(combn(selectedFactors,2)),1, function(x) paste(x,collapse=":"))
+				
+				choices = setNames(interactions,interactions)
+
+				 checkboxGroupInput(  'selectInteractions', 
+									  label=h5("Interaction terms between factors(e.g. genotypes repond differently to treatment?):"),
+									  choices= choices,selected = NULL)
+									  
+					
+				
+				
+				} #else 
+	}) 
+
+	
+	# set limits for selections of factors. 
+observe({
+		if(length(input$selectFactorsModel) > maxFactors) # less than 4 factors
+			updateCheckboxGroupInput(session, "selectFactorsModel", selected= tail(input$selectFactorsModel,maxFactors))
+		
+		if( input$CountsDEGMethod !=3 ) { # if using the limma package
+			if(length(input$selectFactorsModel) > 2) # less than 2 factors
+				updateCheckboxGroupInput(session, "selectFactorsModel", selected= tail(input$selectFactorsModel,2))
+
+			if(length(input$selectBlockFactorsModel) > 1) # less than 1 factors
+				updateCheckboxGroupInput(session, "selectBlockFactorsModel", selected= tail(input$selectBlockFactorsModel,2))
+				
+		}
+		if(length(input$selectComparisonsVenn) >5 )
+					updateCheckboxGroupInput(session, "selectComparisonsVenn", selected= tail(input$selectComparisonsVenn,5))
+		
+	})
+	
+	
+output$experimentDesign <- renderText({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
+					model = paste("Model: expression ~ ",  paste(input$selectFactorsModel, collapse=" + "  ))
+					if(!is.null(input$selectBlockFactorsModel )  )
+						model = paste0(model," + ", paste(input$selectBlockFactorsModel, collapse=" + " )    )					
+					if(!is.null(input$selectInteractions )  )
+						model = paste0(model," + ", paste(input$selectInteractions, collapse=" + " )    )
+					return( model  )									
+				} #else 
+	})
+
+	
+output$selectReferenceLevels1 <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
+
+				selectedFactors = input$selectFactorsModel
+				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
+				if(length(selectedFactors)==0 ) return(NULL) 
+				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
+				# for ( i in 1:length(selectedFactors) ) {
+				 i = 1; 
+				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
+				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
+
+				 selectInput(  paste0("referenceLevelFactor",i), 
+									  label=h5(paste ("Reference/baseline level for",selectedFactors[i])),
+									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
+									  
+					
+				
+				
+				} #else 
+	}) 
+
+	
+output$selectReferenceLevels2 <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
+
+				selectedFactors = input$selectFactorsModel
+				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
+				if(length(selectedFactors) < 2 ) return(NULL) 
+				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
+				 i = 2; 
+				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
+				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
+
+				 selectInput(  paste0("referenceLevelFactor",i), 
+									  label=h5( paste ("Reference/baseline level for",selectedFactors[i])),
+									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
+									                             # "genotype:wt"
+					
+				
+				
+				} #else 
+	})	
+
+	
+output$selectReferenceLevels3 <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
+
+				selectedFactors = input$selectFactorsModel
+				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
+				if(length(selectedFactors) < 2 ) return(NULL) 
+				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
+				 i = 3; 
+				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
+				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
+
+				 selectInput(  paste0("referenceLevelFactor",i), 
+									  label=h5( paste ("Reference/baseline level for",selectedFactors[i])),
+									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
+									                             # "genotype:wt"
+					
+				
+				
+				} #else 
+	})
+
+	
+output$selectReferenceLevels4 <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
+
+				selectedFactors = input$selectFactorsModel
+				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
+				if(length(selectedFactors) < 2 ) return(NULL) 
+				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
+				 i = 4; 
+				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
+				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
+
+				 selectInput(  paste0("referenceLevelFactor",i), 
+									  label=h5( paste ("Reference/baseline level for",selectedFactors[i])),
+									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
+									                             # "genotype:wt"
+					
+				
+				
+				} #else 
+	})	
+
+	
+output$selectReferenceLevels5 <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
+
+				selectedFactors = input$selectFactorsModel
+				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
+				if(length(selectedFactors) < 2 ) return(NULL) 
+				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
+				 i = 5; 
+				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
+				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
+
+				 selectInput(  paste0("referenceLevelFactor",i), 
+									  label=h5( paste ("Reference/baseline level for",selectedFactors[i])),
+									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
+									                             # "genotype:wt"
+					
+				
+				
+				} #else 
+	})	
+
+	
+output$selectReferenceLevels6 <- renderUI({
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+		   {  return(NULL)
+	   
+		   }	 else { 
+
+				selectedFactors = input$selectFactorsModel
+				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
+				if(length(selectedFactors) < 2 ) return(NULL) 
+				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
+				 i = 6; 
+				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
+				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
+
+				 selectInput(  paste0("referenceLevelFactor",i), 
+									  label=h5( paste ("Reference/baseline level for",selectedFactors[i])),
+									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
+									                             # "genotype:wt"
+					
+				
+				
+				} #else 
+	})	
+
+factorReferenceLevels <- reactive({
+	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$submitModelButton  # this is used to make it responsive only when model and comparisons are completed
+	
+	return( c(  input$referenceLevelFactor1,
+				input$referenceLevelFactor2,
+				input$referenceLevelFactor3,
+				input$referenceLevelFactor4,
+				input$referenceLevelFactor5,
+				input$referenceLevelFactor6 )
+	)
+
+})
+	
+limma <- reactive({  
+	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$CountsDEGMethod; tem = input$countsLogStart
+	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem=input$CountsDEGMethod
+	tem = input$submitModelButton  # this is used to make it responsive only when model and comparisons are completed
+	####################################
+	
+	isolate({ 
+	withProgress(message="Identifying differentially expressed genes", {
+	if(input$dataFileFormat == 1 ) {  # if count data
+		 if(input$CountsDEGMethod == 3 ) {    # if DESeq2 method
+				# rawCounts = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
+				# res =DEG.DESeq2(rawCounts, .05, 2) 
+				# res1 =DEG.limma(rawCounts, .1, 1.5,rawCounts, 2,3) 
+					
+			return(   DEG.DESeq2( convertedCounts(),input$limmaPval, input$limmaFC,
+									input$selectModelComprions, readSampleInfo(),
+									c(input$selectFactorsModel,input$selectInteractions), 
+									input$selectBlockFactorsModel, factorReferenceLevels() )  )
+			}
+			if(input$CountsDEGMethod < 3 )    # voom or limma-trend
+				return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,
+									convertedCounts(), input$CountsDEGMethod,
+									priorCounts=input$countsLogStart,input$dataFileFormat,
+									input$selectModelComprions, readSampleInfo(),
+									c(input$selectFactorsModel,input$selectInteractions),
+									input$selectBlockFactorsModel) )
+	} else if (input$dataFileFormat == 2 ){ # normalized data
+	 return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,
+						convertedCounts(), input$CountsDEGMethod,
+						priorCounts=input$countsLogStart,input$dataFileFormat,
+						input$selectModelComprions, readSampleInfo(),
+						c(input$selectFactorsModel,input$selectInteractions),
+						input$selectBlockFactorsModel) )
+	} else {   # dataFileFormat == 3 user just uploaded fold change matrix
+	
+		x = convertedData()
+		
+		pvals = convertedPvals()
+		if(!is.null(pvals) ) {
+		  ix = match(rownames(x), rownames(pvals))
+		  pvals = pvals[ix,]
+		}
+
+
+		# looks like ratio data, take log2
+		if( sum(round(apply(x,2, median) + .2) == 1 ) == dim(x)[2] & min(x) > 0) 
+			x = log2(x)
+		
+		Exp.type = "None standard data without replicates."
+		all.Calls = x # fake calls
+		for( i in 1: dim(all.Calls)[2]) { 
+			tem <- all.Calls[,i]
+			all.Calls[which( tem <= log2(input$limmaFC) & tem >=  -log2(input$limmaFC) ) ,i] = 0			
+			all.Calls[which( tem > log2(input$limmaFC)  ) ,i] = 1
+			all.Calls[which( tem < -log2(input$limmaFC) ) ,i] = -1		
+			if(!is.null(pvals) ) 
+				all.Calls[ which( pvals[,i] > input$limmaPval),i] = 0
+		}
+		comparisons = colnames(all.Calls)
+		extractColumn <- function (i) {
+			topGenes = as.data.frame( convertedData()[,i,drop=FALSE])
+			if(is.null(pvals) ) topGenes$FDR = 0 else 
+				topGenes$FDR = pvals[,i]# fake fdr
+				
+			colnames(topGenes) = c("Fold","FDR")
+			return(topGenes)	
+		} 
+		topGenes = lapply( 1:dim( x )[2], extractColumn )
+		topGenes <- setNames(topGenes, colnames(x ) )
+		
+		return( list(results= all.Calls, comparisons = colnames(x ), Exp.type=Exp.type, topGenes=topGenes) )
+	}
+		
+	})
+	})
+	})	
+
+	
+output$textLimma <- renderText({
+      if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+ 	tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
+	tem=input$limmaPval; tem=input$limmaFC
+	tem = input$submitModelButton 
+	limma()$Exp.type
+	#paste( limma()$comparisons,collapse=" "     )  
+	})	
+  
+  
+output$vennPlot <- renderPlot({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+		tem=input$CountsDEGMethod
+		tem = input$selectFactorsModel # responsive to changes in model and comparisons
+		tem = input$selectModelComprions
+		tem = input$submitModelButton 
+		tem = input$UpDownRegulated
+		if(is.null(input$selectComparisonsVenn) ) return(NULL)
+		####################################
+		
+		isolate({ 
+		
+			results = limma()$results
+
+			# split by up or down regulation
+			if(input$UpDownRegulated) { 			
+			results2 = cbind(results, results)
+			colnames(results2)= c( paste0("UP_", colnames(results)),paste0("Down_", colnames(results)) )
+			for(i in 1:dim(results)[2] ) {
+				results2[,i*2-1] = results[,i]
+				results2[ which(results2[,i*2-1] < 0 ) , i*2-1] = 0
+				results2[,i*2] = results[,i]	
+				results2[ which(results2[,i*2] > 0 ) , i*2] = 0	
+			}			
+			results <- results2			
+			}			
+			
+			
+			
+			
+			
+			ixa = c()
+			for (comps in  input$selectComparisonsVenn) { 
+				 if(!grepl("^I:|^I-", comps) ) {  # if not interaction term
+					ix = match(comps, colnames(results)) 
+				  } else {
+						#mismatch in comparison names for interaction terms for DESeq2
+						#I:water_Wet.genetic_Hy 	 in the selected Contrast
+						#Diff-water_Wet-genetic_Hy   in column names
+						tem = gsub("^I-","I:" ,colnames(results))
+						tem = gsub("-","\\.",tem)
+						ix = match(comps, tem) 
+
+						if(is.na(ix) ) # this is for limma package
+							ix = match(comps, colnames(results)) 			
+						
+					  }
+					ixa = c(ixa,ix)
+				  }
+					
+			results = results[,ixa,drop=FALSE] # only use selected comparisons
+			if(dim(results)[2] >5) results <- results[,1:5]
+			colnames(results) = gsub("^I-","I:" ,colnames(results))	
+
+			
+			
+			
+			
+			
+			vennDiagram(results,circle.col=rainbow(5), cex=c(1.,1, 0.7) ) # part of limma package
+
+		})
+    }, height = 600, width = 600)
+
+output$sigGeneStats <- renderPlot({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+		tem=input$CountsDEGMethod
+		tem = input$selectFactorsModel # responsive to changes in model and comparisons
+		tem = input$selectModelComprions
+		tem = input$submitModelButton 
+
+		####################################
+		
+		isolate({ 
+		
+			results = limma()$results
+
+		 library(reshape2)
+		 Up =  apply(results, 2, function(x) sum(x == 1) )
+		 Down = apply(results, 2, function(x) sum(x == -1) ) 
+		 stats = rbind(Up, Down)
+				 
+		 gg <- melt(stats)
+
+		 colnames(gg) = c("Regulation","Comparisons","Genes")
+		 gg$Regulation = as.factor(gg$Regulation)
+		 gg$Regulation = relevel(gg$Regulation,"Up")
+		 
+		 p= ggplot(gg, aes(x=Comparisons, y=Genes, fill=Regulation))+
+			 geom_bar(position="dodge", stat="identity") + coord_flip() +
+			 theme(legend.position = "top") + 
+			 scale_fill_manual(values=c("red", "blue")) +
+			 theme(axis.title.y=element_blank(), axis.text=element_text(size=18))			
+			
+		p
+			
+
+		})
+    },width=800, height=600)
+	
+output$sigGeneStatsTable <- renderTable({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+		tem=input$CountsDEGMethod
+		tem = input$selectFactorsModel # responsive to changes in model and comparisons
+		tem = input$selectModelComprions
+		tem = input$submitModelButton 
+
+		####################################
+		
+		isolate({ 
+		
+		results = limma()$results
+
+		 Up =  apply(results, 2, function(x) sum(x == 1) )
+		 Down = apply(results, 2, function(x) sum(x == -1) ) 
+		 stats = rbind(Up, Down)
+		 stats = t(stats)
+		 stats=cbind(rownames(stats), stats)
+		 colnames(stats)[1]="Comparisons"
+
+		 return(as.data.frame(stats))
+
+		})
+    }, digits = 0,spacing="s",include.rownames=F,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+	
+output$listComparisonsVenn <- renderUI({
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC
+	tem = input$submitModelButton 
+	tem = input$UpDownRegulated	
+      if (is.null(input$file1)&& input$goButton == 0 )
+       { selectInput("selectComparisonsVenn", label = NULL, # h6("Funtional Category"), 
+                  choices = list("All" = "All"), selected = "All")  
+		}	 else { 
+				choices = setNames(limma()$comparisons, limma()$comparisons  )
+				if(input$UpDownRegulated) {
+				  tem = c( paste0("UP_", limma()$comparisons),paste0("Down_", limma()$comparisons) )
+				  choices = setNames(tem, tem)
+				
+				}
+				
+				choices3 = choices;
+				if(length(choices3)>3) choices3 = choices[1:3]  # by default only 3 are selected
+				checkboxGroupInput("selectComparisonsVenn", 
+									  h4("Select up to 5 comparisons"), 
+									  choices = choices,
+									  selected = choices3)	
+
+	     } 
+	})
+
+	
+output$listComparisons <- renderUI({
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC
+	tem = input$submitModelButton ; tem = input$CountsDEGMethod	
+      if (is.null(input$file1)&& input$goButton == 0 )
+       { selectInput("selectContrast", label = NULL,  
+                  choices = list("All" = "All"), selected = "All")  
+				  }	 else { 
+			selectInput("selectContrast", label="Select a comparison to examine. \"A-B\" means A vs. B (See heatmap). Interaction terms start with \"I:\"",choices=limma()$comparisons
+	     )   } 
+	})
+
+	
+output$listComparisonsPathway <- renderUI({
+	tem = input$selectOrg
+	tem = input$submitModelButton ; tem = input$CountsDEGMethod	
+      if (is.null(input$file1)&& input$goButton == 0 )
+       { selectInput("selectContrast1", label = NULL, # h6("Funtional Category"), 
+                  choices = list("All" = "All"), selected = "All")  }	 else { 
+
+	  selectInput("selectContrast1", label="Select a comparison to analyze:",choices=limma()$comparisons
+	     )   } 
+	})
+
+	
+output$listComparisonsGenome <- renderUI({
+	tem = input$selectOrg
+	tem = input$submitModelButton ; tem = input$CountsDEGMethod	
+      if (is.null(input$file1)&& input$goButton == 0 )
+       { selectInput("selectContrast1", label = NULL, # h6("Funtional Category"), 
+                  choices = list("All" = "All"), selected = "All")  }	 else { 
+	  selectInput("selectContrast2", label="Select a comparison to visualize:",choices=limma()$comparisons
+	     )   } 
+	})
+	
+	
+DEG.data <- reactive({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC; 
+		
+			tem = input$CountsDEGMethod; 	
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+		tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+		tem= input$selectModelComprions;  tem= input$selectInteractions
+		tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+		tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+		tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+    	####################################
+		
+		isolate({ 
+		  genes = limma()$results
+		  genes = as.data.frame( genes[which( rowSums(genes) != 0 ),] )
+		  colnames(genes) = colnames( limma()$results )
+		  genes = merge(genes,convertedData(), by='row.names')
+		  colnames(genes)[1] = "1: upregulation, -1: downregulation"
+			# add gene symbol
+		ix = match( genes[,1], allGeneInfo()[,1])
+		genes <- cbind(as.character( allGeneInfo()$symbol)[ix],genes) 
+		colnames(genes)[1] = "Symbol"
+		genes <- genes[,c(2,1,3:dim(genes)[2]) ]
+		return(genes)
+		})
+		})
+
+		
+output$selectedHeatmap <- renderPlot({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast;
+	tem = input$heatColors1
+	tem = input$CountsDEGMethod; 	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	####################################
+	
+	withProgress(message="Generating heatmap", {
+	if( is.null(input$selectContrast)) return(NULL)
+	if( is.null(limma()$results)) return(NULL)
+	if( is.null(selectedHeatmap.data() )) return(NULL) 
+	isolate({ 
+	
+		 bar = selectedHeatmap.data()$bar +2;
+		 bar[bar==3] =2
+
+	  	 myheatmap2( selectedHeatmap.data()$genes,bar,200,mycolor=input$heatColors1,c("Down","Up") )
+	 
+	 incProgress(1, detail = paste("Done")) 
+	
+	 })
+	})
+	
+    }, height = 400, width = 500)
+
+	
+selectedHeatmap.data <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast;
+	tem = input$heatColors1
+	tem = input$CountsDEGMethod; 	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	####################################	
+
+	if( is.null(input$selectContrast)) return(NULL)
+	if( is.null(limma()$results)) return(NULL)
+	#if( is.null(selectedHeatmap.data() )) return(NULL) 
+	isolate({ 
+		  genes <- limma()$results
+		  if( is.null(genes) ) return(NULL)
+		  if(!grepl("I:", input$selectContrast) ) {  # if not interaction term
+			ix = match(input$selectContrast, colnames(genes)) 
+		  } else {
+			#mismatch in comparison names for interaction terms for DESeq2
+			#I:water_Wet.genetic_Hy 	 in the selected Contrast
+			#Diff-water_Wet-genetic_Hy   in column names
+			tem = gsub("I-","I:" ,colnames(genes))
+			tem = gsub("-","\\.",tem)
+			ix = match(input$selectContrast, tem) 
+			
+			if(is.na(ix) ) # this is for limma package
+				ix = match(input$selectContrast, colnames(genes)) 			
+			
+		  }
+	  
+		  if(is.null(ix)) return(NULL)
+		  if(is.na(ix)) return(NULL)
+		  if( sum(abs(genes[,ix] )  ) <= 1 ) return(NULL) # no significant genes for this comparison
+		  if(dim(genes)[2] < ix ) return(NULL)
+		  query = rownames(genes)[which(genes[,ix] != 0)]
+		  if(length(query) == 0) return(NULL)
+		  iy = match(query, rownames(convertedData()  ) )
+		  
+
+		 iz = findContrastSamples(	input$selectContrast, 
+									colnames(convertedData()),
+									readSampleInfo(),
+									input$selectFactorsModel,
+									input$selectModelComprions, 
+									factorReferenceLevels(),
+									input$CountsDEGMethod,
+									input$dataFileFormat
+								)
+	
+		# color bar
+		 bar = genes[,ix]
+		 bar = bar[bar!=0]
+
+		 # retreive related data		 
+		 genes = convertedData()[iy,iz,drop=FALSE]
+		 
+		 genes = genes[order(bar),,drop=FALSE] # needs to be sorted because myheatmap2 does not reorder genes
+		 bar = sort(bar)
+
+
+		 return(list(genes=genes, bar=bar ))
+
+	
+	 })
+	})
+	
+	
+output$download.selectedHeatmap.data <- downloadHandler(
+		filename = function() {paste("Diff_genes_heatmap_",input$selectContrast,".csv",sep="")},
+			content = function(file) {
+			write.csv(geneListDataExport(), file, row.names=FALSE)
+	    }
+	)
+	
+output$download.DEG.data <- downloadHandler(
+		filename = function() {"Diff_expression_all_comparisons.csv"},
+		content = function(file) {
+			write.csv(DEG.data(), file,row.names=FALSE)
+	    }
+	)
+
+AllGeneListsGMT <- reactive({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+		tem=input$CountsDEGMethod
+		tem = input$selectFactorsModel # responsive to changes in model and comparisons
+		tem = input$selectModelComprions
+		tem = input$submitModelButton 
+
+		####################################
+		
+		isolate({ 
+		
+			results = limma()$results
+
+			results2 = cbind(results, results)
+			colnames(results2)= c( paste0("UP_", colnames(results)),paste0("Down_", colnames(results)) )
+			for(i in 1:dim(results)[2] ) {
+				results2[,i*2-1] = results[,i]
+				results2[ which(results2[,i*2-1] < 0 ) , i*2-1] = 0
+				results2[,i*2] = results[,i]	
+				results2[ which(results2[,i*2] > 0 ) , i*2] = 0	
+			}
+
+			geneList1 <- function (i) {
+				ix = which(results2[,i] !=0 )
+				return(paste0(colnames(results2)[i],"\t", length(ix),"\t",
+						paste(rownames(results2 )[ix], collapse="\t" ) ) )			
+			}
+			tem = sapply(1:dim(results2)[2],geneList1 )
+				
+			return( paste(tem, collapse="\n") )
+		})
+    })
+
+output$downloadGeneListsGMT <- downloadHandler(
+		filename = function() {"All_gene_lists_GMT.txt"},
+		content = function(file) {
+			write(AllGeneListsGMT(), file)
+	    }
+	)
+
+	# Top DEGs  
+output$geneList <- renderTable({
+    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
+		tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
+	
+	tem = input$CountsDEGMethod; 	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	####################################
+	
+	noSig = as.data.frame("No significant genes find!")
+	if( is.null(input$selectContrast) ) return(NULL)
+	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
+	if( length(limma()$topGenes) == 0 ) return(noSig)
+	if( is.null( geneListData() ) ) return(NULL)
+	if( dim(geneListData() )[1]> 50 )
+		return( geneListData()[1:50,] )
+	else return( geneListData() )
+	
+	
+  },digits=2,align="l",include.rownames=F,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+	#, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T,include.rownames=TRUE)
+
+	
+geneListDataExport <- reactive({
+		if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
+			tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts; tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+		tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+		tem= input$selectModelComprions;  tem= input$selectInteractions
+		tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+		tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+		tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+
+		noSig = as.data.frame("No significant genes find!")
+		if( is.null(input$selectContrast) ) return(NULL)
+		if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
+		if( length(limma()$topGenes) == 0 ) return(noSig)
+		if( is.null( geneListData() ) ) return(NULL)
+		if( input$selectOrg == "NEW" )
+			tem <- merge(geneListData(), convertedData(), by.x = 'Top_Genes',by.y = 'row.names') else
+		tem <- merge(geneListData(), convertedData(), by.x = 'Ensembl ID',by.y = 'row.names') 
+		tem <- tem[order( -sign(tem[,2] ), -abs(tem[,2])),]
+		tem$Regulation = "Up"
+		tem$Regulation[which(tem[,2]<0 )] <- "Down"
+		tem <- tem[,c(dim(tem)[2],1:( dim(tem)[2]-1) )  ]
+		return( tem )
+	
+  })
+	#, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T,include.rownames=TRUE)
+
+	
+geneListData <- reactive({
+		if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
+			tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+		tem = input$selectFactorsModel # responsive to changes in model and comparisons
+		tem = input$selectModelComprions
+		tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+		tem= input$selectModelComprions;  tem= input$selectInteractions
+		tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+		tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+		tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+		####################################
+		
+		noSig = as.data.frame("No significant genes find!")
+		if( is.null(input$selectContrast) ) return(NULL)
+		if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
+		if( length(limma()$topGenes) == 0 ) return(noSig)
+		if(length( limma()$comparisons)  ==1 )  
+		{ top1=limma()$topGenes[[1]]  
+		} else {
+		  top = limma()$topGenes
+		  ix = match(input$selectContrast, names(top))
+		  if( is.na(ix)) return (noSig)
+		  top1 <- top[[ix]]; 
+		  }
+		  if(dim(top1)[1] == 0 ) return (noSig)
+		  colnames(top1)= c("Fold","FDR")
+		  #top1 = merge(top1,convertedData(), by='row.names')
+		  #colnames(top1)[1] = "Genes"
+		  top1 = top1[order(-abs(top1$Fold)) ,]
+		  if ( length( which( top1$FDR <=  input$limmaPval  &  abs(top1$Fold)  >= log2(input$limmaFC) ) ) == 0 )
+			return( noSig)
+		  top1 <- top1[which(top1$FDR <=  input$limmaPval ) ,]
+		  top1 <- top1[which(abs(top1$Fold)  >= log2( input$limmaFC)) ,]
+		  top1$Top_Genes <- rownames(top1)
+		  top1 <- top1[,c(3,1,2)]
+		  
+		  # if new species
+		  if( input$selectGO2 == "ID not recognized!" | input$selectOrg == "NEW") return (top1); 
+		  
+		  #convertedID = convertID(top1[,1],input$selectOrg, "GOBP" );#"gmax_eg_gene"
+		  # tem <- geneInfo(convertedID,input$selectOrg) #input$selectOrg ) ;
+		 #  tem <- geneInfo(converted(),input$selectOrg)
+		  top1 <- merge(top1, allGeneInfo(), by.x ="Top_Genes", by.y="ensembl_gene_id",all.x=T )
+		  
+		  if ( sum( is.na(top1$band)) == dim(top1)[1] ) top1$chr = top1$chromosome_name else
+			top1$chr = paste( top1$chromosome_name, top1$band,sep="")
+		  
+		  top1 <- top1[,c('Top_Genes','Fold','FDR','symbol','chr','gene_biotype')]
+		  
+		 
+		#  ix = match(top1[,1], tem$ensembl_gene_id)
+		 # if( sum(is.na( tem$Symbol[ix]) ) != length(ix) ) 
+		  # { top1 <- cbind(top1, tem$Symbol[ix]); colnames(top1)[4]= "Symbol" }
+		  top1 = top1[order(-abs(as.numeric( top1$Fold))) ,]
+		  top1$FDR <- sprintf("%-3.2e",top1$FDR )
+		  colnames(top1) <- c("Ensembl ID", "log2 Fold Change", "Adj.Pval", "Symbol","Chr","Type")
+		  if ( sum( is.na(top1$Symbol)) == dim(top1)[1] ) top1 <- top1[,-4] 
+
+		  return(top1)
+	
+  })
+
+  
+output$volcanoPlot <- renderPlot({
+    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
+	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+
+	if( is.null(input$selectContrast) ) return(NULL)
+	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
+	if( length(limma()$topGenes) == 0 ) return(NULL)
+	isolate({ 
+	withProgress(message="Generating volcano plot",{ 
+	
+	if(length( limma()$comparisons)  ==1 )  
+    { top1=limma()$topGenes[[1]]  
+	} else {
+	  top = limma()$topGenes
+	  ix = match(input$selectContrast, names(top))
+	  if( is.na(ix)) return (NULL)
+	  top1 <- top[[ix]]; 
+	  }
+	  incProgress(1/2)
+	  if(dim(top1)[1] == 0 ) return (NULL)
+	  colnames(top1)= c("Fold","FDR")
+	 top1 <- as.data.frame(top1) # convert to data frame
+     top1 <- top1[which(!(is.na(top1$Fold)|is.na(top1$FDR)    )),] # remove NA's 
+	 top1$upOrDown <- 1
+	 #write.csv(top1,"tem.csv")
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval& top1$Fold  >= log2( input$limmaFC)) ]  <- 2
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
+	 par(mar=c(5,5,1,1))
+	 plot(top1$Fold,-log10(top1$FDR),col = c("grey30", "red","blue")[top1$upOrDown],
+	 pch =16, cex = .3, xlab= "log2 fold change", ylab = "- log10 (FDR)",
+	 cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	)    
+     legend("bottomright",c("Upregulated","Downregulated"),fill = c("red","blue"),cex=1.1 )
+	 
+	}) })
+
+  },height=450, width=500)
+  
+  
+output$volcanoPlotly <- renderPlotly({
+    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
+	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	if( is.null(input$selectContrast) ) return(NULL)
+	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
+	if( length(limma()$topGenes) == 0 ) return(NULL)
+	isolate({ 
+	withProgress(message="Generating volcano plot",{ 
+	
+	if(length( limma()$comparisons)  ==1 )  
+    { top1=limma()$topGenes[[1]]  
+	} else {
+	  top = limma()$topGenes
+	  ix = match(input$selectContrast, names(top))
+	  if( is.na(ix)) return (NULL)
+	  top1 <- top[[ix]]; 
+	  }
+	  incProgress(1/2)
+	  if(dim(top1)[1] == 0 ) return (NULL)
+	  colnames(top1)= c("Fold","FDR")
+	 top1 <- as.data.frame(top1) # convert to data frame
+     top1 <- top1[which(!(is.na(top1$Fold)|is.na(top1$FDR)    )),] # remove NA's 
+	 top1$upOrDown <- 1
+	 #write.csv(top1,"tem.csv")
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval& top1$Fold  >= log2( input$limmaFC)) ]  <- 2
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
+	 
+	 top1$FDR = -log10(top1$FDR)
+	 
+	 if(0) { 
+	 par(mar=c(5,5,1,1))
+	 plot(top1$Fold,-log10(top1$FDR),col = c("grey30", "red","blue")[top1$upOrDown],
+	 pch =16, cex = .3, xlab= "log2 fold change", ylab = "- log10 (FDR)",
+	 cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	)    
+     legend("bottomright",c("Upregulated","Downregulated"),fill = c("red","blue"),cex=1.1 )
+	 }
+	 
+	 # remove non-DEGs
+	top1 = top1[which(top1$upOrDown != 1),]  
+	top1$type ="Upregulated";
+	top1$type[which(top1$upOrDown ==3)] <- "Downregulated"	
+	
+	# adding gene symbol
+	ix <- match( rownames(top1), allGeneInfo()[,1])
+	geneSymbols <- as.character( allGeneInfo()$symbol)[ix]
+	# if missing or duplicated, use Ensembl ID
+	ix <- which(nchar( geneSymbols) <=1 | duplicated(geneSymbols ) );	geneSymbols[ ix ] <- rownames(top1)[ix]
+	top1$Symbols = geneSymbols;
+	
+    p <- plot_ly(data= top1, x = ~Fold, y= ~FDR, color = ~type, text = ~Symbols)%>% 
+	layout(xaxis = list(size =35,title = "log2 fold change"), 
+           yaxis = list(size =35, title = "- log10 (FDR)"),
+		   showlegend = FALSE)
+		   
+	ggplotly(p)
+	}) 
+	})
+
+  })
+
+  
+output$scatterPlot <- renderPlot({
+    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
+		tem = input$selectOrg; tem = input$noIDConversion
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
+	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	if( is.null(input$selectContrast) ) return(NULL)
+	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
+	if( length(limma()$topGenes) == 0 ) return(NULL)
+	if(grepl("I:", input$selectContrast) ) 	return(NULL) # if interaction term related comparison
+	isolate({ 
+
+	withProgress(message="Generating scatter plot with all genes",{ 
+	if(length( limma()$comparisons)  ==1 )  
+    { top1=limma()$topGenes[[1]]  
+	} else {
+	  top = limma()$topGenes
+	  ix = match(input$selectContrast, names(top))
+	  if( is.na(ix)) return (NULL)
+	  top1 <- top[[ix]]; 
+	  }
+	  if(dim(top1)[1] == 0 ) return (NULL)
+	  colnames(top1)= c("Fold","FDR")
+	 top1 <- as.data.frame(top1) # convert to data frame
+     top1 <- top1[which(!(is.na(top1$Fold)|is.na(top1$FDR)    )),] # remove NA's 
+	 top1$upOrDown <- 1
+	 #write.csv(top1,"tem.csv")
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval& top1$Fold  >= log2( input$limmaFC)) ]  <- 2
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
+
+     incProgress(1/2)
+	 if (grepl("I:",input$selectContrast) == 1) return(NULL) # iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
+  	 # average expression
+     samples = unlist(strsplit( input$selectContrast, "-"))
+     iz= match( detectGroups(colnames(convertedData())), samples[1]	  )
+     iz = which(!is.na(iz))
+	# find sample using sample info file 
+	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
+		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
+		comparisons = gsub(" vs\\. ","-",comparisons)		
+		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
+		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
+		selectedFactor= factorsVector[ ik ] # corresponding factors
+		cat(selectedFactor)
+		iz= match( readSampleInfo()[,selectedFactor], unlist(strsplit( input$selectContrast, "-"))[1]	  )
+		iz = which(!is.na(iz))
+	}
+	 
+	 
+	 genes <- convertedData()[,iz]
+	 genes <- as.data.frame(genes)
+	 genes$average1 <- apply( genes,1,mean)
+
+     iz= match( detectGroups(colnames(convertedData())), samples[2]	  )
+     iz = which(!is.na(iz))
+	# find sample using sample info file 
+	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
+		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
+		comparisons = gsub(" vs\\. ","-",comparisons)		
+		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
+		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
+		selectedfactor= factorsVector[ ik ] # corresponding factors
+		iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast, "-"))[2]	  )
+		iz = which(!is.na(iz))
+	}
+	 # genes <- cbind( genes,convertedData()[,iz] )
+	 genes$average2 <- apply(convertedData()[,iz] ,1,mean)	 
+	genes <- merge(genes,top1,by="row.names")
+ # write.csv(genes, "tem.csv")
+ 	 par(mar=c(5,5,1,1))
+	plot(genes$average2,genes$average1,col = c("grey45","red","blue")[genes$upOrDown],
+	 pch =16, cex = .3, xlab= paste("Average expression in", samples[2] ), 
+	 ylab = paste("Average expression in", samples[1] ),
+	 cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	)    
+     legend("bottomright",c("Upregulated","Downregulated"),fill = c("red","blue"),cex=1.3 )
+
+		})
+
+	})
+	 
+  },height=450, width=500)
+
+  
+output$scatterPlotly <- renderPlotly({
+    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
+	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	if( is.null(input$selectContrast) ) return(NULL)
+	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
+	if( length(limma()$topGenes) == 0 ) return(NULL)
+	if(grepl("I:", input$selectContrast) ) 	return(NULL) # if interaction term related comparison
+	isolate({ 
+	withProgress(message="Generating scatter plot with all genes",{ 
+	if(length( limma()$comparisons)  ==1 )  
+    { top1=limma()$topGenes[[1]]  
+	} else {
+	  top = limma()$topGenes
+	  ix = match(input$selectContrast, names(top))
+	  if( is.na(ix)) return (NULL)
+	  top1 <- top[[ix]]; 
+	  }
+	  if(dim(top1)[1] == 0 ) return (NULL)
+	  colnames(top1)= c("Fold","FDR")
+	 top1 <- as.data.frame(top1) # convert to data frame
+     top1 <- top1[which(!(is.na(top1$Fold)|is.na(top1$FDR)    )),] # remove NA's 
+	 top1$upOrDown <- 1
+	 #write.csv(top1,"tem.csv")
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval& top1$Fold  >= log2( input$limmaFC)) ]  <- 2
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
+
+     incProgress(1/2)
+	 if (grepl("I:",input$selectContrast) == 1) return(NULL) # iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
+  	 # average expression
+     samples = unlist(strsplit( input$selectContrast, "-"))
+     iz= match( detectGroups(colnames(convertedData())), samples[1]	  )
+     iz = which(!is.na(iz))
+	# find sample using sample info file 
+	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) ) {
+		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
+		comparisons = gsub(" vs\\. ","-",comparisons)		
+		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
+		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
+		selectedFactor= factorsVector[ ik ] # corresponding factors
+		cat(selectedFactor)
+		iz= match( readSampleInfo()[,selectedFactor], unlist(strsplit( input$selectContrast, "-"))[1]	  )
+		iz = which(!is.na(iz))
+	}
+	 
+	 genes <- convertedData()[,iz]
+	 genes <- as.data.frame(genes)
+	 genes$average1 <- apply( genes,1,mean)
+
+     iz= match( detectGroups(colnames(convertedData())), samples[2]	  )
+     iz = which(!is.na(iz))
+
+	# find sample using sample info file 
+	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) ) {
+		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
+		comparisons = gsub(" vs\\. ","-",comparisons)		
+		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
+		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
+		selectedfactor= factorsVector[ ik ] # corresponding factors
+		iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast, "-"))[2]	  )
+		iz = which(!is.na(iz))
+	}
+	 # genes <- cbind( genes,convertedData()[,iz] )
+	 genes$average2 <- apply(convertedData()[,iz] ,1,mean)	 
+	genes <- merge(genes,top1,by="row.names")
+    
+	# remove non-DEGs
+	genes = genes[which(genes$upOrDown != 1),]  
+	genes$type ="Upregulated";
+	genes$type[which(genes$upOrDown ==3)] <- "Downregulated"	
+	
+	# adding gene symbol
+	ix <- match( genes[,1], allGeneInfo()[,1])
+	geneSymbols <- as.character( allGeneInfo()$symbol)[ix]
+	# if missing or duplicated, use Ensembl ID
+	ix <- which(nchar( geneSymbols) <=1 | duplicated(geneSymbols ) );	geneSymbols[ ix ] <- genes[ix,1]
+	genes$Symbols = geneSymbols;
+	
+    p <- plot_ly(data= genes, x = ~average2, y= ~average1, color = ~type, text = ~Symbols)%>% 
+	layout(xaxis = list(size =35,title = paste("Average expression in", samples[2] )), 
+           yaxis = list(size =35, title = paste("Average expression in", samples[1] )),
+		   showlegend = FALSE)
+		   
+	ggplotly(p)
+
+		})
+
+	})
+	 
+  })
+
+  
+output$geneListGO <- renderTable({		
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if( is.null(input$selectContrast)) return(NULL)
+		if( is.null( input$selectGO2) ) return (NULL)
+		if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
+
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+		####################################
+		if( is.null(limma()$results) ) return(NULL)
+		if( is.null(selectedHeatmap.data()) ) return(NULL) # this has to be outside of isolate() !!!
+		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+		NoSig = as.data.frame("No significant enrichment found.")
+		isolate({
+		withProgress(message="GO Enrichment", {
+			
+		# using expression data
+		genes <- selectedHeatmap.data()$genes
+		if(is.null(genes) ) return(NULL) 
+		if(dim(genes)[1] <= minGenesEnrichment ) return(NoSig) # if has only few genes
+		
+		fc = selectedHeatmap.data()$bar		
+		# GO
+		results1 <- NULL; result <- NULL
+		pp <- 0
+		for( i in c(1,-1) ) {
+			incProgress(1/2 )
+			
+			if( length(which(fc*i<0)) <= minGenesEnrichment) next; 
+			query = rownames(genes)[which(fc*i<0)]
+			if( length(query) <= minGenesEnrichment) next; 	
+			
+			if(input$selectOrg == "NEW" && !is.null( input$gmtFile) ){
+				result <- findOverlapGMT( query, GeneSets(),1) 
+			} else  { 
+				convertedID <- converted()
+				convertedID$IDs <- query
+				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO2,input$selectOrg,1) }
+
+			if( dim(result)[2] ==1) next;   # result could be NULL
+			if(i == -1) result$Genes = "Up regulated"  else result$Genes = "Down regulated"
+			if (pp==0 ) { results1 <- result; pp = 1;} else  results1 = rbind(results1,result)
+		}
+
+		if ( pp == 0 ) return (NoSig)
+		if ( is.null( results1) ) return (NoSig)
+		if( dim(results1)[2] == 1 ) return(NoSig)  # Returns a data frame: "No significant results found!"
+		
+		results1= results1[,c(5,1,2,4)]
+		colnames(results1)= c("List","FDR","Genes","GO terms or pathways")
+		minFDR = 0.01
+		if(min(results1$FDR) > minFDR ) results1 = as.data.frame("No signficant enrichment found.") else
+		results1 = results1[which(results1$FDR < minFDR),]
+		
+		incProgress(1, detail = paste("Done")) 
+		
+		if(dim(results1)[2] != 4) return(NoSig)
+		colnames(results1)= c("Direction","adj.Pval","Genes","Pathways")
+		
+		results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )
+		results1[,1] <- as.character(results1[,1])
+		tem <- results1[,1]
+
+		results1[ duplicated (results1[,1] ),1 ] <- ""
+		
+		results1
+		 })#progress
+		}) #isolate
+  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })
+
+	
+output$DEG.Promoter <- renderTable({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	if( is.null(input$selectContrast)) return(NULL)
+
+	tem = input$selectOrg; tem = input$radio.promoter; tem = input$noIDConversion; tem=input$missingValue
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
+	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	
+	if( is.null(limma()$results) ) return(NULL)
+	if( is.null(selectedHeatmap.data()  ) ) return(NULL)
+	#if( !is.data.frame(selectedHeatmap.data()  ) ) return(NULL)
+	
+  isolate({ 
+   	withProgress(message="Promoter analysis", {
+	genes <- selectedHeatmap.data()$genes
+	if(is.null(genes)) return(NULL)
+	# if( !is.data.frame(genes)) return (NULL)
+	# cat("\nHere",paste(genes[1,],collapse=" ") )
+	if( dim(genes)[1] < minGenesEnrichment ) return (NULL) # skip if less than 5 genes total
+
+	fc = selectedHeatmap.data()$bar
+	# GO
+	pp <- 0; results1 <- NULL; result <- NULL
+	for( i in c(1, -1) ) {
+		incProgress(1/2 )	
+		query = rownames(genes)[which(fc*i<0)]
+		if(length(query) < minGenesEnrichment) next; 
+		convertedID = convertID(query,input$selectOrg, input$selectGO2 );#"gmax_eg_gene"
+		if(length(convertedID) < minGenesEnrichment) next; 
+		result <- promoter( convertedID,input$selectOrg,input$radio.promoter )
+		
+		if( is.null(result)  ) next;   # result could be NULL
+		if(  dim(result)[2] ==1) next;
+		
+		if(i == -1) result$List ="Up regulated"  else result$List ="Down regulated" 
+		if (pp==0 ) { results1 <- result; pp <- 1 } else  { results1 = rbind(results1,result) }
+	}
+
+	incProgress(1, detail = paste("Done")) 
+	}) #progress
+	
+	if( is.null(results1)) {
+		as.data.frame("No significant motif enrichment found.")
+	} else {
+		results1 <- results1[,c(4,1:3,5)]
+		tem <- results1[,1]
+		results1[ duplicated (results1[,1] ),1 ] <- ""
+		results1
+	}
+  })
+  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+  
+  
+################################################################
+#   Pathway analysis
+################################################################
+ 
+# this updates geneset categories based on species and file
+output$selectGO1 <- renderUI({
+	  tem = input$selectOrg;
+      if (is.null(input$file1)&& input$goButton == 0 )
+       { selectInput("selectGO", label = NULL, # h6("Funtional Category"), 
+                  choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
+                                "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else { 
+								
+	  selectInput("selectGO", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
+	     ,selected = "GOBP" )   } 
+	})
+
+	
+output$selectGO2 <- renderUI({
+	  tem = input$selectOrg
+      if (is.null(input$file1)&& input$goButton == 0 )
+       { selectInput("selectGO2", label = NULL, # h6("Funtional Category"), 
+                  choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
+                                "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else { 
+								
+	  selectInput("selectGO2", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
+	     ,selected = "GOBP" )   } 
+	})
+	
+	
+output$selectGO3 <- renderUI({
+	  tem = input$selectOrg
+      if (is.null(input$file1)&& input$goButton == 0 )
+       { selectInput("selectGO3", label = NULL, # h6("Funtional Category"), 
+                  choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
+                                "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else { 
+								
+	  selectInput("selectGO3", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
+	     ,selected = "GOBP" )   } 
+	})
+
+	
+output$selectGO4 <- renderUI({
+	  tem = input$selectOrg
+      if (is.null(input$file1)&& input$goButton == 0 )
+       { selectInput("selectGO4", label = NULL, # h6("Funtional Category"), 
+                  choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
+                                "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else { 
+								
+	  selectInput("selectGO4", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
+	     ,selected = "GOBP" )   } 
+	})
+
+	
+output$selectGO5 <- renderUI({
+	  tem = input$selectOrg
+      if (is.null(input$file1)&& input$goButton == 0 )
+       { selectInput("selectGO4", label = NULL, # h6("Funtional Category"), 
+                  choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
+                                "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else { 
+								
+	  selectInput("selectGO5", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
+	     ,selected = "GOBP" )   } 
+	})
+
+	
+output$PGSEAplot <- renderPlot({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	library(PGSEA,verbose=FALSE)
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO;		tem = input$selectContrast1
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold	
+	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################	
+	if(is.null(input$selectGO ) ) return (NULL)
+	if(input$selectGO == "ID not recognized!" ) return( NULL)
+	isolate({ 
+	withProgress(message="Running pathway analysis", {
+	myrange = c(input$minSetSize, input$maxSetSize)
+	genes = convertedData()
+if (is.null(input$selectContrast1 ) ) return(NULL)
+	incProgress(1/4,"Retrieving gene sets")
+	gmt = GeneSets()
+	incProgress(2/4,"Runing PGSEA.")
+
+	# find related samples
+	iz = findContrastSamples(input$selectContrast1, colnames(convertedData()),readSampleInfo(),
+										input$selectFactorsModel,input$selectModelComprions, 
+										factorReferenceLevels(),input$CountsDEGMethod,
+										input$dataFileFormat  )
+
+	
+	
+	genes = genes[,iz]	
+	
+	subtype = detectGroups(colnames(genes )) 
+    if(length( GeneSets() )  == 0)  { plot.new(); text(0.5,0.5, "No gene sets!")} else {
+	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
+	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
+					 
+	if( is.null(result$pg3) ) { plot.new(); text(0.5,1, "No significant pathway found!")} else 
+	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), 
+	show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5, main="Pathway Analysis:PGSEA")
+    }
+	
+	})
+	})
+    }, height = 800, width = 500)
+
+	
+output$PGSEAplotAllSamples <- renderPlot({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	library(PGSEA,verbose=FALSE)
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold	
+
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	
+	if(is.null(input$selectGO ) ) return (NULL)
+	if(input$selectGO == "ID not recognized!" ) return( NULL)
+	isolate({ 
+	withProgress(message="Running pathway analysis", {
+	myrange = c(input$minSetSize, input$maxSetSize)
+	genes = convertedData()
+if (is.null(input$selectContrast1 ) ) return(NULL)
+	incProgress(1/4,"Retrieving gene sets")
+	gmt = GeneSets()
+	incProgress(2/8, "Runing PGSEA")
+	subtype = detectGroups(colnames(genes )) 
+    if(length( GeneSets() )  == 0)  { plot.new(); text(0,1, "No gene sets!")} else {
+	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
+	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
+					 
+	if( is.null(result$pg3) ) { plot.new(); text(0.5,1, "No significant pathway found!")} else 
+	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), 
+	show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5, main="Pathway Analysis:PGSEA")
+    }
+	
+	})
+	})
+    }, height = 800, width = 500)
+
+
+output$gagePathway <- renderTable({
+
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO;	tem = input$selectContrast1
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold	
+
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+			
+	isolate({ 
+	gagePathwayData()
+	})
+  },digits=0,align="l",include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+ 
+ 
+gagePathwayData <- reactive({
+	library(gage,verbose=FALSE) # pathway analysis	
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO
+	tem = input$selectContrast1
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold	
+
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	tem=input$GenePvalCutoff
+	####################################
+	
+	if(is.null(input$selectGO ) ) return (NULL)
+	if(input$selectGO == "ID not recognized!" ) return( as.data.frame("Gene ID not recognized." ))
+	isolate({ 
+		withProgress(message="Running pathway analysis using GAGE", {
+		if (is.null(input$selectContrast1 ) ) return(NULL)
+		myrange = c(input$minSetSize, input$maxSetSize)
+		noSig = as.data.frame("No significant pathway found.")
+		if( length(limma()$topGenes) == 0 ) return(noSig)
+		if(length( limma()$comparisons)  ==1 )  
+		{ top1=limma()$topGenes[[1]]  
+		} else {
+		  top = limma()$topGenes
+		  ix = match(input$selectContrast1, names(top))
+		  if( is.na(ix)) return (noSig)
+		  top1 <- top[[ix]]; 
+		  }
+		  if(dim(top1)[1] == 0 ) return (noSig)
+		  colnames(top1)= c("Fold","FDR")
+
+		  top1 = top1[which(top1$FDR <input$GenePvalCutoff) , ]
+ 
+		  incProgress(1/4,"Retrieving gene sets")
+		  gmt = GeneSets() 
+		  if(length( GeneSets() )  == 0)  { return(as.data.frame("No gene set found!"))}
+		  #converted = convertID(rownames(top1),input$selectOrg)
+		  #
+		   #gmt = readGeneSets(converted, top1, input$selectGO, input$selectOrg, myrange )
+		 # cat("Sets",length(gmt))
+		 incProgress(2/4,"Runing GAGE")
+		 fold = top1[,1]; names(fold) <- rownames(top1)
+		 
+		 if(input$absoluteFold) fold <- abs(fold)
+		 paths <- gage(fold, gsets = gmt, ref = NULL, samp = NULL)
+
+		  paths <-  rbind(paths$greater,paths$less)
+		 # write.csv(paths,"tem.csv")	  
+		 # cat( dim(paths) )
+		  if(dim(paths)[1] < 1 | dim(paths)[2]< 6 ) return( noSig )
+		  top1 <- paths[,c('stat.mean','set.size','q.val')]
+		  colnames(top1)= c("statistic","Genes","adj.Pval")
+		  top1 <- top1[order(top1[,3]) ,]  
+		  if ( length( which( top1[,3] <=  input$pathwayPvalCutoff   ) ) == 0 )
+			return( noSig)
+		  top1 <- top1[which(top1[,3] <=  input$pathwayPvalCutoff ) ,,drop=FALSE]
+		  if(dim(top1)[1] > input$nPathwayShow ) 
+			 top1 <- top1[1:input$nPathwayShow, ,drop=FALSE]
+			 
+			top1 <- as.data.frame(top1)
+			top1 <- cbind(rep( input$selectContrast1, dim(top1)[1]),row.names(top1), top1); 
+			top1$statistic <- as.character( round(as.numeric(top1$statistic),4)); 
+			top1$adj.Pval <- sprintf("%-2.1e",as.numeric(top1$adj.Pval) )
+			top1[,2] <- as.character(top1[,2]);top1[,1] <- as.character(top1[,1])
+			colnames(top1)[1] <- "Direction"
+			if(input$pathwayMethod == 1 ) p.m <- "GAGE"
+			else if(input$pathwayMethod == 2 ) p.m <- "PGSEA"
+			else if(input$pathwayMethod == 3 ) p.m <- "GSEA"
+			else if(input$pathwayMethod == 4 ) p.m <- "PGSEA_All"
+			else if(input$pathwayMethod == 5 ) p.m <- "ReactomePA"
+			colnames(top1)[2] <- paste(p.m," analysis:", gsub("-"," vs ",input$selectContrast1 ) )
+			top1[ which( top1[,3] >0),1 ] <- "Up" #gsub("-"," > ",input$selectContrast1 )
+			top1[ which( top1[,3] <0),1 ] <- "Down" # gsub("-"," < ",input$selectContrast1 )
+			top1 <- top1[order( top1[,1], -abs(as.numeric( top1[,3]) ) ) ,]
+			top1[ duplicated (top1[,1] ),1 ] <- ""
+			#write.csv(top1,"tem.csv")
+		  return( top1)
+		}) # progress
+	}) #isloate
+  })
+
+  
+output$fgseaPathway <- renderTable({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO; tem = input$selectContrast1
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold	
+
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	
+	isolate({ 
+	fgseaPathwayData()
+	})
+  },digits=0,align="l",include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+ 
+ 
+fgseaPathwayData <- reactive({
+	library(fgsea,verbose=FALSE) # fast GSEA
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO; tem = input$selectContrast1
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold
+	if(is.null(input$selectGO ) ) return (NULL)
+	if(input$selectGO == "ID not recognized!" ) return( as.data.frame("Gene ID not recognized." ))
+
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	tem=input$GenePvalCutoff
+	####################################
+	
+	isolate({ 
+	withProgress(message="Running pathway analysis using GAGE", {
+	if (is.null(input$selectContrast1 ) ) return(NULL)
+	myrange = c(input$minSetSize, input$maxSetSize)
+	noSig = as.data.frame("No significant pathway found.")
+	if( length(limma()$topGenes) == 0 ) return(noSig)
+	if(length( limma()$comparisons)  ==1 )  
+    { top1=limma()$topGenes[[1]]  
+	} else {
+	  top = limma()$topGenes
+	  ix = match(input$selectContrast1, names(top))
+	  if( is.na(ix)) return (noSig)
+	  top1 <- top[[ix]]; 
+	  }
+	  if(dim(top1)[1] == 0 ) return (noSig)
+	  colnames(top1)= c("Fold","FDR")
+	  
+	  # remove some genes
+	  top1 = top1[which(top1$FDR <input$GenePvalCutoff) , ]
+	  
+	  incProgress(1/4,"Retrieving gene sets")
+	  gmt = GeneSets() 
+     if(length( GeneSets() )  == 0)  { return(as.data.frame("No gene set found!"))}
+
+	  #converted = convertID(rownames(top1),input$selectOrg)
+	  #
+	   #gmt = readGeneSets(converted, top1, input$selectGO, input$selectOrg, myrange )
+     # cat("Sets",length(gmt))
+	 incProgress(2/4,"Runing GSEA using the fgsea package.")
+	 fold = top1[,1]; names(fold) <- rownames(top1)
+	 if(input$absoluteFold) fold <- abs(fold) # use absolute value of fold change, disregard direction
+	 paths <- fgsea(pathways = gmt, 
+                  stats = fold,
+                  minSize=input$minSetSize,
+                  maxSize=input$maxSetSize,
+                  nperm=5000)
+	 # paths <-  rbind(paths$greater,paths$less)
+	  if(dim(paths)[1] < 1  ) return( noSig )
+	       paths <- as.data.frame(paths)
+       paths <- paths[order(-abs( paths[,5])) ,]  # sort by NES
+	  # paths <- paths[order( paths[,3]) ,]  # sort by FDR
+	  top1 <- paths[,c(1,5,7,3)]
+	  # rownames(top1) <- paths[,1] #paste(1:dim(paths)[1],": ",paths[,1],sep="" )
+	  colnames(top1)= c("Pathway", "NES","Genes","adj.Pval")
+	  
+	  if ( length( which( top1[,4] <=  input$pathwayPvalCutoff   ) ) == 0 )
+	    return( noSig)
+	  top1 <- top1[which(top1[,4] <=  input$pathwayPvalCutoff ) , ,drop=FALSE]
+	  if(dim(top1)[1] > input$nPathwayShow ) 
+	     top1 <- top1[1:input$nPathwayShow,,drop=FALSE]
+	 #top1 <- cbind(row.names(top1), top1); colnames(top1)[1] <-input$selectContrast1 	
+		top1 <- as.data.frame(top1)
+		top1 <- cbind(rep( input$selectContrast1, dim(top1)[1]), top1); 
+		top1[,4] = as.character( round(as.numeric(top1[,4]),4)); 
+		top1$adj.Pval <- sprintf("%-2.1e",as.numeric(top1$adj.Pval) )
+		top1[,1] <- as.character(top1[,1])
+		colnames(top1)[1] <- "Direction"
+		if(input$pathwayMethod == 1 ) p.m <- "GAGE"
+		else if(input$pathwayMethod == 2 ) p.m <- "PGSEA"
+		else if(input$pathwayMethod == 3 ) p.m <- "GSEA"
+		else if(input$pathwayMethod == 4 ) p.m <- "PGSEA_All"
+		else if(input$pathwayMethod == 5 ) p.m <- "ReactomePA"
+		colnames(top1)[2] <- paste(p.m," analysis:", gsub("-"," vs ",input$selectContrast1 ) )
+		top1[ which( as.numeric( top1[,3]) >0),1 ] <- "Up" #gsub("-"," > ",input$selectContrast1 )
+		top1[ which( as.numeric( top1[,3]) <0),1 ] <- "Down" #gsub("-"," < ",input$selectContrast1 )
+		top1 <- top1[order( top1[,1], -abs(as.numeric( top1[,3]) ) ) ,]
+		top1[ duplicated (top1[,1] ),1 ] <- ""	 
+	    top1[,3] = as.character( round(as.numeric(top1[,3]),4));
+	 return( top1)
+	}) })
+  })
+
+  
+ReactomePAPathwayData <- reactive({
+	library(ReactomePA,verbose=FALSE) # pathway analysis
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO; tem = input$selectContrast1
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold	
+	if(is.null(input$selectGO ) ) return (NULL)
+	if(input$selectGO == "ID not recognized!" ) return( as.data.frame("Gene ID not recognized." ))
+
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	tem=input$GenePvalCutoff
+	####################################
+	
+	isolate({ 
+	withProgress(message="Running pathway analysis using ReactomePA", {
+	if (is.null(input$selectContrast1 ) ) return(NULL)
+	
+	ensemblSpecies <- c("hsapiens_gene_ensembl","rnorvegicus_gene_ensembl", "mmusculus_gene_ensembl",
+		               "celegans_gene_ensembl","scerevisiae_gene_ensembl", "drerio_gene_ensembl", "dmelanogaster_gene_ensembl")
+    ReactomePASpecies= c("human", "rat", "mouse", "celegans", "yeast", "zebrafish", "fly" )
+    # cbind(ensemblSpecies,ReactomePASpecies)  # double check mapping
+    
+	
+	myrange = c(input$minSetSize, input$maxSetSize)
+	noSig = as.data.frame("No significant pathway found.")
+	if( length(limma()$topGenes) == 0 ) return(noSig)
+	if(length( limma()$comparisons)  ==1 )  
+    { top1=limma()$topGenes[[1]]  
+	} else {
+	  top = limma()$topGenes
+	  ix = match(input$selectContrast1, names(top))
+	  if( is.na(ix)) return (noSig)
+	  top1 <- top[[ix]]; 
+	  }
+	  if(dim(top1)[1] == 0 ) return (noSig)
+	  colnames(top1)= c("Fold","FDR")
+
+	  # remove some genes
+	  top1 = top1[which(top1$FDR <input$GenePvalCutoff) , ]
+	  
+	  incProgress(1/4,"Retrieving gene sets")
+	  # gmt = GeneSets() 
+
+	  #converted = convertID(rownames(top1),input$selectOrg)
+	  #
+	   #gmt = readGeneSets(converted, top1, input$selectGO, input$selectOrg, myrange )
+     # cat("Sets",length(gmt))
+	 
+	 fold = top1[,1]; names(fold) <- rownames(top1)
+	 if(input$absoluteFold) fold <- abs(fold) # use absolute value of fold change, disregard direction
+
+      incProgress(2/4,"Convert to Entrez Gene ID")
+      Species <- converted()$species[1,1]
+      ix <- match( Species,ensemblSpecies )	
+	  if(is.na(ix) ) return(as.data.frame("Species not coverted by ReactomePA package!"))
+	  
+	  fold <- convertEnsembl2Entrez (fold, Species)  
+		 fold <- sort(fold,decreasing =T)
+	  incProgress(3/4,"Runing enrichment analysis using ReactomePA")
+	  paths <- gsePathway(fold, nPerm=5000, organism = ReactomePASpecies[ix],
+                minGSSize= input$minSetSize, 
+				maxGSSize= input$maxSetSize,
+				pvalueCutoff=0.5,
+                pAdjustMethod="BH", verbose=FALSE)
+      paths <- as.data.frame(paths)
+	  
+	  if(is.null(paths) ) return( noSig)
+	  if(dim(paths)[1] ==0 ) return( noSig)
+
+	 # paths <-  rbind(paths$greater,paths$less)
+	  if(dim(paths)[1] < 1  ) return( noSig )
+	       paths <- as.data.frame(paths)
+       paths <- paths[order(-abs( paths[,5])) ,]  # sort by NES
+	  # paths <- paths[order( paths[,3]) ,]  # sort by FDR
+	  top1 <- paths[,c(2,5,3,7)]
+	  # rownames(top1) <- paths[,1] #paste(1:dim(paths)[1],": ",paths[,1],sep="" )
+	  colnames(top1)= c("Pathway", "NES","Genes","adj.Pval")
+	  
+	  if ( length( which( top1[,4] <=  input$pathwayPvalCutoff   ) ) == 0 )
+	    return( noSig)
+	  top1 <- top1[which(top1[,4] <=  input$pathwayPvalCutoff ) ,,drop=FALSE]
+	  if(dim(top1)[1] > input$nPathwayShow ) 
+	     top1 <- top1[1:input$nPathwayShow,,drop=FALSE]
+	 #top1 <- cbind(row.names(top1), top1); colnames(top1)[1] <-input$selectContrast1 	
+		top1 <- as.data.frame(top1)
+		top1 <- cbind(rep( input$selectContrast1, dim(top1)[1]), top1); 
+		top1[,4] = as.character( round(as.numeric(top1[,4]),4)); 
+		top1$adj.Pval <- sprintf("%-2.1e",as.numeric(top1$adj.Pval) )
+		top1[,1] <- as.character(top1[,1])
+		colnames(top1)[1] <- "Direction"
+		if(input$pathwayMethod == 1 ) p.m <- "GAGE"
+		else if(input$pathwayMethod == 2 ) p.m <- "PGSEA"
+		else if(input$pathwayMethod == 3 ) p.m <- "GSEA"
+		else if(input$pathwayMethod == 4 ) p.m <- "PGSEA_All"
+		else if(input$pathwayMethod == 5 ) p.m <- "ReactomePA"
+		colnames(top1)[2] <- paste(p.m," analysis:", gsub("-"," vs ",input$selectContrast1 ) )
+		top1[ which( as.numeric( top1[,3]) >0),1 ] <- "Up" #gsub("-"," > ",input$selectContrast1 )
+		top1[ which( as.numeric( top1[,3]) <0),1 ] <- "Down" #gsub("-"," < ",input$selectContrast1 )
+		top1 <- top1[order( top1[,1], -abs(as.numeric( top1[,3]) ) ) ,]
+		top1[ duplicated (top1[,1] ),1 ] <- ""	 
+	  top1[,3] = as.character( round(as.numeric(top1[,3]),4));
+	 return( top1)
+	}) })
+  })
+
+  
+output$ReactomePAPathway <- renderTable({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO; tem = input$selectContrast1
+    tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold	
+
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	
+	isolate({ 
+	ReactomePAPathwayData()
+	})
+  },digits=0,align="l",include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+
+  
+PGSEAplot.data <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectOrg
+
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+
+	isolate({ 
+	withProgress(message="Running pathway analysis", {
+	myrange = c(input$minSetSize, input$maxSetSize)
+	genes = convertedData()
+if (is.null(input$selectContrast1 ) ) return(NULL)
+	gmt = GeneSets()
+	incProgress(2/8)
+
+	if(0) { 
+	iz= match( detectGroups(colnames(genes)), unlist(strsplit( input$selectContrast1, "-"))	  )
+    iz = which(!is.na(iz))
+	if (grepl("I:",input$selectContrast1) == 1) iz=1:(dim(genes)[2]) 
+	if (length(iz) == 0) iz=1:(dim(genes)[2]) 
+	}
+	
+			  # find sample related to the comparison
+		 iz= match( detectGroups(colnames(convertedData())), unlist(strsplit( input$selectContrast1, "-"))	  )
+		 iz = which(!is.na(iz))		 
+		 if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
+			comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
+			comparisons = gsub(" vs\\. ","-",comparisons)		
+			factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
+			ik = match( input$selectContrast1, comparisons )   # selected contrast lookes like: "mutant-control"
+			if (is.na(ik)) iz=1:(dim(convertedData())[2])  else {  # interaction term, use all samples		
+				selectedfactor= factorsVector[ ik ] # corresponding factors
+				iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast1, "-"))	  )
+				iz = which(!is.na(iz))				
+			}
+			
+		
+
+
+			
+		 }
+
+		 if (grepl("I:",input$selectContrast1)) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
+		 if( is.na(iz)[1] | length(iz)<=1 )    iz=1:(dim(convertedData())[2]) 
+
+
+	
+		cat("\n IZ:",iz)
+	
+	
+	
+	
+	
+	genes = genes[,iz]
+
+	subtype = detectGroups(colnames(genes )) 
+    if(length( GeneSets() )  == 0)  { plot.new(); text(0,1, "No gene sets!")} else {
+	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
+	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
+					 
+	if( is.null(result$pg3) ) { return(as.matrix("No significant pathway!"))} else 
+	   return( result$pg3)
+    }
+	
+	})
+	})
+    })
+
+	
+output$download.PGSEAplot.data <- downloadHandler(
+		filename = function() {"PGSEA_pathway_anova.csv"},
+			content = function(file) {
+			write.csv(PGSEAplot.data(), file)
+	    }
+	)
+  
+  
+output$listSigPathways <- renderUI({
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC
+
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+			
+
+      if (is.null(input$file1)&& input$goButton == 0 | is.null(gagePathwayData()))
+	  
+       { selectInput("sigPathways", label = NULL, # h6("Funtional Category"), 
+                  choices = list("All" = "All"), selected = "All")  }	 else { 
+		choices <- "All"  # default, sometimes these methods returns "No significant pathway found"
+		if( input$pathwayMethod == 1) { if(!is.null(gagePathwayData())) if(dim(gagePathwayData())[2] >1) choices <- gagePathwayData()[,2] }
+		else if( input$pathwayMethod == 3) { if(!is.null(fgseaPathwayData())) if(dim(fgseaPathwayData())[2] >1) choices <- fgseaPathwayData()[,2] }
+		else if( input$pathwayMethod == 5) { if(!is.null(ReactomePAPathwayData())) if(dim(ReactomePAPathwayData())[2] >1) choices <- ReactomePAPathwayData()[,2] }
+		selectInput("sigPathways", label="Select a pathway to show expression pattern of related genes:",choices=choices)
+	        } 
+	})
+	
+	
+selectedPathwayData <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectOrg
+	tem = input$sigPathways; 
+	if(is.null(gagePathwayData() ) ) return(NULL)
+	if(is.null( input$sigPathways))  return (NULL) 
+	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	
+	#cat(input$sigPathways)
+    isolate({ 
+	withProgress (message="Retrieving genes",{ 
+    if(input$sigPathways == "All") return (NULL) 
+	ix <- which(names(GeneSets() ) == input$sigPathways   ) # find the gene set
+	if(length(ix) == 0 ) return(NULL)
+    genes <- GeneSets()[[ix]] # retrieve genes
+	# genes <- pathwayGenes(input$sigPathways,converted(), input$selectGO1,input$selectOrg )
+	incProgress(1/2,"Merging data")
+	
+	# find related samples	
+	iz = findContrastSamples(input$selectContrast1, colnames(convertedData()),readSampleInfo(),
+										input$selectFactorsModel,input$selectModelComprions, 
+										factorReferenceLevels(),input$CountsDEGMethod ,
+										input$dataFileFormat )
+	x <-  convertedData()[which(rownames(convertedData()) %in% genes), iz ]
+	if( input$selectOrg != "NEW") {
+		ix = match( rownames(x), allGeneInfo()[,1])
+		if( sum( is.na(allGeneInfo()$symbol )) != dim(allGeneInfo() )[1] )  # symbol really exists? 
+		   rownames(x) <- paste(rownames(x),":", as.character( allGeneInfo()$symbol)[ix])
+   }
+	
+	return( x )
+	
+     }) })
+})
+
+
+output$downloadSelectedPathwayData <- downloadHandler(
+		# filename = function() {"Selected_Pathway_detail.csv"},
+		filename = function() {paste(input$selectContrast1,"(",input$sigPathways,")",".csv",sep="")},
+			content = function(file) {
+			write.csv(selectedPathwayData(), file)
+	    }
+	)
+  
+  
+output$selectedPathwayHeatmap <- renderPlot({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectOrg
+	tem = input$sigPathways; 
+	if(is.null(gagePathwayData() ) ) return(NULL)
+	if(is.null( input$sigPathways))  return (NULL) 
+	if( is.null(selectedPathwayData()) ) return(NULL)
+	# cat(input$sigPathways)
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+    isolate({ 
+	x = selectedPathwayData()
+	if(dim(x)[1]<=2 | dim(x)[2]<=2 ) return(NULL)
+	groups = detectGroups(colnames(x))
+	withProgress(message="Generating heatmap",{ 
+	# this will cutoff very large values, which could skew the color 
+	x=as.matrix(x)-apply(as.matrix(x),1,mean)
+	cutoff = median(unlist(x)) + 3*sd (unlist(x)) 
+	x[x>cutoff] <- cutoff
+	cutoff = median(unlist(x)) - 3*sd (unlist(x)) 
+	x[x< cutoff] <- cutoff
+	
+	# sometimes, a gene can be all zero in selected samples.
+	x <- x[which(apply(x,1,sd)>0) ,]
+	
+	lmat = rbind(c(5,4),c(0,1),c(3,2))
+	lwid = c(1.5,6)
+	lhei = c(.5,.2,8)
+	
+	
+	if( dim(x)[1]>200) 
+	heatmap.2(x, distfun = dist2,hclustfun=hclust2,
+	 col=heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.5
+	,key=T, symkey=F
+	,dendrogram = "row"
+	,ColSideColors=mycolors[ groups]
+	,labRow=""
+	,margins=c(10,22)
+	,srtCol=45
+	,lmat = lmat, lwid = lwid, lhei = lhei
+	#,main ="Title"
+	)
+
+	if( dim(x)[1]<=200) 
+	heatmap.2(x, distfun = dist2,hclustfun=hclust2,
+	 col=heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.5
+	,key=T, symkey=F, 
+	dendrogram = "row",
+	,labRow=gsub(".*:","",rownames(x))
+	,ColSideColors=mycolors[ groups]
+	,margins=c(10,22)
+	,cexRow=1.2
+	,srtCol=45
+	,lmat = lmat, lwid = lwid, lhei = lhei
+	#,main ="Title"
+	)
+	incProgress(1,"Done")
+    }) 
+	})
+}, height = 1800, width = 600)
+
+
+output$KeggImage <- renderImage({
+	library(pathview,verbose=FALSE)
 
 # these two functions are from the pathview package, modified to write to a designated folder: temp.
 mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species = "hsa", 
@@ -1932,4055 +6422,6 @@ tmpfun <- get("keggview.native", envir = asNamespace("pathview"))
 environment(my.keggview.native) <- environment(tmpfun)
 attributes(my.keggview.native) <- attributes(tmpfun)  # don't know if this is really needed
 
-
- if(0 ){ # pathway testing
-	x = read.csv("expression.csv")
-	x = read.csv("expression1_no_duplicate.csv")
-	x = read.csv("mouse1.csv")
-	x = read.csv("GSE40261.csv")
-	x = read.csv("GSE52778_All_Sample_FPKM_Matrix.csv")
-	x = read.csv("exampleData/GSE87194.csv")
-	x = read.csv("exampleData/expression_3groups.csv")
-	x = x[order(x[,1]),]
-	x = x[!duplicated(x[,1]),]
-	rownames(x)= x[,1]
-	x = x[,-1]
-
-	tem = apply(x,1,max)
-	x = x[which(tem> 1),] 
-
-	x = log(x+abs( 1),2)
-	tem = apply(x,1,sd)
-	x = x[order(-tem),]
-
-	selectOrg = "BestMatch"; GO="GOBP"; 
-	myrange = c(15,1000)
-
-	converted = convertID(rownames(x),selectOrg)
-
-	head(converted$conversionTable)
-	mapping = converted$conversionTable
-
-	rownames(x) = toupper(rownames(x))
-	x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
-	tem = apply(x1[,3:(dim(x1)[2]-2)],1,sd)
-	x1 = x1[order(x1[,2],-tem),]
-	x1 = x1[!duplicated(x1[,2]) ,]
-	rownames(x1) = x1[,2]
-	x1 = as.matrix(x1[,c(-1,-2)])
-
-	convertedData = x1
-	gmt = readGeneSets(converted, convertedData, GO,selectOrg, myrange)
-
-	subtype = detectGroups(colnames(convertedData))
-	Pvalue = 1  # cut off to report in PGSEA. Otherwise NA
-	Pval_pathway = 0.05   # cut off for P value of ANOVA test  to writ to file 
-	top = 30   # number of pathways to show
-	myrange = c(10,2000)
-
-	pg = myPGSEA (x,cl=gmt,range=myrange,p.value=TRUE, weighted=FALSE,nPermutation=1)
-	result = PGSEApathway (converted,convertedData, selectOrg,GO,gmt, myrange,.05,30)
-	smcPlot(result$pg3,factor(subtype),scale = c(-result$best, result$best), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5)
-	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5)
-
-	pca = 100*prcomp(t(x))$rotation 
-	Npca = 10
-	if (Npca > dim(pca)[2]) { Npca = dim(pca)[2] } else pca <-  pca[,1:Npca]
-	#pca = pca[,1:5]
-	pg = myPGSEA (pca,cl=gmt,range=myrange,p.value=TRUE, weighted=FALSE,nPermutation=1)
-
-	# correcting for multiple testing
-	p.matrix = pg$p.result
-	tem = p.adjust(as.numeric(p.matrix),"fdr")
-	p.matrix = matrix(tem, nrow=dim(p.matrix)[1], ncol = dim(p.matrix)[2] )
-	rownames(p.matrix) = rownames(pg$p.result); colnames(p.matrix) = colnames(pg$p.result)
-
-	# using absolute value to rank 
-	#selected = unlist( apply(pg$result, 2, function(y) which( rank(y) >= length(y)-3.1)   ) )
-
-	# using p value to rank #
-	#selected = unlist( apply(p.matrix, 2, function(x) which( rank(x,ties.method='first') <= 5)   ) )
-	selected =c()
-	for( i in 1:dim(p.matrix)[2]) {
-		tem = which( rank(p.matrix[,i],ties.method='first') <= 3) 
-		#tem = which( rank(pg$result[,i],ties.method='first') >= dim(p.matrix)[1]-3.1)
-		names(tem) = paste("PC",i," ", rownames(p.matrix)[tem], sep="" )
-		selected = c(selected, tem)
-	}
-	rowids = gsub(" .*","",names(selected))
-	rowids = as.numeric( gsub("PC","",rowids) )
-	pvals = p.matrix[ cbind(selected,rowids) ]
-	a=sprintf("%-1.0e",pvals)
-	tem = pg$result[selected,]
-	rownames(tem) = paste(a,names(selected)); #colnames(tem)= paste("PC",colnames(tem),sep="")
-
-	tem = tem[!duplicated(selected),] 
-	#tem = t(tem); tem = t( (tem - apply(tem,1,mean)) ) #/apply(tem,1,sd) )
-	smcPlot(tem,scale =  c(-max(tem), max(tem)), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5)
-
-	############  testing D.E.G.
-	limma = DEG.limma(convertedData, .1, .5,rawCounts=NULL,countsDEGMethods=1,priorCounts=3, dataFormat=2)
-	genes = limma$results
-		if( is.null(genes) ) return(NULL)
-		ix = match(limma$comparisons, colnames(genes)) 
-		query = rownames(genes)[which(genes[,ix] != 0)]
-		iy = match(query, rownames(convertedData  ) )
-		convertedData[iy,]
-		iz= match( detectGroups(colnames(convertedData)), unlist(strsplit( limma$comparisons, "-"))	  )
-		iz = which(!is.na(iz))
-		myheatmap( convertedData[iy,iz] )
-		# convertedData()[iy,iz]
-
-		# rawCounts = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
-		x = read.csv("exampleData/GSE87194.csv") ; x[,1] = toupper(x[,1]);   x = x[order(x[,1]),];    x = x[!duplicated(x[,1]),] #rownames(x)= x[,1]; rawCounts= x[,-1]
-		rawCounts = rawCounts[which(apply(rawCounts,1,max )>10 ) ,]
-		# res =DEG.DESeq2(rawCounts, .05, 2)
-		# res = 
-		# tem = res$topGenes
-		# head( res$results )
-		
-		# res2= DEG.limma(rawCounts, .05, 2,rawCounts, 1 ,3) 
-
-	######### testing GAGE
-	fc = apply(x1[,4:6],1,mean)- apply(x1[,1:3],1,mean)
-	paths <- gage(fc, gsets = gmt, ref = NULL, samp = NULL)
-
-	paths <- as.data.frame(paths)
-	path1 <- rownames(paths)[1]
-
-
-
-		x = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
-		#x = read.csv("exampleData/GSE87194.csv") ; 
-		x=read.csv("GSE37704_sailfish_genecounts.csv");
-		#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
-		x = read.csv("exampleData/hoppe 2 samples.csv")
-		
-		x[,1] = toupper(x[,1]);  
-		colnames(x)[1]= "User_input"
-
-
-	selectOrg = "BestMatch"; GO="KEGG"; 
-	myrange = c(15,2000)
-
-	converted = convertID(x[,1],selectOrg)
-	mapping = converted$conversionTable
-	x = merge(mapping[,1:2],x,   by = 'User_input')
-	tem = apply(x[,3:(dim(x)[2]-2)],1,sum)
-	x = x[order(x[,2],-tem),]
-	x = x[!duplicated(x[,2]) ,]
-	rownames(x) = x[,2]
-	x = as.matrix(x[,c(-1,-2)])
-
-	convertedData = x
-	gmt = readGeneSets(converted, convertedData, GO,selectOrg, myrange)
-
-	res =DEG.DESeq2(x, .25, 1)
-
-	res <- DEG.limma (x, maxP_limma=.2, minFC_limma=2, x,countsDEGMethods=2,priorCounts=3, dataFormat=1)
-
-	top1 <- res$topGenes[[1]]
-
-	head(top1)	
-
-		paths <- gage(top1[,1,drop=F], gsets = gmt, ref = NULL, samp = NULL)
-		paths <-  rbind(paths$greater,paths$less)
-		if(dim(paths)[1] < 1 | dim(paths)[2]< 6 ) return( noSig )
-		top1 <- paths[,c('stat.mean','set.size','q.val')]
-		colnames(top1)= c("stat.mean","Set Size","FDR")
-		top1 <- top1[order(top1[,3]) ,]  
-		if ( length( which( top1[,3] <=  .9   ) ) == 0 )
-		return( noSig)
-		top1 <- top1[which(top1[,3] <=  .9 ) ,]
-		if(dim(top1)[1] > 30 ) 
-			top1 <- top1[1:30,]
-		top1
-
-
-	res = DEG.limma(x, .05, 2,NULL, 1,3 )
-
-	## fgsea
-		top1 <- res$topGenes[[1]]
-	head(top1)	
-	colnames(top1)= c("Fold","FDR")
-	fold = top1[,1]; names(fold) <- rownames(top1)
-		paths <- fgsea(pathways = gmt, 
-					stats = fold,
-					minSize=15,
-					maxSize=2000,
-					nperm=10000)
-	if(dim(paths)[1] < 1  ) return( noSig )
-		paths <- as.data.frame(paths)
-		top1 <- paths[,c(4,5,7,3)]
-		rownames(top1) <- paths[,1]
-		colnames(top1)= c("ES","NES","Set Size","FDR")
-		top1 <- top1[order(top1[,4]) ,]  
-		if ( length( which( top1[,4] <=  input$pathwayPvalCutoff   ) ) == 0 )
-		return( noSig)
-		top1 <- top1[which(top1[,4] <=  input$pathwayPvalCutoff ) ,]
-		if(dim(top1)[1] > input$nPathwayShow ) 
-			top1 <- top1[1:input$nPathwayShow,]
-			
-		top1
-		
-	# testing visualize KEGG pathway
-
-	query = x[1:500,1]
-		fc= convertEnsembl2Entrez (query, Species)  
-		
-		fc = log2(fc/mean(fc))
-		
-			top1 <- res$topGenes[[1]]
-		top1 <- top1[,1]; names(top1)= rownames(res$topGenes[[1]] )
-		Species = converted$species[1,1] 	
-		
-	system.time(  fc <- convertEnsembl2Entrez (top1, Species)  )
-			fc = sort(fc,decreasing =T)
-		
-		head(fc)
-		
-		system.time ( y<- gsePathway(fc, nPerm=1000,
-				minGSSize=15, pvalueCutoff=0.5,
-				pAdjustMethod="BH", verbose=FALSE) )
-		res <- as.data.frame(y)
-		head(res)
-		
-		
-		# testing mouse 
-		top1 = limma$topGenes[[1]]
-		top1 <- top1[,1]; names(top1)= rownames(limma$topGenes[[1]] )
-		Species = converted$species[1,1] 	
-		system.time(  fc <- convertEnsembl2Entrez (top1, Species)  )
-				fc = sort(fc,decreasing =T)
-				system.time ( y<- gsePathway(fc, nPerm=1000,organism = "mouse",
-				minGSSize=15, pvalueCutoff=0.5,
-				pAdjustMethod="BH", verbose=FALSE) )
-		res <- as.data.frame(y)
-		head(res)
-		ensemblSpecies <- c("hsapiens_gene_ensembl","rnorvegicus_gene_ensembl", "mmusculus_gene_ensembl",
-		"celegans_gene_ensembl","scerevisiae_gene_ensembl", "drerio_gene_ensembl", "dmelanogaster_gene_ensembl")
-			ReactomePASpecies= c("human", "rat", "mouse", "celegans", "yeast", "zebrafish", "fly" )
-
-
-	#### testing KEGG pathway graph
-	x=read.csv("GSE37704_sailfish_genecounts.csv");
-		#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
-		x[,1] = toupper(x[,1]);  
-		colnames(x)[1]= "User_input"
-
-
-	selectOrg = "BestMatch"; GO="KEGG"; 
-	myrange = c(15,2000)
-
-	converted = convertID(x[,1],selectOrg)
-	mapping = converted$conversionTable
-	x = merge(mapping[,1:2],x,   by = 'User_input')
-	tem = apply(x[,3:(dim(x)[2]-2)],1,sum)
-	x = x[order(x[,2],-tem),]
-	x = x[!duplicated(x[,2]) ,]
-	rownames(x) = x[,2]
-	x = as.matrix(x[,c(-1,-2)])
-
-	convertedData = x
-	gmt = readGeneSets(converted, convertedData, GO,selectOrg, myrange)
-
-	res =DEG.DESeq2(x, .25, 1)
-
-	top1 <- res$topGenes[[1]]
-
-	head(top1)	
-
-		paths <- gage(top1[,1,drop=F], gsets = gmt, ref = NULL, samp = NULL)
-		paths <-  rbind(paths$greater,paths$less)
-		
-	selectedPathway = rownames(paths)[1]
-	# [1] "Cytokine-cytokine receptor interaction"
-
-		Species <- converted$species[1,1]
-		
-		fold = top1[,1]; names(fold) <- rownames(top1)
-		fold <- convertEnsembl2Entrez(fold,Species)
-		
-		keggSpecies <- as.character( keggSpeciesID[which(keggSpeciesID[,1] == Species),3] )
-		
-		if(nchar( keggSpecies) <=2 ) return(blank) # not in KEGG
-	 #cat("here5  ",keggSpecies, " ",Species," ",input$sigPathways)
-		# kegg pathway id
-	pathID = keggPathwayID(selectedPathway, Species, "KEGG",selectOrg)
-
-	cat("\n",fold[1:5],"\n",keggSpecies,"\n",pathID)
-	if(is.null(pathID) ) return(blank) # kegg pathway id not found.	
-	pv.out <- pathview(gene.data = fold, pathway.id = pathID, species = keggSpecies, kegg.native=TRUE)
-
-
-
-
-	#######################################
-	# testing for species not recognized 
-	x=read.csv("exampleData/Wu_wet_vs_control - new species.csv");
-		#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
-		x[,1] = toupper(x[,1]);  
-		colnames(x)[1]= "User_input"
-	selectOrg = "BestMatch"; GO="KEGG"; 
-	myrange = c(15,2000)
-	converted = convertID(x[,1],selectOrg)
-	mapping = converted$conversionTable	  
- }
- 
-if(0) {  # testing
-
-	inFile = "C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/expression1_no_duplicate.csv"
-	# inFile = "C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/GSE52778_All_Sample_FPKM_Matrix.csv"
-	lowFilter = 1; logStart = 1
-	x = read.csv(inFile)
-	x[,1] = toupper(x[,1])
-	x = x[order(x[,1]),]
-	x = x[!duplicated(x[,1]),]
-	rownames(x)= x[,1]
-	x = x[,-1]
-
-	tem = apply(x,1,max)
-	x = x[which(tem> lowFilter),] 
-
-	tem = apply(x,1,function(y) sum(y>2) )
-	
-	
-	x = log(x+abs( logStart),2)
-	tem = apply(x,1,sd)
-	x = x[order(-tem),]
-
-	###########Converted data
-	convertedID = convertID(rownames(x ),selectOrg="BestMatch", selectGO = "GOBP" );#"gmax_eg_gene"
-
-	mapping <- convertedID$conversionTable
-
-		rownames(x) = toupper(rownames(x))
-		x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
-		tem = apply(x1[,3:(dim(x1)[2]-2)],1,sd)
-		x1 = x1[order(x1[,2],-tem),]
-		x1 = x1[!duplicated(x1[,2]) ,]
-		rownames(x1) = x1[,2]
-		x1 = as.matrix(x1[,c(-1,-2)])
-
-		
-		tem = apply(x1,1,sd)
-	x1 = x1[order(-tem),]
-	x=x1
-		head(x)
-		
-	#################################
-	#testing Kmeans
-
-	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	#x = 100* x / apply(x,1,sum)  # this is causing problem??????
-	#x = x - apply(x,1,mean)  # this is causing problem??????
-	#colnames(x) = gsub("_.*","",colnames(x))
-	set.seed(2)
-	# determining number of clusters
-	k=6
-
-	cl = kmeans(x,k,iter.max = 50)
-	#myheatmap(cl$centers)	
-
-	hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
-	tem = match(cl$cluster,hc$order) #  new order 
-
-	x = x[order(tem),]
-
-	bar = sort(tem)
-	#myheatmap2(x, bar)
-	# GO
-	pp=0
-	for( i in 1:k) {
-		#incProgress(1/k, , detail = paste("Cluster",toupper(letters)[i]) )
-		query = rownames(x)[which(bar == i)]
-		convertedID = convertID(query,"BestMatch", selectGO = "GOBP" );#"gmax_eg_gene"
-		tem = geneInfo(convertedID,"BestMatch") #input$selectOrg ) ;
-		tem <- tem[which( tem$Set == "List"),] 
-
-
-		#selectOrg = input$selectOrg
-		selectOrg ="BestMatch"
-
-		result = FindOverlap (convertedID,tem, "GOBP",selectOrg,1) 
-		if( dim(result)[2] ==1) next;   # result could be NULL
-		result$Genes = toupper(letters)[i] 
-		if (pp==0 ) { results = result; pp = 1;} else  results = rbind(results,result)
-	}
-	results= results[,c(5,1,2,4)]
-	colnames(results)= c("Cluster","FDR","Genes","GO BP Terms")
-	minFDR = 0.05
-	if(min(results$FDR) > minFDR ) results = as.matrix("No signficant enrichment found.") else
-	results = results[which(results$FDR < minFDR),]
-}
-
-
-
-################################################################
-#   Server function
-################################################################
-	
-shinyServer(
-function(input, output,session) {
-  
- #----------------------------------------------- 
- # Available datasets 
- # readData()$data: transformed data, readData()$rawCounts: Counts data. NULL if non-count data.
- # converted():id conversion results with many components such as: converted()$originalIDs,  converted()$IDs: converted IDs
-               #,converted()$species,   converted()$speciesMatched,  converted()$conversionTable
- # allGeneInfo(): returns all information in the geneInfo file for each gene
- # geneSets(): gene set as a list for pathway analysis
-  
-	options(shiny.maxRequestSize = 100*1024^2) # 100MB file max for upload
-	observe({  updateSelectInput(session, "selectOrg", choices = speciesChoice )      })
-	observe({  updateSelectInput(session, "heatColors1", choices = colorChoices )      })
-	observe({  updateSelectInput(session, "distFunctions", choices = distChoices )      })
-	observe({  updateSelectInput(session, "hclustFunctions", choices = hclustChoices )      })
-
-	################################################################
-	#   Read data
-	################################################################
- 
-	# read data file and do filtering and transforming
-	readData <- reactive ({
-		library(edgeR,verbose=FALSE) # count data D.E.
-		library(DESeq2,verbose=FALSE) # count data analysis
-		inFile <- input$file1
-		inFile <- inFile$datapath
-
-		if(is.null(input$file1) && input$goButton == 0)   return(NULL)
-		if(is.null(input$file1) && input$goButton > 0 )   inFile = demoDataFile
-		tem = input$dataFileFormat; tem=input$missingValue
-		if(!is.null(input$dataFileFormat)) # these are needed to make it responsive to changes
-			if(input$dataFileFormat== 1){  
-				tem = input$minCounts 
-				tem= input$NminSamples
-				tem = input$countsLogStart
-				tem = input$CountsTransform 
-			}
-		if(!is.null(input$dataFileFormat))
-			if(input$dataFileFormat== 2){ 
-				tem = input$transform; 
-				tem = input$logStart; 
-				tem= input$lowFilter 
-				tem = input$NminSamples2
-		}
-
-		isolate({
-			withProgress(message="Reading and pre-processing ", {
-				if (is.null( input$dataFileFormat )) return(NULL)
-				dataTypeWarning =0
-				dataType =c(TRUE)
-
-				#---------------Read file
-				x <- read.csv(inFile)	# try CSV
-				if(dim(x)[2] <= 2 )   # if less than 3 columns, try tab-deliminated
-					x <- read.table(inFile, sep="\t",header=TRUE)	
-				#-------Remove non-numeric columns, except the first column
-				
-				for(i in 2:dim(x)[2])
-					dataType = c( dataType, is.numeric(x[,i]) )
-				if(sum(dataType) <=2) return (NULL)  # only less than 2 columns are numbers
-				x <- x[,dataType]  # only keep numeric columns
-				
-				# rows with all missing values
-				ix = which( apply(x[,-1],1, function(y) sum( is.na(y) ) ) != dim(x)[2]-1 )
-				x <- x[ix,]
-				
-				dataSizeOriginal = dim(x); dataSizeOriginal[2] = dataSizeOriginal[2] -1
-				
-				x[,1] <- toupper(x[,1])
-				x[,1] <- gsub(" ","",x[,1]) # remove spaces in gene ids
-				x = x[order(- apply(x[,2:dim(x)[2]],1,sd) ),]  # sort by SD
-				x <- x[!duplicated(x[,1]) ,]  # remove duplicated genes
-				rownames(x) <- x[,1]
-				x <- as.matrix(x[,c(-1)])
-				
-				# remove "-" or "." from sample names
-				colnames(x) = gsub("-","",colnames(x))
-				colnames(x) = gsub("\\.","",colnames(x))
-
-				
-				#cat("\nhere",dim(x))
-				# missng value for median value
-				if(sum(is.na(x))>0) {# if there is missing values
-					if(input$missingValue =="geneMedian") { 
-						rowMedians <- apply(x,1, function (y)  median(y,na.rm=T))
-						for( i in 1:dim(x)[2] ) {
-							ix = which(is.na(x[,i]) )
-							x[ix,i] <- rowMedians[ix]						
-						}
-							
-					} else if(input$missingValue =="treatAsZero") {
-						x[is.na(x) ] <- 0					
-					} else if (input$missingValue =="geneMedianInGroup") {
-						sampleGroups = detectGroups( colnames(x))
-						for (group in unique( sampleGroups) ){		
-							samples = which( sampleGroups == group )
-							rowMedians <- apply(x[,samples, drop=F],1, function (y)  median(y,na.rm=T))
-							for( i in  samples ) { 
-								ix = which(is.na(x[ ,i] ) )	
-								if(length(ix) >0 )
-									x[ix, i  ]  <- rowMedians[ix]
-							}										
-						}
-						
-						# missing for entire sample group, use median for all samples
-						if(sum(is.na(x) )>0 ) { 
-							rowMedians <- apply(x,1, function (y)  median(y,na.rm=T))
-							for( i in 1:dim(x)[2] ) {
-								ix = which(is.na(x[,i]) )
-								x[ix,i] <- rowMedians[ix]						
-							}						
-						}
-					}
-				}
-
-				# Compute kurtosis
-				mean.kurtosis = mean(apply(x,2, kurtosis))
-
-				if (input$dataFileFormat == 2 ) {  # if FPKM, microarray
-					incProgress(1/3,"Pre-processing data")
-
-					if ( is.integer(x) ) dataTypeWarning = 1;  # Data appears to be read counts
-
-					#-------------filtering
-					#tem <- apply(x,1,max)
-					#x <- x[which(tem > input$lowFilter),]  # max by row is at least 
-					x <- x[ which( apply( x, 1,  function(y) sum(y >= input$lowFilter)) >= input$NminSamples2 ) , ] 
-
-					
-					x <- x[which(apply(x,1, function(y) max(y)- min(y) ) > 0  ),]  # remove rows with all the same levels
-
-					#--------------Log transform
-					# Takes log if log is selected OR kurtosis is big than 100
-					if ( (input$transform == TRUE) | (mean.kurtosis > kurtosis.log ) ) 
-						x = log(x+abs( input$logStart),2)
-
-					tem <- apply(x,1,sd) 
-					x <- x[order(-tem),]  # sort by SD
-					rawCounts = NULL
-				} else {  # counts data
-					incProgress(1/3, "Pre-processing counts data")
-					tem = input$CountsDEGMethod; tem = input$countsTransform
-					# data not seems to be read counts
-					if(!is.integer(x) & mean.kurtosis < kurtosis.log ) {
-						dataTypeWarning = -1
-					}
-					# not used as some counts data like those from CRISPR screen
-					#validate(   # if Kurtosis is less than a threshold, it is not read-count
-					#	need(mean.kurtosis > kurtosis.log, "Data does not seem to be read count based on distribution. Please double check.")
-					# )
-					x <- round(x,0) # enforce the read counts to be integers. Sailfish outputs has decimal points.
-					#x <- x[ which( apply(x,1,max) >= input$minCounts ) , ] # remove all zero counts
-					
-
-					# remove genes if it does not at least have minCounts in at least NminSamples
-					#x <- x[ which( apply(x,1,function(y) sum(y>=input$minCounts)) >= input$NminSamples ) , ]  # filtering on raw counts
-					# using counts per million (CPM) for filtering out genes.
-                                             # CPM matrix                  #N samples > minCounts
-					x <- x[ which( apply( cpm(DGEList(counts = x)), 1,  function(y) sum(y>=input$minCounts)) >= input$NminSamples ) , ] 
-					
-
-					if(0){  # disabled
-						# remove genes with low expression by counts per million (CPM)
-						dge <- DGEList(counts=x); dge <- calcNormFactors(dge)
-						myCPM <- cpm(dge, prior.counts = 3 )
-						x <- x[which(rowSums(  myCPM > input$minCounts)  > 1 ),]  # at least two samples above this level
-						rm(dge); rm(myCPM)
-					}
-					rawCounts = x; # ??? 
-					# construct DESeqExpression Object
-					# colData = cbind(colnames(x), as.character(detectGroups( colnames(x) )) )
-					tem = rep("A",dim(x)[2]); tem[1] <- "B"   # making a fake design matrix to allow process, even when there is no replicates
-					colData = cbind(colnames(x), tem )
-					colnames(colData)  = c("sample", "groups")
-					dds <- DESeqDataSetFromMatrix(countData = x, colData = colData, design = ~ groups)
-					dds <- estimateSizeFactors(dds) # estimate size factor for use in normalization later for started log method
-
-					incProgress(1/2,"transforming raw counts")
-					# regularized log  or VST transformation
-					if( input$CountsTransform == 3 ) { # rlog is slow, only do it with 10 samples
-						x <- rlog(dds, blind=TRUE); x <- assay(x) } 
-					else {
-						if ( input$CountsTransform == 2 ) {    # vst is fast but aggressive
-							x <- vst(dds, blind=TRUE)
-							x <- assay(x)  
-						} else{  # normalized by library sizes and add a constant.
-							x <- log2( counts(dds, normalized=TRUE) + input$countsLogStart )   # log(x+c) 
-							# This is equivalent to below. But the prior counts is more important
-							#x <- cpm(DGEList(counts = x),log=TRUE, prior.count=input$countsLogStart )  #log CPM from edgeR
-							#x <- x-min(x)  # shift values to avoid negative numbers
-						}
-					}
-				}
-				dataSize = dim(x);
-				incProgress(1, "Done.")
-				
-				sampleInfoDemo=NULL
-				if( input$goButton >0)
-					sampleInfoDemo <- t( read.csv(demoDataFile2,row.names=1,header=T,colClasses="character") )
-
-					finalResult <- list(data = as.matrix(x), mean.kurtosis = mean.kurtosis, rawCounts = rawCounts, dataTypeWarning=dataTypeWarning, dataSize=c(dataSizeOriginal,dataSize),sampleInfoDemo=sampleInfoDemo )
-				return(finalResult)
-			})
-		})
-	})
-
-	readSampleInfo <- reactive ({
-		if( is.null(input$file2) && !is.null( readData()$sampleInfoDemo ) ) return( readData()$sampleInfoDemo   )
-		inFile <- input$file2
-		inFile <- inFile$datapath
-
-		if(is.null(input$file2) && input$goButton == 0)   return(NULL)
-		if(is.null(readData() ) ) return(NULL)
-		#if(input$goButton2 > 0 )   inFile = demoDataFile2
-		
-		isolate({
-				if (is.null( input$dataFileFormat )) return(NULL)
-				dataTypeWarning =0
-				dataType =c(TRUE)
-
-				#---------------Read file
-				x <- read.csv(inFile,row.names=1,header=T,colClasses="character")	# try CSV
-				if(dim(x)[2] <= 2 )   # if less than 3 columns, try tab-deliminated
-					x <- read.table(inFile, row.names=1,sep="\t",header=TRUE,colClasses="character")
-				# remove "-" or "." from sample names
-				colnames(x) = gsub("-","",colnames(x))
-				colnames(x) = gsub("\\.","",colnames(x))	
-
-				#----------------Matching with column names of expression file
-				ix = match(toupper(colnames(readData()$data)), toupper(colnames(x)) ) 
-				ix = ix[which(!is.na(ix))] # remove NA
-
-				validate(
-				  need(length(unique(ix) ) == dim(readData()$data)[2] 
-				       & dim(x)[1]>=1  # at least one row
-					 ,"Error!!! Sample information file not recognized. Sample names must be exactly the same. Each row is a factor. Each column represent a sample.  Please see documentation on format.")
-				)
-				
-				#-----------Double check factor levels, change if needed
-				# remove "-" or "." from factor levels
-				for( i in 1:dim(x)[1]) {
-				   x[i,] = gsub("-","",x[i,])
-				   x[i,] = gsub("\\.","",x[i,])				
-				}
-				# if levels from different factors match
-				if( length(unique(ix) ) == dim(readData()$data)[2]) { # matches exactly
-					x = x[,ix]
-					# if the levels of different factors are the same, it may cause problems
-					if( sum( apply(x, 1, function(y) length(unique(y)))) > length(unique(unlist(x) ) ) ) {
-						tem2 =apply(x,2, function(y) paste0( names(y),y)) # factor names are added to levels
-						rownames(tem2) = rownames(x)
-						x <- tem2				
-					}
-					return(t( x ) )			
-				} else retrun(NULL)
-							
-				
-		})
-	})
-	
-	output$sampleInfoTable <- renderTable({
-
-		if (is.null(readSampleInfo() ) )   return(NULL)
-		isolate({
-			tem = t(readSampleInfo() )
-			tem = cbind(rownames(tem),tem)
-			colnames(tem)[1] <- "Study_design"
-			return(tem)
-		})
-	},include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T) 	
-	
-	output$textTransform <- renderText({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		inFile <- input$file1
-		k.value =  readData()$mean.kurtosis	  
-		tem = paste( "Mean Kurtosis =  ", round(k.value,2), ".\n",sep = "")
-		if( k.value > kurtosis.log) tem = paste(tem, " Detected extremely large values.  When kurtosis >", kurtosis.log,
-		", log transformation is automatically applied.", sep="") else if (k.value>kurtosis.warning)
-		{tem = paste(tem, " Detected  large numbers with kurtosis >",
-		kurtosis.warning,". Log transformation is recommended.", sep="") }
-		if(readData()$dataTypeWarning == 1 ) {
-			tem = paste (tem, " ------Warning!!! Data matrix contains all integers. It seems to be read counts!!! Please select appropriate data type in the previous page and reload file.")}
-		if(readData()$dataTypeWarning == -1 ) {
-			tem = paste (tem, "  ------Warning!!! Data does not look like read counts data. Please select appropriate data type in the previous page and reload file.")}
-		tem
-	})	
-
-	# provide info on number of genes passed filter
-	output$nGenesFilter <- renderText({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		inFile <- input$file1
-		if( is.null(readData()) ) return(NULL)
-		if( is.null(convertedData() ) ) return(NULL)
-		tem = input$noIDConversion; tem=input$missingValue
-		tem = readData()$dataSize
-		ix = match( toupper( rownames(convertedData())), toupper(converted()$conversionTable$ensembl_gene_id  ) )
-		nMatched = sum( !is.na(ix) )
-		if( input$noIDConversion) 
-		return( paste(tem[1], "genes in", tem[4], "samples.", tem[3], " genes passed filter (see above). Original gene IDs used." ) )  else
-		return( paste(tem[1], "genes in", tem[4], "samples. Of the", tem[3], " genes passed filter (see above), ", 
-			nMatched, " were converted to Ensembl gene IDs in our database. 
-			  The remaining ", tem[3]-nMatched, "genes were kept in the data using original IDs." ) ) 	  
-			  
-			  
-			  
-	})	
-
-	# Show info on file format	
-	output$fileFormat <- renderUI({
-		i = "<h3>Done. Ready to load data files.</h3>"
-		i = c(i,"Users can upload a CSV or tab-delimited text file with the first column as gene IDs. 
-		For RNA-seq data, read count per gene is recommended.
-		Also accepted are normalized expression data based on FPKM, RPKM, or DNA microarray data. iDEP can convert most types of common gene IDs to Ensembl gene IDs, which is used 
-			internally for enrichment and pathway analyses. iDEP parses column names to define sample groups. To define 3 biological samples (Control,
-		TreatmentA, TreatmentB) with 2 replicates each, column names should be:")
-		i = c(i," <strong> Ctrl_1, Ctrl_2, TrtA_1, TrtA_2, TrtB_1, TrtB_2</strong>.") 
-		i = c(i,"For more complex experimental design, users can upload a <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a>  with samples in columns and factors (genotypes and conditions) in rows. 
-		       With such a file, users can define a statistic model according to study design, which enables them to control the effect for batch effects or paired samples. 
-	         or detect interactions between factors (how mutant responds differently to treatment than wild-type).") 
-		
-		HTML(paste(i, collapse='<br/>') )
-	})
-	# this defines an reactive object that can be accessed from other rendering functions
-
-	converted <- reactive({
-		if (is.null(input$file1) && input$goButton == 0)    return(NULL)
-		tem = input$selectOrg;
-		isolate( {
-		
-		convertID(rownames(readData()$data ),input$selectOrg, input$selectGO );
-
-		# converted()$conversionTable: Not matched is skipped
-		#User_input	ensembl_gene_id	Species
-		#MTURN	ENSMUSG00000038065	Mouse
-		#MTUS1	ENSMUSG00000045636	Mouse
-
-
-		}) 
-	})
-
-	# this defines an reactive object that can be accessed from other rendering functions
-	allGeneInfo <- reactive({
-		if (is.null(input$file1) && input$goButton == 0)    return(NULL)
-		tem = input$selectOrg; 
-		isolate( {
-		withProgress(message="Looking up gene annotation", {
-		geneInfo(converted(),input$selectOrg); 
-				})
-		})
-	})
-	
-	convertedData <- reactive({
-		if (is.null(input$file1) && input$goButton == 0) return()  
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-		####################################
-		if( is.null(converted() ) ) return( readData()$data) # if id or species is not recognized use original data.
-		isolate( {  
-			withProgress(message="Converting data ... ", {
-			
-				if(input$noIDConversion) return( readData()$data )
-				
-				mapping <- converted()$conversionTable
-				# cat (paste( "\nData:",input$selectOrg) )
-				x =readData()$data
-
-				rownames(x) = toupper(rownames(x))
-				# any gene not recognized by the database is disregarded
-				# x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
-				# the 3 lines keeps the unrecogized genes using original IDs
-				x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
-
-				# original IDs used if ID is not matched in database
-				ix = which(is.na(x1[,2]) )
-				x1[ix,2] = x1[ix,1] 
-				
-				#multiple matched IDs, use the one with highest SD
-				tem = apply(x1[,3:(dim(x1)[2])],1,sd)
-				x1 = x1[order(x1[,2],-tem),]
-				x1 = x1[!duplicated(x1[,2]) ,]
-				rownames(x1) = x1[,2]
-				x1 = as.matrix(x1[,c(-1,-2)])
-				tem = apply(x1,1,sd)
-				x1 = x1[order(-tem),]  # sort again by SD
-				incProgress(1, "Done.")
-			
-				return(x1)
-		})
-		})
-	})
-	
-	convertedCounts <- reactive({
-		if (is.null(input$file1) && input$goButton == 0) return()  
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2 }
-		####################################
-		if( is.null(converted() ) ) return( readData()$rawCounts) # if id or species is not recognized use original data.
-		isolate( {  
-			if(input$noIDConversion) return( readData()$rawCounts )
-			withProgress(message="Converting data ... ", {
-
-				
-				mapping <- converted()$conversionTable
-				# cat (paste( "\nData:",input$selectOrg) )
-				x =readData()$rawCounts
-				if(is.null(x)) return(NULL) else 
-				{ 
-					rownames(x) = toupper(rownames(x))
-					# any gene not recognized by the database is disregarded
-					# x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
-					# the 3 lines keeps the unrecogized genes using original IDs
-					x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
-					ix = which(is.na(x1[,2]) )
-					x1[ix,2] = x1[ix,1] # original IDs used
-					
-					#multiple matched IDs, use the one with highest SD
-					tem = apply(x1[,3:(dim(x1)[2])],1,sd)
-					x1 = x1[order(x1[,2],-tem),]
-					x1 = x1[!duplicated(x1[,2]) ,]
-					rownames(x1) = x1[,2]
-					x1 = as.matrix(x1[,c(-1,-2)])
-					tem = apply(x1,1,sd)
-					x1 = x1[order(-tem),]  # sort again by SD
-					incProgress(1, "Done.")
-					return(x1)
-				} # here
-			})
-		
-		})
-	})
-	
-	GeneSets <- reactive({
-		if (is.null(input$file1) && input$goButton == 0)	return()
-		tem = input$selectOrg
-		tem = input$selectGO
-		tem =input$minSetSize; tem= input$maxSetSize; 
-		isolate( {
-			if(input$selectOrg == "NEW" && !is.null(input$gmtFile) ) # new species 
-			{     inFile <- input$gmtFile; inFile <- inFile$datapath
-				return( readGMTRobust(inFile) ) }else
-		return( readGeneSets( converted(), convertedData(), input$selectGO,input$selectOrg,c(input$minSetSize, input$maxSetSize)  ) ) }) 
-	})
-
-output$downloadSampleInfoData <- downloadHandler(
-  filename <- function() {
-		paste("sampleInformation.csv")
-	  },
-
-	  content <- function(file) {
-		file.copy(demoDataFile2 , file)
-	  },
-	  contentType = "application/zip"
-	)	
-	
-####### [TODO] Kevin Indentation Work 10/5 #######
-
-	output$contents <- renderTable({
-	   inFile <- input$file1
-		inFile <- inFile$datapath
-		if (is.null(input$file1) && input$goButton == 0)   return(NULL)
-	#    if (is.null(input$file1) && input$goButton > 0 )   inFile = "expression1_no_duplicate.csv"
-		if (is.null(input$file1) && input$goButton > 0 )   inFile = demoDataFile
-
-		tem = input$selectOrg
-		isolate({
-		x <- read.csv(inFile)
-		if(dim(x)[2] <= 2 ) x <- read.table(inFile, sep="\t",header=TRUE)	# not CSV
-		#x <- readData()$data
-		 x[1:20,]
-		})
-	  },include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
-
-# show first 20 rows of data
-	output$species <-renderTable({   
-      if (is.null(input$file1) && input$goButton == 0)    return()
-      isolate( {  #tem <- convertID(input$input_text,input$selectOrg );
-	  	  withProgress(message="Converting gene IDs", {
-                  tem <- converted()
-			incProgress(1, detail = paste("Done"))	  })
-		  
-				  if( is.null(tem)) {as.data.frame("ID not recognized.")} else {
-	              tem$speciesMatched }
-
-      }) # avoid showing things initially         
-    }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
-
-# show first 20 rows of processed data; not used
-	output$debug <- renderTable({
-      if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	  tem = input$selectOrg; tem = input$lowFilter ; tem =input$NminSamples2; tem = input$transform
-	x <- convertedData()
-	#tem = GeneSets()
-	
-	return( as.data.frame (x[1:20,] ))
-	},include.rownames=TRUE)
-
-
-################################################################
-#   Pre-process
-################################################################
-	
-	output$EDA <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2 }
-	####################################
-
-	
-    x <- readData()$data
-	 par(mfrow=c(3,1))
-	par(mar=c(14,6,4,4))
-	myColors = rainbow(dim(x)[2])
-	plot(density(x[,1]),col = myColors[1], lwd=2,
-	  xlab="Expresson values", ylab="Density", main= "Distribution of transformed data",
-	  cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2, ylim=c(0, max(density(x[,1])$y)+.02 ) )
-	  
-	for( i in 2:dim(x)[2] )
-	lines(density(x[,i]),col=myColors[i], lwd=2 )
-	if(dim(x)[2]< 31 ) # if too many samples do not show legends
-		legend("topright", cex=1.2,colnames(x), lty=rep(1,dim(x)[2]), col=myColors )	
-   # boxplot of first two samples, often technical replicates
-   
-	boxplot(x, las = 2, ylab="Transformed expression levels", main="Distribution of transformed data"
-		,cex.lab=1.5, cex.axis=1.5, cex.main=2, cex.sub=2)
-	plot(x[,1:2],xlab=colnames(x)[1],ylab=colnames(x)[2], main="Scatter plot of first two samples",cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2)
-	
-   }, height = 1600, width = 800)
-   
-	output$genePlot <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat ; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-
-	
-	tem = input$geneSearch ; tem = input$genePlotBox; tem = input$useSD
-	isolate({
-    x <- convertedData()
-	
-	Symbols <- rownames(x)
-	if( input$selectOrg != "NEW") {
-		ix = match( rownames(x), allGeneInfo()[,1])
-		if( sum( is.na(allGeneInfo()$symbol )) != dim(allGeneInfo() )[1] ) {  # symbol really exists? 
-			Symbols = as.character( allGeneInfo()$symbol[ix] )
-			Symbols[which( nchar(Symbols) <= 2 ) ] <- rownames(x) [which( nchar(Symbols) <= 2 ) ] 
-			}
-	   }
-	x = as.data.frame(x)
-	x$Genes = Symbols
-    #write.csv(x,"tem.csv")
-	# Search for genes
-	#ix = grep("HOXA",toupper(x$Genes) )
-	# ix = grep(toupper(input$geneSearch),toupper(x$Genes))  # sox --> Tsox  
-	# matching from the beginning of symbol
-	ix = which(regexpr(  paste("^" , toupper(input$geneSearch),sep="")   ,toupper(x$Genes)) > 0)
-	
-	if(grepl(" ", input$geneSearch)  )  # if there is space character, do exact match
-		ix = match(gsub(" ","", toupper(input$geneSearch)),x$Genes)
-	
-	# too few or too many genes found
-	if(length(ix) == 0 | length(ix) > 50 ) return(NULL)
-	  # no genes found
-	 	 
-	mdf = melt(x[ix,],id.vars="Genes", value.name="value", variable.name="samples")
-	# bar plot of individual samples
-	p1 <- ggplot(data=mdf, aes(x=samples, y=value, group = Genes, shape=Genes, colour = Genes)) +
-		geom_line() +
-		geom_point( size=5,  fill="white")+ #shape=21  circle
-		#theme(axis.text.x = element_text(size=16,angle = 45, hjust = 1)) +
-		labs(y="Transformed expression level") +
-		coord_cartesian(ylim = c(0, max(mdf$value)))
-	p1 <- p1 + theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
-	 theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
-	       axis.text.y = element_text( size = 16),
-		   axis.title.x = element_blank(),
-		   axis.title.y = element_text( size = 16) ) +
-	theme(legend.text=element_text(size=12))	
-		
-		
-	#ggplotly(p) %>% layout(margin = list(b = 250,l=100))  # prevent cutoff of sample names
-
-	# Barplot with error bars
-	mdf$count = 1
-	g = detectGroups(mdf$samples)
-	Means = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = mean, na.rm=TRUE  )
-	SDs = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = sd, na.rm=TRUE  )
-	Ns = aggregate(mdf$count, by= list(g, mdf$Genes) , FUN = sum  )
-	summarized = cbind(Means,SDs[,3],Ns[,3])
-	colnames(summarized)= c("Samples","Genes","Mean","SD","N")
-	summarized$SE = summarized$SD / sqrt(summarized$N)	
-		
-	#http://www.sthda.com/english/wiki/ggplot2-barplots-quick-start-guide-r-software-and-data-visualization
-	p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
-		geom_bar(stat="identity", position=position_dodge()) + # bars represent average
-		geom_errorbar(aes(ymin=Mean-SE, ymax=Mean+SE), width=0.2,position=position_dodge(.9)) +
-		labs(y="Expression Level") 
-	if(input$useSD == 1) { 
-	p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
-		geom_bar(stat="identity", position=position_dodge()) + # bars represent average
-		geom_errorbar(aes(ymin=Mean-SD, ymax=Mean+SD), width=0.2,position=position_dodge(.9)) +
-		labs(y="Expression Level") 
-	}
-	
-	p2 <- p2 +  theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
-	 theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
-	       axis.text.y = element_text( size = 16),
-		   axis.title.x = element_blank(),
-		   axis.title.y = element_text( size = 16) ) +
-	theme(legend.text=element_text(size=16))
-	
-	if( input$genePlotBox == 1)  p1 else p2
-	
-	})
-   })
-   
-
-	processedData <- reactive({
-		  if (is.null(input$file1) && input$goButton == 0)    return()
-		  
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-		####################################
-		 
-			if(input$selectOrg == "NEW") return(  convertedData() ) else { 
-
-				withProgress(message="Preparing data for download ", {
-				
-				tem <-  merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], round(convertedData(),4),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )   
-				tem[,2] = paste(" ",tem[,2]) # add space to gene symbol to avoid auto convertion of symbols to dates by Excel 
-				incProgress(1/2, "mapping")
-				#tem[,1] = paste(" ",tem[,1]) # add space
-				 tem2 = merge( converted()$conversionTable, tem, by.x = "ensembl_gene_id",by.y="ensembl_gene_id", all.y=TRUE)
-				 tem2 <- tem2[,-3] # remove species column
-				 ix = which( tem2[,3] == "  NA") # remove NA's 
-				 tem2[ix,3] <- ""
-				 
-				 ix = which(is.na(tem2[,2]) ) # not in mapping table
-				 userIDs = tem2[,2]; userIDs[ix]=tem2[ix,1]	; userIDs = paste0(" ",userIDs)	# prevents Excel auto conversion		 
-				 tem2[,2] = tem2[,1]; tem2[ix,2]= ""
-				 tem2[,1]= userIDs;
-				 colnames(tem2)[1:2]= c("User_ID sorted by SD","Ensembl_gene_id")
-				 
-				 # sort by sd
-				 tem2 = tem2[ order( -apply(tem2[,-3:-1],1,sd )   )  ,]
-				 
-				 
-				 
-				 incProgress(1, "Done.")
-				 # add original data
-				# tem3 <- merge( readData()$data, tem2, by.x = "row.names", by.y = "User_input", all.x=TRUE )
-				# return(converted()$conversionTable) #return(readData()$data)
-				# colnames(tem)[1] = "Ensembl_or_Original_ID"
-				})
-				return(tem2)
-				
-			
-		}
-	  })
-
-	processedCountsData <- reactive({
-		  if (is.null(input$file1) && input$goButton == 0)    return()
-		  
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-		####################################
-			
-		if(input$selectOrg == "NEW") return(  convertedData() ) else { 
-
-			withProgress(message="Preparing data for download ", {
-
-			if(is.null(convertedCounts() ) ) return(NULL) else 
-			{
-
-				withProgress(message="Preparing data for download ", {
-				
-				tem <-  merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], round(convertedCounts(),4),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )   
-				tem[,2] = paste(" ",tem[,2]) # add space to gene symbol to avoid auto convertion of symbols to dates by Excel 
-				incProgress(1/2, "mapping")
-				#tem[,1] = paste(" ",tem[,1]) # add space
-				 tem2 = merge( converted()$conversionTable, tem, by.x = "ensembl_gene_id",by.y="ensembl_gene_id", all.y=TRUE)
-				 tem2 <- tem2[,-3] # remove species column
-				 ix = which( tem2[,3] == "  NA") # remove NA's 
-				 tem2[ix,3] <- ""
-				 
-				 ix = which(is.na(tem2[,2]) ) # not in mapping table
-				 userIDs = tem2[,2]; userIDs[ix]=tem2[ix,1]	; userIDs = paste0(" ",userIDs)	# prevents Excel auto conversion		 
-				 tem2[,2] = tem2[,1]; tem2[ix,2]= ""
-				 tem2[,1]= userIDs;
-				 colnames(tem2)[1:2]= c("User_ID sorted by SD","Ensembl_gene_id")
-				 # sort by sd
-				 tem2 = tem2[ order( -apply(log2(10+ tem2[,-3:-1]),1,sd )   )  ,]
-				 incProgress(1, "Done.")
-				 # add original data
-				# tem3 <- merge( readData()$data, tem2, by.x = "row.names", by.y = "User_input", all.x=TRUE )
-				# return(converted()$conversionTable) #return(readData()$data)
-				# colnames(tem)[1] = "Ensembl_or_Original_ID"
-				})
-				return(tem2)
-			}
-
-			}) # progress
-			
-		}
-	  })  
-
-	output$downloadProcessedData <- downloadHandler(
-		filename = function() {"Processed_Data.csv"},
-		content = function(file) {
-      write.csv( processedData(), file, row.names=FALSE )	    
-	})
- 
-	output$downloadConvertedCounts <- downloadHandler(
-		filename = function() {"Converted_Counts_Data.csv"},
-		content = function(file) {
-      write.csv( processedCountsData(), file, row.names=FALSE )	    
-	})
- 
-	output$examineData <- DT::renderDataTable({
-   inFile <- input$file1
-	inFile <- inFile$datapath
-    if (is.null(input$file1) && input$goButton == 0)   return(NULL)
-
-	tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
-	isolate({
-	merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], round(convertedData(),2),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )
-	})
-  })
-
-	output$totalCounts <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-    if (is.null(readData()$rawCounts))   return(NULL)
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	####################################
-	
-    par(mar=c(16,2,2,2))
-    x <- readData()$rawCounts
-	barplot( colSums(x)/1e6, col="green",las=3, cex.axis=1.3, cex =1.5, main="Total read counts (millions)")
-
-},width=400) # height is automatic, this enables the display of other plots below.
-
-
-################################################################
-#   Heatmaps
-################################################################
-
-	output$listFactorsHeatmap <- renderUI({
-	tem = input$selectOrg; 
-	tem=input$limmaPval; tem=input$limmaFC
-	
-    if (is.null(readSampleInfo() ) ) # if sample info is uploaded and correctly parsed.
-       { return(NULL) }	 else { 
-	  selectInput("selectFactorsHeatmap", label="Sample color bar:",choices= c(colnames(readSampleInfo()), "Sample_Name")
-	     )   } 
-	})  
-
-	# conventional heatmap.2 plot
-	output$heatmap1 <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  {  
-			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
-		}
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) { 
-			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
-		}
-	####################################
-		
-    x <- readData()$data   # x = read.csv("expression1.csv")
-	withProgress(message="Reading and pre-processing ", {
-	n=input$nGenes
-	#if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	# this will cutoff very large values, which could skew the color 
-	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	
-	# standardize by gene
-	if(input$geneNormalize) 
-		x <- x / apply(x,1,sd)
-	# standardize by sample
-	if(input$sampleNormalize){
-		x <- scale(x, center = TRUE, scale = apply(x,2,sd)) 
-	}
-	
-	
-	cutoff = median(unlist(x)) + input$heatmapCutoff * sd (unlist(x)) 
-	x[x>cutoff] <- cutoff
-	cutoff = median(unlist(x)) - input$heatmapCutoff *sd (unlist(x)) 
-	x[x< cutoff] <- cutoff
-	
-    groups = detectGroups(colnames(x) )
-	# if sample info file is uploaded us that info:
-
-	if(!is.null(readSampleInfo()) &&  !is.null(input$selectFactorsHeatmap) ) { 
-		if(input$selectFactorsHeatmap == "Sample_Name" )
-			groups = detectGroups(colnames(x) ) else 
-			{ 	ix = match(input$selectFactorsHeatmap, colnames(readSampleInfo() ) ) 
-				groups = readSampleInfo()[,ix]
-			}
-	}	
-	
-	groups.colors = rainbow(length(unique(groups) ) )
-
-	#http://stackoverflow.com/questions/15351575/moving-color-key-in-r-heatmap-2-function-of-gplots-package
-	lmat = rbind(c(0,4),c(0,1),c(3,2),c(5,0))
-	lwid = c(2,6) # width of gene tree; width of heatmap
-	lhei = c(1.5,.2,8,1.1)
-	#layout matrix
-	#		 [,1] [,2]
-	#	[1,]    0    4
-	#	[2,]    0    1
-	#	[3,]    3    2
-	#	[4,]    5    0
-	# 4--> column tree; 1--> column color bar; 2--> heatmap; 3-> row tree; 5--> color key.
-	# height of 4 rows is specified by lhei; width of columns is given by lwid
-
-
-	par(mar = c(5, 4, 1.4, 0.2))
-	
-
-	if( n>110) 
-	heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
-		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
-		,Colv=!input$noSampleClustering
-		#col=colorpanel(75,"green","black","magenta")  ,
-		#col=bluered(75),
-		#col=greenred(75), 
-		,col= heatColors[as.integer(input$heatColors1),]
-		,density.info="none", trace="none", scale="none", keysize=.5
-		,key=T, symkey=F
-		,ColSideColors=groups.colors[ as.factor(groups)]
-		,labRow=""
-		,margins=c(10,0)
-		,srtCol=45
-		,cexCol=2  # size of font for sample names
-		,lmat = lmat, lwid = lwid, lhei = lhei
-		)
-
-	if( n<=110) 
-	heatmap.2(x, distfun =  distFuns[[as.integer(input$distFunctions)]]
-		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
-		,Colv=!input$noSampleClustering		
-		,col= heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.5
-		,key=T, symkey=F,
-		#,labRow=labRow
-		,ColSideColors=groups.colors[ as.factor(groups)]
-		,margins=c(18,12)
-		,cexRow=1
-		,srtCol=45
-		,cexCol=1.8  # size of font for sample names
-		,lmat = lmat, lwid = lwid, lhei = lhei
-	)
-	
-	
-	par(lend = 1)           # square line ends for the color legend
-	add_legend("topleft",
-		legend = unique(groups), # category labels
-		col = groups.colors[ unique(as.factor(groups))],  # color key
-		lty= 1,             # line style
-		lwd = 10            # line width
-	)
-	
-	incProgress(1,"Done")
-	})
-
-} , height = 800, width = 400 )  
-
-# interactive heatmap with plotly
-	output$heatmap <- renderPlotly({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  {  
-			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
-		}
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) { 
-			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
-		}
-	####################################
-	   x <- convertedData()
-	withProgress(message="Rendering heatmap ", {
-	n=input$nGenesPlotly
-	#if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	# this will cutoff very large values, which could skew the color 
-	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	cutoff = median(unlist(x)) + 3*sd (unlist(x)) 
-	x[x>cutoff] <- cutoff
-	cutoff = median(unlist(x)) - 3*sd (unlist(x)) 
-	x[x< cutoff] <- cutoff
-
-	# adding gene symbol
-	ix <- match( rownames(x), allGeneInfo()[,1])
-	geneSymbols <- as.character( allGeneInfo()$symbol)[ix]
-	# if missing or duplicated, use Ensembl ID
-	ix <- which(nchar( geneSymbols) <=1 | duplicated(geneSymbols ) );	geneSymbols[ ix ] <- rownames(x)[ix]
-	rownames( x) = geneSymbols;
-
-	incProgress(1/2, "Clustering of genes")	
-	clust <- x %>% 
-	  dist2() %>% 
-	  hclust2()
-
-	# Get order
-	ord <- clust$order
-
-	# Re-arrange based on order
-	df <- t( x[ord,] )%>%
-	   melt()
-	   
-	colnames(df)[1:2] <- c("X","Y")
-    colorNames = unlist(strsplit(tolower(rownames(heatColors)[ as.integer(input$heatColors1)   ]),"-" ) )
-	p <- df %>%
-	  ggplot(aes(X, Y, fill = value)) + 
-		   geom_tile()+ scale_fill_gradient2(low = colorNames[1], mid = colorNames[2],high = colorNames[3]) +
-		   theme(axis.title.y=element_blank(),   # remove y labels
-		   # axis.text.y=element_blank(),  # keep gene names for zooming
-			axis.ticks.y=element_blank(),
-			axis.title.x=element_blank()) +
-			theme(axis.text.x = element_text(size=10,angle = 45, hjust = 1))
-
-		incProgress(1,"Done")
-	ggplotly(p) %>% 
-		layout(margin = list(b = 150,l=200))  # prevent cutoff of sample names
-
-	})
-  })  
-  
-	heatmapData <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-    x <- readData()$data
-
-	
-	n=input$nGenes
-	#if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	# this will cutoff very large values, which could skew the color 
-	x1 = x[1:n,] 
-	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	cutoff = median(unlist(x)) + 4*sd (unlist(x)) 
-	x[x>cutoff] <- cutoff
-	cutoff = median(unlist(x)) - 4*sd (unlist(x)) 
-	x[x< cutoff] <- cutoff
-	
-	groups = detectGroups(colnames(x) )
-	groups.colors = rainbow(length(unique(groups) ) )
-
-	#pdf(file=NULL,width =700, height =700)
-	hy <- heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
-		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
-		,density.info="none", trace="none", scale="none")
-    #dev.off()
-	
-	# if not new species, add gene symbol
-	if( input$selectOrg == "NEW") return(NULL) else { 
-		x1 <- x1[ rev( hy$rowInd),hy$colInd]
-		# add gene symbol
-		ix = match( rownames(x1), allGeneInfo()[,1])
-		x1 <- cbind(as.character( allGeneInfo()$symbol)[ix],x1)
-		return( x1 )
-	}
-	
-
-	
-  })  
-  
-	output$downloadData <- downloadHandler(
-		filename = function() {"heatmap.csv"},
-		content = function(file) {
-			write.csv(heatmapData(), file)
-	    }
-	)
-
-	output$correlationMatrix <- renderPlot({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		# heatmap of correlation matrix
-		x <- readData()$data
-		maxGene <- apply(x,1,max)
-		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
-		
-	   melted_cormat <- melt(round(cor(x),2), na.rm = TRUE)
-	# melted_cormat <- melted_cormat[which(melted_cormat[,1] != melted_cormat[,2] ) , ]
-		# Create a ggheatmap
-		ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
-		 geom_tile(color = "white")+
-		 scale_fill_gradient2(low = "green", high = "red",  mid = "white", 
-			space = "Lab",  limit = c(min(melted_cormat[,3]) ,max(melted_cormat[,3])), midpoint = median(melted_cormat[,3]),
-			name="Pearson\nCorrelation"
-		  ) +
-		  theme_minimal()+ # minimal theme
-		 theme(axis.text.x = element_text(angle = 45, vjust = 1, 
-			size = 15, hjust = 1))+
-		 theme(axis.text.y = element_text( 
-			size = 15))+
-		 coord_fixed()
-		# print(ggheatmap)
-		 ggheatmap + 
-		geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
-		theme(
-		  axis.title.x = element_blank(),
-		  axis.title.y = element_blank(),
-		  panel.grid.major = element_blank(),
-		  panel.border = element_blank(),
-		  panel.background = element_blank(),
-		  axis.ticks = element_blank(),
-		 legend.justification = c(1, 0),
-		  legend.position = c(0.6, 0.7),
-		 legend.direction = "horizontal")+
-		 guides(fill = FALSE) # + ggtitle("Pearson's Correlation Coefficient (all genes)")
-		 
-		 
-
- 
-  }  )#, height = 500, width = 500)
-	output$sampleTree <- renderPlot({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		# heatmap of correlation matrix
-		x <- readData()$data
-		maxGene <- apply(x,1,max)
-		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
-		
-		plot(as.dendrogram(hclust2( dist2(t(x)))), xlab="", ylab="1 - Pearson C.C.", type = "rectangle")
-		 
-
- 
-  }  )#, height = 500, width = 500)
-
-################################################################
-#   PCA
-################################################################
-	output$listFactors <- renderUI({
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
-	
-      if (is.null(readSampleInfo()) )
-       { return(HTML("Upload a sample info file to customize this plot.") ) }	 else { 
-	  selectInput("selectFactors", label="Color:",choices=c( colnames(readSampleInfo()), "Sample_Name")
-	     )   } 
-	})
-
-	output$listFactors2 <- renderUI({
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
-	
-      if (is.null(readSampleInfo()) )
-       { return(NULL) }	 else { 
-	   tem <- c( colnames(readSampleInfo()), "Sample_Name")
-	   if(length(tem)>1) { tem2 = tem[1]; tem[1] <- tem[2]; tem[1] = tem2; } # swap 2nd factor with first
-	  selectInput("selectFactors2", label="Shape:",choices=tem)
-	        } 
-	})
-
-	output$PCA <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  {  
-			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
-		}
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) { 
-			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
-		}
-	####################################
-	
-	x <- convertedData();
-     if(input$PCA_MDS ==1) {   #PCA
-	 pca.object <- prcomp(t(x))
-	 # par(mfrow=c(2,1))
-	if(0){
-     plot( pca.object$x[,1], pca.object$x[,2], pch = 1,cex = 2,col = detectGroups(colnames(x)),
-	     xlim=c(min(pca.object$x[,1]),max(pca.object$x[,1])*1.5   ),
-		xlab = "First principal component", ylab="Second Principal Component")
-		text( pca.object$x[,1], pca.object$x[,2],  pos=4, labels =colnames(x), offset=.5, cex=.8)
-		}
-		
-	pcaData = as.data.frame(pca.object$x[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
-	colnames(pcaData) = c("PC1", "PC2", "Sample_Name")
-	percentVar=round(100*summary(pca.object)$importance[2,1:2],0)
-	if(is.null(readSampleInfo())) { 
-		p=ggplot(pcaData, aes(PC1, PC2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
-		} else {
-		pcaData = cbind(pcaData,readSampleInfo() )
-		p=ggplot(pcaData, aes_string("PC1", "PC2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
-		
-		}
-	p=p+xlab(paste0("PC1: ",percentVar[1],"% variance")) 
-	p=p+ylab(paste0("PC2: ",percentVar[2],"% variance")) 
-	p=p+ggtitle("Principal component analysis (PCA)")+coord_fixed(ratio=1.0)+ 
-     theme(plot.title = element_text(size = 16,hjust = 0.5)) + theme(aspect.ratio=1) +
-	 theme(axis.text.x = element_text( size = 16),
-	       axis.text.y = element_text( size = 16),
-		   axis.title.x = element_text( size = 16),
-		   axis.title.y = element_text( size = 16) ) +
-	theme(legend.text=element_text(size=16))
-	   print(p)
-	   }
-	# variance chart
-	# plot(pca.object,type="bar", xlab="Principal Components", main ="Variances explained")
-	
-	if(input$PCA_MDS ==2) {  # pathway
-	withProgress(message="Running pathway analysis", {
-	library(PGSEA,verbose=FALSE)
-	pca.object <- prcomp(t(x))
-	pca = 100*pca.object$rotation 
-	Npca = 5
-	if (Npca > dim(pca)[2]) { Npca = dim(pca)[2] } else pca <-  pca[,1:Npca]
-	#pca = pca[,1:5]
-	if(is.null(GeneSets() ) ) return(NULL)  # no species recognized
-	if(length(GeneSets() ) <= 1 ) return(NULL)
-	#cat("\n\nGene Sets:",length( GeneSets()))
-	pg = myPGSEA (pca,cl=GeneSets(),range=c(15,2000),p.value=TRUE, weighted=FALSE,nPermutation=1)
-	incProgress(2/8)
-	# correcting for multiple testing
-	p.matrix = pg$p.result
-	tem = p.adjust(as.numeric(p.matrix),"fdr")
-	p.matrix = matrix(tem, nrow=dim(p.matrix)[1], ncol = dim(p.matrix)[2] )
-	rownames(p.matrix) = rownames(pg$p.result); colnames(p.matrix) = colnames(pg$p.result)
-
-
-	selected =c()
-	for( i in 1:dim(p.matrix)[2]) {
-	  tem = which( rank(p.matrix[,i],ties.method='first') <= 5)  # rank by P value
-	 #tem = which( rank(pg$result[,i],ties.method='first') >= dim(p.matrix)[1]-3.1) # rank by mean
-	 names(tem) = paste("PC",i," ", rownames(p.matrix)[tem], sep="" )
-	 selected = c(selected, tem)
-	}
-	rowids = gsub(" .*","",names(selected))
-	rowids = as.numeric( gsub("PC","",rowids) )
-	pvals = p.matrix[ cbind(selected,rowids) ]
-	a=sprintf("%-1.0e",pvals)
-	tem = pg$result[selected,]
-	rownames(tem) = paste(a,names(selected)); #colnames(tem)= paste("PC",colnames(tem),sep="")
-	
-	tem = tem[!duplicated(selected),] 
-	incProgress(3/8)
-	#tem = t(tem); tem = t( (tem - apply(tem,1,mean)) ) #/apply(tem,1,sd) )
-
-	smcPlot(tem,scale =  c(-max(tem), max(tem)), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5, main="Pathways analysis on PCA")
-	 } )
-	 }
-	 
-	if(input$PCA_MDS ==3) {  # MDS
-	 fit = cmdscale( dist2(t(x) ), eig=T, k=2)
-	 
-	# par(pin=c(5,5))
-	if(0) {
-	plot( fit$points[,1],fit$points[,2],pch = 1,cex = 2,col = detectGroups(colnames(x)),
-	     xlim=c(min(fit$points[,1]),max(fit$points[,1])*1.5   ),
-	  xlab = "First dimension", ylab="Second dimension"  )
-	 text( fit$points[,1], fit$points[,2],  pos=4, labels =colnames(x), offset=.5, cex=1)
-	}
-	pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
-	colnames(pcaData) = c("x1", "x2", "Sample_Name")
-	
-
-	if(is.null(readSampleInfo())) { 
-	p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
-	} else {
-		pcaData = cbind(pcaData,readSampleInfo() )
-		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
-		}
-	p=p+xlab("Dimension 1") 
-	p=p+ylab("Dimension 2") 
-	p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
-     theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
-	 	 theme(axis.text.x = element_text( size = 16),
-	       axis.text.y = element_text( size = 16),
-		   axis.title.x = element_text( size = 16),
-		   axis.title.y = element_text( size = 16) ) +
-	theme(legend.text=element_text(size=16))
-	   print(p)
-	
-	 }
-
-	if(input$PCA_MDS ==4) {  # t-SNE
-	 library(Rtsne,verbose=FALSE)
-	 set.seed(input$tsneSeed2)
-	 tsne <- Rtsne(t(x), dims = 2, perplexity=1, verbose=FALSE, max_iter = 400)
-
-	pcaData = as.data.frame(tsne$Y); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
-	colnames(pcaData) = c("x1", "x2", "Sample_Name")
-	
-
-	if(is.null(readSampleInfo())) { 
-	p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
-	} else {
-		pcaData = cbind(pcaData,readSampleInfo() )
-		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
-		}
-	p=p+xlab("Dimension 1") 
-	p=p+ylab("Dimension 2") 
-	p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
-     theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
-	 	 theme(axis.text.x = element_text( size = 16),
-	       axis.text.y = element_text( size = 16),
-		   axis.title.x = element_text( size = 16),
-		   axis.title.y = element_text( size = 16) ) +
-	theme(legend.text=element_text(size=16))
-	   print(p)
-	
-	 }
-	
-	 
-  }, height = 500, width = 500)
-
-	PCAdata <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-    x <- readData()$data
-	
-	 result = prcomp(t(x))$x[,1:2]
-	 fit = cmdscale( dist2(t(x) ), eig=T, k=2)
-     result = cbind( result, fit$points[,1:2] )
-	 library(Rtsne,verbose=FALSE)
-	 set.seed(input$tsneSeed2)
-	 tsne <- Rtsne(t(x), dims = 2, perplexity=1, verbose=FALSE, max_iter = 400)
-	
-	result = cbind( result, tsne$Y)
-	 
-	 
-	 colnames(result) = c("PCA.x","PCA.y","MDS.x", "MDS.y", "tSNE.x", "tSNE.y")
-	 return( result)		  
-  })
- 
-	output$downloadPCAData <- downloadHandler(
-		filename = function() {"PCA_and_MDS.csv"},
-		content = function(file) {
-          write.csv(PCAdata(), file) 
-	    }
-	)
-
-################################################################
-#   K-means
-################################################################
-  
-	Kmeans <- reactive({ # Kmeans clustering
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  {  
-			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
-		}
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) { 
-			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
-		}
-	####################################
-	
-	withProgress(message="k-means clustering", {
-    x <- convertedData()
-	#x <- readData()
-	#par(mfrow=c(1,2))
-	n=input$nGenesKNN
-	if(n>maxGeneClustering) n = maxGeneClustering # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	#x1 <- x;
-	#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	#x = 100* x[1:n,] / apply(x[1:n,],1,sum) 
-	x = x[1:n,]
-	if( input$kmeansNormalization == 'L1Norm')
-		x = 100* x / apply(x,1,function(y) sum(abs(y))) else # L1 norm
-	if( input$kmeansNormalization == 'geneMean')
-		x = x - apply(x,1,mean)  else # this is causing problem??????
-	if( input$kmeansNormalization == 'geneStandardization')	
-		x = (x - apply(x,1,mean) ) / apply(x,1,sd)
-	#colnames(x) = gsub("_.*","",colnames(x))
-	set.seed(2)
-	k=input$nClusters
-	
-
-	
-	cl = kmeans(x,k,iter.max = 50)
-	#myheatmap(cl$centers)	
- 
-   incProgress(.3, detail = paste("Heatmap..."))
-	hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
-	tem = match(cl$cluster,hc$order) #  new order 
-	x = x[order(tem),] ; 	bar = sort(tem)
-		incProgress(1, detail = paste("Done")) }) #progress 
-	#myheatmap2(x-apply(x,1,mean), bar,1000)
-	return(list( x = x, bar = bar)) 
-
-  } )
-  
-	output$KmeansHeatmap <- renderPlot({ # Kmeans clustering
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-	####################################
-	
-	if( is.null(Kmeans()) ) return(NULL)
-	withProgress(message="Creating heatmap", {
-   
-	myheatmap2(Kmeans()$x-apply(Kmeans()$x,1,mean), Kmeans()$bar,1000,mycolor=input$heatColors1)
-	
-	incProgress(1, detail = paste("Done")) }) #progress 
-  } , height = 500)
-  
-	output$KmeansNclusters <- renderPlot({ # Kmeans clustering
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	withProgress(message="k-means clustering", {
-    x <- convertedData()
-	#x <- readData()
-	#par(mfrow=c(1,2))
-	n=input$nGenesKNN
-	#if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	#x1 <- x;
-	#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	x = 100* x[1:n,] / apply(x[1:n,],1,sum)  # this is causing problem??????
-	#x = x - apply(x,1,mean)  # this is causing problem??????
-	#colnames(x) = gsub("_.*","",colnames(x))
-	set.seed(2)
-	# determining number of clusters
-	incProgress(.3, detail = paste("Performing k-means..."))
-	
-	k = 30
-	wss <- (nrow(x)-1)*sum(apply(x,2,var))
-	  for (i in 2:k) wss[i] <- sum(kmeans(x,centers=i,iter.max = 30)$withinss)
-		par(mar=c(4,5,4,4))
-	plot(1:k, wss, type="b", xlab="Number of Clusters (k)",
-		 ylab="Within groups sum of squares",
-		 cex=2,cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	,xaxt="n"	 )
-	axis(1, at = seq(1, 30, by = 2),cex.axis=1.5,cex=1.5)
-	
-	incProgress(1, detail = paste("Done")) }) #progress 
-  } , height = 500, width = 550)
-  
-	KmeansData <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	if( is.null(Kmeans()) ) return(NULL)
-
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-	####################################
-	
-	#myheatmap2(x, bar)
-	Cluster <- toupper(letters)[Kmeans()$bar]
-	x <- cbind(Cluster,Kmeans()$x)
-
-		# add gene symbol
-	if( input$selectOrg != "NEW") 
-	{ ix <- match( rownames(x), allGeneInfo()[,1])
-	  x <- cbind(as.character( allGeneInfo()$symbol)[ix],x) }
-	return(x)
-	
-	 #progress 
-  })
-  
-  	output$tSNEgenePlot <- renderPlot({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if( is.null(Kmeans()) ) return(NULL)
-
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-				
-		tem = input$colorGenes; tem = input$seedTSNE
-		####################################
-		withProgress(message="Runing t-SNE algorithm", {
-		isolate({ 
-			Cluster <- Kmeans()$bar
-			train <- as.data.frame( cbind(Cluster,Kmeans()$x) )
-
-			library(Rtsne,verbose=FALSE)
-			incProgress(1/3)
-			train = unique(train)
-			Cluster = train$Cluster	
-			set.seed(input$seedTSNE)
-			
-			## Executing the algorithm on curated data
-			tsne <- Rtsne(train[,-1], dims = 2, perplexity=30, verbose=FALSE, max_iter = 400)
-			incProgress(2/3)
-
-			nClusters = length(unique(Cluster) )
-			if(input$colorGenes) {			
-				plot(tsne$Y[,1], tsne$Y[,2], pch = (0:(nClusters-1))[Cluster], cex = 1.,col = mycolors[Cluster], xlab="X",ylab="Y")
-				legend("topright",toupper(letters)[1:nClusters], pch = 0:(nClusters-1), col=mycolors, title="Cluster"  )
-			} else
-				plot(tsne$Y[,1], tsne$Y[,2],  cex = 1., xlab="X",ylab="Y")
-
-			incProgress(1)
-		})
-	
-	})
-	
-	
-	 #progress 
-  }, height = 700, width = 700 )
-	output$downloadDataKmeans <- downloadHandler(
-		filename = function() {"Kmeans.csv"},
-			content = function(file) {
-      write.csv(KmeansData(), file)
-	    }
-	)
-	output$KmeansGO <- renderTable({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectGO3
-	if( is.null(input$selectGO3 ) ) return (NULL)
-	if( input$selectGO3 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.") )#No matching species
-   	if( is.null(Kmeans()) ) return(NULL)
-	if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-	####################################
-	withProgress(message="GO Enrichment", {
-		# GO
-		pp=0
-		minFDR = 0.01
-
-		for( i in 1:input$nClusters) {
-			incProgress(1/input$nClusters, , detail = paste("Cluster",toupper(letters)[i]) )
-
-			query = rownames(Kmeans()$x)[which(Kmeans()$bar == i)]
-			if(input$selectOrg == "NEW" && !is.null( input$gmtFile) ){ 
-				result <- findOverlapGMT( query, GeneSets(),1) 
-			} else {
-				convertedID <- converted()
-				convertedID$IDs <- query
-				result = FindOverlap (convertedID,allGeneInfo(),input$selectGO3,input$selectOrg,1) 
-			}
-			if( dim(result)[2] ==1) next;   # result could be NULL
-			result$Genes = toupper(letters)[i] 
-			if (pp==0 ) { results <- result; pp <- 1;
-			} else {
-				results <- rbind(results,result)
-			}
-		}
-
-		if(pp == 0) return( as.data.frame("No enrichment found."))
-		results= results[,c(5,1,2,4)]
-		colnames(results)= c("Cluster","FDR","Genes","Pathways")
-		if(min(results$FDR) > minFDR ) results = as.data.frame("No signficant enrichment found.") else
-		results = results[which(results$FDR < minFDR),]
-		incProgress(1, detail = paste("Done")) 
-	}) #progress
-	if( is.null(results) )  return ( as.matrix("No significant enrichment.") )	
-	if( class(results) != "data.frame")  return ( as.matrix("No significant enrichment.") )
-	if( dim(results)[2] ==1)  return ( as.matrix("No significant enrichment.") )
-	colnames(results)[2] = "adj.Pval"
-	results$Genes <- as.character(results$Genes)
-	results$Cluster[which( duplicated(results$Cluster) ) ] <- ""
-	results
-  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
-
-	output$KmeansPromoter <- renderTable({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectGO3; tem = input$radioPromoterKmeans; tem=input$nGenesKNN; tem=input$nClusters
-	if( is.null(input$selectGO3 ) ) return (NULL)
-	if( is.null(limma()$results) ) return(NULL)
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	####################################
-
-	isolate({ 
-   	withProgress(message="Promoter analysis", {
-	x <- convertedData()
-	#x <- readData()
-	#par(mfrow=c(2,1))
-	n=input$nGenesKNN
-	# if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	
-	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	#x = 100* x / apply(x,1,sum)  # this is causing problem??????
-	#x = x - apply(x,1,mean)  # this is causing problem??????
-	#colnames(x) = gsub("_.*","",colnames(x))
-	set.seed(2)
-	# determining number of clusters
-	k=input$nClusters
-	cl = kmeans(x,k,iter.max = 50)
-
-	hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
-	tem = match(cl$cluster,hc$order) #  new order 
-	x = x[order(tem),]
-	bar = sort(tem)
-	
-	results1 <- NULL; result <- NULL 
-	pp<- 0
-	for( i in 1:k ) {
-	incProgress(1/k, , detail = paste("Cluster",toupper(letters)[i]) )
-	query = rownames(x)[which(bar == i)]
-	
-	convertedID = convertID(query,input$selectOrg, input$selectGO2 );#"gmax_eg_gene"
-	result <- promoter( convertedID,input$selectOrg,input$radioPromoterKmeans )
-	
-	if( is.null(result)  ) next;   # result could be NULL
-	if(  dim(result)[2] ==1) next;
-	result$List = toupper(letters)[i]    
-	if (pp==0 ) { results1 <- result; pp <- 1 } else  { results1 = rbind(results1,result) }
-	}
-
-	incProgress(1, detail = paste("Done")) 
-	}) #progress
-	
-	if( is.null(results1) ) {as.data.frame("No significant motif enrichment found.")} else {
-		results1[ duplicated (results1[,4] ),4 ] <- ""
-	  results1[,c(4,1:3,5)]
-	  }
-	})
-  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
-
-
-################################################################
-#   Differential gene expression
-################################################################
-	output$listFactorsDE <- renderUI({
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
-	 # Note that " in HTML needs to be denoted with \"    with  the escape character \.
-    if (is.null(readSampleInfo()) ) {# if sample info is uploaded and correctly parsed.
-        return(HTML("<font size = \"2\">A <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a> 
-	     can be uploaded to build a linear model according to experiment design. </font>")) 
-	 } else {
-	#} else if ( !(input$dataFileFormat==1& input$CountsDEGMethod==3 )  ){  # disable factor choosing for DESeq2	   
-		factors = colnames(readSampleInfo())
-		choices = setNames(factors, factors  )
-		#interactions = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=":"))
-		#choices = append( choices,setNames( interactions, paste(interactions,"interaction") ))
-		title1 = "1. Select 1 or 2 main factors. Or leave it blank and just choose pairs of sample groups below."	
-		if ( input$dataFileFormat==1& input$CountsDEGMethod==3  )
-					title1 = "1. Select 6 or less main factors. Or skip this step and just choose pairs of sample groups below."	
-		checkboxGroupInput("selectFactorsModel", 
-                              h5(title1), 
-                              choices = choices,
-                              selected = NULL)	   	  
-	        } 
-	})  
-
-	output$listBlockFactorsDE <- renderUI({
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
-	 # Note that " in HTML needs to be denoted with \"    with  the escape character \.
-    if (is.null(readSampleInfo()) ) {# if sample info is uploaded and correctly parsed.
-		return(NULL)		   
-		 } else { 
-	  # } else if ( !(input$dataFileFormat==1& input$CountsDEGMethod==3 )  ){ 
-		factors = colnames(readSampleInfo())
-		
-		#only show factors not in main modelFactors
-		
-		factors = setdiff(factors, input$selectFactorsModel  )
-		if(length(factors) == 0 ) return(NULL)
-		choices = setNames(factors, factors  )
-		
-		title1 = "Select a factor for batch effect or paired samples, if needed."	
-		if ( input$dataFileFormat==1& input$CountsDEGMethod==3  )
-			title1 = "Select factors for batch effects or paired samples, if needed."	
-		
-		checkboxGroupInput("selectBlockFactorsModel", 
-                              h5(title1), 
-                              choices = choices,
-                              selected = NULL)  
-	  
-	        } 
-	})	
-	
-	output$listModelComparisons <- renderUI({
-		tem = input$selectOrg
-		tem=input$limmaPval; tem=input$limmaFC
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
-		   { # if using sample names
-		   
-		   	factors = as.character ( detectGroups( colnames( readData()$data ) ) )
-			factors = unique(factors)# order is reversed
-			comparisons = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=" vs. "))
-			comparisons = c(comparisons, apply(t(combn(rev(factors),2)),1, function(x) paste(x,collapse=" vs. ")) )	
-			comparisons = sort(comparisons)
-			choices =  setNames(gsub(" vs\\. ","-",comparisons), comparisons )
-			checkboxGroupInput("selectModelComprions", 
-									  h5("Select comparisons among sample groups:"), 
-									  choices = choices,
-									  selected = choices[[1]])	
-	   
-		   }	 else { 
-				choices = list()
-				for( selectedFactors in input$selectFactorsModel) { 
-					ix = match(selectedFactors, colnames(readSampleInfo() ) )
-					if(is.na(ix) ) next;   # if column not found, skip
-					factors = unique( readSampleInfo()[,ix])
-					comparisons = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=" vs. "))
-					comparisons = c(comparisons, apply(t(combn(rev(factors),2)),1, function(x) paste(x,collapse=" vs. ")) )	
-					comparisons = sort(comparisons)
-					comparisons = paste0(selectedFactors,": ",comparisons)
-					choices = append( choices, setNames(comparisons, comparisons ))
-					
-				} # for each factor
-				if(length(choices)==0 ) return(NULL) else
-				checkboxGroupInput("selectModelComprions", 
-									  h5("2. Select one or more comparisons:"), 
-									  choices = choices,
-									  selected = choices[[1]])	   
-				} 
-	}) 
-
-	output$listInteractionTerms <- renderUI({
-		tem = input$selectOrg
-		tem=input$limmaPval; tem=input$limmaFC
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
-		   {  return(NULL)
-	   
-		   }	 else { 
-
-				selectedFactors = input$selectFactorsModel
-				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
-				if(length(selectedFactors)<=1 ) return(NULL) 
-				#if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
-				# for ( i in 1:length(selectedFactors) ) {
-				interactions = apply(t(combn(selectedFactors,2)),1, function(x) paste(x,collapse=":"))
-				
-				choices = setNames(interactions,interactions)
-
-				 checkboxGroupInput(  'selectInteractions', 
-									  label=h5("Interaction terms between factors(e.g. genotypes repond differently to treatment?):"),
-									  choices= choices,selected = NULL)
-									  
-					
-				
-				
-				} #else 
-	}) 
-
-	# set limits for selections of factors. 
-	observe({
-		if(length(input$selectFactorsModel) > maxFactors) # less than 4 factors
-			updateCheckboxGroupInput(session, "selectFactorsModel", selected= tail(input$selectFactorsModel,4))
-		
-		if( input$CountsDEGMethod !=3 ) { # if using the limma package
-			if(length(input$selectFactorsModel) > 2) # less than 2 factors
-				updateCheckboxGroupInput(session, "selectFactorsModel", selected= tail(input$selectFactorsModel,2))
-
-			if(length(input$selectBlockFactorsModel) > 1) # less than 1 factors
-				updateCheckboxGroupInput(session, "selectBlockFactorsModel", selected= tail(input$selectBlockFactorsModel,2))
-				
-		}
-	})
-	
-	
-	output$experimentDesign <- renderText({
-		tem = input$selectOrg
-		tem=input$limmaPval; tem=input$limmaFC
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
-		   {  return(NULL)
-	   
-		   }	 else { 
-					model = paste("Model: expression ~ ",  paste(input$selectFactorsModel, collapse=" + "  ))
-					if(!is.null(input$selectBlockFactorsModel )  )
-						model = paste0(model," + ", paste(input$selectBlockFactorsModel, collapse=" + " )    )					
-					if(!is.null(input$selectInteractions )  )
-						model = paste0(model," + ", paste(input$selectInteractions, collapse=" + " )    )
-					return( model  )									
-				} #else 
-	})
-
-	output$selectReferenceLevels1 <- renderUI({
-		tem = input$selectOrg
-		tem=input$limmaPval; tem=input$limmaFC
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
-		   {  return(NULL)
-	   
-		   }	 else { 
-
-				selectedFactors = input$selectFactorsModel
-				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
-				if(length(selectedFactors)==0 ) return(NULL) 
-				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
-				# for ( i in 1:length(selectedFactors) ) {
-				 i = 1; 
-				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
-				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
-
-				 selectInput(  paste0("referenceLevelFactor",i), 
-									  label=h5(paste ("Reference/baseline level for",selectedFactors[i])),
-									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
-									  
-					
-				
-				
-				} #else 
-	}) 
-
-	output$selectReferenceLevels2 <- renderUI({
-		tem = input$selectOrg
-		tem=input$limmaPval; tem=input$limmaFC
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
-		   {  return(NULL)
-	   
-		   }	 else { 
-
-				selectedFactors = input$selectFactorsModel
-				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
-				if(length(selectedFactors) < 2 ) return(NULL) 
-				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
-				 i = 2; 
-				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
-				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
-
-				 selectInput(  paste0("referenceLevelFactor",i), 
-									  label=h5( paste ("Reference/baseline level for",selectedFactors[i])),
-									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
-									                             # "genotype:wt"
-					
-				
-				
-				} #else 
-	})	
-
-	output$selectReferenceLevels3 <- renderUI({
-		tem = input$selectOrg
-		tem=input$limmaPval; tem=input$limmaFC
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
-		   {  return(NULL)
-	   
-		   }	 else { 
-
-				selectedFactors = input$selectFactorsModel
-				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
-				if(length(selectedFactors) < 2 ) return(NULL) 
-				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
-				 i = 3; 
-				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
-				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
-
-				 selectInput(  paste0("referenceLevelFactor",i), 
-									  label=h5( paste ("Reference/baseline level for",selectedFactors[i])),
-									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
-									                             # "genotype:wt"
-					
-				
-				
-				} #else 
-	})
-
-	output$selectReferenceLevels4 <- renderUI({
-		tem = input$selectOrg
-		tem=input$limmaPval; tem=input$limmaFC
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
-		   {  return(NULL)
-	   
-		   }	 else { 
-
-				selectedFactors = input$selectFactorsModel
-				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
-				if(length(selectedFactors) < 2 ) return(NULL) 
-				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
-				 i = 4; 
-				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
-				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
-
-				 selectInput(  paste0("referenceLevelFactor",i), 
-									  label=h5( paste ("Reference/baseline level for",selectedFactors[i])),
-									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
-									                             # "genotype:wt"
-					
-				
-				
-				} #else 
-	})	
-
-	output$selectReferenceLevels5 <- renderUI({
-		tem = input$selectOrg
-		tem=input$limmaPval; tem=input$limmaFC
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
-		   {  return(NULL)
-	   
-		   }	 else { 
-
-				selectedFactors = input$selectFactorsModel
-				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
-				if(length(selectedFactors) < 2 ) return(NULL) 
-				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
-				 i = 5; 
-				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
-				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
-
-				 selectInput(  paste0("referenceLevelFactor",i), 
-									  label=h5( paste ("Reference/baseline level for",selectedFactors[i])),
-									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
-									                             # "genotype:wt"
-					
-				
-				
-				} #else 
-	})	
-
-	output$selectReferenceLevels6 <- renderUI({
-		tem = input$selectOrg
-		tem=input$limmaPval; tem=input$limmaFC
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
-		   {  return(NULL)
-	   
-		   }	 else { 
-
-				selectedFactors = input$selectFactorsModel
-				selectedFactors = selectedFactors[ !grepl(":",selectedFactors  ) ]
-				if(length(selectedFactors) < 2 ) return(NULL) 
-				if ( !(input$dataFileFormat==1 & input$CountsDEGMethod==3)   )  return(NULL) # if not using DESeq2
-				 i = 6; 
-				 if( is.na( match(selectedFactors[i], colnames( readSampleInfo() )   )   )   )  return(NULL)
-				 factorLevels = unique(readSampleInfo()[, selectedFactors[i] ] )
-
-				 selectInput(  paste0("referenceLevelFactor",i), 
-									  label=h5( paste ("Reference/baseline level for",selectedFactors[i])),
-									  choices= setNames(as.list( paste0(selectedFactors[i],":", factorLevels )), factorLevels ))
-									                             # "genotype:wt"
-					
-				
-				
-				} #else 
-	})	
-
-	limma <- reactive({  
-	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC; tem = input$CountsDEGMethod; tem = input$countsLogStart
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	tem=input$CountsDEGMethod
-	tem = input$submitModelButton  # this is used to make it responsive only when model and comparisons are completed
-	####################################
-	
-	isolate({ 
-	withProgress(message="Identifying differentially expressed genes", {
-	if(input$dataFileFormat == 1 ) {  # if count data
-		 if(input$CountsDEGMethod == 3 ) {    # if DESeq2 method
-				# rawCounts = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
-				# res =DEG.DESeq2(rawCounts, .05, 2) 
-				# res1 =DEG.limma(rawCounts, .1, 1.5,rawCounts, 2,3) 
-				referenceLevels = NULL
-				if( !is.null(input$referenceLevelFactor1 ) )
-					referenceLevels = input$referenceLevelFactor1
-				if( !is.null(input$referenceLevelFactor2 ) )
-					referenceLevels = c(referenceLevels, input$referenceLevelFactor2)				
-				if( !is.null(input$referenceLevelFactor3 ) )
-					referenceLevels = c(referenceLevels, input$referenceLevelFactor3)	
-				if( !is.null(input$referenceLevelFactor4 ) )
-					referenceLevels = c(referenceLevels, input$referenceLevelFactor4)	
-				if( !is.null(input$referenceLevelFactor5 ) )
-					referenceLevels = c(referenceLevels, input$referenceLevelFactor5)	
-				if( !is.null(input$referenceLevelFactor6 ) )
-					referenceLevels = c(referenceLevels, input$referenceLevelFactor6)
-					
-			return(   DEG.DESeq2( convertedCounts(),input$limmaPval, input$limmaFC,
-									input$selectModelComprions, readSampleInfo(),
-									c(input$selectFactorsModel,input$selectInteractions), 
-									input$selectBlockFactorsModel, referenceLevels)  )
-			}
-			if(input$CountsDEGMethod < 3 )    # voom or limma-trend
-				return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,
-									convertedCounts(), input$CountsDEGMethod,
-									priorCounts=input$countsLogStart,input$dataFileFormat,
-									input$selectModelComprions, readSampleInfo(),
-									c(input$selectFactorsModel,input$selectInteractions),
-									input$selectBlockFactorsModel) )
-	} else { # normalized data
-	 return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,
-						convertedCounts(), input$CountsDEGMethod,
-						priorCounts=input$countsLogStart,input$dataFileFormat,
-						input$selectModelComprions, readSampleInfo(),
-						c(input$selectFactorsModel,input$selectInteractions),
-						input$selectBlockFactorsModel) )
-	}
-	
-	
-	})
-	})
-	})	
-
-	output$textLimma <- renderText({
-      if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
- 	tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
-	tem=input$limmaPval; tem=input$limmaFC
-	tem = input$submitModelButton 
-	limma()$Exp.type
-	
-  
-	})	
-  
-	output$vennPlot <- renderPlot({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		tem = input$selectOrg
-		tem=input$limmaPval; tem=input$limmaFC
-		
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-		tem=input$CountsDEGMethod
-		tem = input$selectFactorsModel # responsive to changes in model and comparisons
-		tem = input$selectModelComprions
-		tem = input$submitModelButton 
-
-		if(is.null(input$selectComparisonsVenn) ) return(NULL)
-		####################################
-		
-		isolate({ 
-		
-			results = limma()$results
-			ixa = c()
-			for (comps in  input$selectComparisonsVenn) { 
-				 if(!grepl("^I:|^I-", comps) ) {  # if not interaction term
-					ix = match(comps, colnames(results)) 
-				  } else {
-						#mismatch in comparison names for interaction terms for DESeq2
-						#I:water_Wet.genetic_Hy 	 in the selected Contrast
-						#Diff-water_Wet-genetic_Hy   in column names
-						tem = gsub("^I-","I:" ,colnames(results))
-						tem = gsub("-","\\.",tem)
-						ix = match(comps, tem) 
-
-						if(is.na(ix) ) # this is for limma package
-							ix = match(comps, colnames(results)) 			
-						
-					  }
-					ixa = c(ixa,ix)
-				  }
-					
-			results = results[,ixa,drop=FALSE] # only use selected comparisons
-			if(dim(results)[2] >5) results <- results[,1:5]
-			colnames(results) = gsub("^I-","I:" ,colnames(results))		
-			vennDiagram(results,circle.col=rainbow(5), cex=c(1.,1, 0.7) ) # part of limma package
-
-		})
-    }, height = 600, width = 600)
-
-	output$listComparisonsVenn <- renderUI({
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
-	tem = input$submitModelButton 
-	
-      if (is.null(input$file1)&& input$goButton == 0 )
-       { selectInput("selectContrast", label = NULL, # h6("Funtional Category"), 
-                  choices = list("All" = "All"), selected = "All")  
-		}	 else { 
-				choices = setNames(limma()$comparisons, limma()$comparisons  )
-				checkboxGroupInput("selectComparisonsVenn", 
-									  h4("Select up to 5 comparisons"), 
-									  choices = choices,
-									  selected = choices)	
-
-	     } 
-	})
-
-	output$listComparisons <- renderUI({
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
-	tem = input$submitModelButton 	
-      if (is.null(input$file1)&& input$goButton == 0 )
-       { selectInput("selectContrast", label = NULL, # h6("Funtional Category"), 
-                  choices = list("All" = "All"), selected = "All")  }	 else { 
-	  selectInput("selectContrast", label="Select a comparison to examine. \"A-B\" means A vs. B comparison. Interaction terms start with \"I:\"",choices=limma()$comparisons
-	     )   } 
-	})
-
-	output$listComparisonsPathway <- renderUI({
-	tem = input$selectOrg
-	tem = input$submitModelButton 
-      if (is.null(input$file1)&& input$goButton == 0 )
-       { selectInput("selectContrast1", label = NULL, # h6("Funtional Category"), 
-                  choices = list("All" = "All"), selected = "All")  }	 else { 
-	  selectInput("selectContrast1", label="Select a comparison to analyze:",choices=limma()$comparisons
-	     )   } 
-	})
-
-	output$listComparisonsGenome <- renderUI({
-	tem = input$selectOrg
-	tem = input$submitModelButton 
-      if (is.null(input$file1)&& input$goButton == 0 )
-       { selectInput("selectContrast1", label = NULL, # h6("Funtional Category"), 
-                  choices = list("All" = "All"), selected = "All")  }	 else { 
-	  selectInput("selectContrast2", label="Select a comparison to visualize:",choices=limma()$comparisons
-	     )   } 
-	})
-	
-	DEG.data <- reactive({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		tem = input$selectOrg
-		tem=input$limmaPval; tem=input$limmaFC; 
-		
-			tem = input$CountsDEGMethod; 	
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-		tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-		tem= input$selectModelComprions;  tem= input$selectInteractions
-		tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-		tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-		tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-    	####################################
-		
-		isolate({ 
-		  genes = limma()$results
-		  genes = as.data.frame( genes[which( rowSums(genes) != 0 ),] )
-		  colnames(genes) = colnames( limma()$results )
-		  genes = merge(genes,convertedData(), by='row.names')
-		  colnames(genes)[1] = "1: upregulation, -1: downregulation"
-			# add gene symbol
-		ix = match( genes[,1], allGeneInfo()[,1])
-		genes <- cbind(as.character( allGeneInfo()$symbol)[ix],genes) 
-		colnames(genes)[1] = "Symbol"
-		genes <- genes[,c(2,1,3:dim(genes)[2]) ]
-		return(genes)
-		})
-		})
-
-	output$selectedHeatmap <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast;
-	tem = input$heatColors1
-	tem = input$CountsDEGMethod; 	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	####################################
-	
-	withProgress(message="Generating heatmap", {
-	if( is.null(input$selectContrast)) return(NULL)
-	if( is.null(limma()$results)) return(NULL)
-	if( is.null(selectedHeatmap.data() )) return(NULL) 
-	isolate({ 
-	
-		 bar = selectedHeatmap.data()$bar +2;
-		 bar[bar==3] =2
-	  	 myheatmap2( selectedHeatmap.data()$genes,bar,200,mycolor=input$heatColors1,c("Down","Up") )
-	 
-	 incProgress(1, detail = paste("Done")) 
-	
-	 })
-	})
-	
-    }, height = 400, width = 500)
-
-	selectedHeatmap.data <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast;
-	tem = input$heatColors1
-	tem = input$CountsDEGMethod; 	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	####################################	
-
-	if( is.null(input$selectContrast)) return(NULL)
-	if( is.null(limma()$results)) return(NULL)
-	#if( is.null(selectedHeatmap.data() )) return(NULL) 
-	isolate({ 
-		  genes <- limma()$results
-		  if( is.null(genes) ) return(NULL)
-		  if(!grepl("I:", input$selectContrast) ) {  # if not interaction term
-			ix = match(input$selectContrast, colnames(genes)) 
-		  } else {
-			#mismatch in comparison names for interaction terms for DESeq2
-			#I:water_Wet.genetic_Hy 	 in the selected Contrast
-			#Diff-water_Wet-genetic_Hy   in column names
-			tem = gsub("I-","I:" ,colnames(genes))
-			tem = gsub("-","\\.",tem)
-			ix = match(input$selectContrast, tem) 
-			
-			if(is.na(ix) ) # this is for limma package
-				ix = match(input$selectContrast, colnames(genes)) 			
-			
-		  }
-	  
-		  if(is.null(ix)) return(NULL)
-		  if(is.na(ix)) return(NULL)
-		  if( sum(abs(genes[,ix] )  ) <= 1 ) return(NULL) # no significant genes for this comparison
-		  if(dim(genes)[2] < ix ) return(NULL)
-		  query = rownames(genes)[which(genes[,ix] != 0)]
-		  if(length(query) == 0) return(NULL)
-		  iy = match(query, rownames(convertedData()  ) )
-		  
-		  # find sample related to the comparison
-		 iz= match( detectGroups(colnames(convertedData())), unlist(strsplit( input$selectContrast, "-"))	  )
-		 iz = which(!is.na(iz))		 
-		 if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
-			comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
-			comparisons = gsub(" vs\\. ","-",comparisons)		
-			factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
-			ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
-			if (is.na(ik)) iz=1:(dim(convertedData())[2])  else {  # interaction term, use all samples		
-				selectedfactor= factorsVector[ ik ] # corresponding factors
-				iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast, "-"))	  )
-				iz = which(!is.na(iz))
-			}		 
-		 }
-
-		 if (grepl("I:",input$selectContrast)) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
-		 if( is.na(iz)[1] | length(iz)<=1 )    iz=1:(dim(convertedData())[2]) 
-
-		# color bar
-		 bar = genes[,ix]
-		 bar = bar[bar!=0]
-
-		 # retreive related data		 
-		 genes = convertedData()[iy,iz,drop=FALSE]
-		 
-		 genes = genes[order(bar),,drop=FALSE] # needs to be sorted because myheatmap2 does not reorder genes
-		 bar = sort(bar)
-
-
-		 return(list(genes=genes, bar=bar ))
-
-	
-	 })
-	})
-	
-	output$download.selectedHeatmap.data <- downloadHandler(
-		filename = function() {paste("Diff_genes_heatmap_",input$selectContrast,".csv",sep="")},
-			content = function(file) {
-			write.csv(geneListDataExport(), file, row.names=FALSE)
-	    }
-	)
-	
-	output$download.DEG.data <- downloadHandler(
-		filename = function() {"Diff_expression_all_comparisons.csv"},
-		content = function(file) {
-			write.csv(DEG.data(), file,row.names=FALSE)
-	    }
-	)
-
-	# Top DEGs  
-	output$geneList <- renderTable({
-    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-		tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
-	
-	tem = input$CountsDEGMethod; 	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	####################################
-	
-	noSig = as.data.frame("No significant genes find!")
-	if( is.null(input$selectContrast) ) return(NULL)
-	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
-	if( length(limma()$topGenes) == 0 ) return(noSig)
-	if( is.null( geneListData() ) ) return(NULL)
-	if( dim(geneListData() )[1]> 50 )
-		return( geneListData()[1:50,] )
-	else return( geneListData() )
-	
-	
-  },digits=2,align="l",include.rownames=F,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
-	#, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T,include.rownames=TRUE)
-  
-	geneListDataExport <- reactive({
-		if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-			tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
-		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
-		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-		tem = input$minCounts; tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
-		tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-		tem= input$selectModelComprions;  tem= input$selectInteractions
-		tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-		tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-		tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-
-		noSig = as.data.frame("No significant genes find!")
-		if( is.null(input$selectContrast) ) return(NULL)
-		if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
-		if( length(limma()$topGenes) == 0 ) return(noSig)
-		if( is.null( geneListData() ) ) return(NULL)
-		if( input$selectOrg == "NEW" )
-			tem <- merge(geneListData(), convertedData(), by.x = 'Top_Genes',by.y = 'row.names') else
-		tem <- merge(geneListData(), convertedData(), by.x = 'Ensembl ID',by.y = 'row.names') 
-		tem <- tem[order( -sign(tem[,2] ), -abs(tem[,2])),]
-		tem$Regulation = "Up"
-		tem$Regulation[which(tem[,2]<0 )] <- "Down"
-		tem <- tem[,c(dim(tem)[2],1:( dim(tem)[2]-1) )  ]
-		return( tem )
-	
-  })
-	#, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T,include.rownames=TRUE)
-
-	geneListData <- reactive({
-		if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-			tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
-		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
-		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
-		tem = input$selectFactorsModel # responsive to changes in model and comparisons
-		tem = input$selectModelComprions
-		tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-		tem= input$selectModelComprions;  tem= input$selectInteractions
-		tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-		tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-		tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-		####################################
-		
-		noSig = as.data.frame("No significant genes find!")
-		if( is.null(input$selectContrast) ) return(NULL)
-		if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
-		if( length(limma()$topGenes) == 0 ) return(noSig)
-		if(length( limma()$comparisons)  ==1 )  
-		{ top1=limma()$topGenes[[1]]  
-		} else {
-		  top = limma()$topGenes
-		  ix = match(input$selectContrast, names(top))
-		  if( is.na(ix)) return (noSig)
-		  top1 <- top[[ix]]; 
-		  }
-		  if(dim(top1)[1] == 0 ) return (noSig)
-		  colnames(top1)= c("Fold","FDR")
-		  #top1 = merge(top1,convertedData(), by='row.names')
-		  #colnames(top1)[1] = "Genes"
-		  top1 = top1[order(-abs(top1$Fold)) ,]
-		  if ( length( which( top1$FDR <=  input$limmaPval  &  abs(top1$Fold)  >= log2(input$limmaFC) ) ) == 0 )
-			return( noSig)
-		  top1 <- top1[which(top1$FDR <=  input$limmaPval ) ,]
-		  top1 <- top1[which(abs(top1$Fold)  >= log2( input$limmaFC)) ,]
-		  top1$Top_Genes <- rownames(top1)
-		  top1 <- top1[,c(3,1,2)]
-		  
-		  # if new species
-		  if( input$selectGO2 == "ID not recognized!" | input$selectOrg == "NEW") return (top1); 
-		  
-		  #convertedID = convertID(top1[,1],input$selectOrg, "GOBP" );#"gmax_eg_gene"
-		  # tem <- geneInfo(convertedID,input$selectOrg) #input$selectOrg ) ;
-		 #  tem <- geneInfo(converted(),input$selectOrg)
-		  top1 <- merge(top1, allGeneInfo(), by.x ="Top_Genes", by.y="ensembl_gene_id",all.x=T )
-		  
-		  if ( sum( is.na(top1$band)) == dim(top1)[1] ) top1$chr = top1$chromosome_name else
-			top1$chr = paste( top1$chromosome_name, top1$band,sep="")
-		  
-		  top1 <- top1[,c('Top_Genes','Fold','FDR','symbol','chr','gene_biotype')]
-		  
-		 
-		#  ix = match(top1[,1], tem$ensembl_gene_id)
-		 # if( sum(is.na( tem$Symbol[ix]) ) != length(ix) ) 
-		  # { top1 <- cbind(top1, tem$Symbol[ix]); colnames(top1)[4]= "Symbol" }
-		  top1 = top1[order(-abs(as.numeric( top1$Fold))) ,]
-		  top1$FDR <- sprintf("%-3.2e",top1$FDR )
-		  colnames(top1) <- c("Ensembl ID", "log2 Fold Change", "Adj.Pval", "Symbol","Chr","Type")
-		  if ( sum( is.na(top1$Symbol)) == dim(top1)[1] ) top1 <- top1[,-4] 
-
-		  return(top1)
-	
-  })
-
-	output$volcanoPlot <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
-	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
-	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-
-	if( is.null(input$selectContrast) ) return(NULL)
-	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
-	if( length(limma()$topGenes) == 0 ) return(NULL)
-	isolate({ 
-	withProgress(message="Generating volcano plot",{ 
-	
-	if(length( limma()$comparisons)  ==1 )  
-    { top1=limma()$topGenes[[1]]  
-	} else {
-	  top = limma()$topGenes
-	  ix = match(input$selectContrast, names(top))
-	  if( is.na(ix)) return (NULL)
-	  top1 <- top[[ix]]; 
-	  }
-	  incProgress(1/2)
-	  if(dim(top1)[1] == 0 ) return (NULL)
-	  colnames(top1)= c("Fold","FDR")
-	 top1 <- as.data.frame(top1) # convert to data frame
-     top1 <- top1[which(!(is.na(top1$Fold)|is.na(top1$FDR)    )),] # remove NA's 
-	 top1$upOrDown <- 1
-	 #write.csv(top1,"tem.csv")
-	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval& top1$Fold  >= log2( input$limmaFC)) ]  <- 2
-	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
-	 par(mar=c(5,5,1,1))
-	 plot(top1$Fold,-log10(top1$FDR),col = c("grey30", "red","blue")[top1$upOrDown],
-	 pch =16, cex = .3, xlab= "log2 fold change", ylab = "- log10 (FDR)",
-	 cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	)    
-     legend("bottomright",c("Upregulated","Downregulated"),fill = c("red","blue"),cex=1.1 )
-	 
-	}) })
-
-  },height=450, width=500)
-  
-  
-	output$volcanoPlotly <- renderPlotly({
-    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
-	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
-	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-	if( is.null(input$selectContrast) ) return(NULL)
-	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
-	if( length(limma()$topGenes) == 0 ) return(NULL)
-	isolate({ 
-	withProgress(message="Generating volcano plot",{ 
-	
-	if(length( limma()$comparisons)  ==1 )  
-    { top1=limma()$topGenes[[1]]  
-	} else {
-	  top = limma()$topGenes
-	  ix = match(input$selectContrast, names(top))
-	  if( is.na(ix)) return (NULL)
-	  top1 <- top[[ix]]; 
-	  }
-	  incProgress(1/2)
-	  if(dim(top1)[1] == 0 ) return (NULL)
-	  colnames(top1)= c("Fold","FDR")
-	 top1 <- as.data.frame(top1) # convert to data frame
-     top1 <- top1[which(!(is.na(top1$Fold)|is.na(top1$FDR)    )),] # remove NA's 
-	 top1$upOrDown <- 1
-	 #write.csv(top1,"tem.csv")
-	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval& top1$Fold  >= log2( input$limmaFC)) ]  <- 2
-	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
-	 
-	 top1$FDR = -log10(top1$FDR)
-	 
-	 if(0) { 
-	 par(mar=c(5,5,1,1))
-	 plot(top1$Fold,-log10(top1$FDR),col = c("grey30", "red","blue")[top1$upOrDown],
-	 pch =16, cex = .3, xlab= "log2 fold change", ylab = "- log10 (FDR)",
-	 cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	)    
-     legend("bottomright",c("Upregulated","Downregulated"),fill = c("red","blue"),cex=1.1 )
-	 }
-	 
-	 # remove non-DEGs
-	top1 = top1[which(top1$upOrDown != 1),]  
-	top1$type ="Upregulated";
-	top1$type[which(top1$upOrDown ==3)] <- "Downregulated"	
-	
-	# adding gene symbol
-	ix <- match( rownames(top1), allGeneInfo()[,1])
-	geneSymbols <- as.character( allGeneInfo()$symbol)[ix]
-	# if missing or duplicated, use Ensembl ID
-	ix <- which(nchar( geneSymbols) <=1 | duplicated(geneSymbols ) );	geneSymbols[ ix ] <- rownames(top1)[ix]
-	top1$Symbols = geneSymbols;
-	
-    p <- plot_ly(data= top1, x = ~Fold, y= ~FDR, color = ~type, text = ~Symbols)%>% 
-	layout(xaxis = list(size =35,title = "log2 fold change"), 
-           yaxis = list(size =35, title = "- log10 (FDR)"),
-		   showlegend = FALSE)
-		   
-	ggplotly(p)
-	}) 
-	})
-
-  })
-
-	output$scatterPlot <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-		tem = input$selectOrg; tem = input$noIDConversion
-	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
-	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-	if( is.null(input$selectContrast) ) return(NULL)
-	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
-	if( length(limma()$topGenes) == 0 ) return(NULL)
-	if(grepl("I:", input$selectContrast) ) 	return(NULL) # if interaction term related comparison
-	isolate({ 
-
-	withProgress(message="Generating scatter plot with all genes",{ 
-	if(length( limma()$comparisons)  ==1 )  
-    { top1=limma()$topGenes[[1]]  
-	} else {
-	  top = limma()$topGenes
-	  ix = match(input$selectContrast, names(top))
-	  if( is.na(ix)) return (NULL)
-	  top1 <- top[[ix]]; 
-	  }
-	  if(dim(top1)[1] == 0 ) return (NULL)
-	  colnames(top1)= c("Fold","FDR")
-	 top1 <- as.data.frame(top1) # convert to data frame
-     top1 <- top1[which(!(is.na(top1$Fold)|is.na(top1$FDR)    )),] # remove NA's 
-	 top1$upOrDown <- 1
-	 #write.csv(top1,"tem.csv")
-	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval& top1$Fold  >= log2( input$limmaFC)) ]  <- 2
-	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
-
-     incProgress(1/2)
-	 if (grepl("I:",input$selectContrast) == 1) return(NULL) # iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
-  	 # average expression
-     samples = unlist(strsplit( input$selectContrast, "-"))
-     iz= match( detectGroups(colnames(convertedData())), samples[1]	  )
-     iz = which(!is.na(iz))
-	# find sample using sample info file 
-	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
-		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
-		comparisons = gsub(" vs\\. ","-",comparisons)		
-		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
-		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
-		selectedFactor= factorsVector[ ik ] # corresponding factors
-		cat(selectedFactor)
-		iz= match( readSampleInfo()[,selectedFactor], unlist(strsplit( input$selectContrast, "-"))[1]	  )
-		iz = which(!is.na(iz))
-	}
-	 
-	 
-	 genes <- convertedData()[,iz]
-	 genes <- as.data.frame(genes)
-	 genes$average1 <- apply( genes,1,mean)
-
-     iz= match( detectGroups(colnames(convertedData())), samples[2]	  )
-     iz = which(!is.na(iz))
-	# find sample using sample info file 
-	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
-		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
-		comparisons = gsub(" vs\\. ","-",comparisons)		
-		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
-		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
-		selectedfactor= factorsVector[ ik ] # corresponding factors
-		iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast, "-"))[2]	  )
-		iz = which(!is.na(iz))
-	}
-	 # genes <- cbind( genes,convertedData()[,iz] )
-	 genes$average2 <- apply(convertedData()[,iz] ,1,mean)	 
-	genes <- merge(genes,top1,by="row.names")
- # write.csv(genes, "tem.csv")
- 	 par(mar=c(5,5,1,1))
-	plot(genes$average2,genes$average1,col = c("grey45","red","blue")[genes$upOrDown],
-	 pch =16, cex = .3, xlab= paste("Average expression in", samples[2] ), 
-	 ylab = paste("Average expression in", samples[1] ),
-	 cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	)    
-     legend("bottomright",c("Upregulated","Downregulated"),fill = c("red","blue"),cex=1.3 )
-
-		})
-
-	})
-	 
-  },height=450, width=500)
-
-	output$scatterPlotly <- renderPlotly({
-    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
-		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
-	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
-	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-	if( is.null(input$selectContrast) ) return(NULL)
-	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
-	if( length(limma()$topGenes) == 0 ) return(NULL)
-	if(grepl("I:", input$selectContrast) ) 	return(NULL) # if interaction term related comparison
-	isolate({ 
-	withProgress(message="Generating scatter plot with all genes",{ 
-	if(length( limma()$comparisons)  ==1 )  
-    { top1=limma()$topGenes[[1]]  
-	} else {
-	  top = limma()$topGenes
-	  ix = match(input$selectContrast, names(top))
-	  if( is.na(ix)) return (NULL)
-	  top1 <- top[[ix]]; 
-	  }
-	  if(dim(top1)[1] == 0 ) return (NULL)
-	  colnames(top1)= c("Fold","FDR")
-	 top1 <- as.data.frame(top1) # convert to data frame
-     top1 <- top1[which(!(is.na(top1$Fold)|is.na(top1$FDR)    )),] # remove NA's 
-	 top1$upOrDown <- 1
-	 #write.csv(top1,"tem.csv")
-	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval& top1$Fold  >= log2( input$limmaFC)) ]  <- 2
-	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
-
-     incProgress(1/2)
-	 if (grepl("I:",input$selectContrast) == 1) return(NULL) # iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
-  	 # average expression
-     samples = unlist(strsplit( input$selectContrast, "-"))
-     iz= match( detectGroups(colnames(convertedData())), samples[1]	  )
-     iz = which(!is.na(iz))
-	# find sample using sample info file 
-	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) ) {
-		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
-		comparisons = gsub(" vs\\. ","-",comparisons)		
-		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
-		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
-		selectedFactor= factorsVector[ ik ] # corresponding factors
-		cat(selectedFactor)
-		iz= match( readSampleInfo()[,selectedFactor], unlist(strsplit( input$selectContrast, "-"))[1]	  )
-		iz = which(!is.na(iz))
-	}
-	 
-	 genes <- convertedData()[,iz]
-	 genes <- as.data.frame(genes)
-	 genes$average1 <- apply( genes,1,mean)
-
-     iz= match( detectGroups(colnames(convertedData())), samples[2]	  )
-     iz = which(!is.na(iz))
-
-	# find sample using sample info file 
-	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) ) {
-		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
-		comparisons = gsub(" vs\\. ","-",comparisons)		
-		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
-		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
-		selectedfactor= factorsVector[ ik ] # corresponding factors
-		iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast, "-"))[2]	  )
-		iz = which(!is.na(iz))
-	}
-	 # genes <- cbind( genes,convertedData()[,iz] )
-	 genes$average2 <- apply(convertedData()[,iz] ,1,mean)	 
-	genes <- merge(genes,top1,by="row.names")
-    
-	# remove non-DEGs
-	genes = genes[which(genes$upOrDown != 1),]  
-	genes$type ="Upregulated";
-	genes$type[which(genes$upOrDown ==3)] <- "Downregulated"	
-	
-	# adding gene symbol
-	ix <- match( genes[,1], allGeneInfo()[,1])
-	geneSymbols <- as.character( allGeneInfo()$symbol)[ix]
-	# if missing or duplicated, use Ensembl ID
-	ix <- which(nchar( geneSymbols) <=1 | duplicated(geneSymbols ) );	geneSymbols[ ix ] <- genes[ix,1]
-	genes$Symbols = geneSymbols;
-	
-    p <- plot_ly(data= genes, x = ~average2, y= ~average1, color = ~type, text = ~Symbols)%>% 
-	layout(xaxis = list(size =35,title = paste("Average expression in", samples[2] )), 
-           yaxis = list(size =35, title = paste("Average expression in", samples[1] )),
-		   showlegend = FALSE)
-		   
-	ggplotly(p)
-
-		})
-
-	})
-	 
-  })
-
-	output$geneListGO <- renderTable({		
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if( is.null(input$selectContrast)) return(NULL)
-		if( is.null( input$selectGO2) ) return (NULL)
-		if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
-
-		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
-		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
-		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
-		####################################
-		if( is.null(limma()$results) ) return(NULL)
-		if( is.null(selectedHeatmap.data()) ) return(NULL) # this has to be outside of isolate() !!!
-		if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
-		NoSig = as.data.frame("No significant enrichment found.")
-		isolate({
-		withProgress(message="GO Enrichment", {
-			
-		# using expression data
-		genes <- selectedHeatmap.data()$genes
-		if(is.null(genes) ) return(NULL) 
-		if(dim(genes)[1] <= minGenesEnrichment ) return(NoSig) # if has only few genes
-		
-		fc = selectedHeatmap.data()$bar		
-		# GO
-		results1 <- NULL; result <- NULL
-		pp <- 0
-		for( i in c(1,-1) ) {
-			incProgress(1/2 )
-			
-			if( length(which(fc*i<0)) <= minGenesEnrichment) next; 
-			query = rownames(genes)[which(fc*i<0)]
-			if( length(query) <= minGenesEnrichment) next; 	
-			
-			if(input$selectOrg == "NEW" && !is.null( input$gmtFile) ){
-				result <- findOverlapGMT( query, GeneSets(),1) 
-			} else  { 
-				convertedID <- converted()
-				convertedID$IDs <- query
-				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO2,input$selectOrg,1) }
-
-			if( dim(result)[2] ==1) next;   # result could be NULL
-			if(i == -1) result$Genes = "Up regulated"  else result$Genes = "Down regulated"
-			if (pp==0 ) { results1 <- result; pp = 1;} else  results1 = rbind(results1,result)
-		}
-
-		if ( pp == 0 ) return (NoSig)
-		if ( is.null( results1) ) return (NoSig)
-		if( dim(results1)[2] == 1 ) return(NoSig)  # Returns a data frame: "No significant results found!"
-		
-		results1= results1[,c(5,1,2,4)]
-		colnames(results1)= c("List","FDR","Genes","GO terms or pathways")
-		minFDR = 0.01
-		if(min(results1$FDR) > minFDR ) results1 = as.data.frame("No signficant enrichment found.") else
-		results1 = results1[which(results1$FDR < minFDR),]
-		
-		incProgress(1, detail = paste("Done")) 
-		
-		if(dim(results1)[2] != 4) return(NoSig)
-		colnames(results1)= c("Direction","adj.Pval","Genes","Pathways")
-		
-		results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )
-		results1[,1] <- as.character(results1[,1])
-		tem <- results1[,1]
-
-		results1[ duplicated (results1[,1] ),1 ] <- ""
-		
-		results1
-		 })#progress
-		}) #isolate
-  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
-	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })
-
-	output$DEG.Promoter <- renderTable({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	if( is.null(input$selectContrast)) return(NULL)
-
-	tem = input$selectOrg; tem = input$radio.promoter; tem = input$noIDConversion; tem=input$missingValue
-	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
-	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
-	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-	
-	if( is.null(limma()$results) ) return(NULL)
-	if( is.null(selectedHeatmap.data()  ) ) return(NULL)
-	#if( !is.data.frame(selectedHeatmap.data()  ) ) return(NULL)
-	
-  isolate({ 
-   	withProgress(message="Promoter analysis", {
-	genes <- selectedHeatmap.data()$genes
-	if(is.null(genes)) return(NULL)
-	# if( !is.data.frame(genes)) return (NULL)
-	# cat("\nHere",paste(genes[1,],collapse=" ") )
-	if( dim(genes)[1] < minGenesEnrichment ) return (NULL) # skip if less than 5 genes total
-
-	fc = selectedHeatmap.data()$bar
-	# GO
-	pp <- 0; results1 <- NULL; result <- NULL
-	for( i in c(1, -1) ) {
-		incProgress(1/2 )	
-		query = rownames(genes)[which(fc*i<0)]
-		if(length(query) < minGenesEnrichment) next; 
-		convertedID = convertID(query,input$selectOrg, input$selectGO2 );#"gmax_eg_gene"
-		if(length(convertedID) < minGenesEnrichment) next; 
-		result <- promoter( convertedID,input$selectOrg,input$radio.promoter )
-		
-		if( is.null(result)  ) next;   # result could be NULL
-		if(  dim(result)[2] ==1) next;
-		
-		if(i == -1) result$List ="Up regulated"  else result$List ="Down regulated" 
-		if (pp==0 ) { results1 <- result; pp <- 1 } else  { results1 = rbind(results1,result) }
-	}
-
-	incProgress(1, detail = paste("Done")) 
-	}) #progress
-	
-	if( is.null(results1)) {
-		as.data.frame("No significant motif enrichment found.")
-	} else {
-		results1 <- results1[,c(4,1:3,5)]
-		tem <- results1[,1]
-		results1[ duplicated (results1[,1] ),1 ] <- ""
-		results1
-	}
-  })
-  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
-  
-  
-################################################################
-#   Pathway analysis
-################################################################
- 
-# this updates geneset categories based on species and file
-	output$selectGO1 <- renderUI({
-	  tem = input$selectOrg;
-      if (is.null(input$file1)&& input$goButton == 0 )
-       { selectInput("selectGO", label = NULL, # h6("Funtional Category"), 
-                  choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
-                                "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else { 
-								
-	  selectInput("selectGO", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
-	     ,selected = "GOBP" )   } 
-	})
-
-	output$selectGO2 <- renderUI({
-	  tem = input$selectOrg
-      if (is.null(input$file1)&& input$goButton == 0 )
-       { selectInput("selectGO2", label = NULL, # h6("Funtional Category"), 
-                  choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
-                                "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else { 
-								
-	  selectInput("selectGO2", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
-	     ,selected = "GOBP" )   } 
-	})
-	
-	output$selectGO3 <- renderUI({
-	  tem = input$selectOrg
-      if (is.null(input$file1)&& input$goButton == 0 )
-       { selectInput("selectGO3", label = NULL, # h6("Funtional Category"), 
-                  choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
-                                "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else { 
-								
-	  selectInput("selectGO3", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
-	     ,selected = "GOBP" )   } 
-	})
-
-	output$selectGO4 <- renderUI({
-	  tem = input$selectOrg
-      if (is.null(input$file1)&& input$goButton == 0 )
-       { selectInput("selectGO4", label = NULL, # h6("Funtional Category"), 
-                  choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
-                                "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else { 
-								
-	  selectInput("selectGO4", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
-	     ,selected = "GOBP" )   } 
-	})
-
-	output$selectGO5 <- renderUI({
-	  tem = input$selectOrg
-      if (is.null(input$file1)&& input$goButton == 0 )
-       { selectInput("selectGO4", label = NULL, # h6("Funtional Category"), 
-                  choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
-                                "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else { 
-								
-	  selectInput("selectGO5", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
-	     ,selected = "GOBP" )   } 
-	})
-
-	output$PGSEAplot <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	library(PGSEA,verbose=FALSE)
-	tem = input$selectOrg ; #tem = input$listComparisonsPathway
-	tem = input$selectGO;		tem = input$selectContrast1
-	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
-	tem=input$nPathwayShow; tem=input$absoluteFold	
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	tem = input$CountsDEGMethod;
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################	
-	if(is.null(input$selectGO ) ) return (NULL)
-	if(input$selectGO == "ID not recognized!" ) return( NULL)
-	isolate({ 
-	withProgress(message="Running pathway analysis", {
-	myrange = c(input$minSetSize, input$maxSetSize)
-	genes = convertedData()
-if (is.null(input$selectContrast1 ) ) return(NULL)
-	incProgress(1/4,"Retrieving gene sets")
-	gmt = GeneSets()
-	incProgress(2/4,"Runing PGSEA.")
-	if(0){
-	iz= match( detectGroups(colnames(genes)), unlist(strsplit( input$selectContrast1, "-"))	  )
-    iz = which(!is.na(iz))
-	if (grepl("I:",input$selectContrast1) == 1) iz=1:(dim(genes)[2]) 
-
-	}
-	
-			  # find sample related to the comparison
-		 iz= match( detectGroups(colnames(convertedData())), unlist(strsplit( input$selectContrast1, "-"))	  )
-		 iz = which(!is.na(iz))		 
-		 if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
-			comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
-			comparisons = gsub(" vs\\. ","-",comparisons)		
-			factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
-			ik = match( input$selectContrast1, comparisons )   # selected contrast lookes like: "mutant-control"
-			if (is.na(ik)) iz=1:(dim(convertedData())[2])  else {  # interaction term, use all samples		
-				selectedfactor= factorsVector[ ik ] # corresponding factors
-				iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast1, "-"))	  )
-				iz = which(!is.na(iz))
-			}	
-			cat("\nfactorsVector:",factorsVector)
-			cat("\nselectedfactor:",selectedfactor)
-			cat("\n IZ:",iz)				
-		 }
-
-		 if (grepl("I:",input$selectContrast1)) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
-		 if( is.na(iz)[1] | length(iz)<=1 )    iz=1:(dim(convertedData())[2]) 
-
-
-	
-		cat("\n IZ:",iz)	
-	
-	
-	
-	
-	
-	
-	genes = genes[,iz]	
-	
-	subtype = detectGroups(colnames(genes )) 
-    if(length( GeneSets() )  == 0)  { plot.new(); text(0.5,0.5, "No gene sets!")} else {
-	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
-	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
-					 
-	if( is.null(result$pg3) ) { plot.new(); text(0.5,1, "No significant pathway found!")} else 
-	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), 
-	show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5, main="Pathway Analysis:PGSEA")
-    }
-	
-	})
-	})
-    }, height = 800, width = 500)
-
-	output$PGSEAplotAllSamples <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	library(PGSEA,verbose=FALSE)
-	tem = input$selectOrg ; #tem = input$listComparisonsPathway
-	tem = input$selectGO
-	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
-	tem=input$nPathwayShow; tem=input$absoluteFold	
-
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	tem = input$CountsDEGMethod;
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-	
-	if(is.null(input$selectGO ) ) return (NULL)
-	if(input$selectGO == "ID not recognized!" ) return( NULL)
-	isolate({ 
-	withProgress(message="Running pathway analysis", {
-	myrange = c(input$minSetSize, input$maxSetSize)
-	genes = convertedData()
-if (is.null(input$selectContrast1 ) ) return(NULL)
-	incProgress(1/4,"Retrieving gene sets")
-	gmt = GeneSets()
-	incProgress(2/8, "Runing PGSEA")
-	subtype = detectGroups(colnames(genes )) 
-    if(length( GeneSets() )  == 0)  { plot.new(); text(0,1, "No gene sets!")} else {
-	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
-	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
-					 
-	if( is.null(result$pg3) ) { plot.new(); text(0.5,1, "No significant pathway found!")} else 
-	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), 
-	show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5, main="Pathway Analysis:PGSEA")
-    }
-	
-	})
-	})
-    }, height = 800, width = 500)
-
-	output$gagePathway <- renderTable({
-
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectOrg ; #tem = input$listComparisonsPathway
-	tem = input$selectGO;	tem = input$selectContrast1
-	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
-	tem=input$nPathwayShow; tem=input$absoluteFold	
-
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-	tem = input$CountsDEGMethod;
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-			
-	isolate({ 
-	gagePathwayData()
-	})
-  },digits=0,align="l",include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
- 
-	gagePathwayData <- reactive({
-	library(gage,verbose=FALSE) # pathway analysis	
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-
-	tem = input$selectOrg ; #tem = input$listComparisonsPathway
-	tem = input$selectGO
-	tem = input$selectContrast1
-	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
-	tem=input$nPathwayShow; tem=input$absoluteFold	
-
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	tem = input$CountsDEGMethod;
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-	
-	if(is.null(input$selectGO ) ) return (NULL)
-	if(input$selectGO == "ID not recognized!" ) return( as.data.frame("Gene ID not recognized." ))
-	isolate({ 
-	withProgress(message="Running pathway analysis using GAGE", {
-	if (is.null(input$selectContrast1 ) ) return(NULL)
-	myrange = c(input$minSetSize, input$maxSetSize)
-	noSig = as.data.frame("No significant pathway found.")
-	if( length(limma()$topGenes) == 0 ) return(noSig)
-	if(length( limma()$comparisons)  ==1 )  
-    { top1=limma()$topGenes[[1]]  
-	} else {
-	  top = limma()$topGenes
-	  ix = match(input$selectContrast1, names(top))
-	  if( is.na(ix)) return (noSig)
-	  top1 <- top[[ix]]; 
-	  }
-	  if(dim(top1)[1] == 0 ) return (noSig)
-	  colnames(top1)= c("Fold","FDR")
-	  incProgress(1/4,"Retrieving gene sets")
-	  gmt = GeneSets() 
-      if(length( GeneSets() )  == 0)  { return(as.data.frame("No gene set found!"))}
-	  #converted = convertID(rownames(top1),input$selectOrg)
-	  #
-	   #gmt = readGeneSets(converted, top1, input$selectGO, input$selectOrg, myrange )
-     # cat("Sets",length(gmt))
-	 incProgress(2/4,"Runing GAGE")
-	 fold = top1[,1]; names(fold) <- rownames(top1)
-	 
-	 if(input$absoluteFold) fold <- abs(fold)
-	 paths <- gage(fold, gsets = gmt, ref = NULL, samp = NULL)
-
-	  paths <-  rbind(paths$greater,paths$less)
-	 # write.csv(paths,"tem.csv")	  
-	 # cat( dim(paths) )
-	  if(dim(paths)[1] < 1 | dim(paths)[2]< 6 ) return( noSig )
-	  top1 <- paths[,c('stat.mean','set.size','q.val')]
-	  colnames(top1)= c("statistic","Genes","adj.Pval")
-	  top1 <- top1[order(top1[,3]) ,]  
-	  if ( length( which( top1[,3] <=  input$pathwayPvalCutoff   ) ) == 0 )
-	    return( noSig)
-	  top1 <- top1[which(top1[,3] <=  input$pathwayPvalCutoff ) ,,drop=FALSE]
-	  if(dim(top1)[1] > input$nPathwayShow ) 
-	     top1 <- top1[1:input$nPathwayShow, ,drop=FALSE]
-		 
-		top1 <- as.data.frame(top1)
-		top1 <- cbind(rep( input$selectContrast1, dim(top1)[1]),row.names(top1), top1); 
-		top1$statistic <- as.character( round(as.numeric(top1$statistic),4)); 
-		top1$adj.Pval <- sprintf("%-2.1e",as.numeric(top1$adj.Pval) )
-		top1[,2] <- as.character(top1[,2]);top1[,1] <- as.character(top1[,1])
-		colnames(top1)[1] <- "Direction"
-		if(input$pathwayMethod == 1 ) p.m <- "GAGE"
-		else if(input$pathwayMethod == 2 ) p.m <- "PGSEA"
-		else if(input$pathwayMethod == 3 ) p.m <- "GSEA"
-		else if(input$pathwayMethod == 4 ) p.m <- "PGSEA_All"
-		else if(input$pathwayMethod == 5 ) p.m <- "ReactomePA"
-		colnames(top1)[2] <- paste(p.m," analysis:", gsub("-"," vs ",input$selectContrast1 ) )
-		top1[ which( top1[,3] >0),1 ] <- "Up" #gsub("-"," > ",input$selectContrast1 )
-		top1[ which( top1[,3] <0),1 ] <- "Down" # gsub("-"," < ",input$selectContrast1 )
-		top1 <- top1[order( top1[,1], -abs(as.numeric( top1[,3]) ) ) ,]
-		top1[ duplicated (top1[,1] ),1 ] <- ""
-		#write.csv(top1,"tem.csv")
-	  return( top1)
-	}) })
-  })
-
-	output$fgseaPathway <- renderTable({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectOrg ; #tem = input$listComparisonsPathway
-	tem = input$selectGO; tem = input$selectContrast1
-	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
-	tem=input$nPathwayShow; tem=input$absoluteFold	
-
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	tem = input$CountsDEGMethod;
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-	
-	isolate({ 
-	fgseaPathwayData()
-	})
-  },digits=0,align="l",include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
- 
-	fgseaPathwayData <- reactive({
-	library(fgsea,verbose=FALSE) # fast GSEA
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectOrg ; #tem = input$listComparisonsPathway
-	tem = input$selectGO; tem = input$selectContrast1
-	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
-	tem=input$nPathwayShow; tem=input$absoluteFold
-	if(is.null(input$selectGO ) ) return (NULL)
-	if(input$selectGO == "ID not recognized!" ) return( as.data.frame("Gene ID not recognized." ))
-
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	tem = input$CountsDEGMethod;
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-	
-	isolate({ 
-	withProgress(message="Running pathway analysis using GAGE", {
-	if (is.null(input$selectContrast1 ) ) return(NULL)
-	myrange = c(input$minSetSize, input$maxSetSize)
-	noSig = as.data.frame("No significant pathway found.")
-	if( length(limma()$topGenes) == 0 ) return(noSig)
-	if(length( limma()$comparisons)  ==1 )  
-    { top1=limma()$topGenes[[1]]  
-	} else {
-	  top = limma()$topGenes
-	  ix = match(input$selectContrast1, names(top))
-	  if( is.na(ix)) return (noSig)
-	  top1 <- top[[ix]]; 
-	  }
-	  if(dim(top1)[1] == 0 ) return (noSig)
-	  colnames(top1)= c("Fold","FDR")
-	  incProgress(1/4,"Retrieving gene sets")
-	  gmt = GeneSets() 
-     if(length( GeneSets() )  == 0)  { return(as.data.frame("No gene set found!"))}
-
-	  #converted = convertID(rownames(top1),input$selectOrg)
-	  #
-	   #gmt = readGeneSets(converted, top1, input$selectGO, input$selectOrg, myrange )
-     # cat("Sets",length(gmt))
-	 incProgress(2/4,"Runing GSEA using the fgsea package.")
-	 fold = top1[,1]; names(fold) <- rownames(top1)
-	 if(input$absoluteFold) fold <- abs(fold) # use absolute value of fold change, disregard direction
-	 paths <- fgsea(pathways = gmt, 
-                  stats = fold,
-                  minSize=input$minSetSize,
-                  maxSize=input$maxSetSize,
-                  nperm=5000)
-	 # paths <-  rbind(paths$greater,paths$less)
-	  if(dim(paths)[1] < 1  ) return( noSig )
-	       paths <- as.data.frame(paths)
-       paths <- paths[order(-abs( paths[,5])) ,]  # sort by NES
-	  # paths <- paths[order( paths[,3]) ,]  # sort by FDR
-	  top1 <- paths[,c(1,5,7,3)]
-	  # rownames(top1) <- paths[,1] #paste(1:dim(paths)[1],": ",paths[,1],sep="" )
-	  colnames(top1)= c("Pathway", "NES","Genes","adj.Pval")
-	  
-	  if ( length( which( top1[,4] <=  input$pathwayPvalCutoff   ) ) == 0 )
-	    return( noSig)
-	  top1 <- top1[which(top1[,4] <=  input$pathwayPvalCutoff ) , ,drop=FALSE]
-	  if(dim(top1)[1] > input$nPathwayShow ) 
-	     top1 <- top1[1:input$nPathwayShow,,drop=FALSE]
-	 #top1 <- cbind(row.names(top1), top1); colnames(top1)[1] <-input$selectContrast1 	
-		top1 <- as.data.frame(top1)
-		top1 <- cbind(rep( input$selectContrast1, dim(top1)[1]), top1); 
-		top1[,4] = as.character( round(as.numeric(top1[,4]),4)); 
-		top1$adj.Pval <- sprintf("%-2.1e",as.numeric(top1$adj.Pval) )
-		top1[,1] <- as.character(top1[,1])
-		colnames(top1)[1] <- "Direction"
-		if(input$pathwayMethod == 1 ) p.m <- "GAGE"
-		else if(input$pathwayMethod == 2 ) p.m <- "PGSEA"
-		else if(input$pathwayMethod == 3 ) p.m <- "GSEA"
-		else if(input$pathwayMethod == 4 ) p.m <- "PGSEA_All"
-		else if(input$pathwayMethod == 5 ) p.m <- "ReactomePA"
-		colnames(top1)[2] <- paste(p.m," analysis:", gsub("-"," vs ",input$selectContrast1 ) )
-		top1[ which( as.numeric( top1[,3]) >0),1 ] <- "Up" #gsub("-"," > ",input$selectContrast1 )
-		top1[ which( as.numeric( top1[,3]) <0),1 ] <- "Down" #gsub("-"," < ",input$selectContrast1 )
-		top1 <- top1[order( top1[,1], -abs(as.numeric( top1[,3]) ) ) ,]
-		top1[ duplicated (top1[,1] ),1 ] <- ""	 
-	    top1[,3] = as.character( round(as.numeric(top1[,3]),4));
-	 return( top1)
-	}) })
-  })
-
-	ReactomePAPathwayData <- reactive({
-	library(ReactomePA,verbose=FALSE) # pathway analysis
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectOrg ; #tem = input$listComparisonsPathway
-	tem = input$selectGO; tem = input$selectContrast1
-	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
-	tem=input$nPathwayShow; tem=input$absoluteFold	
-	if(is.null(input$selectGO ) ) return (NULL)
-	if(input$selectGO == "ID not recognized!" ) return( as.data.frame("Gene ID not recognized." ))
-
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	tem = input$CountsDEGMethod;
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-	
-	isolate({ 
-	withProgress(message="Running pathway analysis using ReactomePA", {
-	if (is.null(input$selectContrast1 ) ) return(NULL)
-	
-	ensemblSpecies <- c("hsapiens_gene_ensembl","rnorvegicus_gene_ensembl", "mmusculus_gene_ensembl",
-		               "celegans_gene_ensembl","scerevisiae_gene_ensembl", "drerio_gene_ensembl", "dmelanogaster_gene_ensembl")
-    ReactomePASpecies= c("human", "rat", "mouse", "celegans", "yeast", "zebrafish", "fly" )
-    # cbind(ensemblSpecies,ReactomePASpecies)  # double check mapping
-    
-	
-	myrange = c(input$minSetSize, input$maxSetSize)
-	noSig = as.data.frame("No significant pathway found.")
-	if( length(limma()$topGenes) == 0 ) return(noSig)
-	if(length( limma()$comparisons)  ==1 )  
-    { top1=limma()$topGenes[[1]]  
-	} else {
-	  top = limma()$topGenes
-	  ix = match(input$selectContrast1, names(top))
-	  if( is.na(ix)) return (noSig)
-	  top1 <- top[[ix]]; 
-	  }
-	  if(dim(top1)[1] == 0 ) return (noSig)
-	  colnames(top1)= c("Fold","FDR")
-	  incProgress(1/4,"Retrieving gene sets")
-	  # gmt = GeneSets() 
-
-	  #converted = convertID(rownames(top1),input$selectOrg)
-	  #
-	   #gmt = readGeneSets(converted, top1, input$selectGO, input$selectOrg, myrange )
-     # cat("Sets",length(gmt))
-	 
-	 fold = top1[,1]; names(fold) <- rownames(top1)
-	 if(input$absoluteFold) fold <- abs(fold) # use absolute value of fold change, disregard direction
-
-      incProgress(2/4,"Convert to Entrez Gene ID")
-      Species <- converted()$species[1,1]
-      ix <- match( Species,ensemblSpecies )	
-	  if(is.na(ix) ) return(as.data.frame("Species not coverted by ReactomePA package!"))
-	  
-	  fold <- convertEnsembl2Entrez (fold, Species)  
-		 fold <- sort(fold,decreasing =T)
-	  incProgress(3/4,"Runing enrichment analysis using ReactomePA")
-	  paths <- gsePathway(fold, nPerm=5000, organism = ReactomePASpecies[ix],
-                minGSSize= input$minSetSize, 
-				maxGSSize= input$maxSetSize,
-				pvalueCutoff=0.5,
-                pAdjustMethod="BH", verbose=FALSE)
-      paths <- as.data.frame(paths)
-	  
-	  if(is.null(paths) ) return( noSig)
-	  if(dim(paths)[1] ==0 ) return( noSig)
-
-	 # paths <-  rbind(paths$greater,paths$less)
-	  if(dim(paths)[1] < 1  ) return( noSig )
-	       paths <- as.data.frame(paths)
-       paths <- paths[order(-abs( paths[,5])) ,]  # sort by NES
-	  # paths <- paths[order( paths[,3]) ,]  # sort by FDR
-	  top1 <- paths[,c(2,5,3,7)]
-	  # rownames(top1) <- paths[,1] #paste(1:dim(paths)[1],": ",paths[,1],sep="" )
-	  colnames(top1)= c("Pathway", "NES","Genes","adj.Pval")
-	  
-	  if ( length( which( top1[,4] <=  input$pathwayPvalCutoff   ) ) == 0 )
-	    return( noSig)
-	  top1 <- top1[which(top1[,4] <=  input$pathwayPvalCutoff ) ,,drop=FALSE]
-	  if(dim(top1)[1] > input$nPathwayShow ) 
-	     top1 <- top1[1:input$nPathwayShow,,drop=FALSE]
-	 #top1 <- cbind(row.names(top1), top1); colnames(top1)[1] <-input$selectContrast1 	
-		top1 <- as.data.frame(top1)
-		top1 <- cbind(rep( input$selectContrast1, dim(top1)[1]), top1); 
-		top1[,4] = as.character( round(as.numeric(top1[,4]),4)); 
-		top1$adj.Pval <- sprintf("%-2.1e",as.numeric(top1$adj.Pval) )
-		top1[,1] <- as.character(top1[,1])
-		colnames(top1)[1] <- "Direction"
-		if(input$pathwayMethod == 1 ) p.m <- "GAGE"
-		else if(input$pathwayMethod == 2 ) p.m <- "PGSEA"
-		else if(input$pathwayMethod == 3 ) p.m <- "GSEA"
-		else if(input$pathwayMethod == 4 ) p.m <- "PGSEA_All"
-		else if(input$pathwayMethod == 5 ) p.m <- "ReactomePA"
-		colnames(top1)[2] <- paste(p.m," analysis:", gsub("-"," vs ",input$selectContrast1 ) )
-		top1[ which( as.numeric( top1[,3]) >0),1 ] <- "Up" #gsub("-"," > ",input$selectContrast1 )
-		top1[ which( as.numeric( top1[,3]) <0),1 ] <- "Down" #gsub("-"," < ",input$selectContrast1 )
-		top1 <- top1[order( top1[,1], -abs(as.numeric( top1[,3]) ) ) ,]
-		top1[ duplicated (top1[,1] ),1 ] <- ""	 
-	  top1[,3] = as.character( round(as.numeric(top1[,3]),4));
-	 return( top1)
-	}) })
-  })
-
-	output$ReactomePAPathway <- renderTable({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectOrg ; #tem = input$listComparisonsPathway
-	tem = input$selectGO; tem = input$selectContrast1
-    tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
-	tem=input$nPathwayShow; tem=input$absoluteFold	
-
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	tem = input$CountsDEGMethod;
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-	
-	isolate({ 
-	ReactomePAPathwayData()
-	})
-  },digits=0,align="l",include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
-  
-	PGSEAplot.data <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectOrg
-
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	tem = input$CountsDEGMethod;
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-
-	isolate({ 
-	withProgress(message="Running pathway analysis", {
-	myrange = c(input$minSetSize, input$maxSetSize)
-	genes = convertedData()
-if (is.null(input$selectContrast1 ) ) return(NULL)
-	gmt = GeneSets()
-	incProgress(2/8)
-
-	if(0) { 
-	iz= match( detectGroups(colnames(genes)), unlist(strsplit( input$selectContrast1, "-"))	  )
-    iz = which(!is.na(iz))
-	if (grepl("I:",input$selectContrast1) == 1) iz=1:(dim(genes)[2]) 
-	if (length(iz) == 0) iz=1:(dim(genes)[2]) 
-	}
-	
-			  # find sample related to the comparison
-		 iz= match( detectGroups(colnames(convertedData())), unlist(strsplit( input$selectContrast1, "-"))	  )
-		 iz = which(!is.na(iz))		 
-		 if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
-			comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
-			comparisons = gsub(" vs\\. ","-",comparisons)		
-			factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
-			ik = match( input$selectContrast1, comparisons )   # selected contrast lookes like: "mutant-control"
-			if (is.na(ik)) iz=1:(dim(convertedData())[2])  else {  # interaction term, use all samples		
-				selectedfactor= factorsVector[ ik ] # corresponding factors
-				iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast1, "-"))	  )
-				iz = which(!is.na(iz))				
-			}
-			
-		
-
-
-			
-		 }
-
-		 if (grepl("I:",input$selectContrast1)) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
-		 if( is.na(iz)[1] | length(iz)<=1 )    iz=1:(dim(convertedData())[2]) 
-
-
-	
-		cat("\n IZ:",iz)
-	
-	
-	
-	
-	
-	genes = genes[,iz]
-
-	subtype = detectGroups(colnames(genes )) 
-    if(length( GeneSets() )  == 0)  { plot.new(); text(0,1, "No gene sets!")} else {
-	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
-	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
-					 
-	if( is.null(result$pg3) ) { return(as.matrix("No significant pathway!"))} else 
-	   return( result$pg3)
-    }
-	
-	})
-	})
-    })
-
-	output$download.PGSEAplot.data <- downloadHandler(
-		filename = function() {"PGSEA_pathway_anova.csv"},
-			content = function(file) {
-			write.csv(PGSEAplot.data(), file)
-	    }
-	)
-  
-	output$listSigPathways <- renderUI({
-	tem = input$selectOrg
-	tem=input$limmaPval; tem=input$limmaFC
-
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	tem = input$CountsDEGMethod;
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-			
-
-      if (is.null(input$file1)&& input$goButton == 0 | is.null(gagePathwayData()))
-	  
-       { selectInput("sigPathways", label = NULL, # h6("Funtional Category"), 
-                  choices = list("All" = "All"), selected = "All")  }	 else { 
-		choices <- "All"  # default, sometimes these methods returns "No significant pathway found"
-		if( input$pathwayMethod == 1) { if(!is.null(gagePathwayData())) if(dim(gagePathwayData())[2] >1) choices <- gagePathwayData()[,2] }
-		else if( input$pathwayMethod == 3) { if(!is.null(fgseaPathwayData())) if(dim(fgseaPathwayData())[2] >1) choices <- fgseaPathwayData()[,2] }
-		else if( input$pathwayMethod == 5) { if(!is.null(ReactomePAPathwayData())) if(dim(ReactomePAPathwayData())[2] >1) choices <- ReactomePAPathwayData()[,2] }
-		selectInput("sigPathways", label="Select a pathway to show expression pattern of related genes:",choices=choices)
-	        } 
-	})
-	
-	selectedPathwayData <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectOrg
-	tem = input$sigPathways; 
-	if(is.null(gagePathwayData() ) ) return(NULL)
-	if(is.null( input$sigPathways))  return (NULL) 
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	tem = input$CountsDEGMethod;
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-	
-	#cat(input$sigPathways)
-    isolate({ 
-	withProgress (message="Retrieving genes",{ 
-    if(input$sigPathways == "All") return (NULL) 
-	ix <- which(names(GeneSets() ) == input$sigPathways   ) # find the gene set
-	if(length(ix) == 0 ) return(NULL)
-    genes <- GeneSets()[[ix]] # retrieve genes
-	# genes <- pathwayGenes(input$sigPathways,converted(), input$selectGO1,input$selectOrg )
-	incProgress(1/2,"Merging data")
-	
-    x <-  convertedData()[which(rownames(convertedData()) %in% genes) ,]
-	if( input$selectOrg != "NEW") {
-	ix = match( rownames(x), allGeneInfo()[,1])
-	if( sum( is.na(allGeneInfo()$symbol )) != dim(allGeneInfo() )[1] )  # symbol really exists? 
-	   rownames(x) <- paste(rownames(x),":", as.character( allGeneInfo()$symbol)[ix]) }
-	
-	return( x )
-	
-     }) })
-})
-
-	output$downloadSelectedPathwayData <- downloadHandler(
-		# filename = function() {"Selected_Pathway_detail.csv"},
-		filename = function() {paste(input$selectContrast1,"(",input$sigPathways,")",".csv",sep="")},
-			content = function(file) {
-			write.csv(selectedPathwayData(), file)
-	    }
-	)
-  
-	output$selectedPathwayHeatmap <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectOrg
-	tem = input$sigPathways; 
-	if(is.null(gagePathwayData() ) ) return(NULL)
-	if(is.null( input$sigPathways))  return (NULL) 
-	if( is.null(selectedPathwayData()) ) return(NULL)
-	# cat(input$sigPathways)
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	tem = input$CountsDEGMethod;
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-    isolate({ 
-	x = selectedPathwayData()
-	if(dim(x)[1]<=2 | dim(x)[2]<=2 ) return(NULL)
-	groups = detectGroups(colnames(x))
-	withProgress(message="Generating heatmap",{ 
-	# this will cutoff very large values, which could skew the color 
-	x=as.matrix(x)-apply(as.matrix(x),1,mean)
-	cutoff = median(unlist(x)) + 3*sd (unlist(x)) 
-	x[x>cutoff] <- cutoff
-	cutoff = median(unlist(x)) - 3*sd (unlist(x)) 
-	x[x< cutoff] <- cutoff
-	
-	lmat = rbind(c(5,4),c(0,1),c(3,2))
-	lwid = c(1.5,6)
-	lhei = c(.5,.2,8)
-	
-	
-	if( dim(x)[1]>200) 
-	heatmap.2(x, distfun = dist2,hclustfun=hclust2,
-	 col=heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.5
-	,key=T, symkey=F
-	,dendrogram = "row"
-	,ColSideColors=mycolors[ groups]
-	,labRow=""
-	,margins=c(10,22)
-	,srtCol=45
-	,lmat = lmat, lwid = lwid, lhei = lhei
-	#,main ="Title"
-	)
-
-	if( dim(x)[1]<=200) 
-	heatmap.2(x, distfun = dist2,hclustfun=hclust2,
-	 col=heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.5
-	,key=T, symkey=F, 
-	dendrogram = "row",
-	,labRow=gsub(".*:","",rownames(x))
-	,ColSideColors=mycolors[ groups]
-	,margins=c(10,22)
-	,cexRow=1.2
-	,srtCol=45
-	,lmat = lmat, lwid = lwid, lhei = lhei
-	#,main ="Title"
-	)
-	incProgress(1,"Done")
-    }) 
-	})
-}, height = 1800, width = 600)
-
-	output$KeggImage <- renderImage({
-	library(pathview,verbose=FALSE)
-
    # First generate a blank image. Otherse return(NULL) gives us errors.
     outfile <- tempfile(fileext='.png')
     png(outfile, width=400, height=300)
@@ -6082,9 +6523,8 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 #   Chromosome
 ################################################################
   
-
 # visualizing fold change on chrs. 
-	output$genomePlotly <- renderPlotly({
+output$genomePlotly <- renderPlotly({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		#if(is.null(genomePlotDataPre() ) ) return(NULL)
 		
@@ -6237,8 +6677,9 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 		}) # isloate
 	  })
 
+	  
 # pre-calculating PREDA, so that changing FDR cutoffs does not trigger entire calculation
-	genomePlotDataPre <- reactive({
+genomePlotDataPre <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
 	tem = input$selectOrg ; 
@@ -6353,8 +6794,9 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	}) # isloate
   })
 
+  
 # results from PREDA
-	genomePlotData <- reactive({
+genomePlotData <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
     if(is.null(genomePlotDataPre() ) ) return(NULL)
 	
@@ -6495,8 +6937,9 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	}) # isloate
   })
 
+  
 # Using PREDA to identify significant genomic regions 
-	output$genomePlot <- renderPlot({
+output$genomePlot <- renderPlot({
 	library(PREDA,verbose=FALSE)  # showing expression on genome
 	library(PREDAsampledata,verbose=FALSE) 
 	library(hgu133plus2.db,verbose=FALSE)
@@ -6534,21 +6977,24 @@ isolate({
  	 })
   }, height = 800, width = 1000)
  
-	output$downloadRegions <- downloadHandler(
+ 
+output$downloadRegions <- downloadHandler(
 		filename = function() {paste("Diff_Chr_Regions_",input$selectContrast2,".csv",sep="")},
 		content = function(file) {
 			write.csv(genomePlotData()$Regions, file, row.names=FALSE)
 	    }
 	)
   
-	output$downloadGenesInRegions <- downloadHandler(
+  
+output$downloadGenesInRegions <- downloadHandler(
 		filename = function() {paste("Genes_in_Diff_Chr_Regions_",input$selectContrast2,".csv",sep="")},
 		content = function(file) {
 		write.csv(genomePlotData()$Genes, file, row.names=FALSE)
 	}
 	)
 
-	output$chrRegionsList <- renderTable({
+	
+output$chrRegionsList <- renderTable({
   if (is.null(input$file1) && input$goButton == 0)   return(NULL)
 
   	##################################  
@@ -6578,7 +7024,8 @@ isolate({
 
   },rownames= FALSE)
 
-	output$chrRegions <- DT::renderDataTable({
+  
+output$chrRegions <- DT::renderDataTable({
   if (is.null(input$file1) && input$goButton == 0)   return(NULL)
   
  	##################################  
@@ -6604,7 +7051,8 @@ isolate({
 
   },rownames= FALSE)
 
-	output$genesInChrRegions <- DT::renderDataTable({
+  
+output$genesInChrRegions <- DT::renderDataTable({
   if (is.null(input$file1) && input$goButton == 0)   return(NULL)
   
 	##################################  
@@ -6634,7 +7082,7 @@ isolate({
 ################################################################
 #   Biclustering
 ################################################################
-   biclustering <- reactive({
+biclustering <- reactive({
 	  if (is.null(input$file1) && input$goButton == 0)   return(NULL)
 
 		##################################  
@@ -6687,7 +7135,8 @@ isolate({
    
    } )
    
-  	output$listBiclusters <- renderUI({
+   
+output$listBiclusters <- renderUI({
 		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem = input$biclustMethod
 		tem = input$nGenesBiclust
@@ -6707,7 +7156,8 @@ isolate({
 		}			
 	}) 
 
-  	output$biclusterInfo <- renderText({
+	
+output$biclusterInfo <- renderText({
 		tem = input$nGenesBiclust
 		tem = input$selectBicluster
 		tem = input$biclustMethod
@@ -6728,7 +7178,8 @@ isolate({
 		}			
 	}) 
   
-	output$biclustHeatmap <- renderPlot ({
+
+output$biclustHeatmap <- renderPlot ({
 	  if (is.null(input$file1) && input$goButton == 0)   return(NULL)
 
 		##################################  
@@ -6785,7 +7236,7 @@ isolate({
    
   }, height = 400, width = 400)
 
-	output$geneListBclustGO <- renderTable({		
+output$geneListBclustGO <- renderTable({		
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		if( is.null( input$selectGO4) ) return (NULL)
 		if( input$selectGO4 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
@@ -6852,7 +7303,8 @@ isolate({
   }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })
 
-	output$geneListBicluster <- renderTable({
+	
+output$geneListBicluster <- renderTable({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		if( is.null( input$selectGO4) ) return (NULL)
 		if( input$selectGO4 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
@@ -6899,7 +7351,8 @@ isolate({
 	
   }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
-  	biclustData <- reactive({
+  
+biclustData <- reactive({
   		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		if( is.null( input$selectGO4) ) return (NULL)
 		if( input$selectGO4 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
@@ -6946,7 +7399,8 @@ isolate({
 		})
 	})
 
-	output$download.biclust.data <- downloadHandler(
+	
+output$download.biclust.data <- downloadHandler(
 		filename = function() {"biclustering_result.txt"},
 			content = function(file) {
 			write(biclustData(), file)
@@ -6957,7 +7411,7 @@ isolate({
 #   Co-expression network by WGCNA 
 ################################################################
  
-	wgcna <- reactive ({
+wgcna <- reactive ({
 	  if (is.null(input$file1) && input$goButton == 0)   return(NULL)
 
 		##################################  
@@ -6987,7 +7441,8 @@ isolate({
 			n=input$nGenesNetwork	
 			if(n>dim(x)[1]) n = dim(x)[1] # max	as data
 			if(n<50) return(NULL)
-			if(n> 2000 ) n = 2000 			
+			if(dim(x)[2] <4) return(NULL)
+			if(n> maxGeneWGCNA ) n = maxGeneWGCNA 			
 			#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
 			
 			datExpr=t(x[1:n,])
@@ -7046,7 +7501,9 @@ isolate({
 			}) #progress
 		}) # isolate
 	})
-	output$moduleStatistics <- renderText({
+
+	
+output$moduleStatistics <- renderText({
 		if(is.null(wgcna() ) ) return(NULL)
 		##################################  
 		# these are needed to make it responsive to changes in parameters
@@ -7063,7 +7520,9 @@ isolate({
 		####################################  
 		paste( "A network of", wgcna()$nGenes,"genes was divided into ",wgcna()$n.modules, "modules." )
 	})	
-	output$softPower <- renderPlot({
+
+	
+output$softPower <- renderPlot({
 		if(is.null(wgcna() ) ) return(NULL)
 		##################################  
 		# these are needed to make it responsive to changes in parameters
@@ -7098,7 +7557,8 @@ isolate({
 		text(sft$fitIndices[,1], sft$fitIndices[,5], labels=powers, cex=cex1,col="red")
 	})
 
-	output$modulePlot <- renderPlot({
+	
+output$modulePlot <- renderPlot({
 		if(is.null(wgcna() ) ) return(NULL)
 		##################################  
 		# these are needed to make it responsive to changes in parameters
@@ -7128,8 +7588,9 @@ isolate({
 
 
 		})
-
-	output$networkHeatmap <- renderPlot({ 
+		
+		
+output$networkHeatmap <- renderPlot({ 
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
 		##################################  
@@ -7170,7 +7631,8 @@ isolate({
 		incProgress(1, detail = paste("Done")) }) #progress 
   } ,height = 500,width = 500)
 
-  	moduleData <- reactive({
+  
+moduleData <- reactive({
   		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
 		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
@@ -7204,14 +7666,16 @@ isolate({
 		})
 	})
 
-	output$download.WGCNA.Module.data <- downloadHandler(
+	
+output$download.WGCNA.Module.data <- downloadHandler(
 		filename = function() {"WGCNA_modules.csv"},
 			content = function(file) {
 			write.csv(moduleData(), file)
 	    }
 	)	
-
-	output$networkModuleGO <- renderTable({		
+	
+	
+output$networkModuleGO <- renderTable({		
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		if( is.null( input$selectGO5) ) return (NULL)
 		if( input$selectGO5 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
@@ -7288,7 +7752,7 @@ isolate({
 	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })
 
 
-	output$listWGCNA.Modules <- renderUI({
+output$listWGCNA.Modules <- renderUI({
 		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem = input$mySoftPower;
 		tem = input$nGenesNetwork		
@@ -7314,7 +7778,7 @@ isolate({
 	}) 
 
 	
-  	exportModuleNetwork <- reactive({
+exportModuleNetwork <- reactive({
   		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
 		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
@@ -7391,7 +7855,8 @@ isolate({
 		})
 	})
 	
-	output$downloadSelectedModule <- downloadHandler(
+	
+output$downloadSelectedModule <- downloadHandler(
 	  filename <- function() {
 	  paste0("Module",input$selectWGCNA.Module,".txt")
 		
@@ -7400,8 +7865,10 @@ isolate({
 		file.copy(exportModuleNetwork() , file)
 	  },
 	  contentType = "text file"
-	)	
-  	output$moduleNetwork <- renderPlot({
+	)
+	
+  	
+output$moduleNetwork <- renderPlot({
   		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
 		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
@@ -7499,7 +7966,7 @@ isolate({
 ################################################################
   
 	# output user settings and session info
-	output$RsessionInfo <- renderUI({
+output$RsessionInfo <- renderUI({
 	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		
 	i = "<h4> <a href=\"mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP\" target=\"_top\">Email us</a> for questions, 

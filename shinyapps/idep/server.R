@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.50"
+iDEPversion = "iDEP 0.51"
 ################################################################
 # R packages
 ################################################################
@@ -17,7 +17,6 @@ library(RSQLite,verbose=FALSE)	# for database connection
 library(gplots,verbose=FALSE)		# for hierarchical clustering
 library(ggplot2,verbose=FALSE)	# graphics
 library(e1071,verbose=FALSE) 		# computing kurtosis
-library(reshape2,verbose=FALSE) 	# for melt correlation matrix in heatmap
 library(DT,verbose=FALSE) 		# for renderDataTable
 library(plotly,verbose=FALSE) 	# for interactive heatmap
 
@@ -39,9 +38,9 @@ library(plotly,verbose=FALSE) 	# for interactive heatmap
 
 #library(PGSEA) # pathway 
 
-library(sfsmisc,verbose=FALSE)
-library(lokern,verbose=FALSE)
-library(multtest,verbose=FALSE)
+#library(sfsmisc,verbose=FALSE)   #required by PREDA
+#library(lokern,verbose=FALSE)	#required by PREDA
+#library(multtest,verbose=FALSE)	#required by PREDA
 
 # KEGG and WGCNA generate temporary files. Needs to be deleted regularily. 
 
@@ -60,6 +59,7 @@ kurtosis.warning = 10 # log transformation recommnded
 minGenesEnrichment = 2 # perform GO or promoter analysis only if more than this many genes
 PREDA_Permutations =1000
 maxGeneClustering = 6000  # max genes for hierarchical clustering and k-Means clustering. Slow if larger
+maxGeneWGCNA = 2000 # max genes for co-expression network
 maxFactors =6  # max number of factors in DESeq2 models
 set.seed(2) # seed for random number generator
 mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
@@ -1497,444 +1497,6 @@ promoter <- function (converted,selectOrg, radio){
 	}
 }
 
-# these two functions are from the pathview package, modified to write to a designated folder: temp.
-mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species = "hsa", 
-    kegg.dir = ".", cpd.idtype = "kegg", gene.idtype = "entrez", 
-    gene.annotpkg = NULL, min.nnodes = 3, kegg.native = TRUE, 
-    map.null = TRUE, expand.node = FALSE, split.group = FALSE, 
-    map.symbol = TRUE, map.cpdname = TRUE, node.sum = "sum", 
-    discrete = list(gene = FALSE, cpd = FALSE), limit = list(gene = 1, 
-        cpd = 1), bins = list(gene = 10, cpd = 10), both.dirs = list(gene = T, 
-        cpd = T), trans.fun = list(gene = NULL, cpd = NULL), 
-    low = list(gene = "green", cpd = "blue"), mid = list(gene = "gray", 
-        cpd = "gray"), high = list(gene = "red", cpd = "yellow"), 
-    na.col = "transparent", ...) 
-{
-    dtypes = !is.null(gene.data) + (!is.null(cpd.data))
-    cond0 = dtypes == 1 & is.numeric(limit) & length(limit) > 
-        1
-    if (cond0) {
-        if (limit[1] != limit[2] & is.null(names(limit))) 
-            limit = list(gene = limit[1:2], cpd = limit[1:2])
-    }
-    if (is.null(trans.fun)) 
-        trans.fun = list(gene = NULL, cpd = NULL)
-    arg.len2 = c("discrete", "limit", "bins", "both.dirs", "trans.fun", 
-        "low", "mid", "high")
-    for (arg in arg.len2) {
-        obj1 = eval(as.name(arg))
-        if (length(obj1) == 1) 
-            obj1 = rep(obj1, 2)
-        if (length(obj1) > 2) 
-            obj1 = obj1[1:2]
-        obj1 = as.list(obj1)
-        ns = names(obj1)
-        if (length(ns) == 0 | !all(c("gene", "cpd") %in% ns)) 
-            names(obj1) = c("gene", "cpd")
-        assign(arg, obj1)
-    }
-    if (is.character(gene.data)) {
-        gd.names = gene.data
-        gene.data = rep(1, length(gene.data))
-        names(gene.data) = gd.names
-        both.dirs$gene = FALSE
-        ng = length(gene.data)
-        nsamp.g = 1
-    }
-    else if (!is.null(gene.data)) {
-        if (length(dim(gene.data)) == 2) {
-            gd.names = rownames(gene.data)
-            ng = nrow(gene.data)
-            nsamp.g = 2
-        }
-        else if (is.numeric(gene.data) & is.null(dim(gene.data))) {
-            gd.names = names(gene.data)
-            ng = length(gene.data)
-            nsamp.g = 1
-        }
-        else stop("wrong gene.data format!")
-    }
-    else if (is.null(cpd.data)) {
-        stop("gene.data and cpd.data are both NULL!")
-    }
-    gene.idtype = toupper(gene.idtype)
-    data(bods)
-    if (species != "ko") {
-        species.data = kegg.species.code(species, na.rm = T, 
-            code.only = FALSE)
-    }
-    else {
-        species.data = c(kegg.code = "ko", entrez.gnodes = "0", 
-            kegg.geneid = "K01488", ncbi.geneid = "")
-        gene.idtype = "KEGG"
-        msg.fmt = "Only KEGG ortholog gene ID is supported, make sure it looks like \"%s\"!"
-        msg = sprintf(msg.fmt, species.data["kegg.geneid"])
-        message("Note: ", msg)
-    }
-    if (length(dim(species.data)) == 2) {
-        message("Note: ", "More than two valide species!")
-        species.data = species.data[1, ]
-    }
-    species = species.data["kegg.code"]
-    entrez.gnodes = species.data["entrez.gnodes"] == 1
-    if (is.na(species.data["ncbi.geneid"])) {
-        if (!is.na(species.data["kegg.geneid"])) {
-            msg.fmt = "Only native KEGG gene ID is supported for this species,\nmake sure it looks like \"%s\"!"
-            msg = sprintf(msg.fmt, species.data["kegg.geneid"])
-            message("Note: ", msg)
-        }
-        else {
-            stop("This species is not annotated in KEGG!")
-        }
-    }
-    if (is.null(gene.annotpkg)) 
-        gene.annotpkg = bods[match(species, bods[, 3]), 1]
-    if (length(grep("ENTREZ|KEGG", gene.idtype)) < 1 & !is.null(gene.data)) {
-        if (is.na(gene.annotpkg)) 
-            stop("No proper gene annotation package available!")
-        if (!gene.idtype %in% gene.idtype.bods[[species]]) 
-            stop("Wrong input gene ID type!")
-        gene.idmap = id2eg(gd.names, category = gene.idtype, 
-            pkg.name = gene.annotpkg, unique.map = F)
-        gene.data = mol.sum(gene.data, gene.idmap)
-        gene.idtype = "ENTREZ"
-    }
-    if (gene.idtype == "ENTREZ" & !entrez.gnodes & !is.null(gene.data)) {
-        message("Info: Getting gene ID data from KEGG...")
-        gene.idmap = keggConv("ncbi-geneid", species)
-        message("Info: Done with data retrieval!")
-        kegg.ids = gsub(paste(species, ":", sep = ""), "", names(gene.idmap))
-        ncbi.ids = gsub("ncbi-geneid:", "", gene.idmap)
-        gene.idmap = cbind(ncbi.ids, kegg.ids)
-        gene.data = mol.sum(gene.data, gene.idmap)
-        gene.idtype = "KEGG"
-    }
-    if (is.character(cpd.data)) {
-        cpdd.names = cpd.data
-        cpd.data = rep(1, length(cpd.data))
-        names(cpd.data) = cpdd.names
-        both.dirs$cpd = FALSE
-        ncpd = length(cpd.data)
-    }
-    else if (!is.null(cpd.data)) {
-        if (length(dim(cpd.data)) == 2) {
-            cpdd.names = rownames(cpd.data)
-            ncpd = nrow(cpd.data)
-        }
-        else if (is.numeric(cpd.data) & is.null(dim(cpd.data))) {
-            cpdd.names = names(cpd.data)
-            ncpd = length(cpd.data)
-        }
-        else stop("wrong cpd.data format!")
-    }
-    if (length(grep("kegg", cpd.idtype)) < 1 & !is.null(cpd.data)) {
-        data(rn.list)
-        cpd.types = c(names(rn.list), "name")
-        cpd.types = tolower(cpd.types)
-        cpd.types = cpd.types[-grep("kegg", cpd.types)]
-        if (!tolower(cpd.idtype) %in% cpd.types) 
-            stop("Wrong input cpd ID type!")
-        cpd.idmap = cpd2kegg(cpdd.names, in.type = cpd.idtype)
-        cpd.data = mol.sum(cpd.data, cpd.idmap)
-    }
-    warn.fmt = "Parsing %s file failed, please check the file!"
-    if (length(grep(species, pathway.id)) > 0) {
-        pathway.name = pathway.id
-        pathway.id = gsub(species, "", pathway.id)
-    }
-    else pathway.name = paste(species, pathway.id, sep = "")
-    kfiles = list.files(path = kegg.dir, pattern = "[.]xml|[.]png")
-    npath = length(pathway.id)
-    out.list = list()
-    tfiles.xml = paste(pathway.name, ".xml", sep = "")
-    tfiles.png = paste(pathway.name, ".png", sep = "")
-    if (kegg.native) 
-        ttype = c("xml", "png")
-    else ttype = "xml"
-    xml.file <- paste(kegg.dir, "/", tfiles.xml, sep = "")
-    for (i in 1:npath) {
-        if (kegg.native) 
-            tfiles = c(tfiles.xml[i], tfiles.png[i])
-        else tfiles = tfiles.xml[i]
-        if (!all(tfiles %in% kfiles)) {
-            dstatus = download.kegg(pathway.id = pathway.id[i], 
-                species = species, kegg.dir = kegg.dir, file.type = ttype)
-            if (dstatus == "failed") {
-                warn.fmt = "Failed to download KEGG xml/png files, %s skipped!"
-                warn.msg = sprintf(warn.fmt, pathway.name[i])
-                message("Warning: ", warn.msg)
-                return(invisible(0))
-            }
-        }
-        if (kegg.native) {
-            node.data = try(node.info(xml.file[i]), silent = T)
-            if (class(node.data) == "try-error") {
-                warn.msg = sprintf(warn.fmt, xml.file[i])
-                message("Warning: ", warn.msg)
-                return(invisible(0))
-            }
-            node.type = c("gene", "enzyme", "compound", "ortholog")
-            sel.idx = node.data$type %in% node.type
-            nna.idx = !is.na(node.data$x + node.data$y + node.data$width + 
-                node.data$height)
-            sel.idx = sel.idx & nna.idx
-            if (sum(sel.idx) < min.nnodes) {
-                warn.fmt = "Number of mappable nodes is below %d, %s skipped!"
-                warn.msg = sprintf(warn.fmt, min.nnodes, pathway.name[i])
-                message("Warning: ", warn.msg)
-                return(invisible(0))
-            }
-            node.data = lapply(node.data, "[", sel.idx)
-        }
-        else {
-            gR1 = try(parseKGML2Graph2(xml.file[i], genes = F, 
-                expand = expand.node, split.group = split.group), 
-                silent = T)
-            node.data = try(node.info(gR1), silent = T)
-            if (class(node.data) == "try-error") {
-                warn.msg = sprintf(warn.fmt, xml.file[i])
-                message("Warning: ", warn.msg)
-                return(invisible(0))
-            }
-        }
-        if (species == "ko") 
-            gene.node.type = "ortholog"
-        else gene.node.type = "gene"
-        if ((!is.null(gene.data) | map.null) & sum(node.data$type == 
-            gene.node.type) > 1) {
-            plot.data.gene = node.map(gene.data, node.data, node.types = gene.node.type, 
-                node.sum = node.sum, entrez.gnodes = entrez.gnodes)
-            kng = plot.data.gene$kegg.names
-            kng.char = gsub("[0-9]", "", unlist(kng))
-            if (any(kng.char > "")) 
-                entrez.gnodes = FALSE
-            if (map.symbol & species != "ko" & entrez.gnodes) {
-                if (is.na(gene.annotpkg)) {
-                  warn.fmt = "No annotation package for the species %s, gene symbols not mapped!"
-                  warn.msg = sprintf(warn.fmt, species)
-                  message("Warning: ", warn.msg)
-                }
-                else {
-                  plot.data.gene$labels = eg2id(as.character(plot.data.gene$kegg.names), 
-                    category = "SYMBOL", pkg.name = gene.annotpkg)[,2]
-                  mapped.gnodes = rownames(plot.data.gene)
-                  node.data$labels[mapped.gnodes] = plot.data.gene$labels
-                }
-            }
-            cols.ts.gene = node.color(plot.data.gene, limit$gene, 
-                bins$gene, both.dirs = both.dirs$gene, trans.fun = trans.fun$gene, 
-                discrete = discrete$gene, low = low$gene, mid = mid$gene, 
-                high = high$gene, na.col = na.col)
-        }
-        else plot.data.gene = cols.ts.gene = NULL
-        if ((!is.null(cpd.data) | map.null) & sum(node.data$type == 
-            "compound") > 1) {
-            plot.data.cpd = node.map(cpd.data, node.data, node.types = "compound", 
-                node.sum = node.sum)
-            if (map.cpdname & !kegg.native) {
-                plot.data.cpd$labels = cpdkegg2name(plot.data.cpd$labels)[, 
-                  2]
-                mapped.cnodes = rownames(plot.data.cpd)
-                node.data$labels[mapped.cnodes] = plot.data.cpd$labels
-            }
-            cols.ts.cpd = node.color(plot.data.cpd, limit$cpd, 
-                bins$cpd, both.dirs = both.dirs$cpd, trans.fun = trans.fun$cpd, 
-                discrete = discrete$cpd, low = low$cpd, mid = mid$cpd, 
-                high = high$cpd, na.col = na.col)
-        }
-        else plot.data.cpd = cols.ts.cpd = NULL
-        if (kegg.native) {
-            pv.pars = my.keggview.native( plot.data.gene = plot.data.gene, 
-                cols.ts.gene = cols.ts.gene, plot.data.cpd = plot.data.cpd, 
-                cols.ts.cpd = cols.ts.cpd, node.data = node.data, 
-                pathway.name = pathway.name[i], kegg.dir = kegg.dir, 
-                limit = limit, bins = bins, both.dirs = both.dirs, 
-                discrete = discrete, low = low, mid = mid, high = high, 
-                na.col = na.col, ...)
-        }
-        else {
-            pv.pars = keggview.graph(plot.data.gene = plot.data.gene, 
-                cols.ts.gene = cols.ts.gene, plot.data.cpd = plot.data.cpd, 
-                cols.ts.cpd = cols.ts.cpd, node.data = node.data, 
-                path.graph = gR1, pathway.name = pathway.name[i], 
-                map.cpdname = map.cpdname, split.group = split.group, 
-                limit = limit, bins = bins, both.dirs = both.dirs, 
-                discrete = discrete, low = low, mid = mid, high = high, 
-                na.col = na.col, ...)
-        }
-        plot.data.gene = cbind(plot.data.gene, cols.ts.gene)
-        if (!is.null(plot.data.gene)) {
-            cnames = colnames(plot.data.gene)[-(1:8)]
-            nsamp = length(cnames)/2
-            if (nsamp > 1) {
-                cnames[(nsamp + 1):(2 * nsamp)] = paste(cnames[(nsamp + 
-                  1):(2 * nsamp)], "col", sep = ".")
-            }
-            else cnames[2] = "mol.col"
-            colnames(plot.data.gene)[-(1:8)] = cnames
-        }
-        plot.data.cpd = cbind(plot.data.cpd, cols.ts.cpd)
-        if (!is.null(plot.data.cpd)) {
-            cnames = colnames(plot.data.cpd)[-(1:8)]
-            nsamp = length(cnames)/2
-            if (nsamp > 1) {
-                cnames[(nsamp + 1):(2 * nsamp)] = paste(cnames[(nsamp + 
-                  1):(2 * nsamp)], "col", sep = ".")
-            }
-            else cnames[2] = "mol.col"
-            colnames(plot.data.cpd)[-(1:8)] = cnames
-        }
-        out.list[[i]] = list(plot.data.gene = plot.data.gene, 
-            plot.data.cpd = plot.data.cpd)
-    }
-    if (npath == 1) 
-        out.list = out.list[[1]]
-    else names(out.list) = pathway.name
-    return(invisible(out.list))
-}
-# <environment: namespace:pathview>
-my.keggview.native <- function ( plot.data.gene = NULL, plot.data.cpd = NULL, cols.ts.gene = NULL, 
-    cols.ts.cpd = NULL, node.data, pathway.name, out.suffix = "pathview", 
-    kegg.dir = ".", multi.state = TRUE, match.data = TRUE, same.layer = TRUE, 
-    res = 300, cex = 0.25, discrete = list(gene = FALSE, cpd = FALSE), 
-    limit = list(gene = 1, cpd = 1), bins = list(gene = 10, cpd = 10), 
-    both.dirs = list(gene = T, cpd = T), low = list(gene = "green", 
-        cpd = "blue"), mid = list(gene = "gray", cpd = "gray"), 
-    high = list(gene = "red", cpd = "yellow"), na.col = "transparent", 
-    new.signature = TRUE, plot.col.key = TRUE, key.align = "x", 
-    key.pos = "topright", ...) 
-{
-    img <- readPNG(paste(kegg.dir, "/", pathway.name, ".png", 
-        sep = ""))
-    width <- ncol(img)
-    height <- nrow(img)
-    cols.ts.gene = cbind(cols.ts.gene)
-    cols.ts.cpd = cbind(cols.ts.cpd)
-    nc.gene = max(ncol(cols.ts.gene), 0)
-    nc.cpd = max(ncol(cols.ts.cpd), 0)
-    nplots = max(nc.gene, nc.cpd)
-    pn.suffix = colnames(cols.ts.gene)
-    if (length(pn.suffix) < nc.cpd) 
-        pn.suffix = colnames(cols.ts.cpd)
-    if (length(pn.suffix) < nplots) 
-        pn.suffix = 1:nplots
-    if (length(pn.suffix) == 1) {
-        pn.suffix = out.suffix
-    }
-    else pn.suffix = paste(out.suffix, pn.suffix, sep = ".")
-    na.col = colorpanel2(1, low = na.col, high = na.col)
-    if ((match.data | !multi.state) & nc.gene != nc.cpd) {
-        if (nc.gene > nc.cpd & !is.null(cols.ts.cpd)) {
-            na.mat = matrix(na.col, ncol = nplots - nc.cpd, nrow = nrow(cols.ts.cpd))
-            cols.ts.cpd = cbind(cols.ts.cpd, na.mat)
-        }
-        if (nc.gene < nc.cpd & !is.null(cols.ts.gene)) {
-            na.mat = matrix(na.col, ncol = nplots - nc.gene, 
-                nrow = nrow(cols.ts.gene))
-            cols.ts.gene = cbind(cols.ts.gene, na.mat)
-        }
-        nc.gene = nc.cpd = nplots
-    }
-    out.fmt = "Working in directory %s"
-    wdir = getwd()
-    out.msg = sprintf(out.fmt, wdir)
-    message("Info: ", out.msg)
-    out.fmt = "Writing image file %s"
-    multi.state = multi.state & nplots > 1
-    if (multi.state) {
-        nplots = 1
-        pn.suffix = paste(out.suffix, "multi", sep = ".")
-        if (nc.gene > 0) 
-            cols.gene.plot = cols.ts.gene
-        if (nc.cpd > 0) 
-            cols.cpd.plot = cols.ts.cpd
-    }
-    for (np in 1:nplots) {
-        img.file = paste(kegg.dir,"/",pathway.name, ".",pn.suffix[np], ".png", 
-            sep = "")
-		#message("here:",img.file)
-        out.msg = sprintf(out.fmt, img.file)
-        #message("Info: ", out.msg)
-        png(img.file, width = width, height = height, res = res)
-        op = par(mar = c(0, 0, 0, 0))
-        plot(c(0, width), c(0, height), type = "n", xlab = "", 
-            ylab = "", xaxs = "i", yaxs = "i")
-        if (new.signature) 
-            img[height - 4:25, 17:137, 1:3] = 1
-        if (same.layer != T) 
-            rasterImage(img, 0, 0, width, height, interpolate = F)
-        if (!is.null(cols.ts.gene) & nc.gene >= np) {
-            if (!multi.state) 
-                cols.gene.plot = cols.ts.gene[, np]
-            if (same.layer != T) {
-                render.kegg.node(plot.data.gene, cols.gene.plot, 
-                  img, same.layer = same.layer, type = "gene", 
-                  cex = cex)
-            }
-            else {
-                img = render.kegg.node(plot.data.gene, cols.gene.plot, 
-                  img, same.layer = same.layer, type = "gene")
-            }
-        }
-        if (!is.null(cols.ts.cpd) & nc.cpd >= np) {
-            if (!multi.state) 
-                cols.cpd.plot = cols.ts.cpd[, np]
-            if (same.layer != T) {
-                render.kegg.node(plot.data.cpd, cols.cpd.plot, 
-                  img, same.layer = same.layer, type = "compound", 
-                  cex = cex)
-            }
-            else {
-                img = render.kegg.node(plot.data.cpd, cols.cpd.plot, 
-                  img, same.layer = same.layer, type = "compound")
-            }
-        }
-        if (same.layer == T) 
-            rasterImage(img, 0, 0, width, height, interpolate = F)
-        pv.pars = list()
-        pv.pars$gsizes = c(width = width, height = height)
-        pv.pars$nsizes = c(46, 17)
-        pv.pars$op = op
-        pv.pars$key.cex = 2 * 72/res
-        pv.pars$key.lwd = 1.2 * 72/res
-        pv.pars$sign.cex = cex
-        off.sets = c(x = 0, y = 0)
-        align = "n"
-        ucol.gene = unique(as.vector(cols.ts.gene))
-        na.col.gene = ucol.gene %in% c(na.col, NA)
-        if (plot.col.key & !is.null(cols.ts.gene) & !all(na.col.gene)) {
-            off.sets = col.key(limit = limit$gene, bins = bins$gene, 
-                both.dirs = both.dirs$gene, discrete = discrete$gene, 
-                graph.size = pv.pars$gsizes, node.size = pv.pars$nsizes, 
-                key.pos = key.pos, cex = pv.pars$key.cex, lwd = pv.pars$key.lwd, 
-                low = low$gene, mid = mid$gene, high = high$gene, 
-                align = "n")
-            align = key.align
-        }
-        ucol.cpd = unique(as.vector(cols.ts.cpd))
-        na.col.cpd = ucol.cpd %in% c(na.col, NA)
-        if (plot.col.key & !is.null(cols.ts.cpd) & !all(na.col.cpd)) {
-            off.sets = col.key(limit = limit$cpd, bins = bins$cpd, 
-                both.dirs = both.dirs$cpd, discrete = discrete$cpd, 
-                graph.size = pv.pars$gsizes, node.size = pv.pars$nsizes, 
-                key.pos = key.pos, off.sets = off.sets, cex = pv.pars$key.cex, 
-                lwd = pv.pars$key.lwd, low = low$cpd, mid = mid$cpd, 
-                high = high$cpd, align = align)
-        }
-        if (new.signature) 
-            pathview.stamp(x = 17, y = 20, on.kegg = T, cex = pv.pars$sign.cex)
-        par(pv.pars$op)
-        dev.off()
-    }
-    return(invisible(pv.pars))
-}
-
-# modify function in a package, change namespace
-# http://stackoverflow.com/questions/23279904/modifying-an-r-package-function-for-current-r-session-assigninnamespace-not-beh
-tmpfun <- get("keggview.native", envir = asNamespace("pathview"))
-environment(my.keggview.native) <- environment(tmpfun)
-attributes(my.keggview.native) <- attributes(tmpfun)  # don't know if this is really needed
-
 # find sample index for selected comparisons
 findContrastSamples <- function(selectContrast, allSampleNames,sampleInfo=NULL, selectFactorsModel=NULL,selectModelComprions =NULL , referenceLevels=NULL, countsDEGMethod=NULL, dataFileFormat=NULL ){
 	iz= match( detectGroups(allSampleNames), unlist(strsplit( selectContrast, "-"))	  )
@@ -2426,8 +1988,6 @@ observe({  updateSelectInput(session, "hclustFunctions", choices = hclustChoices
  
 	# read data file and do filtering and transforming
 readData <- reactive ({
-		library(edgeR,verbose=FALSE) # count data D.E.
-		library(DESeq2,verbose=FALSE) # count data analysis
 		inFile <- input$file1
 		inFile <- inFile$datapath
 
@@ -2451,6 +2011,10 @@ readData <- reactive ({
 
 		isolate({
 			withProgress(message="Reading and pre-processing ", {
+				# these packages moved here to reduce loading time
+				library(edgeR,verbose=FALSE) # count data D.E.
+				library(DESeq2,verbose=FALSE) # count data analysis
+
 				if (is.null( input$dataFileFormat )) return(NULL)
 				dataTypeWarning =0
 				dataType =c(TRUE)
@@ -2521,7 +2085,8 @@ readData <- reactive ({
 
 				# Compute kurtosis
 				mean.kurtosis = mean(apply(x,2, kurtosis))
-
+				rawCounts = NULL
+				pvals= NULL
 				if (input$dataFileFormat == 2 ) {  # if FPKM, microarray
 					incProgress(1/3,"Pre-processing data")
 
@@ -2542,8 +2107,9 @@ readData <- reactive ({
 
 					tem <- apply(x,1,sd) 
 					x <- x[order(-tem),]  # sort by SD
-					rawCounts = NULL
-				} else {  # counts data
+
+				} else 
+					if( input$dataFileFormat == 1) {  # counts data
 					incProgress(1/3, "Pre-processing counts data")
 					tem = input$CountsDEGMethod; tem = input$countsTransform
 					# data not seems to be read counts
@@ -2596,15 +2162,47 @@ readData <- reactive ({
 							#x <- x-min(x)  # shift values to avoid negative numbers
 						}
 					}
-				}
+				} else 
+					if( input$dataFileFormat == 3)	{  # other data type
+
+						#neg_lfc neg_fdr pos_lfc pos_fdr 
+						#11       1      11       1 
+						
+						n2 = ( dim(x)[2] %/% 2) # 5 --> 2
+						# It looks like it contains P values
+						# ranges of columns add 0.2 and round to whole. For P value columns this should be 1
+						tem = round( apply(x, 2, function( y) max(y)- min(y))  + .2)     
+						if( sum(tem[(1:n2)*2  ] ==  1 ) == n2 | 
+							sum(tem[(1:n2)*2-1  ] ==  1 ) == n2 ) { 		
+							x = x[,1:(2*n2) ,drop=FALSE ] # if 5, change it to 4			
+							if(tem[2] == 1) { # FDR follows Fold-change
+								pvals = x [,2*(1:n2 ),drop=FALSE ]  # 2, 4, 6
+								x = x[, 2*(1:n2 )-1,drop=FALSE]   # 1, 3, 5
+
+							} else {	# FDR follows Fold-change
+								pvals = x [,2*(1:n2 )-1,drop=FALSE ]  # 2, 4, 6		
+								x = x[, 2*(1: n2 ),drop=FALSE]   # 1, 3, 5
+							}
+						}
+					ix =  which(apply(x,1, function(y) max(y)- min(y) ) > 0  )
+					x <- x[ix,]  # remove rows with all the same levels
+					if(!is.null(pvals) )
+						pvals = pvals[ix,]
+						
+					}
+					
+					
 				dataSize = dim(x);
+				validate( need(dim(x)[1]>5 & dim(x)[2]>1 , 
+					"Data file not recognized. Please double check."))
+
 				incProgress(1, "Done.")
 				
 				sampleInfoDemo=NULL
 				if( input$goButton >0)
 					sampleInfoDemo <- t( read.csv(demoDataFile2,row.names=1,header=T,colClasses="character") )
 
-					finalResult <- list(data = as.matrix(x), mean.kurtosis = mean.kurtosis, rawCounts = rawCounts, dataTypeWarning=dataTypeWarning, dataSize=c(dataSizeOriginal,dataSize),sampleInfoDemo=sampleInfoDemo )
+					finalResult <- list(data = as.matrix(x), mean.kurtosis = mean.kurtosis, rawCounts = rawCounts, dataTypeWarning=dataTypeWarning, dataSize=c(dataSizeOriginal,dataSize),sampleInfoDemo=sampleInfoDemo, pvals =pvals )
 				return(finalResult)
 			})
 		})
@@ -2846,6 +2444,54 @@ convertedCounts <- reactive({
 				} # here
 			})
 		
+		})
+	})
+
+convertedPvals <- reactive({
+		if (is.null(input$file1) && input$goButton == 0) return()  
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+		####################################
+		if( is.null(converted() ) ) return( readData()$pvals) # if id or species is not recognized use original data.
+		if( is.null(readData()$pvals) ) return(NULL)
+		isolate( {  
+			withProgress(message="Converting data ... ", {
+			
+				if(input$noIDConversion) return( readData()$pvals )
+				
+				mapping <- converted()$conversionTable
+				# cat (paste( "\nData:",input$selectOrg) )
+				x =readData()$pvals
+
+				rownames(x) = toupper(rownames(x))
+				# any gene not recognized by the database is disregarded
+				# x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
+				# the 3 lines keeps the unrecogized genes using original IDs
+				x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
+
+				# original IDs used if ID is not matched in database
+				ix = which(is.na(x1[,2]) )
+				x1[ix,2] = x1[ix,1] 
+				
+				#multiple matched IDs, use the one with highest SD
+				tem = apply(x1[,3:(dim(x1)[2])],1,sd)
+				x1 = x1[order(x1[,2],-tem),]
+				x1 = x1[!duplicated(x1[,2]) ,]
+				rownames(x1) = x1[,2]
+				x1 = as.matrix(x1[,c(-1,-2)])
+				tem = apply(x1,1,sd)
+				x1 = x1[order(-tem),]  # sort again by SD
+				incProgress(1, "Done.")
+			
+				return(x1)
+		})
 		})
 	})
 	
@@ -3447,6 +3093,7 @@ output$downloadData <- downloadHandler(
 	)
 
 output$correlationMatrix <- renderPlot({
+		library(reshape2,verbose=FALSE) 	# for melt correlation matrix in heatmap
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		# heatmap of correlation matrix
 		x <- readData()$data
@@ -4415,16 +4062,53 @@ limma <- reactive({
 									input$selectModelComprions, readSampleInfo(),
 									c(input$selectFactorsModel,input$selectInteractions),
 									input$selectBlockFactorsModel) )
-	} else { # normalized data
+	} else if (input$dataFileFormat == 2 ){ # normalized data
 	 return( DEG.limma(convertedData(), input$limmaPval, input$limmaFC,
 						convertedCounts(), input$CountsDEGMethod,
 						priorCounts=input$countsLogStart,input$dataFileFormat,
 						input$selectModelComprions, readSampleInfo(),
 						c(input$selectFactorsModel,input$selectInteractions),
 						input$selectBlockFactorsModel) )
+	} else {   # dataFileFormat == 3 user just uploaded fold change matrix
+	
+		x = convertedData()
+		
+		pvals = convertedPvals()
+		if(!is.null(pvals) ) {
+		  ix = match(rownames(x), rownames(pvals))
+		  pvals = pvals[ix,]
+		}
+
+
+		# looks like ratio data, take log2
+		if( sum(round(apply(x,2, median) + .2) == 1 ) == dim(x)[2] & min(x) > 0) 
+			x = log2(x)
+		
+		Exp.type = "None standard data without replicates."
+		all.Calls = x # fake calls
+		for( i in 1: dim(all.Calls)[2]) { 
+			tem <- all.Calls[,i]
+			all.Calls[which( tem <= log2(input$limmaFC) & tem >=  -log2(input$limmaFC) ) ,i] = 0			
+			all.Calls[which( tem > log2(input$limmaFC)  ) ,i] = 1
+			all.Calls[which( tem < -log2(input$limmaFC) ) ,i] = -1		
+			if(!is.null(pvals) ) 
+				all.Calls[ which( pvals[,i] > input$limmaPval),i] = 0
+		}
+		comparisons = colnames(all.Calls)
+		extractColumn <- function (i) {
+			topGenes = as.data.frame( convertedData()[,i,drop=FALSE])
+			if(is.null(pvals) ) topGenes$FDR = 0 else 
+				topGenes$FDR = pvals[,i]# fake fdr
+				
+			colnames(topGenes) = c("Fold","FDR")
+			return(topGenes)	
+		} 
+		topGenes = lapply( 1:dim( x )[2], extractColumn )
+		topGenes <- setNames(topGenes, colnames(x ) )
+		
+		return( list(results= all.Calls, comparisons = colnames(x ), Exp.type=Exp.type, topGenes=topGenes) )
 	}
-	
-	
+		
 	})
 	})
 	})	
@@ -4458,13 +4142,31 @@ output$vennPlot <- renderPlot({
 		tem = input$selectFactorsModel # responsive to changes in model and comparisons
 		tem = input$selectModelComprions
 		tem = input$submitModelButton 
-
+		tem = input$UpDownRegulated
 		if(is.null(input$selectComparisonsVenn) ) return(NULL)
 		####################################
 		
 		isolate({ 
 		
 			results = limma()$results
+
+			# split by up or down regulation
+			if(input$UpDownRegulated) { 			
+			results2 = cbind(results, results)
+			colnames(results2)= c( paste0("UP_", colnames(results)),paste0("Down_", colnames(results)) )
+			for(i in 1:dim(results)[2] ) {
+				results2[,i*2-1] = results[,i]
+				results2[ which(results2[,i*2-1] < 0 ) , i*2-1] = 0
+				results2[,i*2] = results[,i]	
+				results2[ which(results2[,i*2] > 0 ) , i*2] = 0	
+			}			
+			results <- results2			
+			}			
+			
+			
+			
+			
+			
 			ixa = c()
 			for (comps in  input$selectComparisonsVenn) { 
 				 if(!grepl("^I:|^I-", comps) ) {  # if not interaction term
@@ -4486,23 +4188,119 @@ output$vennPlot <- renderPlot({
 					
 			results = results[,ixa,drop=FALSE] # only use selected comparisons
 			if(dim(results)[2] >5) results <- results[,1:5]
-			colnames(results) = gsub("^I-","I:" ,colnames(results))		
+			colnames(results) = gsub("^I-","I:" ,colnames(results))	
+
+			
+			
+			
+			
+			
 			vennDiagram(results,circle.col=rainbow(5), cex=c(1.,1, 0.7) ) # part of limma package
 
 		})
     }, height = 600, width = 600)
 
+output$sigGeneStats <- renderPlot({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+		tem=input$CountsDEGMethod
+		tem = input$selectFactorsModel # responsive to changes in model and comparisons
+		tem = input$selectModelComprions
+		tem = input$submitModelButton 
+
+		####################################
+		
+		isolate({ 
+		
+			results = limma()$results
+
+		 library(reshape2)
+		 Up =  apply(results, 2, function(x) sum(x == 1) )
+		 Down = apply(results, 2, function(x) sum(x == -1) ) 
+		 stats = rbind(Up, Down)
+				 
+		 gg <- melt(stats)
+
+		 colnames(gg) = c("Regulation","Comparisons","Genes")
+		 gg$Regulation = as.factor(gg$Regulation)
+		 gg$Regulation = relevel(gg$Regulation,"Up")
+		 
+		 p= ggplot(gg, aes(x=Comparisons, y=Genes, fill=Regulation))+
+			 geom_bar(position="dodge", stat="identity") + coord_flip() +
+			 theme(legend.position = "top") + 
+			 scale_fill_manual(values=c("red", "blue")) +
+			 theme(axis.title.y=element_blank(), axis.text=element_text(size=18))			
+			
+		p
+			
+
+		})
+    },width=800, height=600)
+	
+output$sigGeneStatsTable <- renderTable({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+		tem=input$CountsDEGMethod
+		tem = input$selectFactorsModel # responsive to changes in model and comparisons
+		tem = input$selectModelComprions
+		tem = input$submitModelButton 
+
+		####################################
+		
+		isolate({ 
+		
+		results = limma()$results
+
+		 Up =  apply(results, 2, function(x) sum(x == 1) )
+		 Down = apply(results, 2, function(x) sum(x == -1) ) 
+		 stats = rbind(Up, Down)
+		 stats = t(stats)
+		 stats=cbind(rownames(stats), stats)
+		 colnames(stats)[1]="Comparisons"
+
+		 return(as.data.frame(stats))
+
+		})
+    }, digits = 0,spacing="s",include.rownames=F,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 	
 output$listComparisonsVenn <- renderUI({
 	tem = input$selectOrg
 	tem=input$limmaPval; tem=input$limmaFC
 	tem = input$submitModelButton 
-	
+	tem = input$UpDownRegulated	
       if (is.null(input$file1)&& input$goButton == 0 )
        { selectInput("selectComparisonsVenn", label = NULL, # h6("Funtional Category"), 
                   choices = list("All" = "All"), selected = "All")  
 		}	 else { 
 				choices = setNames(limma()$comparisons, limma()$comparisons  )
+				if(input$UpDownRegulated) {
+				  tem = c( paste0("UP_", limma()$comparisons),paste0("Down_", limma()$comparisons) )
+				  choices = setNames(tem, tem)
+				
+				}
+				
 				choices3 = choices;
 				if(length(choices3)>3) choices3 = choices[1:3]  # by default only 3 are selected
 				checkboxGroupInput("selectComparisonsVenn", 
@@ -4614,6 +4412,7 @@ output$selectedHeatmap <- renderPlot({
 	
 		 bar = selectedHeatmap.data()$bar +2;
 		 bar[bar==3] =2
+
 	  	 myheatmap2( selectedHeatmap.data()$genes,bar,200,mycolor=input$heatColors1,c("Down","Up") )
 	 
 	 incProgress(1, detail = paste("Done")) 
@@ -4711,6 +4510,58 @@ output$download.DEG.data <- downloadHandler(
 		filename = function() {"Diff_expression_all_comparisons.csv"},
 		content = function(file) {
 			write.csv(DEG.data(), file,row.names=FALSE)
+	    }
+	)
+
+AllGeneListsGMT <- reactive({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+		tem=input$CountsDEGMethod
+		tem = input$selectFactorsModel # responsive to changes in model and comparisons
+		tem = input$selectModelComprions
+		tem = input$submitModelButton 
+
+		####################################
+		
+		isolate({ 
+		
+			results = limma()$results
+
+			results2 = cbind(results, results)
+			colnames(results2)= c( paste0("UP_", colnames(results)),paste0("Down_", colnames(results)) )
+			for(i in 1:dim(results)[2] ) {
+				results2[,i*2-1] = results[,i]
+				results2[ which(results2[,i*2-1] < 0 ) , i*2-1] = 0
+				results2[,i*2] = results[,i]	
+				results2[ which(results2[,i*2] > 0 ) , i*2] = 0	
+			}
+
+			geneList1 <- function (i) {
+				ix = which(results2[,i] !=0 )
+				return(paste0(colnames(results2)[i],"\t", length(ix),"\t",
+						paste(rownames(results2 )[ix], collapse="\t" ) ) )			
+			}
+			tem = sapply(1:dim(results2)[2],geneList1 )
+				
+			return( paste(tem, collapse="\n") )
+		})
+    })
+
+output$downloadGeneListsGMT <- downloadHandler(
+		filename = function() {"All_gene_lists_GMT.txt"},
+		content = function(file) {
+			write(AllGeneListsGMT(), file)
 	    }
 	)
 
@@ -5512,71 +5363,76 @@ gagePathwayData <- reactive({
 	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
 	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
 	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	tem=input$GenePvalCutoff
 	####################################
 	
 	if(is.null(input$selectGO ) ) return (NULL)
 	if(input$selectGO == "ID not recognized!" ) return( as.data.frame("Gene ID not recognized." ))
 	isolate({ 
-	withProgress(message="Running pathway analysis using GAGE", {
-	if (is.null(input$selectContrast1 ) ) return(NULL)
-	myrange = c(input$minSetSize, input$maxSetSize)
-	noSig = as.data.frame("No significant pathway found.")
-	if( length(limma()$topGenes) == 0 ) return(noSig)
-	if(length( limma()$comparisons)  ==1 )  
-    { top1=limma()$topGenes[[1]]  
-	} else {
-	  top = limma()$topGenes
-	  ix = match(input$selectContrast1, names(top))
-	  if( is.na(ix)) return (noSig)
-	  top1 <- top[[ix]]; 
-	  }
-	  if(dim(top1)[1] == 0 ) return (noSig)
-	  colnames(top1)= c("Fold","FDR")
-	  incProgress(1/4,"Retrieving gene sets")
-	  gmt = GeneSets() 
-      if(length( GeneSets() )  == 0)  { return(as.data.frame("No gene set found!"))}
-	  #converted = convertID(rownames(top1),input$selectOrg)
-	  #
-	   #gmt = readGeneSets(converted, top1, input$selectGO, input$selectOrg, myrange )
-     # cat("Sets",length(gmt))
-	 incProgress(2/4,"Runing GAGE")
-	 fold = top1[,1]; names(fold) <- rownames(top1)
-	 
-	 if(input$absoluteFold) fold <- abs(fold)
-	 paths <- gage(fold, gsets = gmt, ref = NULL, samp = NULL)
+		withProgress(message="Running pathway analysis using GAGE", {
+		if (is.null(input$selectContrast1 ) ) return(NULL)
+		myrange = c(input$minSetSize, input$maxSetSize)
+		noSig = as.data.frame("No significant pathway found.")
+		if( length(limma()$topGenes) == 0 ) return(noSig)
+		if(length( limma()$comparisons)  ==1 )  
+		{ top1=limma()$topGenes[[1]]  
+		} else {
+		  top = limma()$topGenes
+		  ix = match(input$selectContrast1, names(top))
+		  if( is.na(ix)) return (noSig)
+		  top1 <- top[[ix]]; 
+		  }
+		  if(dim(top1)[1] == 0 ) return (noSig)
+		  colnames(top1)= c("Fold","FDR")
 
-	  paths <-  rbind(paths$greater,paths$less)
-	 # write.csv(paths,"tem.csv")	  
-	 # cat( dim(paths) )
-	  if(dim(paths)[1] < 1 | dim(paths)[2]< 6 ) return( noSig )
-	  top1 <- paths[,c('stat.mean','set.size','q.val')]
-	  colnames(top1)= c("statistic","Genes","adj.Pval")
-	  top1 <- top1[order(top1[,3]) ,]  
-	  if ( length( which( top1[,3] <=  input$pathwayPvalCutoff   ) ) == 0 )
-	    return( noSig)
-	  top1 <- top1[which(top1[,3] <=  input$pathwayPvalCutoff ) ,,drop=FALSE]
-	  if(dim(top1)[1] > input$nPathwayShow ) 
-	     top1 <- top1[1:input$nPathwayShow, ,drop=FALSE]
+		  top1 = top1[which(top1$FDR <input$GenePvalCutoff) , ]
+ 
+		  incProgress(1/4,"Retrieving gene sets")
+		  gmt = GeneSets() 
+		  if(length( GeneSets() )  == 0)  { return(as.data.frame("No gene set found!"))}
+		  #converted = convertID(rownames(top1),input$selectOrg)
+		  #
+		   #gmt = readGeneSets(converted, top1, input$selectGO, input$selectOrg, myrange )
+		 # cat("Sets",length(gmt))
+		 incProgress(2/4,"Runing GAGE")
+		 fold = top1[,1]; names(fold) <- rownames(top1)
 		 
-		top1 <- as.data.frame(top1)
-		top1 <- cbind(rep( input$selectContrast1, dim(top1)[1]),row.names(top1), top1); 
-		top1$statistic <- as.character( round(as.numeric(top1$statistic),4)); 
-		top1$adj.Pval <- sprintf("%-2.1e",as.numeric(top1$adj.Pval) )
-		top1[,2] <- as.character(top1[,2]);top1[,1] <- as.character(top1[,1])
-		colnames(top1)[1] <- "Direction"
-		if(input$pathwayMethod == 1 ) p.m <- "GAGE"
-		else if(input$pathwayMethod == 2 ) p.m <- "PGSEA"
-		else if(input$pathwayMethod == 3 ) p.m <- "GSEA"
-		else if(input$pathwayMethod == 4 ) p.m <- "PGSEA_All"
-		else if(input$pathwayMethod == 5 ) p.m <- "ReactomePA"
-		colnames(top1)[2] <- paste(p.m," analysis:", gsub("-"," vs ",input$selectContrast1 ) )
-		top1[ which( top1[,3] >0),1 ] <- "Up" #gsub("-"," > ",input$selectContrast1 )
-		top1[ which( top1[,3] <0),1 ] <- "Down" # gsub("-"," < ",input$selectContrast1 )
-		top1 <- top1[order( top1[,1], -abs(as.numeric( top1[,3]) ) ) ,]
-		top1[ duplicated (top1[,1] ),1 ] <- ""
-		#write.csv(top1,"tem.csv")
-	  return( top1)
-	}) })
+		 if(input$absoluteFold) fold <- abs(fold)
+		 paths <- gage(fold, gsets = gmt, ref = NULL, samp = NULL)
+
+		  paths <-  rbind(paths$greater,paths$less)
+		 # write.csv(paths,"tem.csv")	  
+		 # cat( dim(paths) )
+		  if(dim(paths)[1] < 1 | dim(paths)[2]< 6 ) return( noSig )
+		  top1 <- paths[,c('stat.mean','set.size','q.val')]
+		  colnames(top1)= c("statistic","Genes","adj.Pval")
+		  top1 <- top1[order(top1[,3]) ,]  
+		  if ( length( which( top1[,3] <=  input$pathwayPvalCutoff   ) ) == 0 )
+			return( noSig)
+		  top1 <- top1[which(top1[,3] <=  input$pathwayPvalCutoff ) ,,drop=FALSE]
+		  if(dim(top1)[1] > input$nPathwayShow ) 
+			 top1 <- top1[1:input$nPathwayShow, ,drop=FALSE]
+			 
+			top1 <- as.data.frame(top1)
+			top1 <- cbind(rep( input$selectContrast1, dim(top1)[1]),row.names(top1), top1); 
+			top1$statistic <- as.character( round(as.numeric(top1$statistic),4)); 
+			top1$adj.Pval <- sprintf("%-2.1e",as.numeric(top1$adj.Pval) )
+			top1[,2] <- as.character(top1[,2]);top1[,1] <- as.character(top1[,1])
+			colnames(top1)[1] <- "Direction"
+			if(input$pathwayMethod == 1 ) p.m <- "GAGE"
+			else if(input$pathwayMethod == 2 ) p.m <- "PGSEA"
+			else if(input$pathwayMethod == 3 ) p.m <- "GSEA"
+			else if(input$pathwayMethod == 4 ) p.m <- "PGSEA_All"
+			else if(input$pathwayMethod == 5 ) p.m <- "ReactomePA"
+			colnames(top1)[2] <- paste(p.m," analysis:", gsub("-"," vs ",input$selectContrast1 ) )
+			top1[ which( top1[,3] >0),1 ] <- "Up" #gsub("-"," > ",input$selectContrast1 )
+			top1[ which( top1[,3] <0),1 ] <- "Down" # gsub("-"," < ",input$selectContrast1 )
+			top1 <- top1[order( top1[,1], -abs(as.numeric( top1[,3]) ) ) ,]
+			top1[ duplicated (top1[,1] ),1 ] <- ""
+			#write.csv(top1,"tem.csv")
+		  return( top1)
+		}) # progress
+	}) #isloate
   })
 
   
@@ -5635,6 +5491,7 @@ fgseaPathwayData <- reactive({
 	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
 	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
 	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	tem=input$GenePvalCutoff
 	####################################
 	
 	isolate({ 
@@ -5653,6 +5510,10 @@ fgseaPathwayData <- reactive({
 	  }
 	  if(dim(top1)[1] == 0 ) return (noSig)
 	  colnames(top1)= c("Fold","FDR")
+	  
+	  # remove some genes
+	  top1 = top1[which(top1$FDR <input$GenePvalCutoff) , ]
+	  
 	  incProgress(1/4,"Retrieving gene sets")
 	  gmt = GeneSets() 
      if(length( GeneSets() )  == 0)  { return(as.data.frame("No gene set found!"))}
@@ -5731,6 +5592,7 @@ ReactomePAPathwayData <- reactive({
 	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
 	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
 	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	tem=input$GenePvalCutoff
 	####################################
 	
 	isolate({ 
@@ -5756,6 +5618,10 @@ ReactomePAPathwayData <- reactive({
 	  }
 	  if(dim(top1)[1] == 0 ) return (noSig)
 	  colnames(top1)= c("Fold","FDR")
+
+	  # remove some genes
+	  top1 = top1[which(top1$FDR <input$GenePvalCutoff) , ]
+	  
 	  incProgress(1/4,"Retrieving gene sets")
 	  # gmt = GeneSets() 
 
@@ -6118,6 +5984,444 @@ output$selectedPathwayHeatmap <- renderPlot({
 output$KeggImage <- renderImage({
 	library(pathview,verbose=FALSE)
 
+# these two functions are from the pathview package, modified to write to a designated folder: temp.
+mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species = "hsa", 
+    kegg.dir = ".", cpd.idtype = "kegg", gene.idtype = "entrez", 
+    gene.annotpkg = NULL, min.nnodes = 3, kegg.native = TRUE, 
+    map.null = TRUE, expand.node = FALSE, split.group = FALSE, 
+    map.symbol = TRUE, map.cpdname = TRUE, node.sum = "sum", 
+    discrete = list(gene = FALSE, cpd = FALSE), limit = list(gene = 1, 
+        cpd = 1), bins = list(gene = 10, cpd = 10), both.dirs = list(gene = T, 
+        cpd = T), trans.fun = list(gene = NULL, cpd = NULL), 
+    low = list(gene = "green", cpd = "blue"), mid = list(gene = "gray", 
+        cpd = "gray"), high = list(gene = "red", cpd = "yellow"), 
+    na.col = "transparent", ...) 
+{
+    dtypes = !is.null(gene.data) + (!is.null(cpd.data))
+    cond0 = dtypes == 1 & is.numeric(limit) & length(limit) > 
+        1
+    if (cond0) {
+        if (limit[1] != limit[2] & is.null(names(limit))) 
+            limit = list(gene = limit[1:2], cpd = limit[1:2])
+    }
+    if (is.null(trans.fun)) 
+        trans.fun = list(gene = NULL, cpd = NULL)
+    arg.len2 = c("discrete", "limit", "bins", "both.dirs", "trans.fun", 
+        "low", "mid", "high")
+    for (arg in arg.len2) {
+        obj1 = eval(as.name(arg))
+        if (length(obj1) == 1) 
+            obj1 = rep(obj1, 2)
+        if (length(obj1) > 2) 
+            obj1 = obj1[1:2]
+        obj1 = as.list(obj1)
+        ns = names(obj1)
+        if (length(ns) == 0 | !all(c("gene", "cpd") %in% ns)) 
+            names(obj1) = c("gene", "cpd")
+        assign(arg, obj1)
+    }
+    if (is.character(gene.data)) {
+        gd.names = gene.data
+        gene.data = rep(1, length(gene.data))
+        names(gene.data) = gd.names
+        both.dirs$gene = FALSE
+        ng = length(gene.data)
+        nsamp.g = 1
+    }
+    else if (!is.null(gene.data)) {
+        if (length(dim(gene.data)) == 2) {
+            gd.names = rownames(gene.data)
+            ng = nrow(gene.data)
+            nsamp.g = 2
+        }
+        else if (is.numeric(gene.data) & is.null(dim(gene.data))) {
+            gd.names = names(gene.data)
+            ng = length(gene.data)
+            nsamp.g = 1
+        }
+        else stop("wrong gene.data format!")
+    }
+    else if (is.null(cpd.data)) {
+        stop("gene.data and cpd.data are both NULL!")
+    }
+    gene.idtype = toupper(gene.idtype)
+    data(bods)
+    if (species != "ko") {
+        species.data = kegg.species.code(species, na.rm = T, 
+            code.only = FALSE)
+    }
+    else {
+        species.data = c(kegg.code = "ko", entrez.gnodes = "0", 
+            kegg.geneid = "K01488", ncbi.geneid = "")
+        gene.idtype = "KEGG"
+        msg.fmt = "Only KEGG ortholog gene ID is supported, make sure it looks like \"%s\"!"
+        msg = sprintf(msg.fmt, species.data["kegg.geneid"])
+        message("Note: ", msg)
+    }
+    if (length(dim(species.data)) == 2) {
+        message("Note: ", "More than two valide species!")
+        species.data = species.data[1, ]
+    }
+    species = species.data["kegg.code"]
+    entrez.gnodes = species.data["entrez.gnodes"] == 1
+    if (is.na(species.data["ncbi.geneid"])) {
+        if (!is.na(species.data["kegg.geneid"])) {
+            msg.fmt = "Only native KEGG gene ID is supported for this species,\nmake sure it looks like \"%s\"!"
+            msg = sprintf(msg.fmt, species.data["kegg.geneid"])
+            message("Note: ", msg)
+        }
+        else {
+            stop("This species is not annotated in KEGG!")
+        }
+    }
+    if (is.null(gene.annotpkg)) 
+        gene.annotpkg = bods[match(species, bods[, 3]), 1]
+    if (length(grep("ENTREZ|KEGG", gene.idtype)) < 1 & !is.null(gene.data)) {
+        if (is.na(gene.annotpkg)) 
+            stop("No proper gene annotation package available!")
+        if (!gene.idtype %in% gene.idtype.bods[[species]]) 
+            stop("Wrong input gene ID type!")
+        gene.idmap = id2eg(gd.names, category = gene.idtype, 
+            pkg.name = gene.annotpkg, unique.map = F)
+        gene.data = mol.sum(gene.data, gene.idmap)
+        gene.idtype = "ENTREZ"
+    }
+    if (gene.idtype == "ENTREZ" & !entrez.gnodes & !is.null(gene.data)) {
+        message("Info: Getting gene ID data from KEGG...")
+        gene.idmap = keggConv("ncbi-geneid", species)
+        message("Info: Done with data retrieval!")
+        kegg.ids = gsub(paste(species, ":", sep = ""), "", names(gene.idmap))
+        ncbi.ids = gsub("ncbi-geneid:", "", gene.idmap)
+        gene.idmap = cbind(ncbi.ids, kegg.ids)
+        gene.data = mol.sum(gene.data, gene.idmap)
+        gene.idtype = "KEGG"
+    }
+    if (is.character(cpd.data)) {
+        cpdd.names = cpd.data
+        cpd.data = rep(1, length(cpd.data))
+        names(cpd.data) = cpdd.names
+        both.dirs$cpd = FALSE
+        ncpd = length(cpd.data)
+    }
+    else if (!is.null(cpd.data)) {
+        if (length(dim(cpd.data)) == 2) {
+            cpdd.names = rownames(cpd.data)
+            ncpd = nrow(cpd.data)
+        }
+        else if (is.numeric(cpd.data) & is.null(dim(cpd.data))) {
+            cpdd.names = names(cpd.data)
+            ncpd = length(cpd.data)
+        }
+        else stop("wrong cpd.data format!")
+    }
+    if (length(grep("kegg", cpd.idtype)) < 1 & !is.null(cpd.data)) {
+        data(rn.list)
+        cpd.types = c(names(rn.list), "name")
+        cpd.types = tolower(cpd.types)
+        cpd.types = cpd.types[-grep("kegg", cpd.types)]
+        if (!tolower(cpd.idtype) %in% cpd.types) 
+            stop("Wrong input cpd ID type!")
+        cpd.idmap = cpd2kegg(cpdd.names, in.type = cpd.idtype)
+        cpd.data = mol.sum(cpd.data, cpd.idmap)
+    }
+    warn.fmt = "Parsing %s file failed, please check the file!"
+    if (length(grep(species, pathway.id)) > 0) {
+        pathway.name = pathway.id
+        pathway.id = gsub(species, "", pathway.id)
+    }
+    else pathway.name = paste(species, pathway.id, sep = "")
+    kfiles = list.files(path = kegg.dir, pattern = "[.]xml|[.]png")
+    npath = length(pathway.id)
+    out.list = list()
+    tfiles.xml = paste(pathway.name, ".xml", sep = "")
+    tfiles.png = paste(pathway.name, ".png", sep = "")
+    if (kegg.native) 
+        ttype = c("xml", "png")
+    else ttype = "xml"
+    xml.file <- paste(kegg.dir, "/", tfiles.xml, sep = "")
+    for (i in 1:npath) {
+        if (kegg.native) 
+            tfiles = c(tfiles.xml[i], tfiles.png[i])
+        else tfiles = tfiles.xml[i]
+        if (!all(tfiles %in% kfiles)) {
+            dstatus = download.kegg(pathway.id = pathway.id[i], 
+                species = species, kegg.dir = kegg.dir, file.type = ttype)
+            if (dstatus == "failed") {
+                warn.fmt = "Failed to download KEGG xml/png files, %s skipped!"
+                warn.msg = sprintf(warn.fmt, pathway.name[i])
+                message("Warning: ", warn.msg)
+                return(invisible(0))
+            }
+        }
+        if (kegg.native) {
+            node.data = try(node.info(xml.file[i]), silent = T)
+            if (class(node.data) == "try-error") {
+                warn.msg = sprintf(warn.fmt, xml.file[i])
+                message("Warning: ", warn.msg)
+                return(invisible(0))
+            }
+            node.type = c("gene", "enzyme", "compound", "ortholog")
+            sel.idx = node.data$type %in% node.type
+            nna.idx = !is.na(node.data$x + node.data$y + node.data$width + 
+                node.data$height)
+            sel.idx = sel.idx & nna.idx
+            if (sum(sel.idx) < min.nnodes) {
+                warn.fmt = "Number of mappable nodes is below %d, %s skipped!"
+                warn.msg = sprintf(warn.fmt, min.nnodes, pathway.name[i])
+                message("Warning: ", warn.msg)
+                return(invisible(0))
+            }
+            node.data = lapply(node.data, "[", sel.idx)
+        }
+        else {
+            gR1 = try(parseKGML2Graph2(xml.file[i], genes = F, 
+                expand = expand.node, split.group = split.group), 
+                silent = T)
+            node.data = try(node.info(gR1), silent = T)
+            if (class(node.data) == "try-error") {
+                warn.msg = sprintf(warn.fmt, xml.file[i])
+                message("Warning: ", warn.msg)
+                return(invisible(0))
+            }
+        }
+        if (species == "ko") 
+            gene.node.type = "ortholog"
+        else gene.node.type = "gene"
+        if ((!is.null(gene.data) | map.null) & sum(node.data$type == 
+            gene.node.type) > 1) {
+            plot.data.gene = node.map(gene.data, node.data, node.types = gene.node.type, 
+                node.sum = node.sum, entrez.gnodes = entrez.gnodes)
+            kng = plot.data.gene$kegg.names
+            kng.char = gsub("[0-9]", "", unlist(kng))
+            if (any(kng.char > "")) 
+                entrez.gnodes = FALSE
+            if (map.symbol & species != "ko" & entrez.gnodes) {
+                if (is.na(gene.annotpkg)) {
+                  warn.fmt = "No annotation package for the species %s, gene symbols not mapped!"
+                  warn.msg = sprintf(warn.fmt, species)
+                  message("Warning: ", warn.msg)
+                }
+                else {
+                  plot.data.gene$labels = eg2id(as.character(plot.data.gene$kegg.names), 
+                    category = "SYMBOL", pkg.name = gene.annotpkg)[,2]
+                  mapped.gnodes = rownames(plot.data.gene)
+                  node.data$labels[mapped.gnodes] = plot.data.gene$labels
+                }
+            }
+            cols.ts.gene = node.color(plot.data.gene, limit$gene, 
+                bins$gene, both.dirs = both.dirs$gene, trans.fun = trans.fun$gene, 
+                discrete = discrete$gene, low = low$gene, mid = mid$gene, 
+                high = high$gene, na.col = na.col)
+        }
+        else plot.data.gene = cols.ts.gene = NULL
+        if ((!is.null(cpd.data) | map.null) & sum(node.data$type == 
+            "compound") > 1) {
+            plot.data.cpd = node.map(cpd.data, node.data, node.types = "compound", 
+                node.sum = node.sum)
+            if (map.cpdname & !kegg.native) {
+                plot.data.cpd$labels = cpdkegg2name(plot.data.cpd$labels)[, 
+                  2]
+                mapped.cnodes = rownames(plot.data.cpd)
+                node.data$labels[mapped.cnodes] = plot.data.cpd$labels
+            }
+            cols.ts.cpd = node.color(plot.data.cpd, limit$cpd, 
+                bins$cpd, both.dirs = both.dirs$cpd, trans.fun = trans.fun$cpd, 
+                discrete = discrete$cpd, low = low$cpd, mid = mid$cpd, 
+                high = high$cpd, na.col = na.col)
+        }
+        else plot.data.cpd = cols.ts.cpd = NULL
+        if (kegg.native) {
+            pv.pars = my.keggview.native( plot.data.gene = plot.data.gene, 
+                cols.ts.gene = cols.ts.gene, plot.data.cpd = plot.data.cpd, 
+                cols.ts.cpd = cols.ts.cpd, node.data = node.data, 
+                pathway.name = pathway.name[i], kegg.dir = kegg.dir, 
+                limit = limit, bins = bins, both.dirs = both.dirs, 
+                discrete = discrete, low = low, mid = mid, high = high, 
+                na.col = na.col, ...)
+        }
+        else {
+            pv.pars = keggview.graph(plot.data.gene = plot.data.gene, 
+                cols.ts.gene = cols.ts.gene, plot.data.cpd = plot.data.cpd, 
+                cols.ts.cpd = cols.ts.cpd, node.data = node.data, 
+                path.graph = gR1, pathway.name = pathway.name[i], 
+                map.cpdname = map.cpdname, split.group = split.group, 
+                limit = limit, bins = bins, both.dirs = both.dirs, 
+                discrete = discrete, low = low, mid = mid, high = high, 
+                na.col = na.col, ...)
+        }
+        plot.data.gene = cbind(plot.data.gene, cols.ts.gene)
+        if (!is.null(plot.data.gene)) {
+            cnames = colnames(plot.data.gene)[-(1:8)]
+            nsamp = length(cnames)/2
+            if (nsamp > 1) {
+                cnames[(nsamp + 1):(2 * nsamp)] = paste(cnames[(nsamp + 
+                  1):(2 * nsamp)], "col", sep = ".")
+            }
+            else cnames[2] = "mol.col"
+            colnames(plot.data.gene)[-(1:8)] = cnames
+        }
+        plot.data.cpd = cbind(plot.data.cpd, cols.ts.cpd)
+        if (!is.null(plot.data.cpd)) {
+            cnames = colnames(plot.data.cpd)[-(1:8)]
+            nsamp = length(cnames)/2
+            if (nsamp > 1) {
+                cnames[(nsamp + 1):(2 * nsamp)] = paste(cnames[(nsamp + 
+                  1):(2 * nsamp)], "col", sep = ".")
+            }
+            else cnames[2] = "mol.col"
+            colnames(plot.data.cpd)[-(1:8)] = cnames
+        }
+        out.list[[i]] = list(plot.data.gene = plot.data.gene, 
+            plot.data.cpd = plot.data.cpd)
+    }
+    if (npath == 1) 
+        out.list = out.list[[1]]
+    else names(out.list) = pathway.name
+    return(invisible(out.list))
+}
+# <environment: namespace:pathview>
+my.keggview.native <- function ( plot.data.gene = NULL, plot.data.cpd = NULL, cols.ts.gene = NULL, 
+    cols.ts.cpd = NULL, node.data, pathway.name, out.suffix = "pathview", 
+    kegg.dir = ".", multi.state = TRUE, match.data = TRUE, same.layer = TRUE, 
+    res = 300, cex = 0.25, discrete = list(gene = FALSE, cpd = FALSE), 
+    limit = list(gene = 1, cpd = 1), bins = list(gene = 10, cpd = 10), 
+    both.dirs = list(gene = T, cpd = T), low = list(gene = "green", 
+        cpd = "blue"), mid = list(gene = "gray", cpd = "gray"), 
+    high = list(gene = "red", cpd = "yellow"), na.col = "transparent", 
+    new.signature = TRUE, plot.col.key = TRUE, key.align = "x", 
+    key.pos = "topright", ...) 
+{
+    img <- readPNG(paste(kegg.dir, "/", pathway.name, ".png", 
+        sep = ""))
+    width <- ncol(img)
+    height <- nrow(img)
+    cols.ts.gene = cbind(cols.ts.gene)
+    cols.ts.cpd = cbind(cols.ts.cpd)
+    nc.gene = max(ncol(cols.ts.gene), 0)
+    nc.cpd = max(ncol(cols.ts.cpd), 0)
+    nplots = max(nc.gene, nc.cpd)
+    pn.suffix = colnames(cols.ts.gene)
+    if (length(pn.suffix) < nc.cpd) 
+        pn.suffix = colnames(cols.ts.cpd)
+    if (length(pn.suffix) < nplots) 
+        pn.suffix = 1:nplots
+    if (length(pn.suffix) == 1) {
+        pn.suffix = out.suffix
+    }
+    else pn.suffix = paste(out.suffix, pn.suffix, sep = ".")
+    na.col = colorpanel2(1, low = na.col, high = na.col)
+    if ((match.data | !multi.state) & nc.gene != nc.cpd) {
+        if (nc.gene > nc.cpd & !is.null(cols.ts.cpd)) {
+            na.mat = matrix(na.col, ncol = nplots - nc.cpd, nrow = nrow(cols.ts.cpd))
+            cols.ts.cpd = cbind(cols.ts.cpd, na.mat)
+        }
+        if (nc.gene < nc.cpd & !is.null(cols.ts.gene)) {
+            na.mat = matrix(na.col, ncol = nplots - nc.gene, 
+                nrow = nrow(cols.ts.gene))
+            cols.ts.gene = cbind(cols.ts.gene, na.mat)
+        }
+        nc.gene = nc.cpd = nplots
+    }
+    out.fmt = "Working in directory %s"
+    wdir = getwd()
+    out.msg = sprintf(out.fmt, wdir)
+    message("Info: ", out.msg)
+    out.fmt = "Writing image file %s"
+    multi.state = multi.state & nplots > 1
+    if (multi.state) {
+        nplots = 1
+        pn.suffix = paste(out.suffix, "multi", sep = ".")
+        if (nc.gene > 0) 
+            cols.gene.plot = cols.ts.gene
+        if (nc.cpd > 0) 
+            cols.cpd.plot = cols.ts.cpd
+    }
+    for (np in 1:nplots) {
+        img.file = paste(kegg.dir,"/",pathway.name, ".",pn.suffix[np], ".png", 
+            sep = "")
+		#message("here:",img.file)
+        out.msg = sprintf(out.fmt, img.file)
+        #message("Info: ", out.msg)
+        png(img.file, width = width, height = height, res = res)
+        op = par(mar = c(0, 0, 0, 0))
+        plot(c(0, width), c(0, height), type = "n", xlab = "", 
+            ylab = "", xaxs = "i", yaxs = "i")
+        if (new.signature) 
+            img[height - 4:25, 17:137, 1:3] = 1
+        if (same.layer != T) 
+            rasterImage(img, 0, 0, width, height, interpolate = F)
+        if (!is.null(cols.ts.gene) & nc.gene >= np) {
+            if (!multi.state) 
+                cols.gene.plot = cols.ts.gene[, np]
+            if (same.layer != T) {
+                render.kegg.node(plot.data.gene, cols.gene.plot, 
+                  img, same.layer = same.layer, type = "gene", 
+                  cex = cex)
+            }
+            else {
+                img = render.kegg.node(plot.data.gene, cols.gene.plot, 
+                  img, same.layer = same.layer, type = "gene")
+            }
+        }
+        if (!is.null(cols.ts.cpd) & nc.cpd >= np) {
+            if (!multi.state) 
+                cols.cpd.plot = cols.ts.cpd[, np]
+            if (same.layer != T) {
+                render.kegg.node(plot.data.cpd, cols.cpd.plot, 
+                  img, same.layer = same.layer, type = "compound", 
+                  cex = cex)
+            }
+            else {
+                img = render.kegg.node(plot.data.cpd, cols.cpd.plot, 
+                  img, same.layer = same.layer, type = "compound")
+            }
+        }
+        if (same.layer == T) 
+            rasterImage(img, 0, 0, width, height, interpolate = F)
+        pv.pars = list()
+        pv.pars$gsizes = c(width = width, height = height)
+        pv.pars$nsizes = c(46, 17)
+        pv.pars$op = op
+        pv.pars$key.cex = 2 * 72/res
+        pv.pars$key.lwd = 1.2 * 72/res
+        pv.pars$sign.cex = cex
+        off.sets = c(x = 0, y = 0)
+        align = "n"
+        ucol.gene = unique(as.vector(cols.ts.gene))
+        na.col.gene = ucol.gene %in% c(na.col, NA)
+        if (plot.col.key & !is.null(cols.ts.gene) & !all(na.col.gene)) {
+            off.sets = col.key(limit = limit$gene, bins = bins$gene, 
+                both.dirs = both.dirs$gene, discrete = discrete$gene, 
+                graph.size = pv.pars$gsizes, node.size = pv.pars$nsizes, 
+                key.pos = key.pos, cex = pv.pars$key.cex, lwd = pv.pars$key.lwd, 
+                low = low$gene, mid = mid$gene, high = high$gene, 
+                align = "n")
+            align = key.align
+        }
+        ucol.cpd = unique(as.vector(cols.ts.cpd))
+        na.col.cpd = ucol.cpd %in% c(na.col, NA)
+        if (plot.col.key & !is.null(cols.ts.cpd) & !all(na.col.cpd)) {
+            off.sets = col.key(limit = limit$cpd, bins = bins$cpd, 
+                both.dirs = both.dirs$cpd, discrete = discrete$cpd, 
+                graph.size = pv.pars$gsizes, node.size = pv.pars$nsizes, 
+                key.pos = key.pos, off.sets = off.sets, cex = pv.pars$key.cex, 
+                lwd = pv.pars$key.lwd, low = low$cpd, mid = mid$cpd, 
+                high = high$cpd, align = align)
+        }
+        if (new.signature) 
+            pathview.stamp(x = 17, y = 20, on.kegg = T, cex = pv.pars$sign.cex)
+        par(pv.pars$op)
+        dev.off()
+    }
+    return(invisible(pv.pars))
+}
+
+# modify function in a package, change namespace
+# http://stackoverflow.com/questions/23279904/modifying-an-r-package-function-for-current-r-session-assigninnamespace-not-beh
+tmpfun <- get("keggview.native", envir = asNamespace("pathview"))
+environment(my.keggview.native) <- environment(tmpfun)
+attributes(my.keggview.native) <- attributes(tmpfun)  # don't know if this is really needed
+
    # First generate a blank image. Otherse return(NULL) gives us errors.
     outfile <- tempfile(fileext='.png')
     png(outfile, width=400, height=300)
@@ -6219,7 +6523,6 @@ output$KeggImage <- renderImage({
 #   Chromosome
 ################################################################
   
-
 # visualizing fold change on chrs. 
 output$genomePlotly <- renderPlotly({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -7138,7 +7441,8 @@ wgcna <- reactive ({
 			n=input$nGenesNetwork	
 			if(n>dim(x)[1]) n = dim(x)[1] # max	as data
 			if(n<50) return(NULL)
-			if(n> 2000 ) n = 2000 			
+			if(dim(x)[2] <4) return(NULL)
+			if(n> maxGeneWGCNA ) n = maxGeneWGCNA 			
 			#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
 			
 			datExpr=t(x[1:n,])

@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.50"
+iDEPversion = "iDEP.51"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -18,17 +18,17 @@ shinyUI(
 	     	titlePanel("Upload Files"),
     sidebarLayout(
       sidebarPanel(
-	    actionButton("goButton", "Use demo data"),
+	    actionButton("goButton", "Click here to load demo data"),
 		    tags$head(tags$style("#goButton{color: red;
                                  font-size: 16px;
                                  font-style: italic;
                                  }"
                          )
               )	
-		,h5(" and click all the tabs for results!",  style = "color:red")
+		,h5(" and just click the tabs on the top!",  style = "color:red")
 		,p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))
 		,radioButtons("dataFileFormat", label = "1. Choose data type", choices = list("Read counts data (recommended)" = 1, 
-													"Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2),selected = 1)
+													"Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2, "Fold-changes or other data" =3),selected = 1)
 		,fileInput('file1', '2. Upload expression data (CSV or text)',
                   accept = c(
                     'text/csv',
@@ -334,9 +334,11 @@ tableOutput('species' ),
 				,tags$head(tags$style("#modelAndComparisons{color: blue;font-size: 15px;}"))				
 				,br(),br() 
 				,fluidRow(
-				   column(6,actionButton("showVenn", "Venn Diagram") )
-					, column(6, downloadButton('download.DEG.data', 'All lists') )
-				) # fluidRow
+				   column(4,actionButton("showVenn", "Venn Diagram") )
+				, column(2,actionButton("showDEGstats", "Barplot"))				   
+					, column(2, downloadButton('downloadGeneListsGMT', 'Lists') )
+					, column(4, downloadButton('download.DEG.data', 'Data') )
+					) # fluidRow
 				 #,hr()
 				 ,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
 				 ,htmlOutput("listComparisons")
@@ -361,17 +363,22 @@ tableOutput('species' ),
 				, width = 4),
 				
                 mainPanel(
-                  plotOutput("selectedHeatmap")
-				   ,h4("Enriched pathways in differentially expressed genes:")
+					h4("Numbers of differentially expressed genes for all comparisons:")
+					,tableOutput('sigGeneStatsTable')
+				 ,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
+					,h4("Expression pattern of DEGs for selected comparison:")
+                   ,plotOutput("selectedHeatmap")
+				   ,h4("Enriched pathways in DEGs for selected comparison:")
 				   ,tableOutput("geneListGO")
-				   ,h4("Top Genes"),tableOutput('geneList')
+				   ,h4("Top Genes for selected comparison:"),tableOutput('geneList')
 				   #,h4("Enriched motif in promoters")
 				   #,tableOutput("DEG.Promoter")
 				   ,bsModal("modalExample1", "Enriched TF binding motifs in promoters of DEGs", "showMotif", size = "large"
 				   ,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
 				   ,tableOutput("DEG.Promoter"))
 				   ,bsModal("modalExample", "Venn Diagram", "showVenn", size = "large",
-						htmlOutput('listComparisonsVenn')
+						checkboxInput("UpDownRegulated", label = "Split gene lists by up- or down-regulation", value = FALSE)
+						,htmlOutput('listComparisonsVenn')
 						,plotOutput("vennPlot"))
 				   ,bsModal("modalExample21", "Build model and/or select comparisons", "modelAndComparisons", size = "large",
 
@@ -411,7 +418,9 @@ tableOutput('species' ),
 						,conditionalPanel("input.scatterPlotBox == 0",	plotOutput("scatterPlot") )
 						,conditionalPanel("input.scatterPlotBox == 1",plotlyOutput("scatterPlotly",width = "550px", height = "550px") )
 				   )
-				   
+				   ,bsModal("modalExample56", "Summary of differentially expressed genes", "showDEGstats", size = "large",
+						  plotOutput('sigGeneStats')
+					)				   
 				   
 				#  ,bsModal("modalExample25", "Interactive Scatter plot", "showScatterPlotly", size = "large",						 	plotlyOutput("scatterPlotly",width = "550px", height = "550px"))
 				  # ,bsModal("modalExample24", "Interactive Volcano plot", "showVolcanoPlotly", size = "large",plotlyOutput("volcanoPlotly",width = "550px", height = "550px"))
@@ -432,7 +441,7 @@ tableOutput('species' ),
 																								"PGSEA" = 2, 
 																								"PGSEA w/ all samples" =4, 
 																								"ReactomePA" = 5
-																								), selected = 1) #
+																								), selected = 3) #
 				,tags$style(type='text/css', "#pathwayMethod { width:100%;   margin-top:-12px}")
 				,htmlOutput("selectGO1")
 				,tags$style(type='text/css', "#selectGO1 { width:100%;   margin-top:-12px}")
@@ -443,11 +452,13 @@ tableOutput('species' ),
 				column(6,numericInput("maxSetSize", label = "Max", min = 1000, max = 2000, value = 2000,step=100) 
 						)
 				) # fluidRow
-				,numericInput("pathwayPvalCutoff", label = h5("Pathway signifiance cutoff (FDR)"), value = 0.1,min=1e-20,max=1,step=.05)
+				,numericInput("pathwayPvalCutoff", label = h5("Pathway signifiance cutoff (FDR)"), value = 0.2,min=1e-20,max=1,step=.05)
 				,tags$style(type='text/css', "#pathwayPvalCutoff { width:100%;   margin-top:-12px}")
 				,numericInput("nPathwayShow", label = h5("Number of top pathways to show"), value = 30, min=5,max=100,step=5)
 				,tags$style(type='text/css', "#nPathwayShow { width:100%;   margin-top:-12px}")
 				,checkboxInput("absoluteFold", label = "Use absolute values of fold changes for GSEA and GAGE", value = FALSE)
+				,numericInput("GenePvalCutoff", label = h5("Remove genes with big FDR before pathway analysis:"), value = 0.9,min=1e-20,max=1,step=.05)
+
 				#,actionButton("examinePathway", "Examine individual pathways")
 				,conditionalPanel("input.pathwayMethod == 2",downloadButton('download.PGSEAplot.data', 'Download PGSEA pathway data'))
 							
