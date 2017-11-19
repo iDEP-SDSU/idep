@@ -334,10 +334,12 @@ tableOutput('species' ),
 				,tags$head(tags$style("#modelAndComparisons{color: blue;font-size: 15px;}"))				
 				,br(),br() 
 				,fluidRow(
-				   column(4,actionButton("showVenn", "Venn Diagram") )
-				, column(2,actionButton("showDEGstats", "Barplot"))				   
-					, column(2, downloadButton('downloadGeneListsGMT', 'Lists') )
-					, column(4, downloadButton('download.DEG.data', 'Data') )
+				   column(6,actionButton("showVenn", "Venn Diagram") )
+				, column(6,actionButton("showDEGstats", "Barplot"))
+						)
+					,fluidRow(					
+					column(4, downloadButton('downloadGeneListsGMT', 'Gene lists') )
+					, column(8, downloadButton('download.DEG.data', 'Gene lists & Data') )
 					) # fluidRow
 				 #,hr()
 				 ,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
