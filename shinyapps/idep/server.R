@@ -3377,6 +3377,7 @@ Kmeans <- reactive({ # Kmeans clustering
     	if(input$dataFileFormat== 2) { 
 			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
 		}
+	tem = input$KmeansReRun
 	####################################
 	
 	withProgress(message="k-means clustering", {
@@ -3397,7 +3398,7 @@ Kmeans <- reactive({ # Kmeans clustering
 	if( input$kmeansNormalization == 'geneStandardization')	
 		x = (x - apply(x,1,mean) ) / apply(x,1,sd)
 	#colnames(x) = gsub("_.*","",colnames(x))
-	set.seed(2)
+	set.seed(input$KmeansReRun)
 	k=input$nClusters
 	
 
@@ -3428,6 +3429,7 @@ output$KmeansHeatmap <- renderPlot({ # Kmeans clustering
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+	tem = input$KmeansReRun
 	####################################
 	
 	if( is.null(Kmeans()) ) return(NULL)
@@ -3473,7 +3475,7 @@ output$KmeansNclusters <- renderPlot({ # Kmeans clustering
 KmeansData <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	if( is.null(Kmeans()) ) return(NULL)
-
+	tem = input$KmeansReRun
 	##################################  
 	# these are needed to make it responsive to changes in parameters
 	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
@@ -3514,6 +3516,7 @@ output$tSNEgenePlot <- renderPlot({
 				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
 				
 		tem = input$colorGenes; tem = input$seedTSNE
+			tem = input$KmeansReRun
 		####################################
 		withProgress(message="Runing t-SNE algorithm", {
 		isolate({ 
@@ -3546,6 +3549,50 @@ output$tSNEgenePlot <- renderPlot({
 	 #progress 
   }, height = 700, width = 700 )
 
+output$distributionSD <- renderPlot({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if( is.null(Kmeans()) ) return(NULL)
+
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+				
+		tem = input$colorGenes; tem = input$seedTSNE
+			tem = input$KmeansReRun
+		####################################
+		withProgress(message="Runing t-SNE algorithm", {
+		isolate({ 
+
+		
+		SDs=apply(convertedData(),1,sd)
+		maxSD = mean(SDs)+ 4*sd(SDs)
+		SDs[ SDs > maxSD] = maxSD
+		Cutoff=sort(SDs,decreasing=TRUE)[input$nGenesKNN] 
+
+		SDs = as.data.frame(SDs)
+
+		p <- ggplot(SDs, aes(x=SDs)) + 
+		  geom_density(color="darkblue", fill="lightblue") +
+		  labs(x = "Standard deviations of all genes", y="Density")+
+		  geom_vline(aes(xintercept=Cutoff),
+					color="red", linetype="dashed", size=1) +
+					annotate("text", x = Cutoff + 0.4*sd(SDs[,1]), y = 1,colour = "red", label = paste0("Top ", input$nGenesKNN))
+			incProgress(1)
+		p
+		})
+	
+	})
+	
+	
+	 #progress 
+  }, height = 400, width = 600 )
+
   
 output$downloadDataKmeans <- downloadHandler(
 		filename = function() {"Kmeans.csv"},
@@ -3572,6 +3619,7 @@ output$KmeansGO <- renderTable({
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+	tem = input$KmeansReRun
 	####################################
 	withProgress(message="GO Enrichment", {
 		# GO
@@ -3619,7 +3667,7 @@ output$KmeansPromoter <- renderTable({
 	tem = input$selectGO3; tem = input$radioPromoterKmeans; tem=input$nGenesKNN; tem=input$nClusters
 	if( is.null(input$selectGO3 ) ) return (NULL)
 	if( is.null(limma()$results) ) return(NULL)
-	
+   	if( is.null(Kmeans()) ) return(NULL)	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
 	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
@@ -3629,37 +3677,19 @@ output$KmeansPromoter <- renderTable({
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$KmeansReRun
 	####################################
 
 	isolate({ 
    	withProgress(message="Promoter analysis", {
-	x <- convertedData()
-	#x <- readData()
-	#par(mfrow=c(2,1))
-	n=input$nGenesKNN
-	# if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	
-	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	#x = 100* x / apply(x,1,sum)  # this is causing problem??????
-	#x = x - apply(x,1,mean)  # this is causing problem??????
-	#colnames(x) = gsub("_.*","",colnames(x))
-	set.seed(2)
-	# determining number of clusters
-	k=input$nClusters
-	cl = kmeans(x,k,iter.max = 50)
 
-	hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
-	tem = match(cl$cluster,hc$order) #  new order 
-	x = x[order(tem),]
-	bar = sort(tem)
-	
+
 	results1 <- NULL; result <- NULL 
 	pp<- 0
-	for( i in 1:k ) {
+	for( i in 1:input$nClusters ) {
 	incProgress(1/k, , detail = paste("Cluster",toupper(letters)[i]) )
-	query = rownames(x)[which(bar == i)]
-	
+	#query = rownames(x)[which(bar == i)]
+	query = rownames(Kmeans()$x)[which(Kmeans()$bar == i)]	
 	convertedID = convertID(query,input$selectOrg, input$selectGO2 );#"gmax_eg_gene"
 	result <- promoter( convertedID,input$selectOrg,input$radioPromoterKmeans )
 	
@@ -4089,7 +4119,7 @@ limma <- reactive({
 		for( i in 1: dim(all.Calls)[2]) { 
 			tem <- all.Calls[,i]
 			all.Calls[which( tem <= log2(input$limmaFC) & tem >=  -log2(input$limmaFC) ) ,i] = 0			
-			all.Calls[which( tem > log2(input$limmaFC)  ) ,i] = 1
+			all.Calls[which( tem >  log2(input$limmaFC) ) ,i] = 1
 			all.Calls[which( tem < -log2(input$limmaFC) ) ,i] = -1		
 			if(!is.null(pvals) ) 
 				all.Calls[ which( pvals[,i] > input$limmaPval),i] = 0

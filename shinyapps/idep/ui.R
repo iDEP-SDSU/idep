@@ -25,7 +25,7 @@ shinyUI(
                                  }"
                          )
               )	
-		,h5(" and just click the tabs on the top!",  style = "color:red")
+		,h5(" and just click the tabs for some magic!",  style = "color:red")
 		,p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))
 		,radioButtons("dataFileFormat", label = "1. Choose data type", choices = list("Read counts data (recommended)" = 1, 
 													"Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2, "Fold-changes or other data" =3),selected = 1)
@@ -193,7 +193,7 @@ tableOutput('species' ),
     ,tabPanel("Heatmap",
               sidebarLayout(
                 sidebarPanel(
-   					sliderInput("nGenes", label = h4("Most variable genes to include:"), min = 10, max = 6000, value = 1000,step=50) 
+   					sliderInput("nGenes", label = h4("Most variable genes to include:"), min = 10, max = 15000, value = 1000,step=50) 
 					,actionButton("showStaticHeatmap", "Interactive heatmap")
 					,br()
 					,actionButton("showCorrelation", "Correlation matrix")	
@@ -248,9 +248,11 @@ tableOutput('species' ),
               sidebarLayout(
                 sidebarPanel(
 				#numericInput("nClusters", label = h4("Number of Clusters (often <15) "), value = 6)
-   				sliderInput("nGenesKNN", label = h4("Most variable genes to include "), min = 10, max = 6000, value = 2000,step=100) 
+   				sliderInput("nGenesKNN", label = h4("Most variable genes to include "), min = 10, max = 15000, value = 2000,step=100) 
 				,sliderInput("nClusters", label = h4("Number of Clusters"), min = 2, max = 20, value = 4,step=1) 
+				,actionButton("KmeansReRun", "Re-Run with different random numbers")
 				,actionButton("NClusters", "How many clusters?")
+				,actionButton("showGeneSD", "Show gene SD distribution")
 				,actionButton("geneTSNE", "t-SNE map")
 				,selectInput("kmeansNormalization", h5("Normalize by gene:"), choices = list("Mean center"="geneMean","Standardization"= "geneStandardization","L1 Norm"= "L1Norm"), selected = "geneMean")	
 				,tags$style(type='text/css', "#kmeansNormalization { width:100%;   margin-top:-9px}")
@@ -280,6 +282,7 @@ tableOutput('species' ),
 				  ,checkboxInput("colorGenes", "Color genes by the results of k-Means", value = TRUE)
 				  ,actionButton("seedTSNE", "Re-calculate using different random numbers")
 				  ,plotOutput("tSNEgenePlot"))
+				  ,bsModal("modalExample233", "Distribution of variations among genes", "showGeneSD", size = "large", plotOutput('distributionSD'))
 
                 )
               )       
