@@ -58,7 +58,7 @@ kurtosis.log = 50  # log transform is enforced when kurtosis is big
 kurtosis.warning = 10 # log transformation recommnded 
 minGenesEnrichment = 2 # perform GO or promoter analysis only if more than this many genes
 PREDA_Permutations =1000
-maxGeneClustering = 6000  # max genes for hierarchical clustering and k-Means clustering. Slow if larger
+maxGeneClustering = 12000  # max genes for hierarchical clustering and k-Means clustering. Slow if larger
 maxGeneWGCNA = 2000 # max genes for co-expression network
 maxFactors =6  # max number of factors in DESeq2 models
 set.seed(2) # seed for random number generator
@@ -3566,14 +3566,17 @@ output$distributionSD <- renderPlot({
 		tem = input$colorGenes; tem = input$seedTSNE
 			tem = input$KmeansReRun
 		####################################
-		withProgress(message="Runing t-SNE algorithm", {
+		withProgress(message="Calculating SD distribution", {
 		isolate({ 
 
 		
 		SDs=apply(convertedData(),1,sd)
 		maxSD = mean(SDs)+ 4*sd(SDs)
 		SDs[ SDs > maxSD] = maxSD
-		Cutoff=sort(SDs,decreasing=TRUE)[input$nGenesKNN] 
+		
+		top = input$nGenesKNN
+		if(top > length(SDs)) top = length(SDs)
+		Cutoff=sort(SDs,decreasing=TRUE)[top] 
 
 		SDs = as.data.frame(SDs)
 
@@ -3582,7 +3585,7 @@ output$distributionSD <- renderPlot({
 		  labs(x = "Standard deviations of all genes", y="Density")+
 		  geom_vline(aes(xintercept=Cutoff),
 					color="red", linetype="dashed", size=1) +
-					annotate("text", x = Cutoff + 0.4*sd(SDs[,1]), y = 1,colour = "red", label = paste0("Top ", input$nGenesKNN))
+					annotate("text", x = Cutoff + 0.4*sd(SDs[,1]), y = 1,colour = "red", label = paste0("Top ", top))
 			incProgress(1)
 		p
 		})
