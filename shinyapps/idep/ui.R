@@ -193,7 +193,7 @@ tableOutput('species' ),
     ,tabPanel("Heatmap",
               sidebarLayout(
                 sidebarPanel(
-   					sliderInput("nGenes", label = h4("Most variable genes to include:"), min = 10, max = 12000, value = 1000,step=50) 
+   					sliderInput("nGenes", label = h4("Most variable genes to include:"), min = 10, max = 10000, value = 1000,step=50) 
 					,actionButton("showStaticHeatmap", "Interactive heatmap")
 					,br()
 					,actionButton("showCorrelation", "Correlation matrix")	
@@ -248,7 +248,7 @@ tableOutput('species' ),
               sidebarLayout(
                 sidebarPanel(
 				#numericInput("nClusters", label = h4("Number of Clusters (often <15) "), value = 6)
-   				sliderInput("nGenesKNN", label = h4("Most variable genes to include "), min = 10, max = 12000, value = 2000,step=100) 
+   				sliderInput("nGenesKNN", label = h4("Most variable genes to include "), min = 10, max = 10000, value = 2000,step=100) 
 				,sliderInput("nClusters", label = h4("Number of Clusters"), min = 2, max = 20, value = 4,step=1) 
 				,actionButton("KmeansReRun", "Re-Run with different random numbers")
 				,actionButton("NClusters", "How many clusters?")
