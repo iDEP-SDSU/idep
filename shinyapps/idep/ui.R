@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.51"
+iDEPversion = "iDEP.52"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -28,7 +28,8 @@ shinyUI(
 		,h5(" and just click the tabs for some magic!",  style = "color:red")
 		,p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))
 		,radioButtons("dataFileFormat", label = "1. Choose data type", choices = list("Read counts data (recommended)" = 1, 
-													"Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2, "Fold-changes or other data" =3),selected = 1)
+													"Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2,
+													"Log2 Fold-changes with FDRs from programs like CuffDiff.)" =3),selected = 1)
 		,fileInput('file1', '2. Upload expression data (CSV or text)',
                   accept = c(
                     'text/csv',
@@ -266,7 +267,7 @@ tableOutput('species' ),
 				),
                 mainPanel(
                   plotOutput("KmeansHeatmap")
-				  ,br(),br(),br(),br()
+				  ,br(),br(),br(),br(),br(),br()
 				  ,h4("Enriched pathways for each cluster")
 				  ,tableOutput("KmeansGO")
 				  ,bsModal("modalExample2", "Enriched TF binding motifs in promoters of Kmeans clusters", "showMotifKmeans", size = "large"
@@ -318,10 +319,10 @@ tableOutput('species' ),
 
 ###############################################################################################################################
  
-	     ,tabPanel("DEGs",
+	     ,tabPanel("DEG1",
               sidebarLayout(
                 sidebarPanel(
-				h5("Identifying Differential Expressed Genes (DEGs)"),
+				h5("Identifying Differential Expressed Genes (DEGs). See next tab for details."),
 				conditionalPanel("input.dataFileFormat == 1",
 				selectInput("CountsDEGMethod", "Method:", choices = list("DESeq2"= 3,"limma-voom"=2,"limma-trend"=1), selected = 3)				
 				,tags$style(type='text/css', "#CountsDEGMethod { width:100%;   margin-top:-12px}")
@@ -338,49 +339,27 @@ tableOutput('species' ),
 				,br(),br() 
 				,fluidRow(
 				   column(6,actionButton("showVenn", "Venn Diagram") )
-				, column(6,actionButton("showDEGstats", "Barplot"))
+				#, column(6,actionButton("showDEGstats", "Barplot"))
 						)
-					,fluidRow(					
-					column(4, downloadButton('downloadGeneListsGMT', 'Gene lists') )
-					, column(8, downloadButton('download.DEG.data', 'Gene lists & Data') )
+					,br(),fluidRow(					
+					column(8, downloadButton('downloadGeneListsGMT', 'Gene lists') ) )
+					,br(),fluidRow(
+					 column(8, downloadButton('download.DEG.data', 'Gene lists & Data') )
 					) # fluidRow
-				 #,hr()
-				 ,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
-				 ,htmlOutput("listComparisons")
-				 ,h5("Pathway database")
-				 ,htmlOutput("selectGO2")
-				,tags$style(type='text/css', "#selectGO2 { width:100%;   margin-top:-9px}")
-				 ,br()
-				,fluidRow(
-					column(5,actionButton("showVolcano", "Volcano Plot"))
-					,column(5, actionButton("showScatter", "Scatter Plot") ) 
-				)
-			  
-				  ,br(),actionButton("showMotif", "TF binding motifs in promoters")
-				  ,tags$style(type='text/css', "#showMotif { width:100%;   margin-top:-12px}")
-				 #,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
-				 ,br(),br(),downloadButton('download.selectedHeatmap.data', "Download gene list & data" )
-				  ,tags$style(type='text/css', "#download.selectedHeatmap.data { width:100%;   margin-top:-12px}")				 
-				,h5("Also try",  a("ShinyGO", href="http://ge-lab.org:3838/go/") )	
-				,br(),h4( textOutput("textLimma") )
+									,br(),h4( textOutput("textLimma") )
 				,tags$head(tags$style("#textLimma{color: blue;font-size: 15px;}"))	
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/degs/",target="_blank")
 				, width = 4),
 				
                 mainPanel(
-					h4("Numbers of differentially expressed genes for all comparisons:")
+					plotOutput('sigGeneStats')
+					,br(),br(),h4("Numbers of differentially expressed genes for all comparisons")
 					,tableOutput('sigGeneStatsTable')
-				 ,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
-					,h4("Expression pattern of DEGs for selected comparison:")
-                   ,plotOutput("selectedHeatmap")
-				   ,h4("Enriched pathways in DEGs for selected comparison:")
-				   ,tableOutput("geneListGO")
-				   ,h4("Top Genes for selected comparison:"),tableOutput('geneList')
+
+
 				   #,h4("Enriched motif in promoters")
 				   #,tableOutput("DEG.Promoter")
-				   ,bsModal("modalExample1", "Enriched TF binding motifs in promoters of DEGs", "showMotif", size = "large"
-				   ,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
-				   ,tableOutput("DEG.Promoter"))
+
 				   ,bsModal("modalExample", "Venn Diagram", "showVenn", size = "large",
 						checkboxInput("UpDownRegulated", label = "Split gene lists by up- or down-regulation", value = FALSE)
 						,htmlOutput('listComparisonsVenn')
@@ -413,6 +392,49 @@ tableOutput('species' ),
 						,h5("Close this window to see results.")
 
 						)
+				   #,bsModal("modalExample56", "Summary of differentially expressed genes", "showDEGstats", size = "large",
+
+					#)				   
+				   
+				#  ,bsModal("modalExample25", "Interactive Scatter plot", "showScatterPlotly", size = "large",						 	plotlyOutput("scatterPlotly",width = "550px", height = "550px"))
+				  # ,bsModal("modalExample24", "Interactive Volcano plot", "showVolcanoPlotly", size = "large",plotlyOutput("volcanoPlotly",width = "550px", height = "550px"))
+                )  
+              )       
+    )
+
+	
+###############################################################################################################################
+	     ,tabPanel("DEG2",
+              sidebarLayout(
+                sidebarPanel(
+				 h5("Examine the results of DEGs")
+				 ,htmlOutput("listComparisons")
+				 ,h5("Pathway database")
+				 ,htmlOutput("selectGO2")
+				,tags$style(type='text/css', "#selectGO2 { width:100%;   margin-top:-9px}")
+				 ,br()
+				,fluidRow(
+					column(6,actionButton("showVolcano", "Volcano Plot"))
+					,column(6,actionButton("showMAplot", "MA Plot")  )
+
+				)
+			     ,br(),fluidRow(column( 8, actionButton("showScatter", "Scatter Plot")) )
+				 ,br(),fluidRow(column( 11, actionButton("showMotif", "TF binding motifs in promoters")))
+				  ,tags$style(type='text/css', "#showMotif { width:100%;   margin-top:-12px}")
+				 #,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
+				 ,br(),br(),downloadButton('download.selectedHeatmap.data', "Download gene list & data" )
+				  ,tags$style(type='text/css', "#download.selectedHeatmap.data { width:100%;   margin-top:-12px}")				 
+				,h5("Also try",  a("ShinyGO", href="http://ge-lab.org:3838/go/") )	
+				
+				
+				, width=4),
+				
+				mainPanel(
+					#h4("Expression pattern of DEGs for selected comparison:")
+                   plotOutput("selectedHeatmap")
+				   ,br(),h4("Enriched pathways in DEGs for selected comparison:")
+				   ,tableOutput("geneListGO")
+				   ,h4("Top Genes for selected comparison:"),tableOutput('geneList')
 				   ,bsModal("modalExample4", "Volcano plot", "showVolcano", size = "large",
 						checkboxInput("volcanoPlotBox", label = "Show interactive version w/ gene symbols", value = FALSE)
 						,conditionalPanel("input.volcanoPlotBox == 0",	plotOutput("volcanoPlot") )
@@ -423,20 +445,21 @@ tableOutput('species' ),
 						,conditionalPanel("input.scatterPlotBox == 0",	plotOutput("scatterPlot") )
 						,conditionalPanel("input.scatterPlotBox == 1",plotlyOutput("scatterPlotly",width = "550px", height = "550px") )
 				   )
-				   ,bsModal("modalExample56", "Summary of differentially expressed genes", "showDEGstats", size = "large",
-						  plotOutput('sigGeneStats')
-					)				   
+				   ,bsModal("modalExample5555", "M-A plot", "showMAplot", size = "large",
+						checkboxInput("MAPlotBox", label = "Show interactive version w/ gene symbols", value = FALSE)
+						,conditionalPanel("input.MAPlotBox == 0",	plotOutput("MAplot") )
+						,conditionalPanel("input.MAPlotBox == 1",plotlyOutput("MAplotly",width = "550px", height = "550px") )
+				   )
+				   	,bsModal("modalExample1", "Enriched TF binding motifs in promoters of DEGs", "showMotif", size = "large"
+				   ,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
+				   ,tableOutput("DEG.Promoter"))
 				   
-				#  ,bsModal("modalExample25", "Interactive Scatter plot", "showScatterPlotly", size = "large",						 	plotlyOutput("scatterPlotly",width = "550px", height = "550px"))
-				  # ,bsModal("modalExample24", "Interactive Volcano plot", "showVolcanoPlotly", size = "large",plotlyOutput("volcanoPlotly",width = "550px", height = "550px"))
                 )  
               )       
-    )
-
-	
+    )								
 ###############################################################################################################################
  
-   ,tabPanel("Pathways",
+   ,tabPanel("Pathway",
               sidebarLayout(
                 sidebarPanel(
 				htmlOutput("listComparisonsPathway")

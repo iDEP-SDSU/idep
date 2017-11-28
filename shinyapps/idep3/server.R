@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.51"
+iDEPversion = "iDEP 0.52"
 ################################################################
 # R packages
 ################################################################
@@ -58,7 +58,7 @@ kurtosis.log = 50  # log transform is enforced when kurtosis is big
 kurtosis.warning = 10 # log transformation recommnded 
 minGenesEnrichment = 2 # perform GO or promoter analysis only if more than this many genes
 PREDA_Permutations =1000
-maxGeneClustering = 6000  # max genes for hierarchical clustering and k-Means clustering. Slow if larger
+maxGeneClustering = 12000  # max genes for hierarchical clustering and k-Means clustering. Slow if larger
 maxGeneWGCNA = 2000 # max genes for co-expression network
 maxFactors =6  # max number of factors in DESeq2 models
 set.seed(2) # seed for random number generator
@@ -3377,6 +3377,7 @@ Kmeans <- reactive({ # Kmeans clustering
     	if(input$dataFileFormat== 2) { 
 			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
 		}
+	tem = input$KmeansReRun
 	####################################
 	
 	withProgress(message="k-means clustering", {
@@ -3397,7 +3398,7 @@ Kmeans <- reactive({ # Kmeans clustering
 	if( input$kmeansNormalization == 'geneStandardization')	
 		x = (x - apply(x,1,mean) ) / apply(x,1,sd)
 	#colnames(x) = gsub("_.*","",colnames(x))
-	set.seed(2)
+	set.seed(input$KmeansReRun)
 	k=input$nClusters
 	
 
@@ -3428,6 +3429,7 @@ output$KmeansHeatmap <- renderPlot({ # Kmeans clustering
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+	tem = input$KmeansReRun
 	####################################
 	
 	if( is.null(Kmeans()) ) return(NULL)
@@ -3473,7 +3475,7 @@ output$KmeansNclusters <- renderPlot({ # Kmeans clustering
 KmeansData <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	if( is.null(Kmeans()) ) return(NULL)
-
+	tem = input$KmeansReRun
 	##################################  
 	# these are needed to make it responsive to changes in parameters
 	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
@@ -3514,6 +3516,7 @@ output$tSNEgenePlot <- renderPlot({
 				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
 				
 		tem = input$colorGenes; tem = input$seedTSNE
+			tem = input$KmeansReRun
 		####################################
 		withProgress(message="Runing t-SNE algorithm", {
 		isolate({ 
@@ -3546,6 +3549,53 @@ output$tSNEgenePlot <- renderPlot({
 	 #progress 
   }, height = 700, width = 700 )
 
+output$distributionSD <- renderPlot({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if( is.null(Kmeans()) ) return(NULL)
+
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+				
+		tem = input$colorGenes; tem = input$seedTSNE
+			tem = input$KmeansReRun
+		####################################
+		withProgress(message="Calculating SD distribution", {
+		isolate({ 
+
+		
+		SDs=apply(convertedData(),1,sd)
+		maxSD = mean(SDs)+ 4*sd(SDs)
+		SDs[ SDs > maxSD] = maxSD
+		
+		top = input$nGenesKNN
+		if(top > length(SDs)) top = length(SDs)
+		Cutoff=sort(SDs,decreasing=TRUE)[top] 
+
+		SDs = as.data.frame(SDs)
+
+		p <- ggplot(SDs, aes(x=SDs)) + 
+		  geom_density(color="darkblue", fill="lightblue") +
+		  labs(x = "Standard deviations of all genes", y="Density")+
+		  geom_vline(aes(xintercept=Cutoff),
+					color="red", linetype="dashed", size=1) +
+					annotate("text", x = Cutoff + 0.4*sd(SDs[,1]), y = 1,colour = "red", label = paste0("Top ", top))
+			incProgress(1)
+		p
+		})
+	
+	})
+	
+	
+	 #progress 
+  }, height = 400, width = 600 )
+
   
 output$downloadDataKmeans <- downloadHandler(
 		filename = function() {"Kmeans.csv"},
@@ -3572,6 +3622,7 @@ output$KmeansGO <- renderTable({
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+	tem = input$KmeansReRun
 	####################################
 	withProgress(message="GO Enrichment", {
 		# GO
@@ -3618,8 +3669,8 @@ output$KmeansPromoter <- renderTable({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectGO3; tem = input$radioPromoterKmeans; tem=input$nGenesKNN; tem=input$nClusters
 	if( is.null(input$selectGO3 ) ) return (NULL)
-	if( is.null(limma()$results) ) return(NULL)
-	
+	#if( is.null(limma()$results) ) return(NULL)
+   	if( is.null(Kmeans()) ) return(NULL)	
 	##################################  
 	# these are needed to make it responsive to changes in parameters
 	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
@@ -3629,37 +3680,19 @@ output$KmeansPromoter <- renderTable({
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$KmeansReRun
 	####################################
 
 	isolate({ 
    	withProgress(message="Promoter analysis", {
-	x <- convertedData()
-	#x <- readData()
-	#par(mfrow=c(2,1))
-	n=input$nGenesKNN
-	# if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	
-	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	#x = 100* x / apply(x,1,sum)  # this is causing problem??????
-	#x = x - apply(x,1,mean)  # this is causing problem??????
-	#colnames(x) = gsub("_.*","",colnames(x))
-	set.seed(2)
-	# determining number of clusters
-	k=input$nClusters
-	cl = kmeans(x,k,iter.max = 50)
 
-	hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
-	tem = match(cl$cluster,hc$order) #  new order 
-	x = x[order(tem),]
-	bar = sort(tem)
-	
+
 	results1 <- NULL; result <- NULL 
 	pp<- 0
-	for( i in 1:k ) {
-	incProgress(1/k, , detail = paste("Cluster",toupper(letters)[i]) )
-	query = rownames(x)[which(bar == i)]
-	
+	for( i in 1:input$nClusters ) {
+	incProgress(1/input$nClusters, , detail = paste("Cluster",toupper(letters)[i]) )
+	#query = rownames(x)[which(bar == i)]
+	query = rownames(Kmeans()$x)[which(Kmeans()$bar == i)]	
 	convertedID = convertID(query,input$selectOrg, input$selectGO2 );#"gmax_eg_gene"
 	result <- promoter( convertedID,input$selectOrg,input$radioPromoterKmeans )
 	
@@ -4089,7 +4122,7 @@ limma <- reactive({
 		for( i in 1: dim(all.Calls)[2]) { 
 			tem <- all.Calls[,i]
 			all.Calls[which( tem <= log2(input$limmaFC) & tem >=  -log2(input$limmaFC) ) ,i] = 0			
-			all.Calls[which( tem > log2(input$limmaFC)  ) ,i] = 1
+			all.Calls[which( tem >  log2(input$limmaFC) ) ,i] = 1
 			all.Calls[which( tem < -log2(input$limmaFC) ) ,i] = -1		
 			if(!is.null(pvals) ) 
 				all.Calls[ which( pvals[,i] > input$limmaPval),i] = 0
@@ -4233,20 +4266,25 @@ output$sigGeneStats <- renderPlot({
 		 gg <- melt(stats)
 
 		 colnames(gg) = c("Regulation","Comparisons","Genes")
-		 gg$Regulation = as.factor(gg$Regulation)
-		 gg$Regulation = relevel(gg$Regulation,"Up")
 		 
-		 p= ggplot(gg, aes(x=Comparisons, y=Genes, fill=Regulation))+
+		# gg <- within(gg, Regulation <- factor(
+		#			Regulation, levels=names(sort(table(Regulation), decreasing=FALSE   ) ) )  )
+		 
+		# gg$Regulation <- factor( gg$Regulation, levels=c("Up","Down")  )
+		# gg$Regulation = as.factor(gg$Regulation)
+		 #gg$Regulation = relevel(gg$Regulation,"Up")
+		 
+		 p= ggplot(gg, aes(x=Comparisons, y=Genes, fill=  Regulation )  )+
 			 geom_bar(position="dodge", stat="identity") + coord_flip() +
 			 theme(legend.position = "top") + 
 			 scale_fill_manual(values=c("red", "blue")) +
-			 theme(axis.title.y=element_blank(), axis.text=element_text(size=18))			
+			 theme(axis.title.y=element_blank(), axis.text=element_text(size=14))			
 			
 		p
 			
 
 		})
-    },width=800, height=600)
+    })
 	
 output$sigGeneStatsTable <- renderTable({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -4846,51 +4884,42 @@ output$scatterPlot <- renderPlot({
 	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
 
      incProgress(1/2)
-	 if (grepl("I:",input$selectContrast) == 1) return(NULL) # iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
-  	 # average expression
-     samples = unlist(strsplit( input$selectContrast, "-"))
-     iz= match( detectGroups(colnames(convertedData())), samples[1]	  )
-     iz = which(!is.na(iz))
-	# find sample using sample info file 
-	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
-		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
-		comparisons = gsub(" vs\\. ","-",comparisons)		
-		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
-		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
-		selectedFactor= factorsVector[ ik ] # corresponding factors
-		cat(selectedFactor)
-		iz= match( readSampleInfo()[,selectedFactor], unlist(strsplit( input$selectContrast, "-"))[1]	  )
-		iz = which(!is.na(iz))
-	}
 	 
+		 iz = findContrastSamples(	input$selectContrast, 
+									colnames(convertedData()),
+									readSampleInfo(),
+									input$selectFactorsModel,
+									input$selectModelComprions, 
+									factorReferenceLevels(),
+									input$CountsDEGMethod,
+									input$dataFileFormat
+								)
 	 
 	 genes <- convertedData()[,iz]
-	 genes <- as.data.frame(genes)
-	 genes$average1 <- apply( genes,1,mean)
+	 
+	 g = detectGroups(colnames(genes))
+	 
+	 if(length(unique(g))  > 2) { plot.new(); text(0.5,0.5, "Not available.") } else{
+		average1 <- apply( genes[, which( g == unique(g)[1] ) ],1,mean)
 
-     iz= match( detectGroups(colnames(convertedData())), samples[2]	  )
-     iz = which(!is.na(iz))
-	# find sample using sample info file 
-	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
-		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
-		comparisons = gsub(" vs\\. ","-",comparisons)		
-		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
-		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
-		selectedfactor= factorsVector[ ik ] # corresponding factors
-		iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast, "-"))[2]	  )
-		iz = which(!is.na(iz))
-	}
-	 # genes <- cbind( genes,convertedData()[,iz] )
-	 genes$average2 <- apply(convertedData()[,iz] ,1,mean)	 
-	genes <- merge(genes,top1,by="row.names")
- # write.csv(genes, "tem.csv")
- 	 par(mar=c(5,5,1,1))
-	plot(genes$average2,genes$average1,col = c("grey45","red","blue")[genes$upOrDown],
-	 pch =16, cex = .3, xlab= paste("Average expression in", samples[2] ), 
-	 ylab = paste("Average expression in", samples[1] ),
-	 cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	)    
-     legend("bottomright",c("Upregulated","Downregulated"),fill = c("red","blue"),cex=1.3 )
+		average2 <- apply(  genes[, which( g == unique(g)[2] ) ],1,mean)
 
+		genes2 <- cbind(average1,average2)
+		rownames(genes2) = rownames(genes)
+		genes2 <-  merge(genes2,top1,by="row.names")
+
+		
+		par(mar=c(5,5,1,1))
+		plot(genes2$average2,genes2$average1,col = c("grey45","red","blue")[genes2$upOrDown],
+		pch =16, cex = .3, xlab= paste("Average expression in", unique(g)[2] ), 
+		ylab = paste("Average expression in", unique(g)[1] ),
+		cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	)    
+		legend("bottomright",c("Upregulated","Downregulated"),fill = c("red","blue"),cex=1.3 )
+
+
+	 
+	 }
+	 
 		})
 
 	})
@@ -4934,44 +4963,36 @@ output$scatterPlotly <- renderPlotly({
 	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
 
      incProgress(1/2)
-	 if (grepl("I:",input$selectContrast) == 1) return(NULL) # iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
-  	 # average expression
-     samples = unlist(strsplit( input$selectContrast, "-"))
-     iz= match( detectGroups(colnames(convertedData())), samples[1]	  )
-     iz = which(!is.na(iz))
-	# find sample using sample info file 
-	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) ) {
-		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
-		comparisons = gsub(" vs\\. ","-",comparisons)		
-		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
-		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
-		selectedFactor= factorsVector[ ik ] # corresponding factors
-		cat(selectedFactor)
-		iz= match( readSampleInfo()[,selectedFactor], unlist(strsplit( input$selectContrast, "-"))[1]	  )
-		iz = which(!is.na(iz))
-	}
+
+
+	 iz = findContrastSamples(	input$selectContrast, 
+									colnames(convertedData()),
+									readSampleInfo(),
+									input$selectFactorsModel,
+									input$selectModelComprions, 
+									factorReferenceLevels(),
+									input$CountsDEGMethod,
+									input$dataFileFormat
+								)
 	 
 	 genes <- convertedData()[,iz]
-	 genes <- as.data.frame(genes)
-	 genes$average1 <- apply( genes,1,mean)
+	 
+	 g = detectGroups(colnames(genes))
+	 
+	 if(length(unique(g))  > 2) { plot.new(); text(0.5,0.5, "Not available.") } else{
+		average1 <- apply( genes[, which( g == unique(g)[1] ) ],1,mean)
 
-     iz= match( detectGroups(colnames(convertedData())), samples[2]	  )
-     iz = which(!is.na(iz))
+		average2 <- apply(  genes[, which( g == unique(g)[2] ) ],1,mean)
 
-	# find sample using sample info file 
-	if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) ) {
-		comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
-		comparisons = gsub(" vs\\. ","-",comparisons)		
-		factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
-		ik = match( input$selectContrast, comparisons )   # selected contrast lookes like: "mutant-control"
-		selectedfactor= factorsVector[ ik ] # corresponding factors
-		iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast, "-"))[2]	  )
-		iz = which(!is.na(iz))
-	}
-	 # genes <- cbind( genes,convertedData()[,iz] )
-	 genes$average2 <- apply(convertedData()[,iz] ,1,mean)	 
-	genes <- merge(genes,top1,by="row.names")
-    
+		genes2 <- cbind(average1,average2)
+		rownames(genes2) = rownames(genes)
+	
+		genes <-  merge(genes2,top1,by="row.names")
+	 
+	 
+	 
+	 
+ 
 	# remove non-DEGs
 	genes = genes[which(genes$upOrDown != 1),]  
 	genes$type ="Upregulated";
@@ -4985,18 +5006,174 @@ output$scatterPlotly <- renderPlotly({
 	genes$Symbols = geneSymbols;
 	
     p <- plot_ly(data= genes, x = ~average2, y= ~average1, color = ~type, text = ~Symbols)%>% 
-	layout(xaxis = list(size =35,title = paste("Average expression in", samples[2] )), 
-           yaxis = list(size =35, title = paste("Average expression in", samples[1] )),
+	layout(xaxis = list(size =35,title = paste("Average expression in", unique(g)[2]  )), 
+           yaxis = list(size =35, title = paste("Average expression in", unique(g)[1]  )),
 		   showlegend = FALSE)
 		   
 	ggplotly(p)
-
+	}
 		})
 
 	})
 	 
   })
 
+  
+output$MAplot <- renderPlot({
+    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
+		tem = input$selectOrg; tem = input$noIDConversion
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
+	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	if( is.null(input$selectContrast) ) return(NULL)
+	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
+	if( length(limma()$topGenes) == 0 ) return(NULL)
+	if(grepl("I:", input$selectContrast) ) 	return(NULL) # if interaction term related comparison
+	isolate({ 
+
+	withProgress(message="Generating scatter plot with all genes",{ 
+	if(length( limma()$comparisons)  ==1 )  
+    { top1=limma()$topGenes[[1]]  
+	} else {
+	  top = limma()$topGenes
+	  ix = match(input$selectContrast, names(top))
+	  if( is.na(ix)) return (NULL)
+	  top1 <- top[[ix]]; 
+	  }
+	  if(dim(top1)[1] == 0 ) return (NULL)
+	  colnames(top1)= c("Fold","FDR")
+	 top1 <- as.data.frame(top1) # convert to data frame
+     top1 <- top1[which(!(is.na(top1$Fold)|is.na(top1$FDR)    )),] # remove NA's 
+	 top1$upOrDown <- 1
+	 #write.csv(top1,"tem.csv")
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval& top1$Fold  >= log2( input$limmaFC)) ]  <- 2
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
+
+     incProgress(1/2)
+	 
+		 iz = findContrastSamples(	input$selectContrast, 
+									colnames(convertedData()),
+									readSampleInfo(),
+									input$selectFactorsModel,
+									input$selectModelComprions, 
+									factorReferenceLevels(),
+									input$CountsDEGMethod,
+									input$dataFileFormat
+								)
+	 
+
+
+		average1 <- as.data.frame( apply( convertedData()[,iz],1,mean) )
+		colnames(average1) = "Average"
+		rownames(average1) = rownames(convertedData())
+		
+		genes2 <-  merge(average1,top1,by="row.names")
+
+		par(mar=c(5,5,1,1))
+		plot(genes2$Average,genes2$Fold,col = c("grey45","red","blue")[genes2$upOrDown],
+		pch =16, cex = .3, xlab= "Average expression", 
+		ylab = "Log2 fold change",
+		cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	)   
+			abline(h=0)
+		legend("bottomright",c("Upregulated","Downregulated"),fill = c("red","blue"),cex=1.3 )
+
+
+	 
+
+	 
+		})
+
+	})
+	 
+  },height=450, width=500)
+
+output$MAplotly <- renderPlotly({
+    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
+		tem = input$selectOrg; tem = input$noIDConversion
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
+	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	if( is.null(input$selectContrast) ) return(NULL)
+	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
+	if( length(limma()$topGenes) == 0 ) return(NULL)
+	if(grepl("I:", input$selectContrast) ) 	return(NULL) # if interaction term related comparison
+	isolate({ 
+
+	withProgress(message="Generating scatter plot with all genes",{ 
+	if(length( limma()$comparisons)  ==1 )  
+    { top1=limma()$topGenes[[1]]  
+	} else {
+	  top = limma()$topGenes
+	  ix = match(input$selectContrast, names(top))
+	  if( is.na(ix)) return (NULL)
+	  top1 <- top[[ix]]; 
+	  }
+	  if(dim(top1)[1] == 0 ) return (NULL)
+	  colnames(top1)= c("Fold","FDR")
+	 top1 <- as.data.frame(top1) # convert to data frame
+     top1 <- top1[which(!(is.na(top1$Fold)|is.na(top1$FDR)    )),] # remove NA's 
+	 top1$upOrDown <- 1
+	 #write.csv(top1,"tem.csv")
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval& top1$Fold  >= log2( input$limmaFC)) ]  <- 2
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
+
+     incProgress(1/2)
+	 
+		 iz = findContrastSamples(	input$selectContrast, 
+									colnames(convertedData()),
+									readSampleInfo(),
+									input$selectFactorsModel,
+									input$selectModelComprions, 
+									factorReferenceLevels(),
+									input$CountsDEGMethod,
+									input$dataFileFormat
+								)
+	 
+
+
+		average1 <- as.data.frame( apply( convertedData()[,iz],1,mean) )
+		colnames(average1) = "Average"
+		rownames(average1) = rownames(convertedData())
+		
+		genes <-  merge(average1,top1,by="row.names")
+
+		
+		# remove non-DEGs
+		genes = genes[which(genes$upOrDown != 1),]  
+		genes$type ="Upregulated";
+		genes$type[which(genes$upOrDown ==3)] <- "Downregulated"	
+		
+		# adding gene symbol
+		ix <- match( genes[,1], allGeneInfo()[,1])
+		geneSymbols <- as.character( allGeneInfo()$symbol)[ix]
+		# if missing or duplicated, use Ensembl ID
+		ix <- which(nchar( geneSymbols) <=1 | duplicated(geneSymbols ) );	geneSymbols[ ix ] <- genes[ix,1]
+		genes$Symbols = geneSymbols;
+		
+		p <- plot_ly(data= genes, x = ~Average, y= ~Fold, color = ~type, text = ~Symbols, type = 'scatter')%>% 
+		layout(xaxis = list(size =35,title = "Average expression"), 
+			   yaxis = list(size =35, title = "Log2 fold change"),
+			   showlegend = FALSE)
+			   
+		ggplotly(p)
+			
+			})
+
+	})
+	 
+  })
   
 output$geneListGO <- renderTable({		
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
