@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.52"
+iDEPversion = "iDEP 0.53"
 ################################################################
 # R packages
 ################################################################
@@ -19,7 +19,7 @@ library(ggplot2,verbose=FALSE)	# graphics
 library(e1071,verbose=FALSE) 		# computing kurtosis
 library(DT,verbose=FALSE) 		# for renderDataTable
 library(plotly,verbose=FALSE) 	# for interactive heatmap
-
+library(reshape2,verbose=FALSE) 	# for melt correlation matrix in heatmap
 # Bioconductor packages
 #source("https://bioconductor.org/biocLite.R")
 #biocLite(c( "limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata","sfsmisc","lokern","multtest" ))
@@ -2128,7 +2128,8 @@ readData <- reactive ({
 					#x <- x[ which( apply(x,1,function(y) sum(y>=input$minCounts)) >= input$NminSamples ) , ]  # filtering on raw counts
 					# using counts per million (CPM) for filtering out genes.
                                              # CPM matrix                  #N samples > minCounts
-					x <- x[ which( apply( cpm(DGEList(counts = x)), 1,  function(y) sum(y>=input$minCounts)) >= input$NminSamples ) , ] 
+					x <- x[ which( apply( cpm(DGEList(counts = x)), 1,  
+							function(y) sum(y>=input$minCounts)) >= input$NminSamples ) , ] 
 					
 
 					if(0){  # disabled
@@ -2150,8 +2151,12 @@ readData <- reactive ({
 					incProgress(1/2,"transforming raw counts")
 					# regularized log  or VST transformation
 					if( input$CountsTransform == 3 ) { # rlog is slow, only do it with 10 samples
-						x <- rlog(dds, blind=TRUE); x <- assay(x) } 
-					else {
+						if(dim(x)[2]<=20 ) { 
+						 x <- rlog(dds, blind=TRUE); x <- assay(x) } else 
+						 x <- log2( counts(dds, normalized=TRUE) + input$countsLogStart ) 
+						 }  
+
+						else {
 						if ( input$CountsTransform == 2 ) {    # vst is fast but aggressive
 							x <- vst(dds, blind=TRUE)
 							x <- assay(x)  
@@ -2856,7 +2861,7 @@ output$listFactorsHeatmap <- renderUI({
     if (is.null(readSampleInfo() ) ) # if sample info is uploaded and correctly parsed.
        { return(NULL) }	 else { 
 	  selectInput("selectFactorsHeatmap", label="Sample color bar:",choices= c(colnames(readSampleInfo()), "Sample_Name")
-	     )   } 
+	     , selected = "Sample_Name")   } 
 	})  
 
 	# conventional heatmap.2 plot
@@ -3014,7 +3019,7 @@ output$heatmap <- renderPlotly({
 	ix <- match( rownames(x), allGeneInfo()[,1])
 	geneSymbols <- as.character( allGeneInfo()$symbol)[ix]
 	# if missing or duplicated, use Ensembl ID
-	ix <- which(nchar( geneSymbols) <=1 | duplicated(geneSymbols ) );	geneSymbols[ ix ] <- rownames(x)[ix]
+	ix <- which(nchar( geneSymbols) <=1 | duplicated(geneSymbols ) | is.null(geneSymbols)  | is.na(geneSymbols)    );	geneSymbols[ ix ] <- rownames(x)[ix]
 	rownames( x) = geneSymbols;
 
 	incProgress(1/2, "Clustering of genes")	
@@ -3093,7 +3098,6 @@ output$downloadData <- downloadHandler(
 	)
 
 output$correlationMatrix <- renderPlot({
-		library(reshape2,verbose=FALSE) 	# for melt correlation matrix in heatmap
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		# heatmap of correlation matrix
 		x <- readData()$data
@@ -3159,7 +3163,7 @@ output$listFactors <- renderUI({
       if (is.null(readSampleInfo()) )
        { return(HTML("Upload a sample info file to customize this plot.") ) }	 else { 
 	  selectInput("selectFactors", label="Color:",choices=c( colnames(readSampleInfo()), "Sample_Name")
-	     )   } 
+	      , selected = "Sample_Name")   } 
 	})
 
 	
@@ -3171,7 +3175,7 @@ output$listFactors2 <- renderUI({
        { return(NULL) }	 else { 
 	   tem <- c( colnames(readSampleInfo()), "Sample_Name")
 	   if(length(tem)>1) { tem2 = tem[1]; tem[1] <- tem[2]; tem[1] = tem2; } # swap 2nd factor with first
-	  selectInput("selectFactors2", label="Shape:",choices=tem)
+	  selectInput("selectFactors2", label="Shape:",choices=tem, selected = "Sample_Name")
 	        } 
 	})
 
@@ -6229,7 +6233,8 @@ mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species =
     }
     else {
         species.data = c(kegg.code = "ko", entrez.gnodes = "0", 
-            kegg.geneid = "K01488", ncbi.geneid = "")
+            kegg.geneid = "K01488", ncbi.geneid = NA, ncbi.proteinid = NA, 
+            uniprot = NA)
         gene.idtype = "KEGG"
         msg.fmt = "Only KEGG ortholog gene ID is supported, make sure it looks like \"%s\"!"
         msg = sprintf(msg.fmt, species.data["kegg.geneid"])
@@ -6243,7 +6248,7 @@ mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species =
     entrez.gnodes = species.data["entrez.gnodes"] == 1
     if (is.na(species.data["ncbi.geneid"])) {
         if (!is.na(species.data["kegg.geneid"])) {
-            msg.fmt = "Only native KEGG gene ID is supported for this species,\nmake sure it looks like \"%s\"!"
+            msg.fmt = "Mapping via KEGG gene ID (not Entrez) is supported for this species,\nit looks like \"%s\"!"
             msg = sprintf(msg.fmt, species.data["kegg.geneid"])
             message("Note: ", msg)
         }
@@ -6253,7 +6258,8 @@ mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species =
     }
     if (is.null(gene.annotpkg)) 
         gene.annotpkg = bods[match(species, bods[, 3]), 1]
-    if (length(grep("ENTREZ|KEGG", gene.idtype)) < 1 & !is.null(gene.data)) {
+    if (length(grep("ENTREZ|KEGG|NCBIPROT|UNIPROT", gene.idtype)) < 
+        1 & !is.null(gene.data)) {
         if (is.na(gene.annotpkg)) 
             stop("No proper gene annotation package available!")
         if (!gene.idtype %in% gene.idtype.bods[[species]]) 
@@ -6263,13 +6269,23 @@ mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species =
         gene.data = mol.sum(gene.data, gene.idmap)
         gene.idtype = "ENTREZ"
     }
-    if (gene.idtype == "ENTREZ" & !entrez.gnodes & !is.null(gene.data)) {
+    if (gene.idtype != "KEGG" & !entrez.gnodes & !is.null(gene.data)) {
+        id.type = gene.idtype
+        if (id.type == "ENTREZ") 
+            id.type = "ENTREZID"
+        kid.map = names(species.data)[-c(1:2)]
+        kid.types = names(kid.map) = c("KEGG", "ENTREZID", "NCBIPROT", 
+            "UNIPROT")
+        kid.map2 = gsub("[.]", "-", kid.map)
+        kid.map2["UNIPROT"] = "up"
+        if (is.na(kid.map[id.type])) 
+            stop("Wrong input gene ID type for the species!")
         message("Info: Getting gene ID data from KEGG...")
-        gene.idmap = keggConv("ncbi-geneid", species)
+        gene.idmap = keggConv(kid.map2[id.type], species)
         message("Info: Done with data retrieval!")
         kegg.ids = gsub(paste(species, ":", sep = ""), "", names(gene.idmap))
-        ncbi.ids = gsub("ncbi-geneid:", "", gene.idmap)
-        gene.idmap = cbind(ncbi.ids, kegg.ids)
+        in.ids = gsub(paste0(kid.map2[id.type], ":"), "", gene.idmap)
+        gene.idmap = cbind(in.ids, kegg.ids)
         gene.data = mol.sum(gene.data, gene.idmap)
         gene.idtype = "KEGG"
     }
@@ -6310,8 +6326,8 @@ mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species =
     kfiles = list.files(path = kegg.dir, pattern = "[.]xml|[.]png")
     npath = length(pathway.id)
     out.list = list()
-    tfiles.xml = paste(pathway.name, ".xml", sep = "")
-    tfiles.png = paste(pathway.name, ".png", sep = "")
+    tfiles.xml = paste(pathway.name, "xml", sep = ".")
+    tfiles.png = paste(pathway.name, "png", sep = ".")
     if (kegg.native) 
         ttype = c("xml", "png")
     else ttype = "xml"
@@ -6380,7 +6396,8 @@ mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species =
                 }
                 else {
                   plot.data.gene$labels = eg2id(as.character(plot.data.gene$kegg.names), 
-                    category = "SYMBOL", pkg.name = gene.annotpkg)[,2]
+                    category = "SYMBOL", pkg.name = gene.annotpkg)[, 
+                    2]
                   mapped.gnodes = rownames(plot.data.gene)
                   node.data$labels[mapped.gnodes] = plot.data.gene$labels
                 }
@@ -6408,7 +6425,7 @@ mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species =
         }
         else plot.data.cpd = cols.ts.cpd = NULL
         if (kegg.native) {
-            pv.pars = my.keggview.native( plot.data.gene = plot.data.gene, 
+            pv.pars = my.keggview.native(plot.data.gene = plot.data.gene, 
                 cols.ts.gene = cols.ts.gene, plot.data.cpd = plot.data.cpd, 
                 cols.ts.cpd = cols.ts.cpd, node.data = node.data, 
                 pathway.name = pathway.name[i], kegg.dir = kegg.dir, 
@@ -6455,9 +6472,8 @@ mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species =
         out.list = out.list[[1]]
     else names(out.list) = pathway.name
     return(invisible(out.list))
-}
-# <environment: namespace:pathview>
-my.keggview.native <- function ( plot.data.gene = NULL, plot.data.cpd = NULL, cols.ts.gene = NULL, 
+}# <environment: namespace:pathview>
+my.keggview.native <- function (plot.data.gene = NULL, plot.data.cpd = NULL, cols.ts.gene = NULL, 
     cols.ts.cpd = NULL, node.data, pathway.name, out.suffix = "pathview", 
     kegg.dir = ".", multi.state = TRUE, match.data = TRUE, same.layer = TRUE, 
     res = 300, cex = 0.25, discrete = list(gene = FALSE, cpd = FALSE), 
@@ -6514,11 +6530,12 @@ my.keggview.native <- function ( plot.data.gene = NULL, plot.data.cpd = NULL, co
             cols.cpd.plot = cols.ts.cpd
     }
     for (np in 1:nplots) {
-        img.file = paste(kegg.dir,"/",pathway.name, ".",pn.suffix[np], ".png", 
-            sep = "")
-		#message("here:",img.file)
+       # img.file = paste(pathway.name, pn.suffix[np], "png", 
+        #    sep = ".")
+		img.file = paste(kegg.dir,"/",pathway.name, ".",pn.suffix[np], ".png", 
+			sep = "")
         out.msg = sprintf(out.fmt, img.file)
-        #message("Info: ", out.msg)
+        message("Info: ", out.msg)
         png(img.file, width = width, height = height, res = res)
         op = par(mar = c(0, 0, 0, 0))
         plot(c(0, width), c(0, height), type = "n", xlab = "", 
@@ -6664,8 +6681,8 @@ attributes(my.keggview.native) <- attributes(tmpfun)  # don't know if this is re
 	incProgress(1/2, "Download pathway graph from KEGG.")
 	#incProgress(1/2, outfile)
 	pathID = keggPathwayID(input$sigPathways, Species, "KEGG",input$selectOrg)
-	#cat("here5  ",keggSpecies, " ",Species," ",input$sigPathways, "pathID:",pathID,"End", fold[1:5],names(fold)[1:5],"\n")
-	#cat("pathway:",is.na(input$sigPathways))
+	#cat("\nhere5  ",keggSpecies, " ",Species," ",input$sigPathways, "pathID:",pathID,"End", fold[1:5],names(fold)[1:5],"\n")
+	#cat("\npathway:",is.na(input$sigPathways))
 	#cat("\n",fold[1:5],"\n",keggSpecies,"\n",pathID)
     if(is.null(pathID) ) return(blank) # kegg pathway id not found.
 	if(nchar(pathID)<3 ) return(blank)

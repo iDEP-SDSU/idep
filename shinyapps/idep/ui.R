@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.52"
+iDEPversion = "iDEP.53"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -29,7 +29,7 @@ shinyUI(
 		,p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))
 		,radioButtons("dataFileFormat", label = "1. Choose data type", choices = list("Read counts data (recommended)" = 1, 
 													"Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2,
-													"Log2 Fold-changes with FDRs from programs like CuffDiff.)" =3),selected = 1)
+													"Fold-changes with FDRs from CuffDiff or any other program" =3),selected = 1)
 		,fileInput('file1', '2. Upload expression data (CSV or text)',
                   accept = c(
                     'text/csv',
@@ -485,7 +485,7 @@ tableOutput('species' ),
 				,numericInput("nPathwayShow", label = h5("Number of top pathways to show"), value = 30, min=5,max=100,step=5)
 				,tags$style(type='text/css', "#nPathwayShow { width:100%;   margin-top:-12px}")
 				,checkboxInput("absoluteFold", label = "Use absolute values of fold changes for GSEA and GAGE", value = FALSE)
-				,numericInput("GenePvalCutoff", label = h5("Remove genes with big FDR before pathway analysis:"), value = 0.9,min=1e-20,max=1,step=.05)
+				,numericInput("GenePvalCutoff", label = h5("Remove genes with big FDR before pathway analysis:"), value = 1,min=1e-20,max=1,step=.05)
 
 				#,actionButton("examinePathway", "Examine individual pathways")
 				,conditionalPanel("input.pathwayMethod == 2",downloadButton('download.PGSEAplot.data', 'Download PGSEA pathway data'))
