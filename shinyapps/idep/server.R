@@ -2084,7 +2084,7 @@ readData <- reactive ({
 				}
 
 				# Compute kurtosis
-				mean.kurtosis = mean(apply(x,2, kurtosis))
+				mean.kurtosis = mean(apply(x,2, kurtosis),na.rm=T)
 				rawCounts = NULL
 				pvals= NULL
 				if (input$dataFileFormat == 2 ) {  # if FPKM, microarray

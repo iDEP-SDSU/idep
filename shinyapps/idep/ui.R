@@ -111,7 +111,7 @@ tableOutput('species' ),
 			     conditionalPanel("input.dataFileFormat == 2",
 				 strong("Only keep genes above this level in at least n samples:" )
 				 ,fluidRow(
-					column(6, numericInput("lowFilter", label = h5(" Min. level"), value = 1))
+					column(6, numericInput("lowFilter", label = h5(" Min. level"), value = -1000))
 					,column(6, numericInput("NminSamples2", label = h5("n samples"), value = 1) )					
 				)
 					,tags$style(type='text/css', "#lowFilter { width:100%;   margin-top:-12px}")
