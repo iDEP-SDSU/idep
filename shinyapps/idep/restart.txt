@@ -3,5 +3,3 @@ Change idle time shorter
 resue default
 
 restart
-
-restart
