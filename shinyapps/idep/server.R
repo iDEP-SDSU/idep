@@ -1976,7 +1976,7 @@ function(input, output,session) {
  # allGeneInfo(): returns all information in the geneInfo file for each gene
  # geneSets(): gene set as a list for pathway analysis
   
-options(shiny.maxRequestSize = 100*1024^2) # 100MB file max for upload
+options(shiny.maxRequestSize = 200*1024^2) # 200MB file max for upload
 observe({  updateSelectInput(session, "selectOrg", choices = speciesChoice )      })
 observe({  updateSelectInput(session, "heatColors1", choices = colorChoices )      })
 observe({  updateSelectInput(session, "distFunctions", choices = distChoices )      })
