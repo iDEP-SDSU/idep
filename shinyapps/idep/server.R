@@ -416,7 +416,7 @@ speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
 speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
 
 # move one element to the 2nd place
-move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,i)])
+move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
 i= grep("Glycine max" ,names(speciesChoice)); speciesChoice <- move2(i)
 i= grep("Zea mays" ,names(speciesChoice)); speciesChoice <- move2(i)
 i= grep("Arabidopsis thaliana",names(speciesChoice)); speciesChoice <- move2(i)
@@ -718,10 +718,17 @@ gmtCategory <- function (converted, convertedData, selectOrg,gmtFile) {
 	#cat(paste("selectOrg:",selectOrg) )
 	# Generate a list of geneset categories such as "GOBP", "KEGG" from file
 	geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
-	geneSetCategory  <- geneSetCategory[,1]
+	geneSetCategory  <- sort( geneSetCategory[,1] )
 	categoryChoices <- setNames(as.list( geneSetCategory ), geneSetCategory )
 	categoryChoices <- append( setNames( "All","All available gene sets"), categoryChoices  )
-	#change GOBO to the full description for display
+	
+	# move one element to the 2nd place
+	move1 <- function(i) c(categoryChoices[1],categoryChoices[i],categoryChoices[-c(1,i)])
+	i = which( names(categoryChoices)  == "KEGG"); categoryChoices= move1(i);	
+	i = which( names(categoryChoices)  == "GOMF"); categoryChoices= move1(i);	
+	i = which( names(categoryChoices)  == "GOCC"); categoryChoices= move1(i);	
+	i = which( names(categoryChoices)  == "GOBP"); categoryChoices= move1(i);
+	#change GOBP to the full description for display
 	names(categoryChoices)[ match("GOBP",categoryChoices)  ] <- "GO Biological Process"
 	names(categoryChoices)[ match("GOCC",categoryChoices)  ] <- "GO Cellular Component"
 	names(categoryChoices)[ match("GOMF",categoryChoices)  ] <- "GO Molecular Function"
@@ -2241,7 +2248,7 @@ readSampleInfo <- reactive ({
 
 				validate(
 				  need(length(unique(ix) ) == dim(readData()$data)[2] 
-				       & dim(x)[1]>=1  # at least one row
+				       & dim(x)[1]>=1 & dim(x)[1] <500 # at least one row, it can not be more than 500 rows
 					 ,"Error!!! Sample information file not recognized. Sample names must be exactly the same. Each row is a factor. Each column represent a sample.  Please see documentation on format.")
 				)
 				
