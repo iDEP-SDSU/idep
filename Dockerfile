@@ -40,7 +40,7 @@ RUN wget -qO- -O tmp2.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-
 RUN wget -qO- -O tmp3.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2Fmotif.zip?alt=media&token=dc1e5972-ffd9-43a1-bbcc-49b78da6f047' \
   && unzip tmp3.zip -d /srv/data && rm tmp3.zip
 # pathwayDB
-RUN wget -qO- -O tmp4.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2FpathwayDB.zip?alt=media&token=e602f2f7-102a-4cc4-8412-be2b05997daa' \
+RUN wget -O tmp4.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2FpathwayDB.zip?alt=media&token=e602f2f7-102a-4cc4-8412-be2b05997daa' \
   && unzip tmp4.zip -d /srv/data && rm tmp4.zip
 # convertIDs
 RUN wget -qO- -O tmp5.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2Fupdate%2FconvertIDs.zip?alt=media&token=147fc26e-9199-45dc-8fce-9191d5d3a3a5' \
@@ -53,4 +53,4 @@ WORKDIR /usr/local/src/myscripts
 
 # Install required R libraries
 # CMD ["Rscript", "librarySetup.R"]
-#CMD ["/usr/bin/shiny-server.sh"] #If you don't use docker-compose need to comment out
+# CMD ["/usr/bin/shiny-server.sh"] #If you don't use docker-compose need to comment out
