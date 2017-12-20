@@ -3,7 +3,7 @@ services:
   web:
     build: .
     ports:
-      - "3838:3838"
+      - "80:3838"
     volumes:
       - ./shinyapps/:/srv/shiny-server/
       #- ./data/:/srv/data/
@@ -11,6 +11,7 @@ services:
       - ./config/:/etc/shiny-server/
       - ./classes/:/usr/local/src/myscripts/
     command: ["/usr/bin/shiny-server.sh"]
+  
   # nginx:
   #   restart: always
   #   build: ./nginx

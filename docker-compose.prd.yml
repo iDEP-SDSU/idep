@@ -1,0 +1,13 @@
+version: '2'
+services:
+  web:
+    build: .
+    ports:
+      - "80:3838"
+    volumes:
+      - ./shinyapps/:/srv/shiny-server/
+      - ./data_12_19_2017/:/srv/data/
+      - ./shinylog/:/var/log/shiny-server/
+      - ./config/:/etc/shiny-server/
+      - ./classes/:/usr/local/src/myscripts/
+    command: ["/usr/bin/shiny-server.sh"]
