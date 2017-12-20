@@ -11,17 +11,17 @@ services:
       - ./config/:/etc/shiny-server/
       - ./classes/:/usr/local/src/myscripts/
     command: ["/usr/bin/shiny-server.sh"]
-  nginx:
-    restart: always
-    build: ./nginx
-    networks:
-      - proxy
-    ports:
-      - 80:80
-      - 443:443
-    volumes:
-      - /www/static
-    volumes_from:
-      - web
-    links:
-      - web:web
+  # nginx:
+  #   restart: always
+  #   build: ./nginx
+  #   networks:
+  #     - proxy
+  #   ports:
+  #     - 80:80
+  #     - 443:443
+  #   volumes:
+  #     - /www/static
+  #   volumes_from:
+  #     - web
+  #   links:
+  #     - web:web
