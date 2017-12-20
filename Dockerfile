@@ -41,7 +41,7 @@ RUN wget -qO- -O tmp3.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-
   && unzip tmp3.zip -d /srv/data && rm tmp3.zip
 # pathwayDB
 RUN wget -O tmp4.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2FpathwayDB.zip?alt=media&token=e602f2f7-102a-4cc4-8412-be2b05997daa' \
-  && unzip tmp4.zip -d /srv/data && rm tmp4.zip
+  && unzip -f tmp4.zip -d /srv/data && rm tmp4.zip
 # convertIDs
 RUN wget -qO- -O tmp5.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2Fupdate%2FconvertIDs.zip?alt=media&token=147fc26e-9199-45dc-8fce-9191d5d3a3a5' \
   && unzip tmp5.zip -d /srv/data && rm tmp5.zip
