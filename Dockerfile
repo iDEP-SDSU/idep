@@ -32,22 +32,22 @@ RUN R -e 'source("https://bioconductor.org/biocLite.R"); biocLite(c("limma", "DE
 # Download Required Data
 # geneInfo
 RUN wget -qO- -O tmp.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2Fupdate%2FgeneInfo.zip?alt=media&token=350524c5-a690-4253-8a12-a376ac69dc69'\
-  && unzip tmp.zip -d /srv/data && rm tmp.zip
+  && unzip -f tmp.zip -d /srv/data && rm tmp.zip
 # gmt file 
 RUN wget -qO- -O tmp2.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2Fgmt.zip?alt=media&token=5ee100d1-e645-41ef-a591-7a9ba208ce3c' \
-  && unzip tmp2.zip -d /srv/data && rm tmp2.zip
+  && unzip -f tmp2.zip -d /srv/data && rm tmp2.zip
 # motif
 RUN wget -qO- -O tmp3.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2Fmotif.zip?alt=media&token=dc1e5972-ffd9-43a1-bbcc-49b78da6f047' \
-  && unzip tmp3.zip -d /srv/data && rm tmp3.zip
+  && unzip -f tmp3.zip -d /srv/data && rm tmp3.zip
 # pathwayDB
 RUN wget -O tmp4.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2FpathwayDB.zip?alt=media&token=e602f2f7-102a-4cc4-8412-be2b05997daa' \
   && unzip -f tmp4.zip -d /srv/data && rm tmp4.zip
 # convertIDs
 RUN wget -qO- -O tmp5.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2Fupdate%2FconvertIDs.zip?alt=media&token=147fc26e-9199-45dc-8fce-9191d5d3a3a5' \
-  && unzip tmp5.zip -d /srv/data && rm tmp5.zip
+  && unzip -f tmp5.zip -d /srv/data && rm tmp5.zip
 # data_go
 RUN wget -qO- -O tmp6.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2Fdata_go.zip?alt=media&token=96ddcf70-ead4-4386-b582-18afe0386b8d' \
-  && unzip tmp6.zip -d /srv/data && rm tmp6.zip
+  && unzip -f tmp6.zip -d /srv/data && rm tmp6.zip
 
 WORKDIR /usr/local/src/myscripts
 
