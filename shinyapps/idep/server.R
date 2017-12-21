@@ -414,7 +414,8 @@ speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
 # add a defult element to list    # new element name       value
 speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
 speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
-write.csv(orgInfo,"orgInfo.csv")
+# write.csv(orgInfo,"orgInfo.csv")
+
 # move one element to the 2nd place
 move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
 i= which( names(speciesChoice) == "Glycine max"); speciesChoice <- move2(i)
