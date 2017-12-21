@@ -65,7 +65,8 @@ set.seed(2) # seed for random number generator
 mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
 #Each row of this matrix represents a color scheme;
 
-hmcols <- colorRampPalette(rev(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF", "#E0F3F8", "#91BFDB", "#4575B4")))(75)
+hmcols <- colorRampPalette(rev(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF",
+"#E0F3F8", "#91BFDB", "#4575B4")))(75)
 heatColors = rbind(      greenred(75),     bluered(75),     colorpanel(75,"green","black","magenta"),colorpanel(75,"blue","yellow","red"),hmcols )
 rownames(heatColors) = c("Green-Black-Red","Blue-White-Red","Green-Black-Magenta","Blue-Yellow-Red","Blue-white-brown")
 colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull down menu
@@ -413,19 +414,19 @@ speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
 # add a defult element to list    # new element name       value
 speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
 speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
-
+write.csv(orgInfo,"orgInfo.csv")
 # move one element to the 2nd place
 move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
-i= grep("Glycine max" ,names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Zea mays" ,names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Arabidopsis thaliana",names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Saccharomyces cerevisiae" ,names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Caenorhabditis elegans",names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Danio rerio" ,names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Bos taurus" ,names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Rattus norvegicus" ,names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Mus musculus",names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Homo sapiens",names(speciesChoice)); speciesChoice <- move2(i)
+i= which( names(speciesChoice) == "Glycine max"); speciesChoice <- move2(i)
+i= which( names(speciesChoice) =="Zea mays"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) =="Arabidopsis thaliana"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) == "Saccharomyces cerevisiae"); speciesChoice <- move2(i)
+i= which(names(speciesChoice)  == "Caenorhabditis elegans"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) =="Zebrafish" ); speciesChoice <- move2(i)
+i= which(names(speciesChoice) == "Cow" ); speciesChoice <- move2(i)
+i= which(names(speciesChoice) == "Rat" ); speciesChoice <- move2(i)
+i= which(names(speciesChoice) == "Mouse"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) == "Human"); speciesChoice <- move2(i)
 
 GO_levels = dbGetQuery(convert, "select distinct id,level from GO  
                                 WHERE GO = 'biological_process'"  )
@@ -512,7 +513,7 @@ convertID <- function (query,selectOrg, selectGO) {
 			if (length(ix) == 0 ) {categoryChoices = NULL}
 			totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
 		}
-		pathway <- dbConnect(sqlite,gmtFiles[ix])
+		pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
 		# Generate a list of geneset categories such as "GOBP", "KEGG" from file
 		geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
 		geneSetCategory  <- geneSetCategory[,1]
@@ -628,7 +629,7 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR) {
 		if (length(ix) == 0 ) {return(idNotRecognized )}
 		totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
 	}
-	pathway <- dbConnect(sqlite,gmtFiles[ix])
+	pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
 	
 		
 	sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySet,collapse="', '"),"')" ,sep="")
@@ -688,7 +689,7 @@ keggPathwayID <- function (pathwayDescription, Species, GO,selectOrg) {
 		if (length(ix) == 0 ) {return(NULL )}
 		totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
 	}
-	pathway <- dbConnect(sqlite,gmtFiles[ix])
+	pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
 	
 	pathwayInfo <- dbGetQuery( pathway, paste( " select * from pathwayInfo where description =  '", 
 							pathwayDescription,   "' AND name LIKE '",GO,"%'",sep="") )
@@ -713,7 +714,7 @@ gmtCategory <- function (converted, convertedData, selectOrg,gmtFile) {
 		ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
 		if (length(ix) == 0 ) {return(idNotRecognized )}
 	}
-	pathway <- dbConnect(sqlite,gmtFiles[ix])
+	pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
 	#cat(paste("selectOrg:",selectOrg) )
 	# Generate a list of geneset categories such as "GOBP", "KEGG" from file
 	geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
@@ -750,7 +751,7 @@ readGeneSets <- function (converted, convertedData, GO,selectOrg, myrange) {
 		ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
 		if (length(ix) == 0 ) {return(idNotRecognized )}
 	}
-	pathway <- dbConnect(sqlite,gmtFiles[ix])
+	pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
 	
 	if(is.null(GO) ) GO <- "GOBP"   # initial value not properly set; enforcing  
 
@@ -1459,7 +1460,7 @@ promoter <- function (converted,selectOrg, radio){
 	if(length(ix) > 1)  # if only one file          
 		return(as.data.frame("Multiple geneInfo file found!") )   
 	
-	motifs <- dbConnect(sqlite,motifFiles[ix]) # makes a new file
+	motifs <- dbConnect(sqlite,motifFiles[ix],flags=SQLITE_RO) # makes a new file
 		
 	sqlQuery = paste( " select * from scores where row_names IN ('", paste(querySet,collapse="', '"),"')" ,sep="")
 	result <- dbGetQuery( motifs, sqlQuery  )
@@ -5533,7 +5534,7 @@ gagePathwayData <- reactive({
 	tem = input$selectGO
 	tem = input$selectContrast1
 	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
-	tem=input$nPathwayShow; tem=input$absoluteFold	
+	tem=input$nPathwayShow; tem=input$absoluteFold; tem =input$pathwayMethod
 
 	##################################  
 	# these are needed to make it responsive to changes in parameters
@@ -5616,7 +5617,7 @@ gagePathwayData <- reactive({
 			top1[ which( top1[,3] <0),1 ] <- "Down" # gsub("-"," < ",input$selectContrast1 )
 			top1 <- top1[order( top1[,1], -abs(as.numeric( top1[,3]) ) ) ,]
 			top1[ duplicated (top1[,1] ),1 ] <- ""
-			#write.csv(top1,"tem.csv")
+
 		  return( top1)
 		}) # progress
 	}) #isloate
@@ -5659,7 +5660,7 @@ fgseaPathwayData <- reactive({
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
 	tem = input$selectGO; tem = input$selectContrast1
 	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
-	tem=input$nPathwayShow; tem=input$absoluteFold
+	tem=input$nPathwayShow; tem=input$absoluteFold; tem =input$pathwayMethod
 	if(is.null(input$selectGO ) ) return (NULL)
 	if(input$selectGO == "ID not recognized!" ) return( as.data.frame("Gene ID not recognized." ))
 
@@ -5749,6 +5750,7 @@ fgseaPathwayData <- reactive({
 		top1 <- top1[order( top1[,1], -abs(as.numeric( top1[,3]) ) ) ,]
 		top1[ duplicated (top1[,1] ),1 ] <- ""	 
 	    top1[,3] = as.character( round(as.numeric(top1[,3]),4));
+
 	 return( top1)
 	}) })
   })
@@ -5760,7 +5762,7 @@ ReactomePAPathwayData <- reactive({
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
 	tem = input$selectGO; tem = input$selectContrast1
 	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
-	tem=input$nPathwayShow; tem=input$absoluteFold	
+	tem=input$nPathwayShow; tem=input$absoluteFold	; tem =input$pathwayMethod
 	if(is.null(input$selectGO ) ) return (NULL)
 	if(input$selectGO == "ID not recognized!" ) return( as.data.frame("Gene ID not recognized." ))
 
