@@ -9,7 +9,7 @@ services:
       - "3838"
     volumes:
       - ./shinyapps/:/srv/shiny-server/
-      #- ./data/:/srv/data/
+      - ./data_12_19_2017/:/srv/data/
       - ./shinylog/:/var/log/shiny-server/
       - ./config/:/etc/shiny-server/
       - ./classes/:/usr/local/src/myscripts/
