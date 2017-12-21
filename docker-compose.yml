@@ -1,9 +1,11 @@
 version: '2'
 services:
-  web:
+  webapp:
     build: .
-    ports:
-      - "80:3838"
+    # ports:
+    #   - "80:3838"
+    expose:
+      - "3838"
     volumes:
       - ./shinyapps/:/srv/shiny-server/
       #- ./data/:/srv/data/
@@ -11,18 +13,13 @@ services:
       - ./config/:/etc/shiny-server/
       - ./classes/:/usr/local/src/myscripts/
     command: ["/usr/bin/shiny-server.sh"]
-  
-  # nginx:
-  #   restart: always
-  #   build: ./nginx
-  #   networks:
-  #     - proxy
-  #   ports:
-  #     - 80:80
-  #     - 443:443
-  #   volumes:
-  #     - /www/static
-  #   volumes_from:
-  #     - web
-  #   links:
-  #     - web:web
+  # webapp:
+  #   build: ./testweb
+  #   # ports:
+  #   #       - "80:80"
+  nginx:
+    build: ./nginx
+    links:
+        - webapp
+    ports:
+        - "80:80"

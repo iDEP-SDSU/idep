@@ -1,5 +1,8 @@
-FROM gaiterjones/proxy-nginx-dyn
+# Set nginx base image
+FROM nginx
 
-COPY ./default.conf /etc/nginx/conf.d/default.conf
-COPY ./html /var/www/html
-COPY ./includes/ /etc/nginx/includes/
+# File Author / Maintainer
+MAINTAINER Kevin Son
+
+# Copy custom configuration file from the current directory
+COPY nginx.conf /etc/nginx/nginx.conf
