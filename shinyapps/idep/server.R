@@ -13,13 +13,13 @@ iDEPversion = "iDEP 0.53"
 
 # To test these packages, start an R session and paste these lines below.
 #library(shiny)   	# for Shiny interface
-library(RSQLite,verbose=FALSE)	# for database connection
-library(gplots,verbose=FALSE)		# for hierarchical clustering
-library(ggplot2,verbose=FALSE)	# graphics
-library(e1071,verbose=FALSE) 		# computing kurtosis
-library(DT,verbose=FALSE) 		# for renderDataTable
-library(plotly,verbose=FALSE) 	# for interactive heatmap
-library(reshape2,verbose=FALSE) 	# for melt correlation matrix in heatmap
+require(RSQLite,verbose=FALSE)	# for database connection
+require(gplots,verbose=FALSE)		# for hierarchical clustering
+require(ggplot2,verbose=FALSE)	# graphics
+require(e1071,verbose=FALSE) 		# computing kurtosis
+require(DT,verbose=FALSE) 		# for renderDataTable
+require(plotly,verbose=FALSE) 	# for interactive heatmap
+require(reshape2,verbose=FALSE) 	# for melt correlation matrix in heatmap
 # Bioconductor packages
 #source("https://bioconductor.org/biocLite.R")
 #biocLite(c( "limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata","sfsmisc","lokern","multtest" ))

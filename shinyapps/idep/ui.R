@@ -670,9 +670,6 @@ tableOutput('species' ),
 					,tableOutput('networkModuleGO')
 					,bsModal("modalExample112", "Choose soft threshold", "chooseSoftThreshold", size="large",plotOutput('softPower') )
 					,bsModal("modalExample116", "Heatmap of identified modules", "showModuleHeatmap", size="large",plotOutput('networkHeatmap') )
-	
-
-				
 				))
 				
 
