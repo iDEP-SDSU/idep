@@ -51,6 +51,8 @@ RUN wget -qO- -O tmp6.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-
 
 WORKDIR /usr/local/src/myscripts
 
+EXPOSE 3838
+
 # Install required R libraries
 # CMD ["Rscript", "librarySetup.R"]
 # CMD ["/usr/bin/shiny-server.sh"] #If you don't use docker-compose need to comment out
