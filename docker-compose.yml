@@ -2,6 +2,7 @@ version: '2'
 services:
   webapp:
     build: .
+    image: webapp:1.1
     # ports:
     #   - "80:3838"
     expose:
@@ -19,6 +20,7 @@ services:
   #   #       - "80:80"
   nginx:
     build: ./nginx
+    image: nginx:1.1
     links:
         - webapp
     ports:
