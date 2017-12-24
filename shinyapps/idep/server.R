@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.53"
+iDEPversion = "iDEP 0.6"
 ################################################################
 # R packages
 ################################################################
@@ -13,13 +13,13 @@ iDEPversion = "iDEP 0.53"
 
 # To test these packages, start an R session and paste these lines below.
 #library(shiny)   	# for Shiny interface
-require(RSQLite)	# for database connection
-require(gplots)		# for hierarchical clustering
-require(ggplot2)	# graphics
-require(e1071) 		# computing kurtosis
-require(DT) 		# for renderDataTable
-require(plotly) 	# for interactive heatmap
-require(reshape2) 	# for melt correlation matrix in heatmap
+library(RSQLite,verbose=FALSE)	# for database connection
+library(gplots,verbose=FALSE)		# for hierarchical clustering
+library(ggplot2,verbose=FALSE)	# graphics
+library(e1071,verbose=FALSE) 		# computing kurtosis
+library(DT,verbose=FALSE) 		# for renderDataTable
+library(plotly,verbose=FALSE) 	# for interactive heatmap
+library(reshape2,verbose=FALSE) 	# for melt correlation matrix in heatmap
 # Bioconductor packages
 #source("https://bioconductor.org/biocLite.R")
 #biocLite(c( "limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata","sfsmisc","lokern","multtest" ))
@@ -59,7 +59,7 @@ kurtosis.warning = 10 # log transformation recommnded
 minGenesEnrichment = 2 # perform GO or promoter analysis only if more than this many genes
 PREDA_Permutations =1000
 maxGeneClustering = 12000  # max genes for hierarchical clustering and k-Means clustering. Slow if larger
-maxGeneWGCNA = 2000 # max genes for co-expression network
+maxGeneWGCNA = 3000 # max genes for co-expression network
 maxFactors =6  # max number of factors in DESeq2 models
 set.seed(2) # seed for random number generator
 mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
@@ -414,7 +414,6 @@ speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
 # add a defult element to list    # new element name       value
 speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
 speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
-# write.csv(orgInfo,"orgInfo.csv")
 
 # move one element to the 2nd place
 move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
@@ -2648,7 +2647,7 @@ output$genePlot <- renderPlot({
 	ix = which(regexpr(  paste("^" , toupper(input$geneSearch),sep="")   ,toupper(x$Genes)) > 0)
 	
 	if(grepl(" ", input$geneSearch)  )  # if there is space character, do exact match
-		ix = match(gsub(" ","", toupper(input$geneSearch)),x$Genes)
+		ix = match(gsub(" ","", toupper(input$geneSearch)), toupper(x$Genes) )
 	
 	# too few or too many genes found
 	if(length(ix) == 0 | length(ix) > 50 ) return(NULL)
@@ -4290,7 +4289,7 @@ output$sigGeneStats <- renderPlot({
 			 geom_bar(position="dodge", stat="identity") + coord_flip() +
 			 theme(legend.position = "top") + 
 			 scale_fill_manual(values=c("red", "blue")) +
-			 theme(axis.title.y=element_blank(), axis.text=element_text(size=14))			
+			 theme(axis.title.y=element_blank(),axis.text=element_text(size=14)) 
 			
 		p
 			

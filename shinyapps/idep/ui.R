@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.54"
+iDEPversion = "iDEP.6"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -84,7 +84,7 @@ tableOutput('species' ),
 		,h5("Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data.  See ",
 			a(" documentation", href="https://idepsite.wordpress.com/"), "and",
 			a(" manuscript.", href="http://biorxiv.org/content/biorxiv/early/2017/06/09/148411.full.pdf"),
-   			"Based on annotation of",a( " 69 metazoa and 42 plant genomes ",href="https://idepsite.wordpress.com/species/") ,"in Ensembl BioMart as of 6/4/2017."
+   			"Based on annotation of",a( " 163 animal and 45 plant genomes ",href="https://idepsite.wordpress.com/species/") ,"in Ensembl BioMart as of 12/15/2017."
             ," Additional  data from"
 			,a("KEGG, ", href="www.genome.jp/kegg/")
 			,a("Reactome, ", href="http://www.reactome.org/")
@@ -257,7 +257,7 @@ tableOutput('species' ),
 				,actionButton("geneTSNE", "t-SNE map")
 				,selectInput("kmeansNormalization", h5("Normalize by gene:"), choices = list("Mean center"="geneMean","Standardization"= "geneStandardization","L1 Norm"= "L1Norm"), selected = "geneMean")	
 				,tags$style(type='text/css', "#kmeansNormalization { width:100%;   margin-top:-9px}")
-				,actionButton("showMotifKmeans", "Promoter analysis of each cluster")
+				,actionButton("showMotifKmeans", "Enriched TF binding motifs")
 				,br(),br(),downloadButton('downloadDataKmeans', 'Download K-means data')
 				,h5("Pathway database")
 				,htmlOutput("selectGO3"),tags$style(type='text/css', "#selectGO3 { width:100%;   margin-top:-9px}")
@@ -353,7 +353,7 @@ tableOutput('species' ),
 				
                 mainPanel(
 					plotOutput('sigGeneStats')
-					,br(),br(),h4("Numbers of differentially expressed genes for all comparisons")
+					,br(),br(),h4("Numbers of differentially expressed genes for all comparisons. \"B-A\" means B vs. A. Interaction terms starts with \"I:\" ")
 					,tableOutput('sigGeneStatsTable')
 
 
@@ -425,7 +425,7 @@ tableOutput('species' ),
 				 ,br(),br(),downloadButton('download.selectedHeatmap.data', "Download gene list & data" )
 				  ,tags$style(type='text/css', "#download.selectedHeatmap.data { width:100%;   margin-top:-12px}")				 
 				,h5("Also try",  a("ShinyGO", href="http://ge-lab.org:3838/go/") )	
-				
+			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/degs/",target="_blank")				
 				
 				, width=4),
 				
@@ -628,7 +628,7 @@ tableOutput('species' ),
               sidebarLayout(
                 sidebarPanel(
 					h5("Identify co-expression networks and sub-modules using",a( "WGCNA.", href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-559",target="_blank" )  ,"Only useful when  sample size is large(>15). ")
-					,numericInput("nGenesNetwork", label = h5("Most variable genes to include "), min = 10, max = 1000, value = 1000) 
+					,numericInput("nGenesNetwork", label = h5("Most variable genes to include (<3001) "), min = 10, max = 3000, value = 1000) 
 				,fluidRow(
 				 column(6, numericInput("mySoftPower", label = h5("Soft Threshold"), min = 1, max = 20, value = 5))
 				 ,column(6, numericInput("minModuleSize", label = h5("Min. Module Size"), min = 10, max = 100, value = 20)  )
@@ -651,15 +651,16 @@ tableOutput('species' ),
 				 column(6, numericInput("edgeThreshold", label = h5("Edge Threshold"), min = 0, max = 1, value =.4, step=.1))
 				 ,column(6, numericInput("topGenesNetwork", label = h5("Top genes"), min = 10, max = 2000, value = 10, step = 10)  )
 				) # fluidRow	
-				,tags$style(type='text/css', "#mySoftPower { width:100%;   margin-top:-12px}")
-				,tags$style(type='text/css', "#minModuleSize { width:100%;   margin-top:-12px}")
+				,tags$style(type='text/css', "#edgeThreshold { width:100%;   margin-top:-12px}")
+				,tags$style(type='text/css', "#topGenesNetwork { width:100%;   margin-top:-12px}")
 				,actionButton("networkLayout", "Change network layout",style="float:center")				
-				,h5("Enrichment database")
+				,h5("Enrichment database:")
 				,htmlOutput('selectGO5')
 				,downloadButton('download.WGCNA.Module.data',"Download all modules")
 				,downloadButton('downloadSelectedModule',"Download network for selected module")	
 					,h5("The network file can be imported to",a(" VisANT", href="http://visant.bu.edu/",target="_blank"),
-					" or ", a("Cytoscape.",href="http://www.cytoscape.org/",target="_blank" )  )				
+					" or ", a("Cytoscape.",href="http://www.cytoscape.org/",target="_blank" )  )	
+					,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/network/",target="_blank")					
 					),
 				mainPanel(	
 					
@@ -670,6 +671,9 @@ tableOutput('species' ),
 					,tableOutput('networkModuleGO')
 					,bsModal("modalExample112", "Choose soft threshold", "chooseSoftThreshold", size="large",plotOutput('softPower') )
 					,bsModal("modalExample116", "Heatmap of identified modules", "showModuleHeatmap", size="large",plotOutput('networkHeatmap') )
+	
+
+				
 				))
 				
 
@@ -682,7 +686,7 @@ tableOutput('species' ),
      htmlOutput('RsessionInfo')
  ) ))
 
-  #,tags$head(includeScript("ga.js")) # tracking usage  
+  ,tags$head(includeScript("ga.js")) # tracking usage  
   )# Navibar
 
 )
