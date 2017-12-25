@@ -2757,21 +2757,18 @@ processedData <- reactive({
 	  })
 
 processedCountsData <- reactive({
-		  if (is.null(input$file1) && input$goButton == 0)    return()
-		  
+	if (is.null(input$file1) && input$goButton == 0) return()	  
 		##################################  
 		# these are needed to make it responsive to changes in parameters
 		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat))
+			if(input$dataFileFormat== 1)
+				{  tem = input$minCounts; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
 		if( !is.null(input$dataFileFormat) )
 			if(input$dataFileFormat== 2) 
 				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 		####################################
-			
 		if(input$selectOrg == "NEW") return(  convertedData() ) else { 
-
 			withProgress(message="Preparing data for download ", {
 
 			if(is.null(convertedCounts() ) ) return(NULL) else 
@@ -2803,9 +2800,7 @@ processedCountsData <- reactive({
 				})
 				return(tem2)
 			}
-
 			}) # progress
-			
 		}
 	  })  
 
@@ -2819,8 +2814,8 @@ output$downloadProcessedData <- downloadHandler(
 output$downloadConvertedCounts <- downloadHandler(
 		filename = function() {"Converted_Counts_Data.csv"},
 		content = function(file) {
-      write.csv( processedCountsData(), file, row.names=FALSE )	    
-	})
+        write.csv( processedCountsData(), file, row.names=FALSE )	    
+		})
  
 
 output$examineData <- DT::renderDataTable({
@@ -7626,13 +7621,10 @@ wgcna <- reactive ({
 			if(input$dataFileFormat== 2) 
 				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 		tem = input$CountsDEGMethod;
-		
 		tem = input$mySoftPower;
 		tem = input$nGenesNetwork
 		tem = input$minModuleSize
-		
 		####################################   
-   
 		isolate({
 			withProgress(message="Constructing co-expression network using WGCNA", {
 			
