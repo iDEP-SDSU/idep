@@ -2802,21 +2802,23 @@ processedCountsData <- reactive({
 			}
 			}) # progress
 		}
-	  })  
+})
 
 output$downloadProcessedData <- downloadHandler(
-		filename = function() {"Processed_Data.csv"},
-		content = function(file) {
-      write.csv( processedData(), file, row.names=FALSE )	    
-	})
+	filename = function() {"Processed_Data.csv"},
+	content = function(file) {
+    	write.csv(processedData(),file, row.names=FALSE )	    
+	},
+	contentType = "text/csv"
+)
 
-	
 output$downloadConvertedCounts <- downloadHandler(
-		filename = function() {"Converted_Counts_Data.csv"},
-		content = function(file) {
-        write.csv( processedCountsData(), file, row.names=FALSE )	    
-		})
- 
+	filename = function() {"Converted_Counts_Data.csv"},
+	content = function(file) {
+		write.csv( processedCountsData(), file, row.names=FALSE )
+	},
+	contentType = "text/csv"
+)
 
 output$examineData <- DT::renderDataTable({
    inFile <- input$file1
