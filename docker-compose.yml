@@ -1,4 +1,4 @@
-version: '2'
+version: '2.2'
 services:
   webapp:
     build: .
@@ -7,6 +7,7 @@ services:
     #   - "80:3838"
     expose:
       - "3838"
+    #cpus: 0.4875 
     volumes:
       - ./shinyapps/:/srv/shiny-server/
       - ./data_12_19_2017/:/srv/data/
@@ -14,6 +15,14 @@ services:
       - ./config/:/etc/shiny-server/
       - ./classes/:/usr/local/src/myscripts/
     command: ["/usr/bin/shiny-server.sh"]
+#    deploy:
+#      resources:
+#        limits:
+#          cpus: '0.1125'
+#          memory: 1000M
+#        reservations:
+#          cpus: '0.01'
+#          memory: 200M
   # webapp:
   #   build: ./testweb
   #   # ports:
@@ -21,6 +30,7 @@ services:
   nginx:
     build: ./nginx
     image: nginx:1.1
+    cpus: 0.1
     links:
         - webapp
     ports:
