@@ -1,3 +1,0 @@
-Make any changes to this file and upload. It will force the server to re-start.
-Change idle time shorter  
-resue default

@@ -3,30 +3,16 @@ services:
   webapp:
     build: .
     image: kruny1001/webapp
-    # ports:
-    #   - "80:3838"
     expose:
       - "3838"
-    #cpus: 0.4875 
     volumes:
       - ./shinyapps/:/srv/shiny-server/
       - ./data_12_19_2017/:/srv/data/
+      - ./countsData/:/srv/data/            # read app
       - ./shinylog/:/var/log/shiny-server/
       - ./config/:/etc/shiny-server/
       - ./classes/:/usr/local/src/myscripts/
     command: ["/usr/bin/shiny-server.sh"]
-#    deploy:
-#      resources:
-#        limits:
-#          cpus: '0.1125'
-#          memory: 1000M
-#        reservations:
-#          cpus: '0.01'
-#          memory: 200M
-  # webapp:
-  #   build: ./testweb
-  #   # ports:
-  #   #       - "80:80"
   nginx:
     build: ./nginx
     image: nginx:1.1

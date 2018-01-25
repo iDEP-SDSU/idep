@@ -2757,18 +2757,21 @@ processedData <- reactive({
 	  })
 
 processedCountsData <- reactive({
-	if (is.null(input$file1) && input$goButton == 0) return()	  
+		  if (is.null(input$file1) && input$goButton == 0)    return()
+		  
 		##################################  
 		# these are needed to make it responsive to changes in parameters
 		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat))
-			if(input$dataFileFormat== 1)
-				{  tem = input$minCounts; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
 		if( !is.null(input$dataFileFormat) )
 			if(input$dataFileFormat== 2) 
 				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 		####################################
+			
 		if(input$selectOrg == "NEW") return(  convertedData() ) else { 
+
 			withProgress(message="Preparing data for download ", {
 
 			if(is.null(convertedCounts() ) ) return(NULL) else 
@@ -2800,25 +2803,25 @@ processedCountsData <- reactive({
 				})
 				return(tem2)
 			}
+
 			}) # progress
+			
 		}
-})
+	  })  
 
 output$downloadProcessedData <- downloadHandler(
-	filename = function() {"Processed_Data.csv"},
-	content = function(file) {
-    	write.csv(processedData(),file, row.names=FALSE )	    
-	},
-	contentType = "text/csv"
-)
+		filename = function() {"Processed_Data.csv"},
+		content = function(file) {
+      write.csv( processedData(), file, row.names=FALSE )	    
+	})
 
+	
 output$downloadConvertedCounts <- downloadHandler(
-	filename = function() {"Converted_Counts_Data.csv"},
-	content = function(file) {
-		write.csv( processedCountsData(), file, row.names=FALSE )
-	},
-	contentType = "text/csv"
-)
+		filename = function() {"Converted_Counts_Data.csv"},
+		content = function(file) {
+      write.csv( processedCountsData(), file, row.names=FALSE )	    
+	})
+ 
 
 output$examineData <- DT::renderDataTable({
    inFile <- input$file1
@@ -7623,10 +7626,13 @@ wgcna <- reactive ({
 			if(input$dataFileFormat== 2) 
 				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 		tem = input$CountsDEGMethod;
+		
 		tem = input$mySoftPower;
 		tem = input$nGenesNetwork
 		tem = input$minModuleSize
+		
 		####################################   
+   
 		isolate({
 			withProgress(message="Constructing co-expression network using WGCNA", {
 			
@@ -7847,7 +7853,8 @@ moduleData <- reactive({
 			
 			x2 = merge(wgcna()$moduleInfo, wgcna()$x, by.y="row.names",by.x="subGeneNames",all.x=TRUE )
 			x2 = x2[order(x2$dynamicMods),]
-
+			
+			if( input$selectGO5 != "ID not recognized!" & input$selectOrg != "NEW")
 			if( !is.null(allGeneInfo() )   ) {
 				x2 <- merge(x2, allGeneInfo(), by.x ="subGeneNames", by.y="ensembl_gene_id",all.x=T )
 				rownames(x2)= paste0(x2$symbol,"__",  x2$subGeneNames )
@@ -8021,6 +8028,7 @@ exportModuleNetwork <- reactive({
 		
 		# adding symbols 
 		probeToGene = NULL
+		if( input$selectGO5 != "ID not recognized!" & input$selectOrg != "NEW")
 	    if(sum(is.na( allGeneInfo()$symbol ) )/ dim( allGeneInfo() )[1] <.5 ) { # if more than 50% genes has symbol
 			probeToGene = allGeneInfo()[,c("ensembl_gene_id","symbol")]
 			probeToGene$symbol = gsub(" ","",probeToGene$symbol)
@@ -8113,6 +8121,7 @@ output$moduleNetwork <- renderPlot({
 		
 		# adding symbols 
 		probeToGene = NULL
+		if( input$selectGO5 != "ID not recognized!" & input$selectOrg != "NEW")
 	    if(sum(is.na( allGeneInfo()$symbol ) )/ dim( allGeneInfo() )[1] <.5 ) { # if more than 50% genes has symbol
 			probeToGene = allGeneInfo()[,c("ensembl_gene_id","symbol")]
 			probeToGene$symbol = gsub(" ","",probeToGene$symbol)
