@@ -11,17 +11,15 @@ GSEInfoFile = "../../countsData/GSEinfo.txt"
 
 if(file.exists(sampleInfoFile)) {
   sample_info =read.table(sampleInfoFile, sep="\t",header=T )
-}
-else {   # create sample info
+} else {   # create sample info
   # Check if gene expression file was already downloaded, if not in current directory download file form repository
-  if(!file.exists(destination_fileH)){
+  if(!file.exists(destination_fileH)) {
     print("Downloading compressed gene expression matrix.")
     url = "https://s3.amazonaws.com/mssm-seq-matrix/human_matrix.h5"
     download.file(url, destination_file, quiet = FALSE)
   } else{
       print("Local file already exists.")
-    }
-
+  }
     # Check if gene expression file was already downloaded, if not in current directory download file form repository
     if(!file.exists(destination_fileM)){
       print("Downloading compressed gene expression matrix.")
@@ -31,7 +29,7 @@ else {   # create sample info
       print("Local file already exists.")
     }
 
-   # if(!file.exists(infoFile)){
+      # if(!file.exists(infoFile)){
       destination_file = destination_fileH
       # Retrieve information from compressed data
       GSMs = h5read(destination_file, "meta/Sample_geo_accession")
@@ -59,6 +57,7 @@ else {   # create sample info
       sample_info = as.data.frame( rbind(sample_info, sample_infoM) )
       write.table(sample_info, sampleInfoFile, sep="\t",row.names=F)
 }
+
 humanNDataset <<- length(unique(sample_info$sample_series_id[which(sample_info$species == "human")]) )
 mouseNDataset <<- length(unique(sample_info$sample_series_id[which(sample_info$species == "mouse")]) )
 
