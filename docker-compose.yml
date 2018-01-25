@@ -2,7 +2,7 @@ version: '2.2'
 services:
   webapp:
     build: .
-    image: webapp:1.1
+    image: kruny1001/webapp
     # ports:
     #   - "80:3838"
     expose:
