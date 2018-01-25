@@ -8,7 +8,7 @@ services:
     volumes:
       - ./shinyapps/:/srv/shiny-server/
       - ./data_12_19_2017/:/srv/data/
-      - ./countsData/:/srv/data/            # read app
+      - ./countsData/:/srv/countsData/            # read app
       - ./shinylog/:/var/log/shiny-server/
       - ./config/:/etc/shiny-server/
       - ./classes/:/usr/local/src/myscripts/
