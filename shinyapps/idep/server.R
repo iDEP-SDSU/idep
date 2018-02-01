@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.6"
+iDEPversion = "iDEP 0.61"
 ################################################################
 # R packages
 ################################################################
@@ -607,7 +607,7 @@ geneInfo <- function (converted,selectOrg){
 
 # Main function. Find a query set of genes enriched with functional category
 FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR) {
-	maxTerms =10 # max number of enriched terms
+	maxTerms =15 # max number of enriched terms
 	idNotRecognized = as.data.frame("ID not recognized!")
 	
 	if(is.null(converted) ) return(idNotRecognized) # no ID 
@@ -2987,7 +2987,131 @@ output$heatmap1 <- renderPlot({
 
 } , height = 800, width = 400 )  
 
+#heatmap for download
+plotHeatmap1 <- reactive ({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  {  
+			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
+		}
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) { 
+			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
+		}
+	####################################
+		
+    x <- readData()$data   # x = read.csv("expression1.csv")
+	withProgress(message="Runing hierarchical clustering ", {
+	n=input$nGenes
+	#if(n>6000) n = 6000 # max
+	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+	# this will cutoff very large values, which could skew the color 
+	if(input$geneCentering)
+		x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
+	
+	# standardize by gene
+	if(input$geneNormalize) 
+		x <- x / apply(x,1,sd)
+		
+	# row centering and normalize
+	x <- scale(x, center = input$sampleCentering, scale = input$sampleNormalize) 
 
+	
+	
+	cutoff = median(unlist(x)) + input$heatmapCutoff * sd (unlist(x)) 
+	x[x>cutoff] <- cutoff
+	cutoff = median(unlist(x)) - input$heatmapCutoff *sd (unlist(x)) 
+	x[x< cutoff] <- cutoff
+	
+    groups = detectGroups(colnames(x) )
+	# if sample info file is uploaded us that info:
+
+	if(!is.null(readSampleInfo()) &&  !is.null(input$selectFactorsHeatmap) ) { 
+		if(input$selectFactorsHeatmap == "Sample_Name" )
+			groups = detectGroups(colnames(x) ) else 
+			{ 	ix = match(input$selectFactorsHeatmap, colnames(readSampleInfo() ) ) 
+				groups = readSampleInfo()[,ix]
+			}
+	}	
+	
+	groups.colors = rainbow(length(unique(groups) ) )
+
+	#http://stackoverflow.com/questions/15351575/moving-color-key-in-r-heatmap-2-function-of-gplots-package
+	lmat = rbind(c(0,4),c(0,1),c(3,2),c(5,0))
+	lwid = c(2,6) # width of gene tree; width of heatmap
+	lhei = c(1.5,.2,8,1.1)
+	#layout matrix
+	#		 [,1] [,2]
+	#	[1,]    0    4
+	#	[2,]    0    1
+	#	[3,]    3    2
+	#	[4,]    5    0
+	# 4--> column tree; 1--> column color bar; 2--> heatmap; 3-> row tree; 5--> color key.
+	# height of 4 rows is specified by lhei; width of columns is given by lwid
+
+
+	par(mar = c(5, 4, 1.4, 0.2))
+	
+
+	if( n>110) 
+	heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
+		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
+		,Colv=!input$noSampleClustering
+		#col=colorpanel(75,"green","black","magenta")  ,
+		#col=bluered(75),
+		#col=greenred(75), 
+		,col= heatColors[as.integer(input$heatColors1),]
+		,density.info="none", trace="none", scale="none", keysize=.5
+		,key=T, symkey=F
+		,ColSideColors=groups.colors[ as.factor(groups)]
+		,labRow=""
+		,margins=c(8,0)
+		,srtCol=45
+		,cexCol=2  # size of font for sample names
+		,lmat = lmat, lwid = lwid, lhei = lhei
+		)
+
+	if( n<=110) 
+	heatmap.2(x, distfun =  distFuns[[as.integer(input$distFunctions)]]
+		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
+		,Colv=!input$noSampleClustering		
+		,col= heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.5
+		,key=T, symkey=F,
+		#,labRow=labRow
+		,ColSideColors=groups.colors[ as.factor(groups)]
+		,margins=c(18,12)
+		,cexRow=1
+		,srtCol=45
+		,cexCol=1.8  # size of font for sample names
+		,lmat = lmat, lwid = lwid, lhei = lhei
+	)
+	
+	
+	par(lend = 1)           # square line ends for the color legend
+	add_legend("topleft",
+		legend = unique(groups), # category labels
+		col = groups.colors[ unique(as.factor(groups))],  # color key
+		lty= 1,             # line style
+		lwd = 10            # line width
+	)
+	
+	incProgress(1,"Done")
+	})
+
+}  ) 
+	# conventional heatmap.2 plot
+
+output$downloadHeatmap1 <- downloadHandler(
+      filename = "heatmap.tiff",
+      content = function(file) {
+	tiff(file, width = 8, height = 16, units = 'in', res = 300, compression = 'lzw')
+
+        plotHeatmap1()
+        dev.off()
+      })  
 # interactive heatmap with plotly
 output$heatmap <- renderPlotly({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -3343,6 +3467,169 @@ output$PCA <- renderPlot({
 	 
   }, height = 500, width = 500)
 
+PCAplots4Download <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  {  
+			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
+		}
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) { 
+			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
+		}
+	####################################
+	
+	x <- convertedData();
+     if(input$PCA_MDS ==1) {   #PCA
+	 pca.object <- prcomp(t(x))
+	 # par(mfrow=c(2,1))
+	if(0){
+     plot( pca.object$x[,1], pca.object$x[,2], pch = 1,cex = 2,col = detectGroups(colnames(x)),
+	     xlim=c(min(pca.object$x[,1]),max(pca.object$x[,1])*1.5   ),
+		xlab = "First principal component", ylab="Second Principal Component")
+		text( pca.object$x[,1], pca.object$x[,2],  pos=4, labels =colnames(x), offset=.5, cex=.8)
+		}
+		
+	pcaData = as.data.frame(pca.object$x[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+	colnames(pcaData) = c("PC1", "PC2", "Sample_Name")
+	percentVar=round(100*summary(pca.object)$importance[2,1:2],0)
+	if(is.null(readSampleInfo())) { 
+		p=ggplot(pcaData, aes(PC1, PC2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
+		} else {
+		pcaData = cbind(pcaData,readSampleInfo() )
+		p=ggplot(pcaData, aes_string("PC1", "PC2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
+		
+		}
+	p=p+xlab(paste0("PC1: ",percentVar[1],"% variance")) 
+	p=p+ylab(paste0("PC2: ",percentVar[2],"% variance")) 
+	p=p+ggtitle("Principal component analysis (PCA)")+coord_fixed(ratio=1.0)+ 
+     theme(plot.title = element_text(size = 16,hjust = 0.5)) + theme(aspect.ratio=1) +
+	 theme(axis.text.x = element_text( size = 16),
+	       axis.text.y = element_text( size = 16),
+		   axis.title.x = element_text( size = 16),
+		   axis.title.y = element_text( size = 16) ) +
+	theme(legend.text=element_text(size=16))
+	   print(p)
+	   }
+	# variance chart
+	# plot(pca.object,type="bar", xlab="Principal Components", main ="Variances explained")
+	
+	if(input$PCA_MDS ==2) {  # pathway
+	withProgress(message="Running pathway analysis", {
+	library(PGSEA,verbose=FALSE)
+	pca.object <- prcomp(t(x))
+	pca = 100*pca.object$rotation 
+	Npca = 5
+	if (Npca > dim(pca)[2]) { Npca = dim(pca)[2] } else pca <-  pca[,1:Npca]
+	#pca = pca[,1:5]
+	if(is.null(GeneSets() ) ) return(NULL)  # no species recognized
+	if(length(GeneSets() ) <= 1 ) return(NULL)
+	#cat("\n\nGene Sets:",length( GeneSets()))
+	pg = myPGSEA (pca,cl=GeneSets(),range=c(15,2000),p.value=TRUE, weighted=FALSE,nPermutation=1)
+	incProgress(2/8)
+	# correcting for multiple testing
+	p.matrix = pg$p.result
+	tem = p.adjust(as.numeric(p.matrix),"fdr")
+	p.matrix = matrix(tem, nrow=dim(p.matrix)[1], ncol = dim(p.matrix)[2] )
+	rownames(p.matrix) = rownames(pg$p.result); colnames(p.matrix) = colnames(pg$p.result)
+
+
+	selected =c()
+	for( i in 1:dim(p.matrix)[2]) {
+	  tem = which( rank(p.matrix[,i],ties.method='first') <= 5)  # rank by P value
+	 #tem = which( rank(pg$result[,i],ties.method='first') >= dim(p.matrix)[1]-3.1) # rank by mean
+	 names(tem) = paste("PC",i," ", rownames(p.matrix)[tem], sep="" )
+	 selected = c(selected, tem)
+	}
+	rowids = gsub(" .*","",names(selected))
+	rowids = as.numeric( gsub("PC","",rowids) )
+	pvals = p.matrix[ cbind(selected,rowids) ]
+	a=sprintf("%-1.0e",pvals)
+	tem = pg$result[selected,]
+	rownames(tem) = paste(a,names(selected)); #colnames(tem)= paste("PC",colnames(tem),sep="")
+	
+	tem = tem[!duplicated(selected),] 
+	incProgress(3/8)
+	#tem = t(tem); tem = t( (tem - apply(tem,1,mean)) ) #/apply(tem,1,sd) )
+
+	smcPlot(tem,scale =  c(-max(tem), max(tem)), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5, main="Pathways analysis on PCA")
+	 } )
+	 }
+	 
+	if(input$PCA_MDS ==3) {  # MDS
+	 fit = cmdscale( dist2(t(x) ), eig=T, k=2)
+	 
+	# par(pin=c(5,5))
+	if(0) {
+	plot( fit$points[,1],fit$points[,2],pch = 1,cex = 2,col = detectGroups(colnames(x)),
+	     xlim=c(min(fit$points[,1]),max(fit$points[,1])*1.5   ),
+	  xlab = "First dimension", ylab="Second dimension"  )
+	 text( fit$points[,1], fit$points[,2],  pos=4, labels =colnames(x), offset=.5, cex=1)
+	}
+	pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+	colnames(pcaData) = c("x1", "x2", "Sample_Name")
+	
+
+	if(is.null(readSampleInfo())) { 
+	p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
+	} else {
+		pcaData = cbind(pcaData,readSampleInfo() )
+		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
+		}
+	p=p+xlab("Dimension 1") 
+	p=p+ylab("Dimension 2") 
+	p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
+     theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
+	 	 theme(axis.text.x = element_text( size = 16),
+	       axis.text.y = element_text( size = 16),
+		   axis.title.x = element_text( size = 16),
+		   axis.title.y = element_text( size = 16) ) +
+	theme(legend.text=element_text(size=16))
+	   print(p)
+	
+	 }
+
+	if(input$PCA_MDS ==4) {  # t-SNE
+	 library(Rtsne,verbose=FALSE)
+	 set.seed(input$tsneSeed2)
+	 tsne <- Rtsne(t(x), dims = 2, perplexity=1, verbose=FALSE, max_iter = 400)
+
+	pcaData = as.data.frame(tsne$Y); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+	colnames(pcaData) = c("x1", "x2", "Sample_Name")
+	
+
+	if(is.null(readSampleInfo())) { 
+	p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
+	} else {
+		pcaData = cbind(pcaData,readSampleInfo() )
+		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
+		}
+	p=p+xlab("Dimension 1") 
+	p=p+ylab("Dimension 2") 
+	p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
+     theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
+	 	 theme(axis.text.x = element_text( size = 16),
+	       axis.text.y = element_text( size = 16),
+		   axis.title.x = element_text( size = 16),
+		   axis.title.y = element_text( size = 16) ) +
+	theme(legend.text=element_text(size=16))
+	   print(p)
+	
+	 }
+	
+	 
+  })
+
+output$downloadPCA <- downloadHandler(
+      filename = "PCA_MDS_tSNE.tiff",
+      content = function(file) {
+	  tiff(file, width = 8, height = 8, units = 'in', res = 300, compression = 'lzw')
+	  PCAplots4Download()
+        dev.off()
+      })    
   
 PCAdata <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -3427,7 +3714,6 @@ Kmeans <- reactive({ # Kmeans clustering
 
   } )
   
-  
 output$KmeansHeatmap <- renderPlot({ # Kmeans clustering
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
@@ -3450,7 +3736,37 @@ output$KmeansHeatmap <- renderPlot({ # Kmeans clustering
 	
 	incProgress(1, detail = paste("Done")) }) #progress 
   } , height = 500)
-  
+
+KmeansHeatmap4Download <- reactive({ # Kmeans clustering
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+	tem = input$KmeansReRun
+	####################################
+	
+	if( is.null(Kmeans()) ) return(NULL)
+	withProgress(message="Creating heatmap", {
+   
+	myheatmap2(Kmeans()$x-apply(Kmeans()$x,1,mean), Kmeans()$bar,1000,mycolor=input$heatColors1)
+	
+	incProgress(1, detail = paste("Done")) }) #progress 
+  })
+
+output$downloadKmeansHeatmap <- downloadHandler(
+      filename = "Kmeans_heatmap.tiff",
+      content = function(file) {
+	  tiff(file, width = 8, height = 12, units = 'in', res = 300, compression = 'lzw')
+	  KmeansHeatmap4Download()
+        dev.off()
+      })
   
 output$KmeansNclusters <- renderPlot({ # Kmeans clustering
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -3482,7 +3798,6 @@ output$KmeansNclusters <- renderPlot({ # Kmeans clustering
 	incProgress(1, detail = paste("Done")) }) #progress 
   } , height = 500, width = 550)
   
-  
 KmeansData <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	if( is.null(Kmeans()) ) return(NULL)
@@ -3510,7 +3825,6 @@ KmeansData <- reactive({
 	
 	 #progress 
   })
-  
   
 output$tSNEgenePlot <- renderPlot({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -3616,7 +3930,7 @@ output$downloadDataKmeans <- downloadHandler(
 	)
 	
 	
-output$KmeansGO <- renderTable({
+output$KmeansGO_backup <- renderTable({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectGO3
 	if( is.null(input$selectGO3 ) ) return (NULL)
@@ -3675,7 +3989,82 @@ output$KmeansGO <- renderTable({
 	results
   }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
-  
+KmeansGOdata <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectGO3
+	if( is.null(input$selectGO3 ) ) return (NULL)
+	if( input$selectGO3 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.") )#No matching species
+   	if( is.null(Kmeans()) ) return(NULL)
+	if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+	tem = input$KmeansReRun
+	####################################
+	withProgress(message="GO Enrichment", {
+		# GO
+		pp=0
+		minFDR = 0.01
+
+		for( i in 1:input$nClusters) {
+			incProgress(1/input$nClusters, , detail = paste("Cluster",toupper(letters)[i]) )
+
+			query = rownames(Kmeans()$x)[which(Kmeans()$bar == i)]
+			if(input$selectOrg == "NEW" && !is.null( input$gmtFile) ){ 
+				result <- findOverlapGMT( query, GeneSets(),1) 
+			} else {
+				convertedID <- converted()
+				convertedID$IDs <- query
+				result = FindOverlap (convertedID,allGeneInfo(),input$selectGO3,input$selectOrg,1) 
+			}
+			if( dim(result)[2] ==1) next;   # result could be NULL
+			result$direction = toupper(letters)[i] 
+			if (pp==0 ) { results <- result; pp <- 1;
+			} else {
+				results <- rbind(results,result)
+			}
+		}
+
+		if(pp == 0) return( as.data.frame("No enrichment found."))
+		results= results[,c(6,1,2,4,5)]
+		colnames(results)= c("Cluster","FDR","Genes","Pathways","Genes")
+		if(min(results$FDR) > minFDR ) results = as.data.frame("No signficant enrichment found.") else
+		results = results[which(results$FDR < minFDR),]
+		incProgress(1, detail = paste("Done")) 
+	}) #progress
+	if( is.null(results) )  return ( as.matrix("No significant enrichment.") )	
+	if( class(results) != "data.frame")  return ( as.matrix("No significant enrichment.") )
+	if( dim(results)[2] ==1)  return ( as.matrix("No significant enrichment.") )
+	colnames(results)[2] = "adj.Pval"
+	#results$Genes <- as.character(results$Genes)
+	#results$Cluster[which( duplicated(results$Cluster) ) ] <- ""
+	results
+  })
+
+output$KmeansGO <- renderTable({	
+  if(is.null(KmeansGOdata())) return(NULL)
+  results1 = KmeansGOdata()
+	results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )
+	results1[,1] <- as.character(results1[,1])
+	results1[ duplicated (results1[,1] ),1 ] <- ""  
+	
+  results1[,-5]
+	
+  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+
+output$downloadKmeansGO <- downloadHandler(
+		filename = function() {"KmeansEnrichment.csv"},
+		content = function(file) {
+			write.csv(KmeansGOdata(), file, row.names=FALSE)
+	    }
+	)  
 output$KmeansPromoter <- renderTable({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectGO3; tem = input$radioPromoterKmeans; tem=input$nGenesKNN; tem=input$nClusters
@@ -4195,21 +4584,15 @@ output$vennPlot <- renderPlot({
 			results = limma()$results
 
 			# split by up or down regulation
-			if(input$UpDownRegulated) { 			
-			results2 = cbind(results, results)
-			colnames(results2)= c( paste0("UP_", colnames(results)),paste0("Down_", colnames(results)) )
-			for(i in 1:dim(results)[2] ) {
-				results2[,i*2-1] = results[,i]
-				results2[ which(results2[,i*2-1] < 0 ) , i*2-1] = 0
-				results2[,i*2] = results[,i]	
-				results2[ which(results2[,i*2] > 0 ) , i*2] = 0	
+			if(input$UpDownRegulated) { 	
+			    resultUp = results; 
+				resultUp[resultUp < 0 ] <- 0;
+				colnames(resultUp) = paste0("Up_", colnames(resultUp))
+			    resultDown = results; 
+				resultDown[resultDown > 0] <- 0;
+				colnames(resultDown) = paste0("Down_", colnames(resultDown))				
+				results <- cbind(resultUp, resultDown)
 			}			
-			results <- results2			
-			}			
-			
-			
-			
-			
 			
 			ixa = c()
 			for (comps in  input$selectComparisonsVenn) { 
@@ -4224,8 +4607,7 @@ output$vennPlot <- renderPlot({
 						ix = match(comps, tem) 
 
 						if(is.na(ix) ) # this is for limma package
-							ix = match(comps, colnames(results)) 			
-						
+							ix = match(comps, colnames(results)) 						
 					  }
 					ixa = c(ixa,ix)
 				  }
@@ -4233,11 +4615,6 @@ output$vennPlot <- renderPlot({
 			results = results[,ixa,drop=FALSE] # only use selected comparisons
 			if(dim(results)[2] >5) results <- results[,1:5]
 			colnames(results) = gsub("^I-","I:" ,colnames(results))	
-
-			
-			
-			
-			
 			
 			vennDiagram(results,circle.col=rainbow(5), cex=c(1.,1, 0.7) ) # part of limma package
 
@@ -4289,7 +4666,9 @@ output$sigGeneStats <- renderPlot({
 			 geom_bar(position="dodge", stat="identity") + coord_flip() +
 			 theme(legend.position = "top") + 
 			 scale_fill_manual(values=c("red", "blue")) +
-			 theme(axis.title.y=element_blank(),axis.text=element_text(size=14)) 
+			 ylab("Number of differntially expressed genes") +
+			 theme(axis.title.y=element_blank(),
+				axis.text=element_text(size=14)) 
 			
 		p
 			
@@ -4345,7 +4724,7 @@ output$listComparisonsVenn <- renderUI({
 		}	 else { 
 				choices = setNames(limma()$comparisons, limma()$comparisons  )
 				if(input$UpDownRegulated) {
-				  tem = c( paste0("UP_", limma()$comparisons),paste0("Down_", limma()$comparisons) )
+				  tem = c( paste0("Up_", limma()$comparisons),paste0("Down_", limma()$comparisons) )
 				  choices = setNames(tem, tem)
 				
 				}
@@ -4471,7 +4850,49 @@ output$selectedHeatmap <- renderPlot({
 	
     }, height = 400, width = 500)
 
+selectedHeatmap4Download <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	
+	tem = input$selectOrg
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast;
+	tem = input$heatColors1
+	tem = input$CountsDEGMethod; 	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	####################################
+	
+	withProgress(message="Generating heatmap", {
+	if( is.null(input$selectContrast)) return(NULL)
+	if( is.null(limma()$results)) return(NULL)
+	if( is.null(selectedHeatmap.data() )) return(NULL) 
+	isolate({ 
+	
+		 bar = selectedHeatmap.data()$bar +2;
+		 bar[bar==3] =2
+
+	  	 myheatmap2( selectedHeatmap.data()$genes,bar,200,mycolor=input$heatColors1,c("Down","Up") )
+	 
+	 incProgress(1, detail = paste("Done")) 
+	
+	 })
+	})
+	
+    })
+
+output$downloadSelectedHeatmap <- downloadHandler(
+      filename = "Heatmap_comparison.tiff",
+      content = function(file) {
+	  tiff(file, width = 8, height = 12, units = 'in', res = 300, compression = 'lzw')
+	  selectedHeatmap4Download()
+        dev.off()
+      })	
 selectedHeatmap.data <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	
@@ -4787,6 +5208,58 @@ output$volcanoPlot <- renderPlot({
 
   },height=450, width=500)
   
+volcanoPlot4Download <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
+	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+	tem = input$minCounts; tem= input$NminSamples;tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+
+	if( is.null(input$selectContrast) ) return(NULL)
+	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
+	if( length(limma()$topGenes) == 0 ) return(NULL)
+	isolate({ 
+	withProgress(message="Generating volcano plot",{ 
+	
+	if(length( limma()$comparisons)  ==1 )  
+    { top1=limma()$topGenes[[1]]  
+	} else {
+	  top = limma()$topGenes
+	  ix = match(input$selectContrast, names(top))
+	  if( is.na(ix)) return (NULL)
+	  top1 <- top[[ix]]; 
+	  }
+	  incProgress(1/2)
+	  if(dim(top1)[1] == 0 ) return (NULL)
+	  colnames(top1)= c("Fold","FDR")
+	 top1 <- as.data.frame(top1) # convert to data frame
+     top1 <- top1[which(!(is.na(top1$Fold)|is.na(top1$FDR)    )),] # remove NA's 
+	 top1$upOrDown <- 1
+	 #write.csv(top1,"tem.csv")
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval& top1$Fold  >= log2( input$limmaFC)) ]  <- 2
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
+	 par(mar=c(5,5,1,1))
+	 plot(top1$Fold,-log10(top1$FDR),col = c("grey30", "red","blue")[top1$upOrDown],
+	 pch =16, cex = .3, xlab= "log2 fold change", ylab = "- log10 (FDR)",
+	 cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	)    
+     legend("bottomright",c("Upregulated","Downregulated"),fill = c("red","blue"),cex=1.1 )
+	 
+	}) })
+
+  })
+
+output$downloadVolcanoPlot <- downloadHandler(
+      filename = "volcanoPlot.tiff",
+      content = function(file) {
+	  tiff(file, width = 8, height = 8, units = 'in', res = 500, compression = 'lzw')
+	  volcanoPlot4Download()
+        dev.off()
+      })
   
 output$volcanoPlotly <- renderPlotly({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
@@ -4936,8 +5409,93 @@ output$scatterPlot <- renderPlot({
 	})
 	 
   },height=450, width=500)
+scatterPlot4Download <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
+		tem = input$selectOrg; tem = input$noIDConversion
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
+	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	if( is.null(input$selectContrast) ) return(NULL)
+	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
+	if( length(limma()$topGenes) == 0 ) return(NULL)
+	if(grepl("I:", input$selectContrast) ) 	return(NULL) # if interaction term related comparison
+	isolate({ 
 
-  
+	withProgress(message="Generating scatter plot with all genes",{ 
+	if(length( limma()$comparisons)  ==1 )  
+    { top1=limma()$topGenes[[1]]  
+	} else {
+	  top = limma()$topGenes
+	  ix = match(input$selectContrast, names(top))
+	  if( is.na(ix)) return (NULL)
+	  top1 <- top[[ix]]; 
+	  }
+	  if(dim(top1)[1] == 0 ) return (NULL)
+	  colnames(top1)= c("Fold","FDR")
+	 top1 <- as.data.frame(top1) # convert to data frame
+     top1 <- top1[which(!(is.na(top1$Fold)|is.na(top1$FDR)    )),] # remove NA's 
+	 top1$upOrDown <- 1
+	 #write.csv(top1,"tem.csv")
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval& top1$Fold  >= log2( input$limmaFC)) ]  <- 2
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
+
+     incProgress(1/2)
+	 
+		 iz = findContrastSamples(	input$selectContrast, 
+									colnames(convertedData()),
+									readSampleInfo(),
+									input$selectFactorsModel,
+									input$selectModelComprions, 
+									factorReferenceLevels(),
+									input$CountsDEGMethod,
+									input$dataFileFormat
+								)
+	 
+	 genes <- convertedData()[,iz]
+	 
+	 g = detectGroups(colnames(genes))
+	 
+	 if(length(unique(g))  > 2) { plot.new(); text(0.5,0.5, "Not available.") } else{
+		average1 <- apply( genes[, which( g == unique(g)[1] ) ],1,mean)
+
+		average2 <- apply(  genes[, which( g == unique(g)[2] ) ],1,mean)
+
+		genes2 <- cbind(average1,average2)
+		rownames(genes2) = rownames(genes)
+		genes2 <-  merge(genes2,top1,by="row.names")
+
+		
+		par(mar=c(5,5,1,1))
+		plot(genes2$average2,genes2$average1,col = c("grey45","red","blue")[genes2$upOrDown],
+		pch =16, cex = .3, xlab= paste("Average expression in", unique(g)[2] ), 
+		ylab = paste("Average expression in", unique(g)[1] ),
+		cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	)    
+		legend("bottomright",c("Upregulated","Downregulated"),fill = c("red","blue"),cex=1.3 )
+
+
+	 
+	 }
+	 
+		})
+
+	})
+	 
+  })
+
+output$downloadScatterPlot <- downloadHandler(
+      filename = "scatterPlot.tiff",
+      content = function(file) {
+	  tiff(file, width = 8, height = 8, units = 'in', res = 500, compression = 'lzw')
+	  scatterPlot4Download()
+        dev.off()
+      })
+	  
 output$scatterPlotly <- renderPlotly({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
 		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
@@ -5104,6 +5662,82 @@ output$MAplot <- renderPlot({
 	 
   },height=450, width=500)
 
+MAplot4Download <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
+		tem = input$selectOrg; tem = input$noIDConversion
+	tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast
+	tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+	tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	if( is.null(input$selectContrast) ) return(NULL)
+	if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
+	if( length(limma()$topGenes) == 0 ) return(NULL)
+	if(grepl("I:", input$selectContrast) ) 	return(NULL) # if interaction term related comparison
+	isolate({ 
+
+	withProgress(message="Generating scatter plot with all genes",{ 
+	if(length( limma()$comparisons)  ==1 )  
+    { top1=limma()$topGenes[[1]]  
+	} else {
+	  top = limma()$topGenes
+	  ix = match(input$selectContrast, names(top))
+	  if( is.na(ix)) return (NULL)
+	  top1 <- top[[ix]]; 
+	  }
+	  if(dim(top1)[1] == 0 ) return (NULL)
+	  colnames(top1)= c("Fold","FDR")
+	 top1 <- as.data.frame(top1) # convert to data frame
+     top1 <- top1[which(!(is.na(top1$Fold)|is.na(top1$FDR)    )),] # remove NA's 
+	 top1$upOrDown <- 1
+	 #write.csv(top1,"tem.csv")
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval& top1$Fold  >= log2( input$limmaFC)) ]  <- 2
+	 top1$upOrDown[ which(top1$FDR <=  input$limmaPval & top1$Fold  <= -log2( input$limmaFC)) ]  <- 3
+
+     incProgress(1/2)
+	 
+		 iz = findContrastSamples(	input$selectContrast, 
+									colnames(convertedData()),
+									readSampleInfo(),
+									input$selectFactorsModel,
+									input$selectModelComprions, 
+									factorReferenceLevels(),
+									input$CountsDEGMethod,
+									input$dataFileFormat
+								)
+	 
+
+
+		average1 <- as.data.frame( apply( convertedData()[,iz],1,mean) )
+		colnames(average1) = "Average"
+		rownames(average1) = rownames(convertedData())
+		
+		genes2 <-  merge(average1,top1,by="row.names")
+
+		par(mar=c(5,5,1,1))
+		plot(genes2$Average,genes2$Fold,col = c("grey45","red","blue")[genes2$upOrDown],
+		pch =16, cex = .3, xlab= "Average expression", 
+		ylab = "Log2 fold change",
+		cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	)   
+			abline(h=0)
+		legend("bottomright",c("Upregulated","Downregulated"),fill = c("red","blue"),cex=1.3 )
+		})
+
+	})
+	 
+  })
+
+output$downloadMAPlot <- downloadHandler(
+      filename = "MA_Plot.tiff",
+      content = function(file) {
+	  tiff(file, width = 8, height = 8, units = 'in', res = 500, compression = 'lzw')
+	  MAplot4Download()
+        dev.off()
+      })
 output$MAplotly <- renderPlotly({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
 		tem = input$selectOrg; tem = input$noIDConversion
@@ -5186,7 +5820,7 @@ output$MAplotly <- renderPlotly({
 	 
   })
   
-output$geneListGO <- renderTable({		
+geneListGOTable <- reactive({		
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		if( is.null(input$selectContrast)) return(NULL)
 		if( is.null( input$selectGO2) ) return (NULL)
@@ -5228,7 +5862,7 @@ output$geneListGO <- renderTable({
 				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO2,input$selectOrg,1) }
 
 			if( dim(result)[2] ==1) next;   # result could be NULL
-			if(i == -1) result$Genes = "Up regulated"  else result$Genes = "Down regulated"
+			if(i == -1) result$direction = "Up regulated"  else result$direction = "Down regulated"
 			if (pp==0 ) { results1 <- result; pp = 1;} else  results1 = rbind(results1,result)
 		}
 
@@ -5236,30 +5870,42 @@ output$geneListGO <- renderTable({
 		if ( is.null( results1) ) return (NoSig)
 		if( dim(results1)[2] == 1 ) return(NoSig)  # Returns a data frame: "No significant results found!"
 		
-		results1= results1[,c(5,1,2,4)]
-		colnames(results1)= c("List","FDR","Genes","GO terms or pathways")
+		results1= results1[,c(6,1,2,4,5)]
+		colnames(results1)= c("List","FDR","Genes","GO terms or pathways","Genes")
 		minFDR = 0.01
 		if(min(results1$FDR) > minFDR ) results1 = as.data.frame("No signficant enrichment found.") else
 		results1 = results1[which(results1$FDR < minFDR),]
 		
 		incProgress(1, detail = paste("Done")) 
 		
-		if(dim(results1)[2] != 4) return(NoSig)
-		colnames(results1)= c("Direction","adj.Pval","Genes","Pathways")
-		
-		results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )
-		results1[,1] <- as.character(results1[,1])
-		tem <- results1[,1]
+		if(dim(results1)[2] != 5) return(NoSig)
+		colnames(results1)= c("Direction","adj.Pval","nGenes","Pathways","Genes")
+		rownames(results1)=1:nrow(results1)
 
-		results1[ duplicated (results1[,1] ),1 ] <- ""
 		
-		results1
+		return( results1 )
 		 })#progress
 		}) #isolate
-  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
-	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })
+})		
 
+
+output$geneListGO <- renderTable({	
+  if(is.null(geneListGOTable())) return(NULL)
+  results1 = geneListGOTable()
+	results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )
+	results1[,1] <- as.character(results1[,1])
+	results1[ duplicated (results1[,1] ),1 ] <- ""  
 	
+  results1[,-5]
+	
+  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })	
+output$downloadGOTerms <- downloadHandler(
+		filename = function() {"Enriched.csv"},
+		content = function(file) {
+			write.csv(geneListGOTable(), file)
+	    }
+	)
 output$DEG.Promoter <- renderTable({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	if( is.null(input$selectContrast)) return(NULL)
@@ -7528,9 +8174,11 @@ output$geneListBicluster <- renderTable({
 		if( res@Number == 0 ) return(as.data.frame("No clusters found!") ) 
 		top1 = biclust::bicluster(biclustering()$x, res, as.numeric( input$selectBicluster)  )[[1]]	
 		top2 = top1  
-		  # if new species
-		  if( input$selectGO4 == "ID not recognized!" | input$selectOrg == "NEW") return (top1); 
-		  
+		  # if  new species
+		if(  input$selectGO4 == "ID not recognized!" | input$selectOrg == "NEW") {
+			top1 = as.data.frame(rownames(top1))
+			colnames(top1)="Genes"
+		} else {	# add gene info			  
 		  top1 <- merge(top1, allGeneInfo(), by.x ="row.names", by.y="ensembl_gene_id",all.x=T )
 		  
 		  if ( sum( is.na(top1$band)) == dim(top1)[1] ) top1$chr = top1$chromosome_name else
@@ -7549,6 +8197,7 @@ output$geneListBicluster <- renderTable({
 		  if ( sum( is.na(top1$Symbol)) == dim(top1)[1] ) top1 <- top1[,-3] 
 		  
 		  if(dim(top1)[1] > 1000 ) top1 = top1[1:1000,] # at most 1000 genes are shown
+		}
 		  return(top1)
 	
   }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)

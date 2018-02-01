@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.6"
+iDEPversion = "iDEP.61"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -12,10 +12,11 @@ iDEPversion = "iDEP.6"
  #   
 shinyUI(
   
-  navbarPage(iDEPversion,
+  navbarPage(
+iDEPversion,
 			id='navBar',
             tabPanel("Load Data",
-	     	titlePanel("Upload Files"),
+	     	titlePanel("Upload Files "),
     sidebarLayout(
       sidebarPanel(
 	    actionButton("goButton", "Click here to load demo data"),
@@ -159,8 +160,8 @@ tableOutput('species' ),
 				,actionButton("examineDataB", "Search processed data")
                  ,br(),br()
 				 ,checkboxInput("noIDConversion", "Do not convert gene IDs to Ensembl.", value = FALSE)
-				 ,downloadButton('downloadProcessedData', 'Download processed data') 
-				 ,conditionalPanel("input.dataFileFormat == 1",downloadButton('downloadConvertedCounts', 'Download converted counts data') )
+				 ,downloadButton('downloadProcessedData', 'Processed data') 
+				 ,conditionalPanel("input.dataFileFormat == 1",downloadButton('downloadConvertedCounts', 'Converted counts data') )
 
 				 ,br(),br()
 				 ,textOutput('nGenesFilter')
@@ -224,12 +225,16 @@ tableOutput('species' ),
 					,checkboxInput("noSampleClustering", "Do not re-order or cluster samples", value = FALSE)
 					,htmlOutput('listFactorsHeatmap')
 
-					,downloadButton('downloadData', 'Download heatmap data')
+					,downloadButton('downloadData', 'Heatmap data')
+					,downloadButton('downloadHeatmap1', 'High-resolution figure')
+						
 					,br(),a(h5("?",align = "right"), href="https://idepsite.wordpress.com/heatmap/",target="_blank")
 						),
 					mainPanel(				  
-						plotOutput("heatmap1")
 
+						plotOutput("heatmap1")
+						
+						
 						# ,verbatimTextOutput("event")
 						,bsModal("modalExample8", "Correlation matrix using top 75% genes", "showCorrelation", size = "large",plotOutput("correlationMatrix"))
 						,bsModal("modalExample228", "Hierarchical clustering using top 75% genes", "showSampleTree", size = "large",plotOutput("sampleTree"))
@@ -258,7 +263,9 @@ tableOutput('species' ),
 				,selectInput("kmeansNormalization", h5("Normalize by gene:"), choices = list("Mean center"="geneMean","Standardization"= "geneStandardization","L1 Norm"= "L1Norm"), selected = "geneMean")	
 				,tags$style(type='text/css', "#kmeansNormalization { width:100%;   margin-top:-9px}")
 				,actionButton("showMotifKmeans", "Enriched TF binding motifs")
-				,br(),br(),downloadButton('downloadDataKmeans', 'Download K-means data')
+				,br(),br(),downloadButton('downloadDataKmeans', 'K-means data')
+				,downloadButton('downloadKmeansHeatmap', 'High-resolution figure')
+				,downloadButton('downloadKmeansGO',"Enrichment details")
 				,h5("Pathway database")
 				,htmlOutput("selectGO3"),tags$style(type='text/css', "#selectGO3 { width:100%;   margin-top:-9px}")
 				
@@ -300,15 +307,17 @@ tableOutput('species' ),
 				,conditionalPanel("input.PCA_MDS == 4", # only show if PCA or MDS (not pathway)
 					actionButton("tsneSeed2", "Re-calculate tSNE")
 				)
-				,br(),br()
-			,downloadButton('downloadPCAData', 'Download Coordinates')
- 					#sliderInput("nGenes1", label = h4("Most variable genes to include"), min = 40, max = 2000, value = 200,step=20) 
 			
-			,br(),br()
+			,br()
 			,conditionalPanel("input.PCA_MDS != 2" # only show if PCA or MDS (not pathway)
 				,htmlOutput('listFactors')
 				,htmlOutput('listFactors2')
 			)
+				,br()
+			,downloadButton('downloadPCAData', 'Coordinates')
+ 					#sliderInput("nGenes1", label = h4("Most variable genes to include"), min = 40, max = 2000, value = 200,step=20) 
+
+			,downloadButton('downloadPCA', 'High-resolution figure')
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/pca/",target="_blank")				
 				),
                 mainPanel(
@@ -422,9 +431,11 @@ tableOutput('species' ),
 				 ,br(),fluidRow(column( 11, actionButton("showMotif", "TF binding motifs in promoters")))
 				  ,tags$style(type='text/css', "#showMotif { width:100%;   margin-top:-12px}")
 				 #,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
-				 ,br(),br(),downloadButton('download.selectedHeatmap.data', "Download gene list & data" )
+				 ,br(),br(),downloadButton('download.selectedHeatmap.data', "Gene list & data" )
 				  ,tags$style(type='text/css', "#download.selectedHeatmap.data { width:100%;   margin-top:-12px}")				 
-				,h5("Also try",  a("ShinyGO", href="http://ge-lab.org:3838/go/") )	
+				 ,downloadButton('downloadGOTerms', "Enrichment details" )
+				 ,downloadButton('downloadSelectedHeatmap',"High-resolution figure")
+				 ,h5("Also try",  a("ShinyGO", href="http://ge-lab.org:3838/go/") )	
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/degs/",target="_blank")				
 				
 				, width=4),
@@ -432,22 +443,24 @@ tableOutput('species' ),
 				mainPanel(
 					#h4("Expression pattern of DEGs for selected comparison:")
                    plotOutput("selectedHeatmap")
-				   ,br(),h4("Enriched pathways in DEGs for selected comparison:")
+				   ,br()
+				   ,h4("Enriched pathways in DEGs for selected comparison:")				    
 				   ,tableOutput("geneListGO")
 				   ,h4("Top Genes for selected comparison:"),tableOutput('geneList')
 				   ,bsModal("modalExample4", "Volcano plot", "showVolcano", size = "large",
 						checkboxInput("volcanoPlotBox", label = "Show interactive version w/ gene symbols", value = FALSE)
-						,conditionalPanel("input.volcanoPlotBox == 0",	plotOutput("volcanoPlot") )
+						,conditionalPanel("input.volcanoPlotBox == 0",	downloadButton('downloadVolcanoPlot',"Figure" ),plotOutput("volcanoPlot")
+						 )
 						,conditionalPanel("input.volcanoPlotBox == 1",plotlyOutput("volcanoPlotly",width = "550px", height = "550px") )
 					)
 				   ,bsModal("modalExample5", "Scatter plot", "showScatter", size = "large",
 						checkboxInput("scatterPlotBox", label = "Show interactive version w/ gene symbols", value = FALSE)
-						,conditionalPanel("input.scatterPlotBox == 0",	plotOutput("scatterPlot") )
+						,conditionalPanel("input.scatterPlotBox == 0",	downloadButton('downloadScatterPlot',"Figure" ),	plotOutput("scatterPlot") )
 						,conditionalPanel("input.scatterPlotBox == 1",plotlyOutput("scatterPlotly",width = "550px", height = "550px") )
 				   )
 				   ,bsModal("modalExample5555", "M-A plot", "showMAplot", size = "large",
 						checkboxInput("MAPlotBox", label = "Show interactive version w/ gene symbols", value = FALSE)
-						,conditionalPanel("input.MAPlotBox == 0",	plotOutput("MAplot") )
+						,conditionalPanel("input.MAPlotBox == 0",	downloadButton('downloadMAPlot',"Figure" ),	plotOutput("MAplot") )
 						,conditionalPanel("input.MAPlotBox == 1",plotlyOutput("MAplotly",width = "550px", height = "550px") )
 				   )
 				   	,bsModal("modalExample1", "Enriched TF binding motifs in promoters of DEGs", "showMotif", size = "large"
@@ -506,7 +519,7 @@ tableOutput('species' ),
 				  plotOutput("PGSEAplotAllSamples") )
 				   ,conditionalPanel("input.pathwayMethod == 1 | input.pathwayMethod == 3" 
 				    ,htmlOutput("listSigPathways")
-					,downloadButton('downloadSelectedPathwayData', 'Download expression data for selected pathway')  )
+					,downloadButton('downloadSelectedPathwayData', 'Expression data for genes in selected pathway')  )
 					,conditionalPanel(" (input.pathwayMethod == 1 | input.pathwayMethod == 3 ) & input.selectGO == 'KEGG'",imageOutput("KeggImage"))
 					,conditionalPanel("(input.pathwayMethod == 1 | input.pathwayMethod == 3 ) & input.selectGO != 'KEGG'",plotOutput("selectedPathwayHeatmap")) 
 			   
