@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.61"
+iDEPversion = "iDEP 0.62"
 ################################################################
 # R packages
 ################################################################
@@ -58,6 +58,7 @@ kurtosis.log = 50  # log transform is enforced when kurtosis is big
 kurtosis.warning = 10 # log transformation recommnded 
 minGenesEnrichment = 2 # perform GO or promoter analysis only if more than this many genes
 PREDA_Permutations =1000
+redudantGeneSetsRatio = 0.9
 maxGeneClustering = 12000  # max genes for hierarchical clustering and k-Means clustering. Slow if larger
 maxGeneWGCNA = 3000 # max genes for co-expression network
 maxFactors =6  # max number of factors in DESeq2 models
@@ -606,7 +607,7 @@ geneInfo <- function (converted,selectOrg){
  }
 
 # Main function. Find a query set of genes enriched with functional category
-FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR) {
+FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE) {
 	maxTerms =15 # max number of enriched terms
 	idNotRecognized = as.data.frame("ID not recognized!")
 	
@@ -663,14 +664,33 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR) {
 	x$FDR = p.adjust(x$Pval,method="fdr")
 	x <- x[ order( x$FDR)  ,]  # sort according to FDR
 	
+	if(dim(x)[1] > maxTerms ) x = x[1:maxTerms,]	
 	
 	if(min(x$FDR) > minFDR) x=as.data.frame("No significant enrichment found!") else {
-	x <- x[which(x$FDR < minFDR),] 
-	if(dim(x)[1] > maxTerms ) x = x[1:maxTerms,]
-	x= cbind(x,sapply( x$pathwayID, sharedGenesPrefered ) )
-	colnames(x)[7]= "Genes"
-	x <- subset(x,select = c(FDR,overlap,n,description,Genes) )
-	colnames(x) = c("Corrected P value (FDR)", "Genes in list", "Total genes in category","Functional Category","Genes"  )
+		x <- x[which(x$FDR < minFDR),] 
+
+		x= cbind(x,sapply( x$pathwayID, sharedGenesPrefered ) )
+		colnames(x)[7]= "Genes"
+		x <- subset(x,select = c(FDR,overlap,n,description,Genes) )
+		colnames(x) = c("Corrected P value (FDR)", "Genes in list", "Total genes in category","Functional Category","Genes"  )
+		
+		# remove redudant gene sets
+		if(reduced != FALSE ){  # reduced=FALSE no filtering,  reduced = 0.9 filter sets overlap with 90%
+			n=  nrow(x)
+			tem=rep(TRUE,n )
+			geneLists = lapply(x$Genes, function(y) unlist( strsplit(as.character(y)," " )   ) )
+			for( i in 2:n)
+				for( j in 1:(i-1) ) { 
+				  if(tem[j]) { # skip if this one is already removed
+					  commonGenes = length(intersect(geneLists[i] ,geneLists[j] ) )
+					  if( commonGenes/ length(geneLists[j] ) > reduced )
+						tem[i] = FALSE	
+				  }			
+				}								
+			x <- x[which(tem),]		
+		}
+		
+
 	}
 			
 	dbDisconnect(pathway)
@@ -830,7 +850,7 @@ PGSEApathway <- function (converted,convertedData, selectOrg,GO,gmt, myrange,Pva
 	{ if(dim(pg2)[1] > top ) {  pg3 = pg2[1:top,]; } else {  pg3 = pg2;  } }
 
 	rownames(pg3) = sapply(rownames(pg3) , extract1)
-	a=sprintf("%-1.0e",pg3[,1])
+	a=sprintf("%-3.2e",pg3[,1])
 	rownames(pg3) = paste(a,rownames(pg3),sep=" ")
 	pg3 =pg3[,-1]
 	
@@ -1584,6 +1604,272 @@ findContrastSamples <- function(selectContrast, allSampleNames,sampleInfo=NULL, 
 	return(iz)
 }
 
+# a program for ploting enrichment results by highlighting the similarities among terms
+# must have columns: Direction, adj.Pval   Pathways Genes
+#  Direction	adj.Pval	nGenes	Pathways		Genes
+#Down regulated	3.58E-59	131	Ribonucleoprotein complex biogenesis	36	Nsun5 Nhp2 Rrp15 
+#Down regulated	2.55E-57	135	NcRNA metabolic process	23	Nsun5 Nhp2 Rrp15 Emg1 Ddx56 Rsl1d1 enrichmentPlot <- function( enrichedTerms){
+# Up or down regulation is color-coded
+# gene set size if represented by the size of marker
+enrichmentPlot <- function( enrichedTerms, rightMargin=33) {
+  if(class(enrichedTerms) != "data.frame") return(NULL)
+  library(dendextend) # customizing tree
+  
+  geneLists = lapply(enrichedTerms$Genes, function(x) unlist( strsplit(as.character(x)," " )   ) )
+  names(geneLists)= enrichedTerms$Pathways
+
+  # compute overlaps percentage--------------------
+
+  n = length(geneLists)
+  w <- matrix(NA, nrow = n, ncol = n)
+# compute overlaps among all gene lists
+    for (i in 1:n) {
+        for (j in i:n) {
+            u <- unlist(geneLists[i])
+            v <- unlist(geneLists[j])
+            w[i, j] = length(intersect(u, v))/length(unique(c(u,v)))
+        }
+    }
+# the lower half of the matrix filled in based on symmetry
+    for (i in 1:n) 
+        for (j in 1:(i-1)) 
+            w[i, j] = w[j,i] 
+ 
+
+ # compute overlaps P value---------------------
+  if(0) {
+ total_elements = 30000
+  n = length(geneLists)
+  w <- matrix(rep(0,n*n), nrow = n, ncol = n)
+# compute overlaps among all gene lists
+    for (i in 1:n) {
+        for (j in (i+1):n) {
+            u <- unlist(geneLists[i])
+            v <- unlist(geneLists[j])
+            xx= length( intersect(u, v) )
+			if(xx == 0)
+				next;
+			mm = length(u)
+			nn <- total_elements - mm	
+			kk = length(v)
+			w[i,j] = -sqrt( -phyper(xx-1,mm,nn,kk, lower.tail=FALSE,log.p = TRUE ));
+			
+        }
+    }
+	
+
+# the lower half of the matrix filled in based on symmetry
+    for (i in 1:n) 
+        for (j in 1:(i-1)) 
+            w[i, j] = w[j,i] 
+			
+	# w =  w-min(w) 			
+	# for( i in 1:n) 		w[i,i] = 0;
+ 
+ }
+
+ 
+ 
+
+ 
+  Terms = paste( sprintf("%-1.0e",as.numeric(enrichedTerms$adj.Pval)), 
+				names(geneLists))
+  rownames(w) = Terms
+  colnames(w) = Terms
+  par(mar=c(0,0,1,rightMargin)) # a large margin for showing 
+
+  dend <- as.dist(1-w) %>%
+	hclust (method="average") 
+  ix = dend$order # permutated order of leaves
+
+  leafType= as.factor( gsub(" .*","", enrichedTerms$Direction[ix] ) )
+  if(length(unique(enrichedTerms$Direction)  ) ==2 )
+	leafColors = c("green","red")  else  # mycolors
+	leafColors = mycolors 
+  #leafSize = unlist( lapply(geneLists,length) ) # leaf size represent number of genes
+  #leafSize = sqrt( leafSize[ix] )  
+  leafSize = -log10(as.numeric( enrichedTerms$adj.Pval[ix] ) ) # leaf size represent P values
+  leafSize = 1.5*leafSize/max( leafSize ) + .2
+  
+	dend %>% 
+	as.dendrogram(hang=-1) %>%
+	set("leaves_pch", 19) %>%   # type of marker
+	set("leaves_cex", leafSize) %>% #Size
+	set("leaves_col", leafColors[leafType]) %>% # up or down genes
+	plot(horiz=TRUE)
+	
+  #legend("top",pch=19, col=leafColors[1:2],legend=levels(leafType),bty = "n",horiz =T  )
+  # add legend using a second layer
+  	par(lend = 1)           # square line ends for the color legend
+	add_legend("top",pch=19, col=leafColors[1:2],legend=levels(leafType),bty = "n",horiz =T 
+
+	)
+  
+}
+
+
+# numChar=100 maximum number of characters
+# n=200  maximum number of nodes
+# degree.cutoff = 0    Remove node if less connected
+#from PPInfer
+enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue, 
+    n = 50, numChar = NULL, pvalue.cutoff = 0.05, edge.cutoff = 0.05, 
+    degree.cutoff = 0, edge.width = function(x) {
+        5 * x^2
+    }, node.size = function(x) {
+        2.5 * log10(x)
+    }, group = FALSE, group.color = c("green","red" ), group.shape = c("circle", 
+        "square"), legend.parameter = list("topright"), show.legend = TRUE, plotting=TRUE,
+    ...) 
+{
+	library(igraph)
+	
+    x <- data.frame(x, group)
+    colnames(x)[length(colnames(x))] <- "Group"
+    x <- x[as.numeric( x[, pvalue]) < pvalue.cutoff, ]
+    x <- x[order(x[, pvalue]), ]
+    n <- min(nrow(x), n)
+    if (n == 0) {
+        stop("no enriched term found...")
+    }
+    x <- x[1:n, ]
+    index <- match(x[, node.id], names(gene.set))
+    geneSets <- list()
+    for (i in 1:n) {
+        geneSets[[i]] <- gene.set[[index[i]]]
+    }
+    names(geneSets) <- x[, node.name]
+    if (is.null(numChar)) {
+        numChar <- max(nchar(as.character(x[, node.name])))
+    }
+    else {
+        if (length(unique(substr(x[, node.name], 1, numChar))) < 
+            nrow(x)) {
+            numChar <- max(nchar(as.character(x[, node.name])))
+            message("Note : numChar is too small.", "\n")
+        }
+    }
+    x[, node.name] <- paste(substr(x[, node.name], 1, numChar), 
+        ifelse(nchar(as.character(x[, node.name])) > numChar, 
+            "...", ""), sep = "")
+    w <- matrix(NA, nrow = n, ncol = n)
+
+    for (i in 1:n) {
+        for (j in i:n) {
+            u <- unlist(geneSets[i])
+            v <- unlist(geneSets[j])
+            w[i, j] = length(intersect(u, v))/length(unique(c(u, 
+                v)))
+        }
+    }
+    list.edges <- stack(data.frame(w))
+    list.edges <- cbind(list.edges[, 1], rep(x[, node.name], 
+        n), rep(x[, node.name], each = n))
+    list.edges <- list.edges[list.edges[, 2] != list.edges[,3], ]
+    list.edges <- list.edges[!is.na(list.edges[, 1]), ]
+    g <- graph.data.frame(list.edges[, -1], directed = FALSE)
+    E(g)$width = edge.width(as.numeric(list.edges[, 1]))
+    V(g)$size <- node.size(lengths(geneSets))
+    g <- delete.edges(g, E(g)[as.numeric(list.edges[, 1]) < edge.cutoff])
+    index.deg <- igraph::degree(g) >= degree.cutoff
+    g <- delete.vertices(g, V(g)[!index.deg])
+    x <- x[index.deg, ]
+    index <- index[index.deg]
+    if (length(V(g)) == 0) {
+        stop("no categories greater than degree.cutoff...")
+    }
+    n <- min(nrow(x), n)
+    x <- x[1:n, ]
+    group.level <- sort(unique(group))
+    pvalues <- x[, pvalue]
+    for (i in 1:length(group.level)) {
+        index <- x[, "Group"] == group.level[i]
+        V(g)$shape[index] <- group.shape[i]
+        group.pvalues <- pvalues[index]
+        if (length(group.pvalues) > 0) {
+            if (max(group.pvalues) == min(group.pvalues)) {
+                V(g)$color[index] <- adjustcolor(group.color[i], 
+                  alpha.f = 0.5)
+            }
+            else {
+                V(g)$color[index] <- sapply(1 - (group.pvalues - 
+                  min(group.pvalues))/(max(group.pvalues) - min(group.pvalues)), 
+                  function(x) {
+                    adjustcolor(group.color[i], alpha.f = x)
+                  })
+            }
+        }
+    }
+	if(plotting) { 
+		plot(g,, vertex.label.dist=1, ...)
+		if (show.legend) {
+			legend.parameter$legend <- group.level
+			legend.parameter$text.col <- group.color
+			legend.parameter$bty <- "n"	
+			do.call(legend, legend.parameter)
+		}}
+    return(g)
+}
+
+
+enrichmentNetwork <- function(enrichedTerms){
+	geneLists = lapply(enrichedTerms$Genes, function(x) unlist( strsplit(as.character(x)," " )   ) )
+	names(geneLists)= enrichedTerms$Pathways
+	enrichedTerms$Direction = gsub(" .*","",enrichedTerms$Direction )
+
+	g <- enrich.net2(enrichedTerms, geneLists, node.id = "Pathways", numChar = 100, 
+	   pvalue = "adj.Pval", edge.cutoff = 0.2, pvalue.cutoff = 1, degree.cutoff = 0,
+	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 0.8, vertex.label.color = "black")
+
+}
+
+enrichmentNetworkPlotly <- function(enrichedTerms){
+	geneLists = lapply(enrichedTerms$Genes, function(x) unlist( strsplit(as.character(x)," " )   ) )
+	names(geneLists)= enrichedTerms$Pathways
+
+	g <- enrich.net2(enrichedTerms, geneLists, node.id = "Pathways", numChar = 100, 
+	   pvalue = "adj.Pval", edge.cutoff = 0.2, pvalue.cutoff = 1, degree.cutoff = 0,
+	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 0.8, vertex.label.color = "black"
+	   ,plotting=TRUE)
+
+	vs <- V(g)
+	es <- as.data.frame(get.edgelist(g))
+	Nv <- length(vs)
+	Ne <- length(es[1]$V1)
+	# create nodes
+	L <- layout.kamada.kawai(g)
+	Xn <- L[,1]
+	Yn <- L[,2]
+	inc = (max(Yn)-min(Yn))/50  # for shifting
+	#group <- ifelse(V(g)$shape == "circle", "GO", "KEGG")
+	 group <- as.character(enrichedTerms$Direction)
+	network <- plot_ly(x = ~Xn, y = ~Yn, type = "scatter", mode = "markers",
+	   marker = list(color = V(g)$color, size = V(g)$size*2,
+		  symbol= ~V(g)$shape, line = list(color = "gray", width = 2)),
+	   hoverinfo = "text", text = ~paste("</br>", group, "</br>", names(vs))) %>%
+	   add_annotations( x = ~Xn, y = ~Yn+inc, text = names(vs), showarrow = FALSE,
+		  font = list(color = "#030303", size = 12))
+	# create edges
+	edge_shapes <- list()
+	for(i in 1:Ne)
+	{
+	   v0 <- es[i,]$V1
+	   v1 <- es[i,]$V2
+	   index0 <- match(v0, names(V(g)))
+	   index1 <- match(v1, names(V(g)))
+	   edge_shape <- list(type = "line", line = list(color = "gray" ,
+		  width = E(g)$width[i]/2), x0 = Xn[index0], y0 = Yn[index0],
+		  x1 = Xn[index1], y1 = Yn[index1])
+	   edge_shapes[[i]] <- edge_shape
+	}
+	# create network
+	axis <- list(title = "", showgrid = FALSE, showticklabels = FALSE, zeroline = FALSE)
+	h <- layout(network, title = "Enrichment Network", shapes = edge_shapes,
+	   xaxis = axis, yaxis = axis)
+	config(h, showLink = TRUE)
+	   
+	   
+}
 
  if(0 ){ # pathway testing
 	x = read.csv("expression.csv")
@@ -1965,8 +2251,6 @@ if(0) {  # testing
 	if(min(results$FDR) > minFDR ) results = as.matrix("No signficant enrichment found.") else
 	results = results[which(results$FDR < minFDR),]
 }
-
-
 
 ################################################################
 #   Server function
@@ -3648,7 +3932,40 @@ PCAdata <- reactive({
 	 colnames(result) = c("PCA.x","PCA.y","MDS.x", "MDS.y", "tSNE.x", "tSNE.y")
 	 return( result)		  
   })
- 
+
+# correlation PCA with factors  
+output$PCA2factor <- renderUI({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	if(is.null(readSampleInfo())) return(NULL)
+	npc = 5 # number of Principal components
+    x <- readData()$data
+	y <- readSampleInfo()
+
+	pca.object <- prcomp(t(x))
+	pcaData = as.data.frame(pca.object$x[,1:npc]); 
+	pvals = matrix(1,nrow=npc,ncol=ncol(y))
+	for (i in 1:npc ){
+		for (j in 1:ncol(y) )
+			pvals[i,j] =summary( aov(pcaData[,i] ~ as.factor(y[,j])))[[1]][["Pr(>F)"]][1]
+	}
+	
+	pvals = pvals * npc* ncol(y)   # correcting for multiple testing
+	pvals[pvals>1] = 1
+
+	colnames(pvals) = colnames(y)
+	rownames(pvals) = paste0("PC",1:npc)
+	a="<h4>Correlation between Principal Components (PCs) with factors </h4>"
+	nchar0 = nchar(a)
+	for ( i in 1:npc){
+		j = which.min(pvals[i,])
+		if(pvals[i,j]< 0.05) a=paste0(a,rownames(pvals)[i], 
+					" is correlated with ", colnames(pvals)[j],
+					" (p=",   sprintf("%-3.2e",pvals[i,j]),").<br>")
+	}
+	if(nchar(a) == nchar0 ) return(NULL) else 
+	  return( HTML(a) )
+		  
+  }) 
  
 output$downloadPCAData <- downloadHandler(
 		filename = function() {"PCA_and_MDS.csv"},
@@ -3927,68 +4244,8 @@ output$downloadDataKmeans <- downloadHandler(
 			content = function(file) {
       write.csv(KmeansData(), file)
 	    }
-	)
+	)	
 	
-	
-output$KmeansGO_backup <- renderTable({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectGO3
-	if( is.null(input$selectGO3 ) ) return (NULL)
-	if( input$selectGO3 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.") )#No matching species
-   	if( is.null(Kmeans()) ) return(NULL)
-	if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-	tem = input$KmeansReRun
-	####################################
-	withProgress(message="GO Enrichment", {
-		# GO
-		pp=0
-		minFDR = 0.01
-
-		for( i in 1:input$nClusters) {
-			incProgress(1/input$nClusters, , detail = paste("Cluster",toupper(letters)[i]) )
-
-			query = rownames(Kmeans()$x)[which(Kmeans()$bar == i)]
-			if(input$selectOrg == "NEW" && !is.null( input$gmtFile) ){ 
-				result <- findOverlapGMT( query, GeneSets(),1) 
-			} else {
-				convertedID <- converted()
-				convertedID$IDs <- query
-				result = FindOverlap (convertedID,allGeneInfo(),input$selectGO3,input$selectOrg,1) 
-			}
-			if( dim(result)[2] ==1) next;   # result could be NULL
-			result$Genes = toupper(letters)[i] 
-			if (pp==0 ) { results <- result; pp <- 1;
-			} else {
-				results <- rbind(results,result)
-			}
-		}
-
-		if(pp == 0) return( as.data.frame("No enrichment found."))
-		results= results[,c(5,1,2,4)]
-		colnames(results)= c("Cluster","FDR","Genes","Pathways")
-		if(min(results$FDR) > minFDR ) results = as.data.frame("No signficant enrichment found.") else
-		results = results[which(results$FDR < minFDR),]
-		incProgress(1, detail = paste("Done")) 
-	}) #progress
-	if( is.null(results) )  return ( as.matrix("No significant enrichment.") )	
-	if( class(results) != "data.frame")  return ( as.matrix("No significant enrichment.") )
-	if( dim(results)[2] ==1)  return ( as.matrix("No significant enrichment.") )
-	colnames(results)[2] = "adj.Pval"
-	results$Genes <- as.character(results$Genes)
-	results$Cluster[which( duplicated(results$Cluster) ) ] <- ""
-	results
-  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
-
 KmeansGOdata <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectGO3
@@ -4007,6 +4264,10 @@ KmeansGOdata <- reactive({
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
 	tem = input$KmeansReRun
+	tem = input$nGenesKNN;
+	tem = input$kmeansNormalization
+	tem = input$nClusters
+	tem = input$removeRedudantSets
 	####################################
 	withProgress(message="GO Enrichment", {
 		# GO
@@ -4022,7 +4283,8 @@ KmeansGOdata <- reactive({
 			} else {
 				convertedID <- converted()
 				convertedID$IDs <- query
-				result = FindOverlap (convertedID,allGeneInfo(),input$selectGO3,input$selectOrg,1) 
+				if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
+				result = FindOverlap (convertedID,allGeneInfo(),input$selectGO3,input$selectOrg,1,reduced) 
 			}
 			if( dim(result)[2] ==1) next;   # result could be NULL
 			result$direction = toupper(letters)[i] 
@@ -4034,7 +4296,7 @@ KmeansGOdata <- reactive({
 
 		if(pp == 0) return( as.data.frame("No enrichment found."))
 		results= results[,c(6,1,2,4,5)]
-		colnames(results)= c("Cluster","FDR","Genes","Pathways","Genes")
+		colnames(results)= c("Cluster","FDR","nGenes","Pathways","Genes")
 		if(min(results$FDR) > minFDR ) results = as.data.frame("No signficant enrichment found.") else
 		results = results[which(results$FDR < minFDR),]
 		incProgress(1, detail = paste("Done")) 
@@ -4050,21 +4312,66 @@ KmeansGOdata <- reactive({
 
 output$KmeansGO <- renderTable({	
   if(is.null(KmeansGOdata())) return(NULL)
+  tem = input$removeRedudantSets
   results1 = KmeansGOdata()
+  if(dim(results1)[2] == 1) return( results1) else{
 	results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )
 	results1[,1] <- as.character(results1[,1])
 	results1[ duplicated (results1[,1] ),1 ] <- ""  
 	
-  results1[,-5]
-	
-  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+    return( results1[,-5])
+	 }
+  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
 output$downloadKmeansGO <- downloadHandler(
 		filename = function() {"KmeansEnrichment.csv"},
 		content = function(file) {
 			write.csv(KmeansGOdata(), file, row.names=FALSE)
 	    }
-	)  
+	) 
+output$enrichmentPlotKmeans <- renderPlot({
+    if(is.null(KmeansGOdata())) return(NULL)
+	
+	tem = input$selectGO3
+	if( is.null(input$selectGO3 ) ) return (NULL)
+	if( input$selectGO3 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.") )#No matching species
+   	if( is.null(Kmeans()) ) return(NULL)
+	if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+	tem = input$KmeansReRun; 
+	tem = input$nGenesKNN;
+	tem = input$kmeansNormalization
+	tem = input$nClusters
+	tem = input$removeRedudantSets
+	####################################
+	
+	
+	tem = KmeansGOdata()
+	colnames(tem)[1]="Direction"
+	enrichmentPlot(tem, 46  )
+
+}, width = 800, height = 1600)
+
+
+output$enrichmentPlotKmeans4Download <- downloadHandler(
+      filename = "enrichmentPlotKmeans.tiff",
+      content = function(file) {
+	  tiff(file, width = 10, height = 16, units = 'in', res = 350, compression = 'lzw')
+	  tem = KmeansGOdata()
+	  colnames(tem)[1]="Direction"
+	  enrichmentPlot(tem,41  )
+        dev.off()
+      })
+	
 output$KmeansPromoter <- renderTable({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectGO3; tem = input$radioPromoterKmeans; tem=input$nGenesKNN; tem=input$nClusters
@@ -4112,9 +4419,10 @@ output$KmeansPromoter <- renderTable({
 	})
   }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
+  
 
 ################################################################
-#   Differential gene expression
+#   Differential gene expression  1
 ################################################################
 output$listFactorsDE <- renderUI({
 	tem = input$selectOrg
@@ -4814,6 +5122,11 @@ DEG.data <- reactive({
 		})
 
 		
+################################################################
+#   Differential gene expression  2
+################################################################		
+		
+		
 output$selectedHeatmap <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	
@@ -5409,6 +5722,7 @@ output$scatterPlot <- renderPlot({
 	})
 	 
   },height=450, width=500)
+
 scatterPlot4Download <- reactive({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
 		tem = input$selectOrg; tem = input$noIDConversion
@@ -5830,6 +6144,7 @@ geneListGOTable <- reactive({
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+		tem = input$removeRedudantSets
 		####################################
 		if( is.null(limma()$results) ) return(NULL)
 		if( is.null(selectedHeatmap.data()) ) return(NULL) # this has to be outside of isolate() !!!
@@ -5859,7 +6174,8 @@ geneListGOTable <- reactive({
 			} else  { 
 				convertedID <- converted()
 				convertedID$IDs <- query
-				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO2,input$selectOrg,1) }
+				if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
+				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO2,input$selectOrg,1, reduced) }
 
 			if( dim(result)[2] ==1) next;   # result could be NULL
 			if(i == -1) result$direction = "Up regulated"  else result$direction = "Down regulated"
@@ -5892,12 +6208,14 @@ geneListGOTable <- reactive({
 output$geneListGO <- renderTable({	
   if(is.null(geneListGOTable())) return(NULL)
   results1 = geneListGOTable()
+  tem = input$removeRedudantSets
+  if(dim(results1)[2] ==1) return(results1) else { 
 	results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )
 	results1[,1] <- as.character(results1[,1])
 	results1[ duplicated (results1[,1] ),1 ] <- ""  
 	
-  results1[,-5]
-	
+	return( results1[,-5] )
+	}	
   }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })	
 output$downloadGOTerms <- downloadHandler(
@@ -5906,6 +6224,37 @@ output$downloadGOTerms <- downloadHandler(
 			write.csv(geneListGOTable(), file)
 	    }
 	)
+
+output$enrichmentPlotDEG2 <- renderPlot({
+    if(is.null(geneListGOTable())) return(NULL)
+	tem = input$removeRedudantSets
+	enrichmentPlot(geneListGOTable(), 45  )
+
+}, height=600, width=800)
+
+
+output$enrichmentPlotDEG24Download <- downloadHandler(
+      filename = "enrichmentPlotDEG2.tiff",
+      content = function(file) {
+	  tiff(file, width = 10, height = 6, units = 'in', res = 300, compression = 'lzw')
+	  enrichmentPlot(geneListGOTable(),41  )
+        dev.off()
+      })
+	  
+output$enrichmentNetworkPlot <- renderPlot({
+    if(is.null(geneListGOTable())) return(NULL)
+	tem = input$removeRedudantSets
+	enrichmentNetwork(geneListGOTable() )
+
+}, height=900, width=900)	  
+
+output$enrichmentNetworkPlotly <- renderPlotly({
+    if(is.null(geneListGOTable())) return(NULL)
+	tem = input$removeRedudantSets
+	enrichmentNetworkPlotly(geneListGOTable() )
+
+})	  
+	  
 output$DEG.Promoter <- renderTable({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	if( is.null(input$selectContrast)) return(NULL)
@@ -5966,9 +6315,12 @@ output$DEG.Promoter <- renderTable({
   }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
   
   
+  
 ################################################################
 #   Pathway analysis
 ################################################################
+ 
+ 
  
 # this updates geneset categories based on species and file
 output$selectGO1 <- renderUI({
@@ -6017,7 +6369,6 @@ output$selectGO4 <- renderUI({
 	  selectInput("selectGO4", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
 	     ,selected = "GOBP" )   } 
 	})
-
 	
 output$selectGO5 <- renderUI({
 	  tem = input$selectOrg
@@ -6030,7 +6381,6 @@ output$selectGO5 <- renderUI({
 	     ,selected = "GOBP" )   } 
 	})
 
-	
 output$PGSEAplot <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	library(PGSEA,verbose=FALSE)
@@ -6083,6 +6433,134 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 					 
 	if( is.null(result$pg3) ) { plot.new(); text(0.5,1, "No significant pathway found!")} else 
 	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), 
+	show.grid = T, margins = c(3,1, 13, 38), col = .rwb,cex.lab=0.5, main="Pathway Analysis:PGSEA")
+    }
+	
+	})
+	})
+    }, height = 800, width = 800)
+
+PGSEAplot4Download <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	library(PGSEA,verbose=FALSE)
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO;		tem = input$selectContrast1
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold	
+	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################	
+	if(is.null(input$selectGO ) ) return (NULL)
+	if(input$selectGO == "ID not recognized!" ) return( NULL)
+	isolate({ 
+	withProgress(message="Running pathway analysis", {
+	myrange = c(input$minSetSize, input$maxSetSize)
+	genes = convertedData()
+if (is.null(input$selectContrast1 ) ) return(NULL)
+	incProgress(1/4,"Retrieving gene sets")
+	gmt = GeneSets()
+	incProgress(2/4,"Runing PGSEA.")
+
+	# find related samples
+	iz = findContrastSamples(input$selectContrast1, colnames(convertedData()),readSampleInfo(),
+										input$selectFactorsModel,input$selectModelComprions, 
+										factorReferenceLevels(),input$CountsDEGMethod,
+										input$dataFileFormat  )
+
+	
+	
+	genes = genes[,iz]	
+	
+	subtype = detectGroups(colnames(genes )) 
+    if(length( GeneSets() )  == 0)  { plot.new(); text(0.5,0.5, "No gene sets!")} else {
+	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
+	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
+					 
+	if( is.null(result$pg3) ) { plot.new(); text(0.5,1, "No significant pathway found!")} else 
+	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), 
+	show.grid = T, margins = c(3,1, 13, 38), col = .rwb,cex.lab=0.5, main="Pathway Analysis:PGSEA")
+    }
+	
+	})
+	})
+    })
+
+output$PGSEAplot.Download <- downloadHandler(
+      filename = function() {paste0("PGSEA",input$selectContrast1,"(",input$selectGO,")",".tiff")},
+      content = function(file) {
+	  tiff(file, width = 10, height = 8, units = 'in', res = 400, compression = 'lzw')
+	  PGSEAplot4Download()
+        dev.off()
+      })
+	  
+output$PGSEAplot_backup <- renderPlot({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	library(PGSEA,verbose=FALSE)
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO;		tem = input$selectContrast1
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold	
+	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################	
+	if(is.null(input$selectGO ) ) return (NULL)
+	if(input$selectGO == "ID not recognized!" ) return( NULL)
+	isolate({ 
+	withProgress(message="Running pathway analysis", {
+	myrange = c(input$minSetSize, input$maxSetSize)
+	genes = convertedData()
+	if (is.null(input$selectContrast1 ) ) return(NULL)
+	if(is.null(PGSEAplot.data()) ) return(NULL)
+
+	incProgress(1/4,"Retrieving gene sets")
+	gmt = GeneSets()
+	incProgress(2/4,"Runing PGSEA.")
+
+	# find related samples
+	iz = findContrastSamples(input$selectContrast1, colnames(convertedData()),readSampleInfo(),
+										input$selectFactorsModel,input$selectModelComprions, 
+										factorReferenceLevels(),input$CountsDEGMethod,
+										input$dataFileFormat  )
+
+	
+	
+	genes = genes[,iz]	
+	
+	subtype = detectGroups(colnames(genes )) 
+    if(length( GeneSets() )  == 0)  { plot.new(); text(0.5,0.5, "No gene sets!")} else {
+	#result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
+	 #            GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
+	result = PGSEAplot.data();				 
+	if( is.null(result) ) { plot.new(); text(0.5,1, "No significant pathway found!")} else 
+	smcPlot(result,factor(subtype),scale = c(-max(result), max(result)), 
 	show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5, main="Pathway Analysis:PGSEA")
     }
 	
@@ -6090,12 +6568,194 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	})
     }, height = 800, width = 500)
 
+PGSEAplot.data <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO;		tem = input$selectContrast1
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold	
+	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+
+	isolate({ 
+	withProgress(message="Running pathway analysis", {
+	myrange = c(input$minSetSize, input$maxSetSize)
+	genes = convertedData()
+if (is.null(input$selectContrast1 ) ) return(NULL)
+	gmt = GeneSets()
+	incProgress(2/8)
+
+	if(0) { 
+	iz= match( detectGroups(colnames(genes)), unlist(strsplit( input$selectContrast1, "-"))	  )
+    iz = which(!is.na(iz))
+	if (grepl("I:",input$selectContrast1) == 1) iz=1:(dim(genes)[2]) 
+	if (length(iz) == 0) iz=1:(dim(genes)[2]) 
+	}
+	
+			  # find sample related to the comparison
+		 iz= match( detectGroups(colnames(convertedData())), unlist(strsplit( input$selectContrast1, "-"))	  )
+		 iz = which(!is.na(iz))		 
+		 if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
+			comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
+			comparisons = gsub(" vs\\. ","-",comparisons)		
+			factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
+			ik = match( input$selectContrast1, comparisons )   # selected contrast lookes like: "mutant-control"
+			if (is.na(ik)) iz=1:(dim(convertedData())[2])  else {  # interaction term, use all samples		
+				selectedfactor= factorsVector[ ik ] # corresponding factors
+				iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast1, "-"))	  )
+				iz = which(!is.na(iz))				
+			}
+			
+		
+
+
+			
+		 }
+
+		 if (grepl("I:",input$selectContrast1)) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
+		 if( is.na(iz)[1] | length(iz)<=1 )    iz=1:(dim(convertedData())[2]) 
+		#cat("\n IZ:",iz)
+	
+	genes = genes[,iz]
+
+	subtype = detectGroups(colnames(genes )) 
+    if(length( GeneSets() )  == 0)  { return(as.matrix("No significant pathway!"))} else {
+	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
+	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
+					 
+	if( is.null(result$pg3) ) { return(as.matrix("No significant pathway!"))} else 
+	   return( result$pg3)
+    }
+	
+	})
+	})
+    })
 	
 output$PGSEAplotAllSamples <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	library(PGSEA,verbose=FALSE)
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
-	tem = input$selectGO
+	tem = input$selectGO ; tem = input$selectContrast1
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold	
+
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	
+	if(is.null(input$selectGO ) ) return (NULL)
+	if(input$selectGO == "ID not recognized!" ) return( NULL)
+	isolate({ 
+	withProgress(message="Running pathway analysis", {
+	myrange = c(input$minSetSize, input$maxSetSize)
+	genes = convertedData()
+	if (is.null(input$selectContrast1 ) ) return(NULL)
+	incProgress(1/4,"Retrieving gene sets")
+	gmt = GeneSets()
+	incProgress(2/8, "Runing PGSEA")
+	subtype = detectGroups(colnames(genes )) 
+    if(length( GeneSets() )  == 0)  { plot.new(); text(0,1, "No gene sets!")} else {
+	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
+	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
+					 
+	if( is.null(result$pg3) ) { plot.new(); text(0.5,1, "No significant pathway found!")} else 
+	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), 
+	show.grid = T, margins = c(3,1, 13, 38), col = .rwb,cex.lab=0.5, main="Pathway Analysis:PGSEA")
+    }
+	
+	})
+	})
+    }, height = 800, width = 800)
+
+PGSEAplotAllSamples4download <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	library(PGSEA,verbose=FALSE)
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO ;  tem = input$selectContrast1
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold	
+
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	
+	if(is.null(input$selectGO ) ) return (NULL)
+	if(input$selectGO == "ID not recognized!" ) return( NULL)
+	isolate({ 
+	withProgress(message="Running pathway analysis", {
+	myrange = c(input$minSetSize, input$maxSetSize)
+	genes = convertedData()
+	if (is.null(input$selectContrast1 ) ) return(NULL)
+	incProgress(1/4,"Retrieving gene sets")
+	gmt = GeneSets()
+	incProgress(2/8, "Runing PGSEA")
+	subtype = detectGroups(colnames(genes )) 
+    if(length( GeneSets() )  == 0)  { plot.new(); text(0,1, "No gene sets!")} else {
+	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
+	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
+					 
+	if( is.null(result$pg3) ) { plot.new(); text(0.5,1, "No significant pathway found!")} else 
+	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), 
+	show.grid = T, margins = c(3,1, 13, 38), col = .rwb,cex.lab=0.5, main="Pathway Analysis:PGSEA")
+    }
+	
+	})
+	})
+    })
+
+output$PGSEAplotAllSamples.Download <- downloadHandler(
+      filename = function() {paste0("PGSEA_all_samples_",input$selectContrast1,"(",input$selectGO,")",".tiff")},
+      content = function(file) {
+	  tiff(file, width = 10, height = 8, units = 'in', res = 400, compression = 'lzw')
+	  PGSEAplotAllSamples4download()
+        dev.off()
+      })
+	  
+PGSEAplotAllSamples.data <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	library(PGSEA,verbose=FALSE)
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO  ; tem = input$selectContrast1
 	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
 	tem=input$nPathwayShow; tem=input$absoluteFold	
 
@@ -6131,15 +6791,17 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
 	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
 					 
-	if( is.null(result$pg3) ) { plot.new(); text(0.5,1, "No significant pathway found!")} else 
-	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), 
-	show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5, main="Pathway Analysis:PGSEA")
+	if( is.null(result$pg3) ) { return(as.matrix("No significant pathway!"))} else 
+	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
+	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
+					 
+	if( is.null(result$pg3) ) { return(as.matrix("No significant pathway!"))} else 
+	   return( result$pg3)
     }
 	
 	})
 	})
-    }, height = 800, width = 500)
-
+    })
 
 output$gagePathway <- renderTable({
 
@@ -6329,7 +6991,7 @@ fgseaPathwayData <- reactive({
 	####################################
 	
 	isolate({ 
-	withProgress(message="Running pathway analysis using GAGE", {
+	withProgress(message="Running pathway analysis using fgsea", {
 	if (is.null(input$selectContrast1 ) ) return(NULL)
 	myrange = c(input$minSetSize, input$maxSetSize)
 	noSig = as.data.frame("No significant pathway found.")
@@ -6363,7 +7025,7 @@ fgseaPathwayData <- reactive({
                   stats = fold,
                   minSize=input$minSetSize,
                   maxSize=input$maxSetSize,
-                  nperm=5000)
+                  nperm=10000)
 	 # paths <-  rbind(paths$greater,paths$less)
 	  if(dim(paths)[1] < 1  ) return( noSig )
 	       paths <- as.data.frame(paths)
@@ -6553,89 +7215,6 @@ output$ReactomePAPathway <- renderTable({
   },digits=0,align="l",include.rownames=FALSE,striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
   
-PGSEAplot.data <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	tem = input$selectOrg
-
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	tem = input$CountsDEGMethod;
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-
-	isolate({ 
-	withProgress(message="Running pathway analysis", {
-	myrange = c(input$minSetSize, input$maxSetSize)
-	genes = convertedData()
-if (is.null(input$selectContrast1 ) ) return(NULL)
-	gmt = GeneSets()
-	incProgress(2/8)
-
-	if(0) { 
-	iz= match( detectGroups(colnames(genes)), unlist(strsplit( input$selectContrast1, "-"))	  )
-    iz = which(!is.na(iz))
-	if (grepl("I:",input$selectContrast1) == 1) iz=1:(dim(genes)[2]) 
-	if (length(iz) == 0) iz=1:(dim(genes)[2]) 
-	}
-	
-			  # find sample related to the comparison
-		 iz= match( detectGroups(colnames(convertedData())), unlist(strsplit( input$selectContrast1, "-"))	  )
-		 iz = which(!is.na(iz))		 
-		 if ( !is.null(readSampleInfo()) & !is.null(input$selectFactorsModel) & length(input$selectModelComprions)>0 ) {
-			comparisons = gsub(".*: ","",input$selectModelComprions)   # strings like: "groups: mutant vs. control"
-			comparisons = gsub(" vs\\. ","-",comparisons)		
-			factorsVector= gsub(":.*","",input$selectModelComprions) # corresponding factors
-			ik = match( input$selectContrast1, comparisons )   # selected contrast lookes like: "mutant-control"
-			if (is.na(ik)) iz=1:(dim(convertedData())[2])  else {  # interaction term, use all samples		
-				selectedfactor= factorsVector[ ik ] # corresponding factors
-				iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast1, "-"))	  )
-				iz = which(!is.na(iz))				
-			}
-			
-		
-
-
-			
-		 }
-
-		 if (grepl("I:",input$selectContrast1)) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
-		 if( is.na(iz)[1] | length(iz)<=1 )    iz=1:(dim(convertedData())[2]) 
-
-
-	
-		cat("\n IZ:",iz)
-	
-	
-	
-	
-	
-	genes = genes[,iz]
-
-	subtype = detectGroups(colnames(genes )) 
-    if(length( GeneSets() )  == 0)  { plot.new(); text(0,1, "No gene sets!")} else {
-	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
-	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
-					 
-	if( is.null(result$pg3) ) { return(as.matrix("No significant pathway!"))} else 
-	   return( result$pg3)
-    }
-	
-	})
-	})
-    })
-
-	
 output$download.PGSEAplot.data <- downloadHandler(
 		filename = function() {"PGSEA_pathway_anova.csv"},
 			content = function(file) {
@@ -6671,10 +7250,21 @@ output$listSigPathways <- renderUI({
        { selectInput("sigPathways", label = NULL, # h6("Funtional Category"), 
                   choices = list("All" = "All"), selected = "All")  }	 else { 
 		choices <- "All"  # default, sometimes these methods returns "No significant pathway found"
-		if( input$pathwayMethod == 1) { if(!is.null(gagePathwayData())) if(dim(gagePathwayData())[2] >1) choices <- gagePathwayData()[,2] }
-		else if( input$pathwayMethod == 3) { if(!is.null(fgseaPathwayData())) if(dim(fgseaPathwayData())[2] >1) choices <- fgseaPathwayData()[,2] }
-		else if( input$pathwayMethod == 5) { if(!is.null(ReactomePAPathwayData())) if(dim(ReactomePAPathwayData())[2] >1) choices <- ReactomePAPathwayData()[,2] }
-		selectInput("sigPathways", label="Select a pathway to show expression pattern of related genes:",choices=choices)
+		if( input$pathwayMethod == 1) { 
+			if(!is.null(gagePathwayData())) 
+				if(dim(gagePathwayData())[2] >1) 
+				choices <- gagePathwayData()[,2] 
+		} else if( input$pathwayMethod == 3) 
+		{ 	if(!is.null(fgseaPathwayData())) 
+			if(dim(fgseaPathwayData())[2] >1) 
+				choices <- fgseaPathwayData()[,2] 
+		} else if( input$pathwayMethod == 5) {
+			if(!is.null(ReactomePAPathwayData())) 
+				if(dim(ReactomePAPathwayData())[2] >1) 
+					choices <- ReactomePAPathwayData()[,2] 
+		}
+		selectInput("sigPathways", label="Select a pathway to show expression pattern of related genes:"
+						,choices=choices)
 	        } 
 	})
 	
@@ -6733,7 +7323,7 @@ selectedPathwayData <- reactive({
 
 output$downloadSelectedPathwayData <- downloadHandler(
 		# filename = function() {"Selected_Pathway_detail.csv"},
-		filename = function() {paste(input$selectContrast1,"(",input$sigPathways,")",".csv",sep="")},
+		filename = function() {paste(input$selectContrast1,"_method_",input$sigPathways,".csv",sep="")},
 			content = function(file) {
 			write.csv(selectedPathwayData(), file)
 	    }
@@ -7365,6 +7955,157 @@ attributes(my.keggview.native) <- attributes(tmpfun)  # don't know if this is re
 	})
   }, deleteFile = TRUE)
 
+# list of pathways with details
+pathwayListData  <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem=input$limmaPval; tem=input$limmaFC
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectContrast1
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold; tem =input$pathwayMethod
+	if(is.null(input$selectGO ) ) return (NULL)
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+	tem = input$CountsDEGMethod;
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	pathways = NULL
+	if( input$pathwayMethod == 1)  
+		if(!is.null(gagePathwayData())) 
+			if(dim(gagePathwayData())[2] >1) { 
+				pathways <- gagePathwayData()
+				colnames(pathways)[2] ="Pathways"; 	
+				colnames(pathways)[4] ="nGenes"; 
+			}
+	if( input$pathwayMethod == 3) 
+		if(!is.null(fgseaPathwayData())) 
+			if(dim(fgseaPathwayData())[2] >1) {
+				pathways <- fgseaPathwayData()
+				colnames(pathways)[2] ="Pathways"; 	
+				colnames(pathways)[4] ="nGenes"; 
+			}
+	
+	if( input$pathwayMethod == 2) 
+		if(!is.null(PGSEAplot.data())) 
+			if(dim(PGSEAplot.data())[2] >1) {
+				pathways <- as.data.frame( PGSEAplot.data())
+				pathways$Pathways = substr(rownames(pathways),10, nchar( rownames(pathways)) )
+				pathways$adj.Pval = gsub(" .*","", rownames(pathways))
+				pathways$Direction ="Diff"
+				
+				}
+	if( input$pathwayMethod == 4) 
+		if(!is.null(PGSEAplotAllSamples.data())) 
+			if(dim(PGSEAplotAllSamples.data())[2] >1) {
+				pathways <- as.data.frame( PGSEAplotAllSamples.data())
+				pathways$Pathways = substr(rownames(pathways),10, nchar( rownames(pathways)) )
+				pathways$adj.Pval = gsub(" .*","", rownames(pathways))
+				pathways$Direction ="Diff"
+				
+				}			
+	if( is.null( pathways) ) return(NULL)
+	
+	# if no gene set data, return pathway list
+	if(is.null(GeneSets() ) ) return(pathways) 
+	
+
+	pathways$adj.Pval = as.numeric(pathways$adj.Pval)
+	
+	for( i in 2:nrow(pathways) )
+		if(nchar(pathways$Direction[i]) <=1)
+			pathways$Direction[i] = pathways$Direction[i-1]
+			
+	# gene symbol matching symbols 
+	probeToGene = NULL
+	if( input$selectGO != "ID not recognized!" & input$selectOrg != "NEW")
+	if(sum(is.na( allGeneInfo()$symbol ) )/ dim( allGeneInfo() )[1] <.5 ) { # if more than 50% genes has symbol
+		probeToGene = allGeneInfo()[,c("ensembl_gene_id","symbol")]
+		probeToGene$symbol = gsub(" ","",probeToGene$symbol)
+
+		ix = which( is.na(probeToGene$symbol) |
+					nchar(probeToGene$symbol)<2 | 
+					toupper(probeToGene$symbol)=="NA" |  
+					toupper(probeToGene$symbol)=="0"  ) 			
+		probeToGene[ix,2] = probeToGene[ix,1]  # use gene ID
+
+	}		
+
+	
+	pathways$Genes =""
+	# looking up genes for each pathway
+	for(i in 1:nrow(pathways) ){ 
+		ix <- which(names(GeneSets() ) == pathways$Pathways[i]   ) # find the gene set
+		if(length(ix) != 0 ) { 
+			genes <- GeneSets()[[ix]] # retrieve genes
+			
+			if(!is.null(probeToGene) ) { 
+				iy = match(genes,probeToGene[,1])
+				genes = probeToGene[iy,2]
+			}
+			
+			pathways$Genes[i] = paste(genes, collapse=" ")
+		}
+	}
+	return(pathways)
+
+
+})
+
+output$downloadPathwayListData <- downloadHandler(
+		# filename = function() {"Selected_Pathway_detail.csv"},
+		filename = function() {paste(input$selectContrast1,"(",input$pathwayMethod,")",".csv",sep="")},
+			content = function(file) {
+			write.csv(pathwayListData(), file)
+	    }
+	)
+	
+output$enrichmentPlotPathway <- renderPlot({
+    if(is.null(pathwayListData())) return(NULL)
+	tem = input$removeRedudantSets
+	enrichmentPlot(pathwayListData(), 45  )
+
+}, height=600, width=800)
+output$enrichmentPlotPathway4Download <- downloadHandler(
+      filename = "enrichmentPlotPathway.tiff",
+      content = function(file) {
+	  tiff(file, width = 10, height = 6, units = 'in', res = 300, compression = 'lzw')
+	  enrichmentPlot(pathwayListData(),41  )
+        dev.off()
+      })
+
+output$enrichmentNetworkPlotPathway <- renderPlot({
+    if(is.null(pathwayListData())) return(NULL)
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO; tem = input$selectContrast1
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold; tem =input$pathwayMethod
+	if(is.null(input$selectGO ) ) return (NULL)
+	
+	enrichmentNetwork(pathwayListData() )
+}, height=900, width=900)	  
+
+output$enrichmentNetworkPlotlyPathway <- renderPlotly({
+    if(is.null(pathwayListData())) return(NULL)
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO; tem = input$selectContrast1
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold; tem =input$pathwayMethod
+	if(is.null(input$selectGO ) ) return (NULL)
+	enrichmentNetworkPlotly(pathwayListData() )
+})	  
 
 
 ################################################################
@@ -8101,6 +8842,7 @@ output$geneListBclustGO <- renderTable({
 		if( is.null(input$selectBicluster ) ) return(NULL)
 		tem = input$nGenesBiclust	
 		tem = input$biclustMethod
+		tem = input$removeRedudantSets
 		
 		isolate({
 			withProgress(message="GO Enrichment", {
@@ -8117,7 +8859,8 @@ output$geneListBclustGO <- renderTable({
 			} else  { 
 				convertedID <- converted()
 				convertedID$IDs <- query
-				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO4,input$selectOrg,1) }
+				if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
+				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO4,input$selectOrg,1, reduced) }
 				
 			result$Genes = "Up regulated"
 			
@@ -8545,6 +9288,7 @@ output$networkModuleGO <- renderTable({
 		tem = input$nGenesNetwork		
 		tem = input$minModuleSize
 		tem = input$selectWGCNA.Module
+		tem = input$removeRedudantSets
 		if( is.null(wgcna()) ) return(NULL)
 		
 		isolate({
@@ -8569,7 +9313,8 @@ output$networkModuleGO <- renderTable({
 			} else  { 
 				convertedID <- converted()
 				convertedID$IDs <- query
-				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO5,input$selectOrg,1) }
+				if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
+				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO5,input$selectOrg,1, reduced) }
 				
 			result$Genes = "Up regulated"
 			
@@ -8797,7 +9542,8 @@ output$moduleNetwork <- renderPlot({
 		library(igraph,verbose=FALSE)
 		#plot(graph_from_data_frame(d=data.frame(1:10,ncol=2)  ,directed=F) )
 		# http://www.kateto.net/wp-content/uploads/2016/01/NetSciX_2016_Workshop.pdf
-		plot( graph_from_adjacency_matrix( net, mod ="undirected" ), vertex.label.color="black", vertex.label.dist=3,vertex.size=7)
+		plot( graph_from_adjacency_matrix( net, mod ="undirected" ), 
+				vertex.label.color="black", vertex.label.dist=3,vertex.size=7)
 		
 		if(0){ 
 		incProgress(1/2, "Writing to file")

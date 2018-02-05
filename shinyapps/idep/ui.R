@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.61"
+iDEPversion = "iDEP.62"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -256,20 +256,22 @@ tableOutput('species' ),
 				#numericInput("nClusters", label = h4("Number of Clusters (often <15) "), value = 6)
    				sliderInput("nGenesKNN", label = h4("Most variable genes to include "), min = 10, max = 6000, value = 2000,step=100) 
 				,sliderInput("nClusters", label = h4("Number of Clusters"), min = 2, max = 20, value = 4,step=1) 
-				,actionButton("KmeansReRun", "Re-Run with different random numbers")
+				,actionButton("KmeansReRun", "Re-Run")
 				,actionButton("NClusters", "How many clusters?")
-				,actionButton("showGeneSD", "Show gene SD distribution")
+				,actionButton("showGeneSD", "Gene SD distribution")
 				,actionButton("geneTSNE", "t-SNE map")
 				,selectInput("kmeansNormalization", h5("Normalize by gene:"), choices = list("Mean center"="geneMean","Standardization"= "geneStandardization","L1 Norm"= "L1Norm"), selected = "geneMean")	
 				,tags$style(type='text/css', "#kmeansNormalization { width:100%;   margin-top:-9px}")
 				,actionButton("showMotifKmeans", "Enriched TF binding motifs")
-				,br(),br(),downloadButton('downloadDataKmeans', 'K-means data')
+				,br(),downloadButton('downloadDataKmeans', 'K-means data')
 				,downloadButton('downloadKmeansHeatmap', 'High-resolution figure')
-				,downloadButton('downloadKmeansGO',"Enrichment details")
+				,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
 				,h5("Pathway database")
-				,htmlOutput("selectGO3"),tags$style(type='text/css', "#selectGO3 { width:100%;   margin-top:-9px}")
-				
-						 
+				,htmlOutput("selectGO3")
+				,tags$style(type='text/css', "#selectGO3 { width:100%;   margin-top:-9px}")
+				,checkboxInput("removeRedudantSets", "Remove redudant genesets", value = TRUE)
+				,actionButton("ModalEnrichmentPlotKmeans", "Visualize enrichment")
+				,downloadButton('downloadKmeansGO',"Enrichment details")						 
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/k-means/",target="_blank")
 				),
                 mainPanel(
@@ -282,16 +284,20 @@ tableOutput('species' ),
 				   ,tableOutput("KmeansPromoter"))
 				  ,bsModal("modalExample9", "Determining the number of clusters (k)", "NClusters", size = "large",
 				  h5("Following the elbow method, one should choose k so that adding another cluster does not substantially reduce the within groups sum of squares."
-			,a("Wikipedia", href="https://en.wikipedia.org/wiki/Determining_the_number_of_clusters_in_a_data_set"))
+					,a("Wikipedia", href="https://en.wikipedia.org/wiki/Determining_the_number_of_clusters_in_a_data_set"))
 				  ,plotOutput("KmeansNclusters"))
 				  ,bsModal("modalExample229", "t-SNE plot of genes", "geneTSNE", size = "large",
 				  h5("We use the dimension reduction algorith "
-				,a("t-SNE", href="https://lvdmaaten.github.io/tsne/"), "to map the top genes. Examine the distribution can help choose the nubmer of clusters in k-Means. ")
+					,a("t-SNE", href="https://lvdmaaten.github.io/tsne/"), "to map the top genes. Examine the distribution can help choose the nubmer of clusters in k-Means. ")
 				  ,checkboxInput("colorGenes", "Color genes by the results of k-Means", value = TRUE)
 				  ,actionButton("seedTSNE", "Re-calculate using different random numbers")
 				  ,plotOutput("tSNEgenePlot"))
 				  ,bsModal("modalExample233", "Distribution of variations among genes", "showGeneSD", size = "large", plotOutput('distributionSD'))
-
+				  ,bsModal("ModalEnrichmentPlotKmeans1", "Visualize enrichment", "ModalEnrichmentPlotKmeans", size="large"
+						,h5("Gene sets closer on the tree share more genes. Sizes of dot correspond to adjuested Pvalues")
+						,downloadButton('enrichmentPlotKmeans4Download',"Figure"),plotOutput('enrichmentPlotKmeans')
+				   
+				   )
                 )
               )       
     )
@@ -313,6 +319,10 @@ tableOutput('species' ),
 				,htmlOutput('listFactors')
 				,htmlOutput('listFactors2')
 			)
+			
+			
+			
+			
 				,br()
 			,downloadButton('downloadPCAData', 'Coordinates')
  					#sliderInput("nGenes1", label = h4("Most variable genes to include"), min = 40, max = 2000, value = 200,step=20) 
@@ -322,6 +332,10 @@ tableOutput('species' ),
 				),
                 mainPanel(
                   plotOutput("PCA")
+				  ,br(),br(),br(),br(),br(),br()
+				 ,conditionalPanel("input.PCA_MDS == 1" # only show if PCA or MDS (not pathway)
+					,htmlOutput('PCA2factor')
+					)
                 )
               )       
     )
@@ -399,7 +413,7 @@ tableOutput('species' ),
 						,actionButton("submitModelButton", "Submit & re-calculate",style="float:center")
 						,tags$head(tags$style("#submitModelButton{color: blue;font-size: 20px;}"))
 						,h5("Close this window to see results.")
-
+			,a(h5("More info on DESeq2 experiment design",align = "right"), href="http://rpubs.com/ge600/deseq2",target="_blank")
 						)
 				   #,bsModal("modalExample56", "Summary of differentially expressed genes", "showDEGstats", size = "large",
 
@@ -418,23 +432,25 @@ tableOutput('species' ),
                 sidebarPanel(
 				 h5("Examine the results of DEGs")
 				 ,htmlOutput("listComparisons")
+				 ,br()
+				,actionButton("showVolcano", "Volcano Plot")
+					,actionButton("showMAplot", "MA Plot")  
+
+				
+			     ,actionButton("showScatter", "Scatter Plot") 
+				 ,actionButton("showMotif", "TF binding motifs in promoters")
+				 # ,tags$style(type='text/css', "#showMotif { width:100%;   margin-top:-12px}")
+				 ,downloadButton('download.selectedHeatmap.data', "Gene list & data" )
+				  ,tags$style(type='text/css', "#download.selectedHeatmap.data { width:100%;   margin-top:-12px}")				 
+				 ,downloadButton('downloadSelectedHeatmap',"High-resolution figure")
+				  #,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
+				,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
 				 ,h5("Pathway database")
 				 ,htmlOutput("selectGO2")
 				,tags$style(type='text/css', "#selectGO2 { width:100%;   margin-top:-9px}")
-				 ,br()
-				,fluidRow(
-					column(6,actionButton("showVolcano", "Volcano Plot"))
-					,column(6,actionButton("showMAplot", "MA Plot")  )
-
-				)
-			     ,br(),fluidRow(column( 8, actionButton("showScatter", "Scatter Plot")) )
-				 ,br(),fluidRow(column( 11, actionButton("showMotif", "TF binding motifs in promoters")))
-				  ,tags$style(type='text/css', "#showMotif { width:100%;   margin-top:-12px}")
-				 #,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
-				 ,br(),br(),downloadButton('download.selectedHeatmap.data', "Gene list & data" )
-				  ,tags$style(type='text/css', "#download.selectedHeatmap.data { width:100%;   margin-top:-12px}")				 
+				 ,actionButton("ModalEnrichmentPlot", "Enrichment tree")
+				 ,actionButton("ModalEnrichmentNetwork", "Enrichment network")
 				 ,downloadButton('downloadGOTerms', "Enrichment details" )
-				 ,downloadButton('downloadSelectedHeatmap',"High-resolution figure")
 				 ,h5("Also try",  a("ShinyGO", href="http://ge-lab.org:3838/go/") )	
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/degs/",target="_blank")				
 				
@@ -457,6 +473,18 @@ tableOutput('species' ),
 						checkboxInput("scatterPlotBox", label = "Show interactive version w/ gene symbols", value = FALSE)
 						,conditionalPanel("input.scatterPlotBox == 0",	downloadButton('downloadScatterPlot',"Figure" ),	plotOutput("scatterPlot") )
 						,conditionalPanel("input.scatterPlotBox == 1",plotlyOutput("scatterPlotly",width = "550px", height = "550px") )
+				   )
+				   ,bsModal("ModalEnrichmentPlot1", "Visualize enrichment", "ModalEnrichmentPlot", size="large"
+						,h5("Gene sets closer on the tree share more genes. Sizes of dot correspond to adjuested Pvalues")
+						,downloadButton('enrichmentPlotDEG24Download',"Figure")
+						,plotOutput('enrichmentPlotDEG2')
+				   
+				   )
+				   ,bsModal("ModalEnrichmentPlot2", "Visualize enrichment", "ModalEnrichmentNetwork", size="large"
+						,h5("Connected gene sets share more genes. Color of node correspond to adjuested Pvalues")
+						,checkboxInput("enrichmentNetworkInteractive", label = "Interactive version", value = FALSE)
+						,conditionalPanel("input.enrichmentNetworkInteractive==0" ,plotOutput('enrichmentNetworkPlot'))
+						,conditionalPanel("input.enrichmentNetworkInteractive==1" ,plotlyOutput('enrichmentNetworkPlotly',width = "900px", height = "800px"))				   
 				   )
 				   ,bsModal("modalExample5555", "M-A plot", "showMAplot", size = "large",
 						checkboxInput("MAPlotBox", label = "Show interactive version w/ gene symbols", value = FALSE)
@@ -499,16 +527,27 @@ tableOutput('species' ),
 				,tags$style(type='text/css', "#nPathwayShow { width:100%;   margin-top:-12px}")
 				,checkboxInput("absoluteFold", label = "Use absolute values of fold changes for GSEA and GAGE", value = FALSE)
 				,numericInput("GenePvalCutoff", label = h5("Remove genes with big FDR before pathway analysis:"), value = 1,min=1e-20,max=1,step=.05)
+				,conditionalPanel("input.pathwayMethod == 1 | input.pathwayMethod == 2 | input.pathwayMethod == 3| input.pathwayMethod == 4" 
+				,actionButton("ModalEnrichmentPlotPathway", "Pathway tree") 
+				,actionButton("ModalEnrichmentNetworkPathway", "Pathway network")
+				,downloadButton('downloadPathwayListData', "Pathway list w/ genes")
+					
+				)
+
+
+				,conditionalPanel("input.pathwayMethod == 4", downloadButton("PGSEAplotAllSamples.Download", "High-resolution figure") )
+				,conditionalPanel("input.pathwayMethod == 2", downloadButton("PGSEAplot.Download", "High-resolution figure") )
 
 				#,actionButton("examinePathway", "Examine individual pathways")
-				,conditionalPanel("input.pathwayMethod == 2",downloadButton('download.PGSEAplot.data', 'Download PGSEA pathway data'))
+				#,conditionalPanel("input.pathwayMethod == 2",downloadButton('download.PGSEAplot.data', 'Download PGSEA pathway data'))
 							
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/pathways/",target="_blank")		
 				),
                 mainPanel(	  
 					
 				  conditionalPanel("input.pathwayMethod == 2",
-                  plotOutput("PGSEAplot") )
+				  	h5("Red and blue indicates activated and suppressed pathways, respectively. ") 
+                    ,plotOutput("PGSEAplot") )
 				  ,conditionalPanel("input.pathwayMethod == 1",
                   tableOutput("gagePathway") )
 				  ,conditionalPanel("input.pathwayMethod == 3",
@@ -516,13 +555,26 @@ tableOutput('species' ),
 				   ,conditionalPanel("input.pathwayMethod == 5",
                   tableOutput("ReactomePAPathway") )
 				  ,conditionalPanel("input.pathwayMethod == 4",
-				  plotOutput("PGSEAplotAllSamples") )
+				  h5("Red and blue indicates activated and suppressed pathways, respectively.  ") 
+				  ,plotOutput("PGSEAplotAllSamples")
+				  )
 				   ,conditionalPanel("input.pathwayMethod == 1 | input.pathwayMethod == 3" 
 				    ,htmlOutput("listSigPathways")
 					,downloadButton('downloadSelectedPathwayData', 'Expression data for genes in selected pathway')  )
 					,conditionalPanel(" (input.pathwayMethod == 1 | input.pathwayMethod == 3 ) & input.selectGO == 'KEGG'",imageOutput("KeggImage"))
 					,conditionalPanel("(input.pathwayMethod == 1 | input.pathwayMethod == 3 ) & input.selectGO != 'KEGG'",plotOutput("selectedPathwayHeatmap")) 
-			   
+				   ,bsModal("ModalEnrichmentPlotPathway1", "Significant pathways", "ModalEnrichmentPlotPathway", size="large"
+						,h5("Gene sets closer on the tree share more genes. Sizes of dot correspond to adjuested Pvalues")
+						,downloadButton('enrichmentPlotPathway4Download',"Figure")
+						,plotOutput('enrichmentPlotPathway')
+				   
+				   )
+				   ,bsModal("ModalEnrichmentPlotPahtway2", "Significant pathways", "ModalEnrichmentNetworkPathway", size="large"
+						,h5("Connected gene sets share more genes. Color of node correspond to adjuested Pvalues")
+						,checkboxInput("enrichmentNetworkInteractivePathway", label = "Interactive version", value = FALSE)
+						,conditionalPanel("input.enrichmentNetworkInteractivePathway==0" ,plotOutput('enrichmentNetworkPlotPathway'))
+						,conditionalPanel("input.enrichmentNetworkInteractivePathway==1" ,plotlyOutput('enrichmentNetworkPlotlyPathway',width = "900px", height = "800px"))				   
+				   )				   
                 )
               )       
     )
@@ -697,6 +749,8 @@ tableOutput('species' ),
       fluidRow(
        column(12,
      htmlOutput('RsessionInfo')
+	 ,h4("Changes")
+	 ,h5("iDEP v0.62 2/5/2018:  Add  tree and networks to visualize overlaps between enriched gene sets, in K-means, DEG2, and pathway tags. Downloads of pathway analysis results and high-resolution figures.")
  ) ))
 
   ,tags$head(includeScript("ga.js")) # tracking usage  
