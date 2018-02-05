@@ -6248,6 +6248,14 @@ output$enrichmentNetworkPlot <- renderPlot({
 
 }, height=900, width=900)	  
 
+output$enrichmentNetworkPlot4Download <- downloadHandler(
+      filename = "enrichmentPlotDEG2.tiff",
+      content = function(file) {
+	  tiff(file, width = 12, height = 12, units = 'in', res = 300, compression = 'lzw')
+	enrichmentNetwork(geneListGOTable() )
+        dev.off()
+      })	  
+
 output$enrichmentNetworkPlotly <- renderPlotly({
     if(is.null(geneListGOTable())) return(NULL)
 	tem = input$removeRedudantSets
@@ -8095,6 +8103,15 @@ output$enrichmentNetworkPlotPathway <- renderPlot({
 	
 	enrichmentNetwork(pathwayListData() )
 }, height=900, width=900)	  
+
+output$enrichmentNetworkPlotPathway4Download <- downloadHandler(
+      filename = "enrichmentPlotNetworkPathway.tiff",
+      content = function(file) {
+	  tiff(file, width = 12, height = 12, units = 'in', res = 300, compression = 'lzw')
+	  enrichmentNetwork(pathwayListData() )
+        dev.off()
+      })	
+
 
 output$enrichmentNetworkPlotlyPathway <- renderPlotly({
     if(is.null(pathwayListData())) return(NULL)

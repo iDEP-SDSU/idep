@@ -484,7 +484,8 @@ tableOutput('species' ),
 						,h5("Connected gene sets share more genes. Color of node correspond to adjuested Pvalues.")
 						,checkboxInput("enrichmentNetworkInteractive", label = "Interactive version", value = FALSE)
 						,conditionalPanel("input.enrichmentNetworkInteractive==0" 
-								,h5("To change network layout, zoom in or out from your browser.")
+								,h5("To change network layout, zoom in or out from your browser. Download repeatedly for different layout.")
+								,downloadButton("enrichmentNetworkPlot4Download", "High-resolution figure")
 								,plotOutput('enrichmentNetworkPlot'))
 						,conditionalPanel("input.enrichmentNetworkInteractive==1" ,plotlyOutput('enrichmentNetworkPlotly',width = "900px", height = "800px"))				   
 				   )
@@ -575,7 +576,8 @@ tableOutput('species' ),
 						,h5("Connected gene sets share more genes. Color of node correspond to adjuested Pvalues.")
 						,checkboxInput("enrichmentNetworkInteractivePathway", label = "Interactive version", value = FALSE)
 						,conditionalPanel("input.enrichmentNetworkInteractivePathway==0"
-								,h5("To change network layout, zoom in or out from your browser.")
+								,h5("To change network layout, zoom in or out from your browser. Download repeatedly for different layout.")
+								,downloadButton("enrichmentNetworkPlotPathway4Download","High-resolution figure")
 								,plotOutput('enrichmentNetworkPlotPathway'))
 						,conditionalPanel("input.enrichmentNetworkInteractivePathway==1" ,plotlyOutput('enrichmentNetworkPlotlyPathway',width = "900px", height = "800px"))				   
 				   )				   
@@ -731,8 +733,7 @@ tableOutput('species' ),
 					" or ", a("Cytoscape.",href="http://www.cytoscape.org/",target="_blank" )  )	
 					,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/network/",target="_blank")					
 					),
-				mainPanel(	
-					
+				mainPanel(						
 					plotOutput('modulePlot')
 					,br(),br()
 					,plotOutput('moduleNetwork')
@@ -754,7 +755,10 @@ tableOutput('species' ),
        column(12,
      htmlOutput('RsessionInfo')
 	 ,h4("Changes")
-	 ,h5("iDEP v0.62 2/5/2018:  Add  tree and networks to visualize overlaps between enriched gene sets, in K-means, DEG2, and pathway tags. Downloads of pathway analysis results and high-resolution figures.")
+	 ,h5("iDEP v0.62 2/5/2018:  Add  tree and networks to visualize 
+		overlaps between enriched gene sets, in K-means, DEG2, and pathway tags.
+		Downloads of pathway analysis results and high-resolution figures.")
+	 ,h5("To Ge Fuxi.")
  ) ))
 
   ,tags$head(includeScript("ga.js")) # tracking usage  
