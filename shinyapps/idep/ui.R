@@ -481,9 +481,11 @@ tableOutput('species' ),
 				   
 				   )
 				   ,bsModal("ModalEnrichmentPlot2", "Visualize enrichment", "ModalEnrichmentNetwork", size="large"
-						,h5("Connected gene sets share more genes. Color of node correspond to adjuested Pvalues")
+						,h5("Connected gene sets share more genes. Color of node correspond to adjuested Pvalues.")
 						,checkboxInput("enrichmentNetworkInteractive", label = "Interactive version", value = FALSE)
-						,conditionalPanel("input.enrichmentNetworkInteractive==0" ,plotOutput('enrichmentNetworkPlot'))
+						,conditionalPanel("input.enrichmentNetworkInteractive==0" 
+								,h5("To change network layout, zoom in or out from your browser.")
+								,plotOutput('enrichmentNetworkPlot'))
 						,conditionalPanel("input.enrichmentNetworkInteractive==1" ,plotlyOutput('enrichmentNetworkPlotly',width = "900px", height = "800px"))				   
 				   )
 				   ,bsModal("modalExample5555", "M-A plot", "showMAplot", size = "large",
@@ -570,9 +572,11 @@ tableOutput('species' ),
 				   
 				   )
 				   ,bsModal("ModalEnrichmentPlotPahtway2", "Significant pathways", "ModalEnrichmentNetworkPathway", size="large"
-						,h5("Connected gene sets share more genes. Color of node correspond to adjuested Pvalues")
+						,h5("Connected gene sets share more genes. Color of node correspond to adjuested Pvalues.")
 						,checkboxInput("enrichmentNetworkInteractivePathway", label = "Interactive version", value = FALSE)
-						,conditionalPanel("input.enrichmentNetworkInteractivePathway==0" ,plotOutput('enrichmentNetworkPlotPathway'))
+						,conditionalPanel("input.enrichmentNetworkInteractivePathway==0"
+								,h5("To change network layout, zoom in or out from your browser.")
+								,plotOutput('enrichmentNetworkPlotPathway'))
 						,conditionalPanel("input.enrichmentNetworkInteractivePathway==1" ,plotlyOutput('enrichmentNetworkPlotlyPathway',width = "900px", height = "800px"))				   
 				   )				   
                 )
