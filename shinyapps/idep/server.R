@@ -1819,7 +1819,7 @@ enrichmentNetwork <- function(enrichedTerms){
 
 	g <- enrich.net2(enrichedTerms, geneLists, node.id = "Pathways", numChar = 100, 
 	   pvalue = "adj.Pval", edge.cutoff = 0.2, pvalue.cutoff = 1, degree.cutoff = 0,
-	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 0.8, vertex.label.color = "black")
+	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 1, vertex.label.color = "black")
 
 }
 
