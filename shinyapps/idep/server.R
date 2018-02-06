@@ -3737,7 +3737,7 @@ output$PCA <- renderPlot({
 		}
 	p=p+xlab("Dimension 1") 
 	p=p+ylab("Dimension 2") 
-	p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
+	p=p+ggtitle("t-SNE plot")+ coord_fixed(ratio=1.)+ 
      theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
 	 	 theme(axis.text.x = element_text( size = 16),
 	       axis.text.y = element_text( size = 16),
@@ -3893,7 +3893,7 @@ PCAplots4Download <- reactive({
 		}
 	p=p+xlab("Dimension 1") 
 	p=p+ylab("Dimension 2") 
-	p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
+	p=p+ggtitle("t-SNE plot)")+ coord_fixed(ratio=1.)+ 
      theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
 	 	 theme(axis.text.x = element_text( size = 16),
 	       axis.text.y = element_text( size = 16),
