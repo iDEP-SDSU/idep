@@ -237,11 +237,13 @@ tableOutput('species' ),
 						
 						# ,verbatimTextOutput("event")
 						,bsModal("modalExample8", "Correlation matrix using top 75% genes", "showCorrelation", size = "large",plotOutput("correlationMatrix"))
-						,bsModal("modalExample228", "Hierarchical clustering using top 75% genes", "showSampleTree", size = "large",plotOutput("sampleTree"))
+						,bsModal("modalExample228", "Hierarchical clustering tree.", "showSampleTree", size = "large"
+							,h4("Using genes whose maximum expression level is at top 75%. Data is transformed and clustered as specified in the main page. ")
+							,plotOutput("sampleTree"))
 
 						,bsModal("modalExample28", "Heatmap with hierarchical clustering tree", "showStaticHeatmap", size = "large",
 						sliderInput("nGenesPlotly", label = h4("Most variable genes to include:"), min = 10, max = 6000, value = 50,step=50),
-						h4("Mouse over to see gene names. To zoom, click and drag up or downward and release."),
+						h5("Mouse over to see gene names. To zoom, click and drag up or downward and release."),
 						plotlyOutput("heatmap",width = "100%", height = "800px"))
 					 
 					)
@@ -758,6 +760,7 @@ tableOutput('species' ),
 	 ,h5("iDEP v0.62 2/5/2018:  Add  tree and networks to visualize 
 		overlaps between enriched gene sets, in K-means, DEG2, and pathway tags.
 		Downloads of pathway analysis results and high-resolution figures.")
+	 ,h5("2/6/2018: Fixed errors caused by gene symbol matching for unknown species. More user control of hierarchical clustering tree")
 	 ,h5("To Ge Fuxi.")
  ) ))
 

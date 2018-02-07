@@ -2914,7 +2914,7 @@ output$genePlot <- renderPlot({
     x <- convertedData()
 	
 	Symbols <- rownames(x)
-	if( input$selectOrg != "NEW") {
+	if( input$selectOrg != "NEW" &&  ncol(allGeneInfo()) != 1 ) {
 		ix = match( rownames(x), allGeneInfo()[,1])
 		if( sum( is.na(allGeneInfo()$symbol )) != dim(allGeneInfo() )[1] ) {  # symbol really exists? 
 			Symbols = as.character( allGeneInfo()$symbol[ix] )
@@ -3003,8 +3003,8 @@ processedData <- reactive({
 			if(input$dataFileFormat== 2) 
 				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
 		####################################
-		 
-			if(input$selectOrg == "NEW") return(  convertedData() ) else { 
+            # sometimes users upload unknow species but not choosing "NEW". 
+			if(input$selectOrg == "NEW" | ncol(allGeneInfo()) == 1 ) return(  convertedData() ) else { 
 
 				withProgress(message="Preparing data for download ", {
 				
@@ -3026,7 +3026,7 @@ processedData <- reactive({
 				 # sort by sd
 				 tem2 = tem2[ order( -apply(tem2[,-3:-1],1,sd )   )  ,]
 				 
-				 
+				 rownames(tem2)=1:nrow(tem2)
 				 
 				 incProgress(1, "Done.")
 				 # add original data
@@ -3054,7 +3054,7 @@ processedCountsData <- reactive({
 				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 		####################################
 			
-		if(input$selectOrg == "NEW") return(  convertedData() ) else { 
+		if(input$selectOrg == "NEW"| ncol(allGeneInfo()) == 1) return(  convertedData() ) else { 
 
 			withProgress(message="Preparing data for download ", {
 
@@ -3079,6 +3079,7 @@ processedCountsData <- reactive({
 				 colnames(tem2)[1:2]= c("User_ID sorted by SD","Ensembl_gene_id")
 				 # sort by sd
 				 tem2 = tem2[ order( -apply(log2(10+ tem2[,-3:-1]),1,sd )   )  ,]
+				 rownames(tem2)=1:nrow(tem2)
 				 incProgress(1, "Done.")
 				 # add original data
 				# tem3 <- merge( readData()$data, tem2, by.x = "row.names", by.y = "User_input", all.x=TRUE )
@@ -3096,14 +3097,14 @@ processedCountsData <- reactive({
 output$downloadProcessedData <- downloadHandler(
 		filename = function() {"Processed_Data.csv"},
 		content = function(file) {
-      write.csv( processedData(), file, row.names=FALSE )	    
+      write.csv( processedData(), file)	    
 	})
 
 	
 output$downloadConvertedCounts <- downloadHandler(
 		filename = function() {"Converted_Counts_Data.csv"},
 		content = function(file) {
-      write.csv( processedCountsData(), file, row.names=FALSE )	    
+      write.csv( processedCountsData(), file)	    
 	})
  
 
@@ -3114,6 +3115,8 @@ output$examineData <- DT::renderDataTable({
 
 	tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 	isolate({
+	
+	if(input$selectOrg == "NEW"| ncol(allGeneInfo()) == 1) return(  round(convertedData(),2) ) else
 	merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], round(convertedData(),2),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )
 	})
   })
@@ -3561,11 +3564,24 @@ output$sampleTree <- renderPlot({
 		x <- readData()$data
 		maxGene <- apply(x,1,max)
 		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
+		if(input$geneCentering)
+			x=as.matrix(x)-apply(x,1,mean)
 		
-		plot(as.dendrogram(hclust2( dist2(t(x)))), xlab="", ylab="1 - Pearson C.C.", type = "rectangle")
-		 
+		# standardize by gene
+		if(input$geneNormalize) 
+			x <- x / apply(x,1,sd)
+			
+		# row centering and normalize
+		x <- scale(x, center = input$sampleCentering, scale = input$sampleNormalize) 
+		
+		#plot(as.dendrogram(hclust2( dist2(t(x)))), xlab="", ylab="1 - Pearson C.C.", type = "rectangle")
+		plot(as.dendrogram(  hclustFuns[[as.integer(input$hclustFunctions)]] ( 
+				distFuns[[as.integer(input$distFunctions)]](t(x)))) 
+				,xlab="", ylab=paste( names(distFuns)[as.integer(input$distFunctions)],"(", 
+				names(hclustFuns)[as.integer(input$hclustFunctions)],"linkage",")"   ), type = "rectangle")
 
- 
+
+ distFuns[[as.integer(input$distFunctions)]]
   }  )#, height = 500, width = 500)
 
 ################################################################
@@ -5206,6 +5222,7 @@ output$downloadSelectedHeatmap <- downloadHandler(
 	  selectedHeatmap4Download()
         dev.off()
       })	
+
 selectedHeatmap.data <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	
@@ -5397,7 +5414,7 @@ geneListDataExport <- reactive({
 		if( is.null( limma()$comparisons ) ) return(NULL) # if no significant genes found
 		if( length(limma()$topGenes) == 0 ) return(noSig)
 		if( is.null( geneListData() ) ) return(NULL)
-		if( input$selectOrg == "NEW" )
+		if( input$selectOrg == "NEW" | input$selectGO2 == "ID not recognized!" )
 			tem <- merge(geneListData(), convertedData(), by.x = 'Top_Genes',by.y = 'row.names') else
 		tem <- merge(geneListData(), convertedData(), by.x = 'Ensembl ID',by.y = 'row.names') 
 		tem <- tem[order( -sign(tem[,2] ), -abs(tem[,2])),]
@@ -5407,7 +5424,6 @@ geneListDataExport <- reactive({
 		return( tem )
 	
   })
-	#, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T,include.rownames=TRUE)
 
 	
 geneListData <- reactive({
@@ -8137,7 +8153,7 @@ output$genomePlotly <- renderPlotly({
 		tem = input$selectOrg ; 
 		tem = input$selectContrast2
 		if (is.null(input$selectContrast2 ) ) return(NULL)
-		if( input$selectOrg == "NEW") return(NULL)
+		if( input$selectOrg == "NEW" | ncol(allGeneInfo() )==1 ) return(NULL)
 		if( length(limma()$topGenes) == 0 ) return(NULL)
 		
 		##################################  
@@ -8287,7 +8303,7 @@ output$genomePlotly <- renderPlotly({
 # pre-calculating PREDA, so that changing FDR cutoffs does not trigger entire calculation
 genomePlotDataPre <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-
+	if( input$selectOrg == "NEW" | ncol(allGeneInfo() )==1 ) return(NULL)
 	tem = input$selectOrg ; 
 	tem = input$selectContrast2
 	
@@ -8405,7 +8421,7 @@ genomePlotDataPre <- reactive({
 genomePlotData <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
     if(is.null(genomePlotDataPre() ) ) return(NULL)
-	
+	if( input$selectOrg == "NEW" | ncol(allGeneInfo() )==1 ) return(NULL)	
 	tem = input$selectOrg ; 
 	tem = input$selectContrast2
 	tem = input$StatisticCutoff
@@ -8549,7 +8565,7 @@ output$genomePlot <- renderPlot({
 	library(PREDA,verbose=FALSE)  # showing expression on genome
 	library(PREDAsampledata,verbose=FALSE) 
 	library(hgu133plus2.db,verbose=FALSE)
-	
+	if( input$selectOrg == "NEW" | ncol(allGeneInfo() )==1 ) return(NULL)	
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
     if( is.null( genomePlotData() ) ) return(NULL)
 	tem = input$selectOrg ; 
@@ -8601,8 +8617,8 @@ output$downloadGenesInRegions <- downloadHandler(
 
 	
 output$chrRegionsList <- renderTable({
-  if (is.null(input$file1) && input$goButton == 0)   return(NULL)
-
+	if (is.null(input$file1) && input$goButton == 0)   return(NULL)
+	if( input$selectOrg == "NEW" | ncol(allGeneInfo() )==1 ) return(NULL)
   	##################################  
 	# these are needed to make it responsive to changes in parameters
 	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
@@ -8632,8 +8648,8 @@ output$chrRegionsList <- renderTable({
 
   
 output$chrRegions <- DT::renderDataTable({
-  if (is.null(input$file1) && input$goButton == 0)   return(NULL)
-  
+	if (is.null(input$file1) && input$goButton == 0)   return(NULL)
+	if( input$selectOrg == "NEW" | ncol(allGeneInfo() )==1 ) return(NULL)  
  	##################################  
 	# these are needed to make it responsive to changes in parameters
 	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
@@ -8659,8 +8675,8 @@ output$chrRegions <- DT::renderDataTable({
 
   
 output$genesInChrRegions <- DT::renderDataTable({
-  if (is.null(input$file1) && input$goButton == 0)   return(NULL)
-  
+	if (is.null(input$file1) && input$goButton == 0)   return(NULL)
+	if( input$selectOrg == "NEW" | ncol(allGeneInfo() )==1 ) return(NULL)  
 	##################################  
 	# these are needed to make it responsive to changes in parameters
 	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
