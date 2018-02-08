@@ -9,9 +9,11 @@ RUN apt-get update -qq && apt-get install -y \
   libxml2  \
   libssl-dev \
   # https://stackoverflow.com/questions/42287164/install-udunits2-package-for-r3-3
-  libudunits2-dev \ 
+  libudunits2-dev \
   libmariadb-client-lgpl-dev \
-  wget \ 
+  # https://stackoverflow.com/questions/36674667/png-h-file-not-found-linux/36674785
+  libpng-dev \
+  wget \
   unzip
 
 # COPY ./RSet /usr/local/src/myscripts
@@ -26,16 +28,16 @@ RUN mkdir -p /srv/data/data_go
 
 # Install R libraries
 RUN R -e 'install.packages(c("devtools"))'
-RUN R -e 'install.packages(c("dendextend", "htmlwidgets","shiny", "shinyAce", "shinyBS", "plotly","RSQLite", "gplots", "ggplot2", "dplyr", "tidyverse","plotly","e1071", "reshape2", "DT","data.table", "Rcpp","flashClust","statmod","biclust","igraph","Rtsne"))' 
+RUN R -e 'install.packages(c("dendextend", "htmlwidgets","shiny", "shinyAce", "shinyBS", "plotly","RSQLite", "gplots", "ggplot2", "dplyr", "tidyverse","plotly","e1071", "reshape2", "DT","data.table", "Rcpp","flashClust","statmod","biclust","igraph","Rtsne"))'
 RUN R -e 'source("https://bioconductor.org/biocLite.R"); biocLite(c("STRINGdb", "limma", "DESeq2", "edgeR", "gage", "PGSEA", "fgsea", "ReactomePA", "pathview", "PREDA", "impute", "runibic","QUBIC","rhdf5", "PREDAsampledata", "sfsmisc", "lokern", "multtest", "hgu133plus2.db", "org.Ag.eg.db","org.At.tair.db","org.Bt.eg.db","org.Ce.eg.db","org.Cf.eg.db", "org.Dm.eg.db","org.Dr.eg.db","org.EcK12.eg.db","org.EcSakai.eg.db","org.Gg.eg.db","org.Hs.eg.db","org.Hs.ipi.db","org.Mm.eg.db","org.Mmu.eg.db","org.Pf.plasmo.db","org.Pt.eg.db","org.Rn.eg.db","org.Sc.sgd.db","org.Sco.eg.db","org.Ss.eg.db","org.Tgondii.eg.db","org.Xl.eg.db"), suppressUpdates = T)'
 # WGCNA must be installed after AnnotationDbi, impute, GO.db, preprocessCore
-RUN R -e 'install.packages(c("WGCNA"))' 
+RUN R -e 'install.packages(c("WGCNA"))'
 
 # Download Required Data
 # geneInfo
 # RUN wget -qO- -O tmp.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2Fupdate%2FgeneInfo.zip?alt=media&token=350524c5-a690-4253-8a12-a376ac69dc69'\
 #   && unzip -f tmp.zip -d /srv/data && rm tmp.zip
-# # gmt file 
+# # gmt file
 # RUN wget -qO- -O tmp2.zip 'https://firebasestorage.googleapis.com/v0/b/firebase-bcloud.appspot.com/o/idep%2FgeneInfo%2Fgmt.zip?alt=media&token=5ee100d1-e645-41ef-a591-7a9ba208ce3c' \
 #   && unzip -f tmp2.zip -d /srv/data && rm tmp2.zip
 # # motif
