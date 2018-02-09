@@ -508,7 +508,7 @@ tableOutput('species' ),
 						,textOutput("STRINGDB_species_stat")
 						, selectizeInput('speciesName', label="Select Species",choices = " ",
 							   multiple = TRUE, options = list(maxItems = 1,							 
-								 placeholder = 'Type in academic name (i.e. homo sapiens)',
+								 placeholder = 'Type in academic name(mus musculus for demo)',
 								 onInitialize = I('function() { this.setValue(""); }')
 							   )
 							 )
