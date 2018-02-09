@@ -101,6 +101,11 @@ demoDataFile = paste0("BcellGSE71176_p53.csv") # GSE71176
 demoDataFile2 = paste0("BcellGSE71176_p53_sampleInfo.csv") # sample Info file
 
 STRING10_species = read.csv("STRING10_species.csv")
+# File needs to be updated when STRING updates, using the following commands
+# library(STRINGdb)
+# species = get_STRING_species(version="10", species_name=NULL)
+# write.csv(species,"STRING10_species.csv")
+# Also this STRINGdb package downloads a lot of file from the website. Needs to clean the temp folder from time to time. 
 
 ################################################################
 #   Utility functions
@@ -6078,6 +6083,7 @@ output$downloadMAPlot <- downloadHandler(
 	  MAplot4Download()
         dev.off()
       })
+
 output$MAplotly <- renderPlotly({
     if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
 		tem = input$selectOrg; tem = input$noIDConversion
@@ -6405,7 +6411,7 @@ STRINGdb_geneList <- reactive({
 output$STRINGDB_species_stat <- renderText({
     tem=table(STRING10_species$kingdom)
     tem=paste(tem, names(tem), sep=" ", collapse=", ")
-	return(paste("Species in STRING10 database: ", tem) )
+	return(paste("Gene lists are sent to STRING server (string-db.org) via API. Slow, but covers more species:", tem) )
 
 }) 
 
@@ -6606,8 +6612,9 @@ output$stringDB_network_link <- renderUI({
 			incProgress(1/4  )
 			link1 = string_db$get_link( ids)
 			Pval1 = string_db$get_ppi_enrichment( ids)
-			tem = "<h5> Links to protein interaction network on STRING-db website:  "
-			tem = paste(tem, "<a href=\"", link1, "\" target=\"_blank\"> Up-regulated genes </a>"  )
+			tem = "<h5> Try it! Interactive and annotated PPI networks showing interactions 
+			        among proteins coded by top DEGs can be accessed via custom URLs:  "
+			tem = paste(tem, "<a href=\"", link1, "\" target=\"_blank\"> Up-regulated; </a>"  )
 
 			# downregulated
 			ids = STRINGdb_geneList()[[2]]
@@ -6616,7 +6623,7 @@ output$stringDB_network_link <- renderUI({
 			incProgress(2/4  )
 			link2 = string_db$get_link( ids)
 			Pval2 = string_db$get_ppi_enrichment( ids)				
-			tem = paste(tem, " &nbsp  <a href=\"", link2, "\"target=\"_blank\"> Down-regulated genes </a>"  )
+			tem = paste(tem, " &nbsp  <a href=\"", link2, "\"target=\"_blank\"> Down-regulated; </a>"  )
 			
 			# both up and down with color code
 			incProgress(3/4  )
@@ -6626,22 +6633,19 @@ output$stringDB_network_link <- renderUI({
 			geneTable =  string_db$add_diff_exp_color( geneTable, logFcColStr="lfc" ) 
 			payload_id <- string_db$post_payload( geneTable$STRING_id,colors=geneTable$color )
 			link3 = string_db$get_link(geneTable$STRING_id, payload_id = payload_id)			
-			tem = paste(tem, " &nbsp  <a href=\"", link3, "\"target=\"_blank\"> Both with fold-changes color coded </a></h5>"  )
+			tem = paste(tem, " &nbsp  <a href=\"", link3, "\"target=\"_blank\"> Both with fold-changes color coded.</a></h5>"  )
 
             tem2 = paste("<h5> Enrichment P values: ")  
 			tem2 = paste0(tem2,"Up: ", sprintf("%-3.2e",Pval1[1]), " &nbspDown: ", sprintf("%-3.2e",Pval2[1]),".")
 			tem2 = paste(tem2, " A small P value indicates more PPIs with in DEGs than background using the
  			<a href=\"https://www.bioconductor.org/packages/release/bioc/html/STRINGdb.html\"target=\"_blank\"> get_ppi_enrichment function.</a></h5>" )
 			tem = paste(tem2,tem )
-		return(HTML(tem))	
-		 #return(paste(tem, collapse='<br/>'))
+			return(HTML(tem))	
+		
 			incProgress(1  )
 
 		 })#progress
 		}) #isolate			
-	
-
-
 
 }) 
 ################################################################

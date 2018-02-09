@@ -531,7 +531,7 @@ tableOutput('species' ),
 				   ,bsModal("ModalExamplePPI", "Analyze top DEGs on protein interaction networks (PPIs)", "ModalPPI", size = "large"
 				      			,sliderInput("nGenesPPI", label = h5("Top up- or down-regulated genes to include:"), min = 0, max = 400, value = 100,step=10) 
 								,htmlOutput("stringDB_network_link")
-						,h5("Protein interactions among proteins encoded by top up-regulated proteins",align = "center")
+						,br(),br(),h5("Interactions among proteins encoded by top up-regulated proteins",align = "center")
 						,plotOutput("stringDB_network1")		 
 
 				   
