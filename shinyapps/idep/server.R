@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.62"
+iDEPversion = "iDEP 0.65"
 ################################################################
 # R packages
 ################################################################
@@ -99,6 +99,8 @@ motifFiles = paste(datapath,"motif/",motifFiles,sep="")
 #demoDataFile2 = paste0(datapath,"data_go/BcellGSE71176_p53_sampleInfo.csv") # sample Info file
 demoDataFile = paste0("BcellGSE71176_p53.csv") # GSE71176
 demoDataFile2 = paste0("BcellGSE71176_p53_sampleInfo.csv") # sample Info file
+
+STRING10_species = read.csv("STRING10_species.csv")
 
 ################################################################
 #   Utility functions
@@ -1871,6 +1873,13 @@ enrichmentNetworkPlotly <- function(enrichedTerms){
 	   
 }
 
+# find Taxonomy ID from species official name 
+findTaxonomyID <- function(speciesName){
+    if(is.null(speciesName) ) return(NULL)
+    ix = match(speciesName, STRING10_species$official_name)
+    if(length(ix) == 0 ) return(NULL)
+    return(STRING10_species$species_id[ix])
+}
  if(0 ){ # pathway testing
 	x = read.csv("expression.csv")
 	x = read.csv("expression1_no_duplicate.csv")
@@ -2272,7 +2281,7 @@ observe({  updateSelectInput(session, "selectOrg", choices = speciesChoice )    
 observe({  updateSelectInput(session, "heatColors1", choices = colorChoices )      })
 observe({  updateSelectInput(session, "distFunctions", choices = distChoices )      })
 observe({  updateSelectInput(session, "hclustFunctions", choices = hclustChoices )      })
-
+observe({  updateSelectInput(session, "speciesName", choices = STRING10_species$official_name)      })
 	################################################################
 	#   Read data
 	################################################################
@@ -2614,7 +2623,7 @@ output$fileFormat <- renderUI({
 			internally for enrichment and pathway analyses. iDEP parses column names to define sample groups. To define 3 biological samples (Control,
 		TreatmentA, TreatmentB) with 2 replicates each, column names should be:")
 		i = c(i," <strong> Ctrl_1, Ctrl_2, TrtA_1, TrtA_2, TrtB_1, TrtB_2</strong>.") 
-		i = c(i,"For more complex experimental design, users can upload a <a href=\"https://idepsite.wordpress.com/data-format/\">sample information file</a>  with samples in columns and factors (genotypes and conditions) in rows. 
+		i = c(i,"For more complex experimental design, users can upload a <a href=\"https://idepsite.wordpress.com/data-format/\" target=\"_blank\">sample information file</a>  with samples in columns and factors (genotypes and conditions) in rows. 
 		       With such a file, users can define a statistic model according to study design, which enables them to control the effect for batch effects or paired samples. 
 	         or detect interactions between factors (how mutant responds differently to treatment than wild-type).") 
 		
@@ -5425,7 +5434,8 @@ geneListDataExport <- reactive({
 	
   })
 
-	
+# list of DEGs ranked by absolute values of lfc
+# Ensembl ID	 log2 Fold Change	 Adj.Pval	 Symbol	 Chr	 Type	
 geneListData <- reactive({
 		if (is.null(input$file1)&& input$goButton == 0  )   return(NULL)
 			tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
@@ -6337,9 +6347,303 @@ output$DEG.Promoter <- renderTable({
 	}
   })
   }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
-  
-  
-  
+
+#----------------------------------------------------
+# STRING-db functionality
+
+STRINGdb_geneList <- reactive({
+	library(STRINGdb,verbose=FALSE)
+						   
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		#if (input$submit2STRINGdb == 0)   return(NULL)
+		if( is.null(input$selectContrast)) return(NULL)
+		if( is.null( input$selectGO2) ) return (NULL)
+		if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
+
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+		tem = input$removeRedudantSets
+
+
+		####################################
+		if( is.null(limma()$results) ) return(NULL)
+		if( is.null(geneListData()) ) return(NULL) # this has to be outside of isolate() !!!
+		#if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+		NoSig = as.data.frame("No significant enrichment found.")
+		taxonomyID = findTaxonomyID( input$speciesName )
+		if(is.null( taxonomyID ) ) return(NULL)
+
+		isolate({
+		withProgress(message="Mapping gene ids (5 minutes)", {
+		
+		#Intialization
+		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+							   score_threshold=0, input_directory="" )
+				
+		# using expression data
+		genes <- geneListData()
+		colnames(genes)[1:2]=c("gene","lfc")
+		mapped <- string_db$map(genes,"gene", removeUnmappedRows = TRUE )
+
+		incProgress(1/4,detail = paste("up regulated")  )
+		up= subset(mapped, lfc>0, select="STRING_id", drop=TRUE )
+
+		incProgress(1/2, detail ="Down regulated")
+		down= subset(mapped, lfc<0, select="STRING_id", drop=TRUE )		
+		
+		mappingRatio = nrow(mapped)/ nrow(genes)
+		if(nrow(mapped) == 0) return(NULL) else
+		 return( list(up=up, down=down, ratio=mappingRatio, geneTable=mapped ) )
+		incProgress(1)
+		 })#progress
+		}) #isolate						   
+
+})
+
+output$STRINGDB_species_stat <- renderText({
+    tem=table(STRING10_species$kingdom)
+    tem=paste(tem, names(tem), sep=" ", collapse=", ")
+	return(paste("Species in STRING10 database: ", tem) )
+
+}) 
+
+output$STRINGDB_mapping_stat <- renderText({
+		if(is.null(STRINGdb_geneList() ) ) return("No genes mapped by STRINGdb. Please enter or double-check species name above.")
+		tem=paste0( 100*round(STRINGdb_geneList()$ratio,3), "% genes mapped.")
+		if(STRINGdb_geneList()$ratio <0.1 ) tem = paste(tem, "Warning!!! Very few gene mapped. Double check if the correct species is selected.")
+		return( tem  )
+
+}) 
+
+stringDB_GO_enrichmentData <- reactive({
+	library(STRINGdb,verbose=FALSE)
+						   
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		#if (input$submit2STRINGdb == 0)   return(NULL)
+		if( is.null(input$selectContrast)) return(NULL)
+		if( is.null( input$selectGO2) ) return (NULL)
+		if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
+
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+		tem = input$removeRedudantSets
+
+		tem = input$STRINGdbGO
+		taxonomyID = findTaxonomyID( input$speciesName )
+		if(is.null( taxonomyID ) ) return(NULL)		
+		####################################
+		if( is.null(limma()$results) ) return(NULL)
+		if( is.null(geneListData()) ) return(NULL) # this has to be outside of isolate() !!!
+		#if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+		NoSig = as.data.frame("No significant enrichment found.")
+		if(is.null(STRINGdb_geneList() ) ) return(NULL)
+		
+		isolate({
+		withProgress(message="Enrichment analysis", {
+		#Intialization
+		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+							   score_threshold=0, input_directory="" )
+				
+		# using expression data
+		genes <- selectedHeatmap.data()$genes
+		if(is.null(genes) ) return(NULL) 
+		if(dim(genes)[1] <= minGenesEnrichment ) return(NoSig) # if has only few genes
+		
+		fc = selectedHeatmap.data()$bar		
+		# GO
+		results1 <- NULL; result <- NULL
+		pp <- 0
+		for( i in c(1:2) ) {
+			#incProgress(1/2,detail = paste("Mapping gene ids")  )
+			
+			if( length(which(fc*i<0)) <= minGenesEnrichment) next; 
+			query = rownames(genes)[which(fc*i<0)]
+			
+			if( length(query) <= minGenesEnrichment) next; 	
+			
+			ids = STRINGdb_geneList()[[i]]
+			
+			incProgress(1/3  )
+			result <- string_db$get_enrichment( ids, category = input$STRINGdbGO, methodMT = "fdr", iea = TRUE )
+			if(nrow(result) == 0 ) next; 
+			if(nrow(result) > 15)  result <- result[1:15,]
+
+			if( dim(result)[2] ==1) next;   # result could be NULL
+			if(i == 1) result$direction = "Up regulated"  else result$direction = "Down regulated"
+			if (pp==0 ) { results1 <- result; pp = 1;} else  results1 = rbind(results1,result)
+		}
+
+		if ( pp == 0 ) return (NoSig)
+		if ( is.null( results1) ) return (NoSig)
+		if( dim(results1)[2] == 1 ) return(NoSig)  # Returns a data frame: "No significant results found!"
+		
+		results1= results1[,c(7,5,3, 6)]
+		colnames(results1)= c("List","FDR","nGenes","GO terms or pathways")
+		minFDR = 0.01
+		if(min(results1$FDR) > minFDR ) results1 = as.data.frame("No signficant enrichment found.") else
+		results1 = results1[which(results1$FDR < minFDR),]
+		
+		incProgress(1, detail = paste("Done")) 
+		
+		if(dim(results1)[2] != 4) return(NoSig)
+		colnames(results1)= c("Direction","adj.Pval","nGenes","Pathways")
+		results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )	
+		rownames(results1)=1:nrow(results1)
+		results1[ duplicated (results1[,1] ),1 ] <- ""  
+		
+		return( results1 )
+		 })#progress
+		}) #isolate						   
+
+}) 
+
+output$stringDB_GO_enrichment <- renderTable({
+		if(is.null(stringDB_GO_enrichmentData() ) ) return(NULL)
+
+		 stringDB_GO_enrichmentData()	   
+
+		
+
+}, digits = 0,spacing="s",include.rownames=F,striped=TRUE,bordered = TRUE, width = "auto",hover=T) 
+
+output$STRING_enrichmentDownload <- downloadHandler(
+		filename = function() {paste0("STRING_enrichment",input$STRINGdbGO,".csv")},
+		content = function(file) {
+			write.csv(stringDB_GO_enrichmentData(), file)
+	    }
+	)
+
+
+   
+output$stringDB_network1 <- renderPlot({
+	library(STRINGdb)
+						   
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		#if (input$submit2STRINGdb == 0)   return(NULL)
+		if( is.null(input$selectContrast)) return(NULL)
+		if( is.null( input$selectGO2) ) return (NULL)
+		if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
+
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+		tem = input$removeRedudantSets
+
+		tem = input$STRINGdbGO
+		tem = input$nGenesPPI
+		taxonomyID = findTaxonomyID( input$speciesName )
+		if(is.null( taxonomyID ) ) return(NULL)		
+		####################################
+		if( is.null(limma()$results) ) return(NULL)
+		if( is.null(geneListData()) ) return(NULL) # this has to be outside of isolate() !!!
+		# if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+		NoSig = as.data.frame("No significant enrichment found.")
+		if(is.null(STRINGdb_geneList() ) ) return(NULL)
+		
+		isolate({
+		withProgress(message="Enrichment analysis", {
+		#Intialization
+		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+							   score_threshold=0, input_directory="" )
+		# only up regulated is ploted		
+		for( i in c(1:1) ) {
+			incProgress(1/2,detail = paste("Plotting network")  )
+			
+		
+			ids = STRINGdb_geneList()[[i]]
+			if(length(ids)> input$nGenesPPI )  # n of genes cannot be more than 400
+				ids <- ids[1:input$nGenesPPI]
+			incProgress(1/3  )
+			string_db$plot_network( ids,add_link=FALSE)
+
+		}
+
+		 })#progress
+		}) #isolate						   
+}, width = 1000, height=600)
+
+output$stringDB_network_link <- renderUI({
+		library(STRINGdb,verbose=FALSE)
+						   
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		#if (input$submit2STRINGdb == 0)   return(NULL)
+		if( is.null(input$selectContrast)) return(NULL)
+		if( is.null( input$selectGO2) ) return (NULL)
+		if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
+
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+		tem = input$removeRedudantSets
+
+		tem = input$STRINGdbGO
+		tem = input$nGenesPPI
+		taxonomyID = findTaxonomyID( input$speciesName )
+		if(is.null( taxonomyID ) ) return(NULL)		
+		
+		####################################
+		if( is.null(limma()$results) ) return(NULL)
+		if( is.null(geneListData()) ) return(NULL) # this has to be outside of isolate() !!!
+		#if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+		NoSig = as.data.frame("No significant enrichment found.")
+		if(is.null(STRINGdb_geneList() ) ) return(NULL)
+		
+		isolate({
+		withProgress(message="PPI Enrichment and link", {
+		#Intialization
+		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+							   score_threshold=0, input_directory="" )
+			# upregulated
+		   ids = STRINGdb_geneList()[[1]]
+			if(length(ids)> input$nGenesPPI )  # n of genes cannot be more than 400
+				ids <- ids[1:input$nGenesPPI]
+			incProgress(1/4  )
+			link1 = string_db$get_link( ids)
+			Pval1 = string_db$get_ppi_enrichment( ids)
+			tem = "<h5> Links to protein interaction network on STRING-db website:  "
+			tem = paste(tem, "<a href=\"", link1, "\" target=\"_blank\"> Up-regulated genes </a>"  )
+
+			# downregulated
+			ids = STRINGdb_geneList()[[2]]
+			if(length(ids)> input$nGenesPPI )
+				ids <- ids[1:input$nGenesPPI]
+			incProgress(2/4  )
+			link2 = string_db$get_link( ids)
+			Pval2 = string_db$get_ppi_enrichment( ids)				
+			tem = paste(tem, " &nbsp  <a href=\"", link2, "\"target=\"_blank\"> Down-regulated genes </a>"  )
+			
+			# both up and down with color code
+			incProgress(3/4  )
+			geneTable = STRINGdb_geneList()$geneTable
+			if(nrow(geneTable)> input$nGenesPPI ) 
+				geneTable <- geneTable[1:input$nGenesPPI,]
+			geneTable =  string_db$add_diff_exp_color( geneTable, logFcColStr="lfc" ) 
+			payload_id <- string_db$post_payload( geneTable$STRING_id,colors=geneTable$color )
+			link3 = string_db$get_link(geneTable$STRING_id, payload_id = payload_id)			
+			tem = paste(tem, " &nbsp  <a href=\"", link3, "\"target=\"_blank\"> Both with fold-changes color coded </a></h5>"  )
+
+            tem2 = paste("<h5> Enrichment P values: ")  
+			tem2 = paste0(tem2,"Up: ", sprintf("%-3.2e",Pval1[1]), " &nbspDown: ", sprintf("%-3.2e",Pval2[1]),".")
+			tem2 = paste(tem2, " A small P value indicates more PPIs with in DEGs than background using the
+ 			<a href=\"https://www.bioconductor.org/packages/release/bioc/html/STRINGdb.html\"target=\"_blank\"> get_ppi_enrichment function.</a></h5>" )
+			tem = paste(tem2,tem )
+		return(HTML(tem))	
+		 #return(paste(tem, collapse='<br/>'))
+			incProgress(1  )
+
+		 })#progress
+		}) #isolate			
+	
+
+
+
+}) 
 ################################################################
 #   Pathway analysis
 ################################################################
@@ -9603,16 +9907,16 @@ output$RsessionInfo <- renderUI({
 	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		
 	i = "<h4> <a href=\"mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP\" target=\"_top\">Email us</a> for questions, 
-	suggestions, or data contributions. Stay connected via <a href=\"https://groups.google.com/d/forum/idep\"> user group</a>, or
-	   <a href=\"https://twitter.com/useIDEP\"> Twitter. </a></h4>"  
+	suggestions, or data contributions. Stay connected via <a href=\"https://groups.google.com/d/forum/idep\"target=\"_blank\"> user group</a>, or
+	   <a href=\"https://twitter.com/useIDEP\"target=\"_blank\"> Twitter. </a></h4>"  
 	i = c(i,"<h2>R as in Reproducibility</h2>")
 	i = c(i,"We recommend users to save the following details about their analyses.")
 	i = c(i,paste("Analysis were conducted using the awesome ",iDEPversion, 
 		", hosted at http://ge-lab.org on ", date(),".",sep="") )
 		
 	
-	i = c(i,"If you really, really need it, here is my embarrassingly  
-	messy <a href=\"https://github.com/gexijin/iDEP\"> source code.</a>")
+	i = c(i,"If you really need it, here is my embarrassingly  
+	messy <a href=\"https://github.com/iDEP-SDSU/idep\"target=\"_blank\"> source code.</a>")
 	
 	#inFile <- input$file1
 	#inFile <- inFile$datapath

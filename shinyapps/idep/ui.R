@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.62"
+iDEPversion = "iDEP.65"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -83,18 +83,22 @@ tableOutput('species' ),
      ,tableOutput('contents')
 		#,h3("Dear users, Thank you for using iDEP. Please help make it better by sending us criticisms, suggestions or feature/functionality requests. We also answer your questions on how to use iDEP to analyze your data.",a("Just email us.",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"))
 		,h5("Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data.  See ",
-			a(" documentation", href="https://idepsite.wordpress.com/"), "and",
-			a(" manuscript.", href="http://biorxiv.org/content/biorxiv/early/2017/06/09/148411.full.pdf"),
-   			"Based on annotation of",a( " 163 animal and 45 plant genomes ",href="https://idepsite.wordpress.com/species/") ,"in Ensembl BioMart as of 12/15/2017."
-            ," Additional  data from"
-			,a("KEGG, ", href="www.genome.jp/kegg/")
-			,a("Reactome, ", href="http://www.reactome.org/")
-			,a("MSigDB (human),", href="https://doi.org/10.1093/bioinformatics/btr260") 
-			,a("GSKB (mouse)", href="http://biorxiv.org/content/early/2016/10/24/082511") 
-			,"and",a("  araPath (arabidopsis).", href="https://doi.org/10.1093/bioinformatics/bts421") 
+			a(" documentation", href="https://idepsite.wordpress.com/",target="_blank"), "and",
+			a(" manuscript.", href="http://biorxiv.org/content/biorxiv/early/2017/06/09/148411.full.pdf",target="_blank"),
+   			"Based on annotation of",a( " 163 animal and 45 plant genomes ",href="https://idepsite.wordpress.com/species/",target="_blank") ,"in Ensembl BioMart as of 12/15/2017."
+ 			,a("STRING-db ", href="https://string-db.org/",target="_blank")
+			,"offer API access to protein interaction networks and annotations for 115 archaeal, 1678 bacterial, and 238 eukaryotic species."
+			," Additional  data from"
+			,a("KEGG, ", href="www.genome.jp/kegg/",target="_blank")
+			,a("Reactome, ", href="http://www.reactome.org/",target="_blank")
+			,a("MSigDB (human),", href="https://doi.org/10.1093/bioinformatics/btr260",target="_blank") 
+			,a("GSKB (mouse)", href="http://biorxiv.org/content/early/2016/10/24/082511",target="_blank") 
+			,"and",a("  araPath (arabidopsis).", href="https://doi.org/10.1093/bioinformatics/bts421",target="_blank")
+
+			
 			," For feedbacks or data contributions (genes and GO mapping of any species), please"
 			,a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=iDEP" )
-			, "or visit our",a(" homepage.", href="http://ge-lab.org/")
+			, "or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank")
 			, "Send us suggestions or any error message to help improve iDEP."
 			,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions")
          )
@@ -286,11 +290,11 @@ tableOutput('species' ),
 				   ,tableOutput("KmeansPromoter"))
 				  ,bsModal("modalExample9", "Determining the number of clusters (k)", "NClusters", size = "large",
 				  h5("Following the elbow method, one should choose k so that adding another cluster does not substantially reduce the within groups sum of squares."
-					,a("Wikipedia", href="https://en.wikipedia.org/wiki/Determining_the_number_of_clusters_in_a_data_set"))
+					,a("Wikipedia", href="https://en.wikipedia.org/wiki/Determining_the_number_of_clusters_in_a_data_set",target="_blank"))
 				  ,plotOutput("KmeansNclusters"))
 				  ,bsModal("modalExample229", "t-SNE plot of genes", "geneTSNE", size = "large",
 				  h5("We use the dimension reduction algorith "
-					,a("t-SNE", href="https://lvdmaaten.github.io/tsne/"), "to map the top genes. Examine the distribution can help choose the nubmer of clusters in k-Means. ")
+					,a("t-SNE", href="https://lvdmaaten.github.io/tsne/",target="_blank"), "to map the top genes. Examine the distribution can help choose the nubmer of clusters in k-Means. ")
 				  ,checkboxInput("colorGenes", "Color genes by the results of k-Means", value = TRUE)
 				  ,actionButton("seedTSNE", "Re-calculate using different random numbers")
 				  ,plotOutput("tSNEgenePlot"))
@@ -432,7 +436,7 @@ tableOutput('species' ),
 	     ,tabPanel("DEG2",
               sidebarLayout(
                 sidebarPanel(
-				 h5("Examine the results of DEGs")
+				 h5("Examine the results of DEGs for each comparison")
 				 ,htmlOutput("listComparisons")
 				 ,br()
 				,actionButton("showVolcano", "Volcano Plot")
@@ -447,13 +451,17 @@ tableOutput('species' ),
 				 ,downloadButton('downloadSelectedHeatmap',"High-resolution figure")
 				  #,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
 				,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
-				 ,h5("Pathway database")
+				 ,h5("Enrichment analysis")
+
+				 
 				 ,htmlOutput("selectGO2")
 				,tags$style(type='text/css', "#selectGO2 { width:100%;   margin-top:-9px}")
 				 ,actionButton("ModalEnrichmentPlot", "Enrichment tree")
-				 ,actionButton("ModalEnrichmentNetwork", "Enrichment network")
+				 ,actionButton("ModalEnrichmentNetwork", "Enrichment network")			 
 				 ,downloadButton('downloadGOTerms', "Enrichment details" )
-				 ,h5("Also try",  a("ShinyGO", href="http://ge-lab.org:3838/go/") )	
+				 ,actionButton("STRINGdb_GO", "Enrichment using STRING API")
+				,tags$head(tags$style("#STRINGdb_GO{color: blue}"))	
+				 ,h5("Also try",  a("ShinyGO", href="http://ge-lab.org:3838/go/",target="_blank") )	
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/degs/",target="_blank")				
 				
 				, width=4),
@@ -496,6 +504,42 @@ tableOutput('species' ),
 						,conditionalPanel("input.MAPlotBox == 0",	downloadButton('downloadMAPlot',"Figure" ),	plotOutput("MAplot") )
 						,conditionalPanel("input.MAPlotBox == 1",plotlyOutput("MAplotly",width = "550px", height = "550px") )
 				   )
+				   ,bsModal("modalExampleSTRING", "Enrichment and network visualization using STRING API", "STRINGdb_GO", size = "large"
+						,textOutput("STRINGDB_species_stat")
+						, selectizeInput('speciesName', label="Select Species",choices = " ",
+							   multiple = TRUE, options = list(maxItems = 1,							 
+								 placeholder = 'Type in academic name (i.e. homo sapiens)',
+								 onInitialize = I('function() { this.setValue(""); }')
+							   )
+							 )
+
+						,textOutput("STRINGDB_mapping_stat")
+						,tags$head(tags$style("#STRINGDB_mapping_stat{color: blue;font-size: 14px;}"))
+						,br()
+				,actionButton("ModalPPI","Show DEGs on PPI network"),br(),br()
+						,selectInput("STRINGdbGO", "Functional category", choices = list("GO Biological Process"= "Process"
+																			  ,"GO Cellular Component"= "Component"
+																			  ,"GO Molecular Function"= "Function"
+																			  ,"KEGG" = "KEGG"
+																			  ,"Pfam" = "Pfam"
+																			  ,"InterPro" = "InterPro")
+																, selected = "Process")							
+						#,actionButton("submit2STRINGdb", "Submit")
+						,downloadButton("STRING_enrichmentDownload")
+						,tableOutput("stringDB_GO_enrichment")
+   				   )
+				   ,bsModal("ModalExamplePPI", "Analyze top DEGs on protein interaction networks (PPIs)", "ModalPPI", size = "large"
+				      			,sliderInput("nGenesPPI", label = h5("Top up- or down-regulated genes to include:"), min = 0, max = 400, value = 100,step=10) 
+								,htmlOutput("stringDB_network_link")
+						,h5("Protein interactions among proteins encoded by top up-regulated proteins",align = "center")
+						,plotOutput("stringDB_network1")		 
+
+				   
+				   
+				   )
+
+				   
+				   
 				   	,bsModal("modalExample1", "Enriched TF binding motifs in promoters of DEGs", "showMotif", size = "large"
 				   ,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
 				   ,tableOutput("DEG.Promoter"))
@@ -604,7 +648,7 @@ tableOutput('species' ),
 				,tags$style(type='text/css', "#limmaPvalViz { width:100%;   margin-top:-12px}")
 				,tags$style(type='text/css', "#limmaFCViz { width:100%;   margin-top:-12px}")					
 				,br(), h5("To identify genomic regions significatly enriched with up- or down-regulated genes, we can use "
-				,a("PREDA.", href="https://academic.oup.com/bioinformatics/article/27/17/2446/224332/PREDA-an-R-package-to-identify-regional-variations"),
+				,a("PREDA.", href="https://academic.oup.com/bioinformatics/article/27/17/2446/224332/PREDA-an-R-package-to-identify-regional-variations",target="_blank"),
 				"Very slow (5 mins), but may be useful in studying cancer or other diseases that might involve chromosomal gain or loss."	)
 
 				,actionButton("runPREDA", "Run PREDA (5 mins)")
@@ -761,6 +805,7 @@ tableOutput('species' ),
 		overlaps between enriched gene sets, in K-means, DEG2, and pathway tags.
 		Downloads of pathway analysis results and high-resolution figures.")
 	 ,h5("2/6/2018: Fixed errors caused by gene symbol matching for unknown species. More user control of hierarchical clustering tree")
+	 ,h5("2/9/2018: V 0.65 Added API access to STRINGdb website on the DEG2 tab. Supports thousands of bacterial species")
 	 ,h5("To Ge Fuxi.")
  ) ))
 
