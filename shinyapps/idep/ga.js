@@ -11,8 +11,8 @@ ga('create', 'UA-87863704-2', 'auto');
 //ga('create', 'UA-87863704-3', 'auto');
 ga('send', 'pageview');
 // Event Tracking Code
-$(document).on('shiny:inputchanged', function(event) {
-    if(event.name == 'navBar'){
+$(document).on('shiny:recalculated', function(event) {
+//    if(event.name == 'navBar'){
         ga('send', 'pageview');
-    }
+//    }
 });
