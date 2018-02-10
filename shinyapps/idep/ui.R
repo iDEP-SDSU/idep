@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.65"
+iDEPversion = "iDEP.66"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -505,8 +505,10 @@ tableOutput('species' ),
 						,conditionalPanel("input.MAPlotBox == 1",plotlyOutput("MAplotly",width = "550px", height = "550px") )
 				   )
 				   ,bsModal("modalExampleSTRING", "Enrichment and network visualization using STRING API", "STRINGdb_GO", size = "large"
-						,textOutput("STRINGDB_species_stat")
-						, selectizeInput('speciesName', label="Select Species",choices = " ",
+						,h5("Analysis is done remotely by STRING-db server via API. It is slow, but has protein interactions and GO annotation of  
+						 more species. iDEP tries to guess the correct species ID for STRING-db. Change below if needed.")
+						,htmlOutput("STRINGDB_species_stat")
+						, selectizeInput('speciesName', label=NULL,choices = " ",
 							   multiple = TRUE, options = list(maxItems = 1,							 
 								 placeholder = 'Type in academic name(mus musculus for demo)',
 								 onInitialize = I('function() { this.setValue(""); }')
@@ -517,7 +519,7 @@ tableOutput('species' ),
 						,tags$head(tags$style("#STRINGDB_mapping_stat{color: blue;font-size: 14px;}"))
 						,br()
 				,actionButton("ModalPPI","Show DEGs on PPI network"),br(),br()
-						,selectInput("STRINGdbGO", "Functional category", choices = list("GO Biological Process"= "Process"
+						,selectInput("STRINGdbGO", label=NULL, choices = list("GO Biological Process"= "Process"
 																			  ,"GO Cellular Component"= "Component"
 																			  ,"GO Molecular Function"= "Function"
 																			  ,"KEGG" = "KEGG"
@@ -529,7 +531,9 @@ tableOutput('species' ),
 						,tableOutput("stringDB_GO_enrichment")
    				   )
 				   ,bsModal("ModalExamplePPI", "Analyze top DEGs on protein interaction networks (PPIs)", "ModalPPI", size = "large"
-				      			,sliderInput("nGenesPPI", label = h5("Top up- or down-regulated genes to include:"), min = 0, max = 400, value = 100,step=10) 
+						,h5("This can take 5 minutes, as PPI datasets for your species are downloaded 
+							from and your genes are uploaded to the STRING website.")
+				   ,sliderInput("nGenesPPI", label = h5("Top up- or down-regulated genes to include:"), min = 0, max = 400, value = 100,step=10) 
 								,htmlOutput("stringDB_network_link")
 						,br(),br(),h5("Interactions among proteins encoded by top up-regulated proteins",align = "center")
 						,plotOutput("stringDB_network1")		 
@@ -806,6 +810,7 @@ tableOutput('species' ),
 		Downloads of pathway analysis results and high-resolution figures.")
 	 ,h5("2/6/2018: Fixed errors caused by gene symbol matching for unknown species. More user control of hierarchical clustering tree")
 	 ,h5("2/9/2018: V 0.65 Added API access to STRINGdb website on the DEG2 tab. Supports thousands of bacterial species")
+	 ,h5("2/10/2018: V 0.66 Improved API access to STRINGdb, by adding automatic species matching.")
 	 ,h5("To Ge Fuxi.")
  ) ))
 

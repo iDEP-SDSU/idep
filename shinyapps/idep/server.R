@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.65"
+iDEPversion = "iDEP 0.66"
 ################################################################
 # R packages
 ################################################################
@@ -467,7 +467,11 @@ findSpeciesById <- function (speciesID){ # find species name use id
 findSpeciesByIdName <- function (speciesID){ # find species name use id
   return( orgInfo[which(orgInfo$id == speciesID),3]  )
 }
-
+#Homo sapies --> hsapiens
+shortSpeciesNames <- function(tem){
+	 tem2 = strsplit(as.character(tem)," " ) 	   
+	 return( tolower( paste0(substr(tem2[[1]][1],1,1), tem2[[1]][2]  ) ) )
+}
 # convert sorted species:idType combs into a list for repopulate species choice
 matchedSpeciesInfo <- function (x) {
   a<- c()
@@ -1878,13 +1882,6 @@ enrichmentNetworkPlotly <- function(enrichedTerms){
 	   
 }
 
-# find Taxonomy ID from species official name 
-findTaxonomyID <- function(speciesName){
-    if(is.null(speciesName) ) return(NULL)
-    ix = match(speciesName, STRING10_species$official_name)
-    if(length(ix) == 0 ) return(NULL)
-    return(STRING10_species$species_id[ix])
-}
  if(0 ){ # pathway testing
 	x = read.csv("expression.csv")
 	x = read.csv("expression1_no_duplicate.csv")
@@ -2286,7 +2283,10 @@ observe({  updateSelectInput(session, "selectOrg", choices = speciesChoice )    
 observe({  updateSelectInput(session, "heatColors1", choices = colorChoices )      })
 observe({  updateSelectInput(session, "distFunctions", choices = distChoices )      })
 observe({  updateSelectInput(session, "hclustFunctions", choices = hclustChoices )      })
-observe({  updateSelectInput(session, "speciesName", choices = STRING10_species$official_name)      })
+# update species for STRING-db related API access
+observe({  	updateSelectInput(session, "speciesName",
+									choices = STRING10_species$official_name)
+			})
 	################################################################
 	#   Read data
 	################################################################
@@ -3923,7 +3923,7 @@ PCAplots4Download <- reactive({
 		}
 	p=p+xlab("Dimension 1") 
 	p=p+ylab("Dimension 2") 
-	p=p+ggtitle("t-SNE plot)")+ coord_fixed(ratio=1.)+ 
+	p=p+ggtitle("t-SNE plot")+ coord_fixed(ratio=1.)+ 
      theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
 	 	 theme(axis.text.x = element_text( size = 16),
 	       axis.text.y = element_text( size = 16),
@@ -6356,6 +6356,35 @@ output$DEG.Promoter <- renderTable({
 
 #----------------------------------------------------
 # STRING-db functionality
+# find Taxonomy ID from species official name 
+findTaxonomyID <- reactive({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		#if (input$submit2STRINGdb == 0)   return(NULL)
+		if( is.null(input$selectContrast)) return(NULL)
+		if( is.null( input$selectGO2) ) return (NULL)
+		 
+		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
+		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
+		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
+		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
+		tem = input$removeRedudantSets
+		
+    if(!is.null(input$speciesName) ) { # if species name is entered
+	   ix = match(input$speciesName, STRING10_species$official_name)
+	   } else if( input$selectGO2 != "ID not recognized!" )
+	   { # if no species is entered, try to resolve species using existing info 	
+			codedNames = sapply(STRING10_species$compact_name,shortSpeciesNames )
+			ix = match( gsub("_.*","", converted()$species[1,1] ), codedNames)
+			if(input$selectOrg != speciesChoice[[1]]) {  # if species is entered
+				selectedSpecies = findSpeciesById(input$selectOrg)[1,1]
+				ix = match( gsub("_.*","", selectedSpecies ), codedNames)				
+			}
+
+		} else return(NULL) 
+ 
+    if(length(ix) == 0 | is.na(ix) ) return(NULL) 
+    return(STRING10_species$species_id[ix])
+})
 
 STRINGdb_geneList <- reactive({
 	library(STRINGdb,verbose=FALSE)
@@ -6363,8 +6392,6 @@ STRINGdb_geneList <- reactive({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		#if (input$submit2STRINGdb == 0)   return(NULL)
 		if( is.null(input$selectContrast)) return(NULL)
-		if( is.null( input$selectGO2) ) return (NULL)
-		if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
 
 		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
@@ -6378,7 +6405,8 @@ STRINGdb_geneList <- reactive({
 		if( is.null(geneListData()) ) return(NULL) # this has to be outside of isolate() !!!
 		#if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
 		NoSig = as.data.frame("No significant enrichment found.")
-		taxonomyID = findTaxonomyID( input$speciesName )
+		taxonomyID = findTaxonomyID()
+
 		if(is.null( taxonomyID ) ) return(NULL)
 
 		isolate({
@@ -6408,19 +6436,35 @@ STRINGdb_geneList <- reactive({
 
 })
 
-output$STRINGDB_species_stat <- renderText({
+output$STRINGDB_species_stat <- renderUI({
     tem=table(STRING10_species$kingdom)
     tem=paste(tem, names(tem), sep=" ", collapse=", ")
-	return(paste("Gene lists are sent to STRING server (string-db.org) via API. Slow, but covers more species:", tem) )
+	tem =paste0(tem," total species.")
+    if(is.null(input$speciesName) && !is.null(findTaxonomyID() ) ) {
+		ix = match(findTaxonomyID(), STRING10_species$species_id )
+		if(length(ix) !=0 && !is.na(ix) ) 
+		 tem = paste(tem, " If ",STRING10_species$official_name[ix], "is not the correct species, enter below:")		
+		if(length(ix) ==0) 
+		 tem = paste(tem, "  Enter species name below:")		
+		
+	 }
+	return( HTML(tem) )
 
 }) 
 
 output$STRINGDB_mapping_stat <- renderText({
-		if(is.null(STRINGdb_geneList() ) ) return("No genes mapped by STRINGdb. Please enter or double-check species name above.")
-		tem=paste0( 100*round(STRINGdb_geneList()$ratio,3), "% genes mapped.")
-		if(STRINGdb_geneList()$ratio <0.1 ) tem = paste(tem, "Warning!!! Very few gene mapped. Double check if the correct species is selected.")
-		return( tem  )
+						   
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		#if (input$submit2STRINGdb == 0)   return(NULL)
+		if( is.null(input$selectContrast)) return(NULL)
+		if( is.null( input$selectGO2) ) return (NULL)
 
+		if( is.null(STRINGdb_geneList() ) ) return("No genes mapped by STRINGdb. Please enter or double-check species name above.")
+		if(! is.null(STRINGdb_geneList() ) ) { 
+			tem=paste0( 100*round(STRINGdb_geneList()$ratio,3), "% genes mapped.")
+			if(STRINGdb_geneList()$ratio <0.1 ) tem = paste(tem, "Warning!!! Very few gene mapped. Double check if the correct species is selected.")
+			return( tem  )
+		}
 }) 
 
 stringDB_GO_enrichmentData <- reactive({
@@ -6439,7 +6483,7 @@ stringDB_GO_enrichmentData <- reactive({
 		tem = input$removeRedudantSets
 
 		tem = input$STRINGdbGO
-		taxonomyID = findTaxonomyID( input$speciesName )
+		taxonomyID = findTaxonomyID(  )
 		if(is.null( taxonomyID ) ) return(NULL)		
 		####################################
 		if( is.null(limma()$results) ) return(NULL)
@@ -6522,8 +6566,6 @@ output$STRING_enrichmentDownload <- downloadHandler(
 			write.csv(stringDB_GO_enrichmentData(), file)
 	    }
 	)
-
-
    
 output$stringDB_network1 <- renderPlot({
 	library(STRINGdb)
@@ -6542,7 +6584,7 @@ output$stringDB_network1 <- renderPlot({
 
 		tem = input$STRINGdbGO
 		tem = input$nGenesPPI
-		taxonomyID = findTaxonomyID( input$speciesName )
+		taxonomyID = findTaxonomyID( )
 		if(is.null( taxonomyID ) ) return(NULL)		
 		####################################
 		if( is.null(limma()$results) ) return(NULL)
@@ -6590,7 +6632,7 @@ output$stringDB_network_link <- renderUI({
 
 		tem = input$STRINGdbGO
 		tem = input$nGenesPPI
-		taxonomyID = findTaxonomyID( input$speciesName )
+		taxonomyID = findTaxonomyID( )
 		if(is.null( taxonomyID ) ) return(NULL)		
 		
 		####################################
@@ -6612,7 +6654,7 @@ output$stringDB_network_link <- renderUI({
 			incProgress(1/4  )
 			link1 = string_db$get_link( ids)
 			Pval1 = string_db$get_ppi_enrichment( ids)
-			tem = "<h5> Try it! Interactive and annotated PPI networks showing interactions 
+			tem = "<h5> Interactive and annotated PPI networks showing interactions 
 			        among proteins coded by top DEGs can be accessed via custom URLs:  "
 			tem = paste(tem, "<a href=\"", link1, "\" target=\"_blank\"> Up-regulated; </a>"  )
 
