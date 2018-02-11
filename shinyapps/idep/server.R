@@ -99,6 +99,8 @@ motifFiles = paste(datapath,"motif/",motifFiles,sep="")
 #demoDataFile2 = paste0(datapath,"data_go/BcellGSE71176_p53_sampleInfo.csv") # sample Info file
 demoDataFile = paste0("BcellGSE71176_p53.csv") # GSE71176
 demoDataFile2 = paste0("BcellGSE71176_p53_sampleInfo.csv") # sample Info file
+quotes <- dbGetQuery(convert, " select * from quotes")
+quotes = paste0("\"",quotes$quotes,"\"", " -- ",quotes$author,".       ")
 
 STRING10_species = read.csv("STRING10_species.csv")
 # File needs to be updated when STRING updates, using the following commands
@@ -6410,7 +6412,7 @@ STRINGdb_geneList <- reactive({
 		if(is.null( taxonomyID ) ) return(NULL)
 
 		isolate({
-		withProgress(message="Mapping gene ids (5 minutes)", {
+		withProgress(message=sample(quotes,1), detail ="Mapping gene ids (5 minutes)", {
 		
 		#Intialization
 		string_db <- STRINGdb$new( version="10", species=taxonomyID,
@@ -6437,13 +6439,14 @@ STRINGdb_geneList <- reactive({
 })
 
 output$STRINGDB_species_stat <- renderUI({
-    tem=table(STRING10_species$kingdom)
-    tem=paste(tem, names(tem), sep=" ", collapse=", ")
-	tem =paste0(tem," total species.")
+    # tem=table(STRING10_species$kingdom)
+    # tem=paste(tem, names(tem), sep=" ", collapse=", ")
+	# tem =paste0("Total species in STRING:",tem)
+	tem =""
     if(is.null(input$speciesName) && !is.null(findTaxonomyID() ) ) {
 		ix = match(findTaxonomyID(), STRING10_species$species_id )
 		if(length(ix) !=0 && !is.na(ix) ) 
-		 tem = paste(tem, " If ",STRING10_species$official_name[ix], "is not the correct species, enter below:")		
+		 tem = paste(tem, "If ",STRING10_species$official_name[ix], "is NOT the correct species, change below:")		
 		if(length(ix) ==0) 
 		 tem = paste(tem, "  Enter species name below:")		
 		
@@ -6461,8 +6464,8 @@ output$STRINGDB_mapping_stat <- renderText({
 
 		if( is.null(STRINGdb_geneList() ) ) return("No genes mapped by STRINGdb. Please enter or double-check species name above.")
 		if(! is.null(STRINGdb_geneList() ) ) { 
-			tem=paste0( 100*round(STRINGdb_geneList()$ratio,3), "% genes mapped.")
-			if(STRINGdb_geneList()$ratio <0.1 ) tem = paste(tem, "Warning!!! Very few gene mapped. Double check if the correct species is selected.")
+			tem=paste0( 100*round(STRINGdb_geneList()$ratio,3), "% genes mapped by STRING web server.")
+			if(STRINGdb_geneList()$ratio <0.3 ) tem = paste(tem, "Warning!!! Very few gene mapped. Double check if the correct species is selected.")
 			return( tem  )
 		}
 }) 
@@ -6493,7 +6496,7 @@ stringDB_GO_enrichmentData <- reactive({
 		if(is.null(STRINGdb_geneList() ) ) return(NULL)
 		
 		isolate({
-		withProgress(message="Enrichment analysis", {
+		withProgress(message=sample(quotes,1), detail ="Enrichment analysis", {
 		#Intialization
 		string_db <- STRINGdb$new( version="10", species=taxonomyID,
 							   score_threshold=0, input_directory="" )
@@ -6594,7 +6597,7 @@ output$stringDB_network1 <- renderPlot({
 		if(is.null(STRINGdb_geneList() ) ) return(NULL)
 		
 		isolate({
-		withProgress(message="Enrichment analysis", {
+		withProgress(message=sample(quotes,1), detail ="Enrichment analysis", {
 		#Intialization
 		string_db <- STRINGdb$new( version="10", species=taxonomyID,
 							   score_threshold=0, input_directory="" )
@@ -6643,7 +6646,7 @@ output$stringDB_network_link <- renderUI({
 		if(is.null(STRINGdb_geneList() ) ) return(NULL)
 		
 		isolate({
-		withProgress(message="PPI Enrichment and link", {
+		withProgress(message=sample(quotes,1), detail ="PPI Enrichment and link", {
 		#Intialization
 		string_db <- STRINGdb$new( version="10", species=taxonomyID,
 							   score_threshold=0, input_directory="" )
@@ -6654,8 +6657,7 @@ output$stringDB_network_link <- renderUI({
 			incProgress(1/4  )
 			link1 = string_db$get_link( ids)
 			Pval1 = string_db$get_ppi_enrichment( ids)
-			tem = "<h5> Interactive and annotated PPI networks showing interactions 
-			        among proteins coded by top DEGs can be accessed via custom URLs:  "
+			tem = "<h5> Interactive and annotated PPI networks among DEGs: <br/>  "
 			tem = paste(tem, "<a href=\"", link1, "\" target=\"_blank\"> Up-regulated; </a>"  )
 
 			# downregulated
@@ -6677,10 +6679,9 @@ output$stringDB_network_link <- renderUI({
 			link3 = string_db$get_link(geneTable$STRING_id, payload_id = payload_id)			
 			tem = paste(tem, " &nbsp  <a href=\"", link3, "\"target=\"_blank\"> Both with fold-changes color coded.</a></h5>"  )
 
-            tem2 = paste("<h5> Enrichment P values: ")  
-			tem2 = paste0(tem2,"Up: ", sprintf("%-3.2e",Pval1[1]), " &nbspDown: ", sprintf("%-3.2e",Pval2[1]),".")
-			tem2 = paste(tem2, " A small P value indicates more PPIs with in DEGs than background using the
- 			<a href=\"https://www.bioconductor.org/packages/release/bioc/html/STRINGdb.html\"target=\"_blank\"> get_ppi_enrichment function.</a></h5>" )
+            tem2 = paste("<h5> PPI enrichment P values: ")  
+			tem2 = paste0(tem2,"Up-regulated: ", sprintf("%-3.2e",Pval1[1]), " &nbsp Down-regulated: ", sprintf("%-3.2e",Pval2[1]),".")
+			tem2 = paste(tem2, " Small P values indicate more PPIs among DEGs than background. </h5>" )
 			tem = paste(tem2,tem )
 			return(HTML(tem))	
 		
@@ -8671,7 +8672,7 @@ genomePlotDataPre <- reactive({
 	####################################
 	
   isolate({ 
-	withProgress(message="Identifying differentially expressed genomic regions using PREDA", {
+	withProgress(message=sample(quotes,1), detail ="Identifying differentially expressed genomic regions using PREDA", {
 	if (is.null(input$selectContrast2 ) ) return(NULL)
 	
 	if( length(limma()$topGenes) == 0 ) return(NULL)
@@ -8791,7 +8792,7 @@ genomePlotData <- reactive({
 	####################################
 	
   isolate({ 
-	withProgress(message="Identifying differentially expressed genomic regions using PREDA", {
+	withProgress(message=sample(quotes,1), detail ="Identifying differentially expressed genomic regions using PREDA", {
 	if (is.null(input$selectContrast2 ) ) return(NULL)
 	
 	if( length(limma()$topGenes) == 0 ) return(NULL)

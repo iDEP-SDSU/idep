@@ -505,21 +505,22 @@ tableOutput('species' ),
 						,conditionalPanel("input.MAPlotBox == 1",plotlyOutput("MAplotly",width = "550px", height = "550px") )
 				   )
 				   ,bsModal("modalExampleSTRING", "Enrichment and network visualization using STRING API", "STRINGdb_GO", size = "large"
-						,h5("Analysis is done remotely by STRING-db server via API. It is slow, but has protein interactions and GO annotation of  
-						 more species. iDEP tries to guess the correct species ID for STRING-db. Change below if needed.")
-						,htmlOutput("STRINGDB_species_stat")
+						,h5("iDEP first sends the DEGs to the",
+							a(" STRING server", href="https://www.bioconductor.org/packages/release/bioc/html/STRINGdb.html",target="_blank"),
+								" with its best guess of species ID. Please wait until it finishes. Meditate 5 minutes?")
+						,htmlOutput("STRINGDB_species_stat") 
+						,tags$head(tags$style("#STRINGDB_species_stat{color: blue;font-size: 15px;}"))						
 						, selectizeInput('speciesName', label=NULL,choices = " ",
 							   multiple = TRUE, options = list(maxItems = 1,							 
-								 placeholder = 'Type in academic name(mus musculus for demo)',
+								 placeholder = 'Species name (e.g. Homo sapiens)',
 								 onInitialize = I('function() { this.setValue(""); }')
 							   )
 							 )
-
-						,textOutput("STRINGDB_mapping_stat")
-						,tags$head(tags$style("#STRINGDB_mapping_stat{color: blue;font-size: 14px;}"))
+						,textOutput('STRINGDB_mapping_stat')
+						,tags$head(tags$style("#STRINGDB_mapping_stat{color: blue;font-size: 15px;}"))
 						,br()
-				,actionButton("ModalPPI","Show DEGs on PPI network"),br(),br()
-						,selectInput("STRINGdbGO", label=NULL, choices = list("GO Biological Process"= "Process"
+				,actionButton("ModalPPI","PPI network of DEGs"),br(),br()
+						,selectInput("STRINGdbGO", label="Functional Enrichment", choices = list("GO Biological Process"= "Process"
 																			  ,"GO Cellular Component"= "Component"
 																			  ,"GO Molecular Function"= "Function"
 																			  ,"KEGG" = "KEGG"
@@ -531,10 +532,12 @@ tableOutput('species' ),
 						,tableOutput("stringDB_GO_enrichment")
    				   )
 				   ,bsModal("ModalExamplePPI", "Analyze top DEGs on protein interaction networks (PPIs)", "ModalPPI", size = "large"
-						,h5("This can take 5 minutes, as PPI datasets for your species are downloaded 
-							from and your genes are uploaded to the STRING website.")
-				   ,sliderInput("nGenesPPI", label = h5("Top up- or down-regulated genes to include:"), min = 0, max = 400, value = 100,step=10) 
-								,htmlOutput("stringDB_network_link")
+						,h5("This can take 5 minutes. Patience will pay off! By sending top DEGs(ranked by fold-change) to STRING website, 
+						    we are retrieving a network, calculating PPI enrichment, 
+						  and also generating a custom URL to the STRING website containing your genes. ")
+						,sliderInput("nGenesPPI", label = h5("Top up- or down-regulated genes to include:"), min = 0, max = 400, value = 100,step=10) 
+						,htmlOutput("stringDB_network_link")
+						,tags$head(tags$style("#stringDB_network_link{color: blue; font-size: 15px;}"))
 						,br(),br(),h5("Interactions among proteins encoded by top up-regulated proteins",align = "center")
 						,plotOutput("stringDB_network1")		 
 
@@ -811,7 +814,7 @@ tableOutput('species' ),
 	 ,h5("2/6/2018: Fixed errors caused by gene symbol matching for unknown species. More user control of hierarchical clustering tree")
 	 ,h5("2/9/2018: V 0.65 Added API access to STRINGdb website on the DEG2 tab. Supports thousands of bacterial species")
 	 ,h5("2/10/2018: V 0.66 Improved API access to STRINGdb, by adding automatic species matching.")
-	 ,h5("To Ge Fuxi.")
+	 ,h5("In loving memory of my parents.")
  ) ))
 
   ,tags$head(includeScript("ga.js")) # tracking usage  
