@@ -2287,7 +2287,7 @@ observe({  updateSelectInput(session, "distFunctions", choices = distChoices )  
 observe({  updateSelectInput(session, "hclustFunctions", choices = hclustChoices )      })
 # update species for STRING-db related API access
 observe({  	updateSelectInput(session, "speciesName",
-									choices = STRING10_species$official_name)
+									choices = sort(STRING10_species$official_name) )
 			})
 	################################################################
 	#   Read data
@@ -6477,7 +6477,7 @@ stringDB_GO_enrichmentData <- reactive({
 		#if (input$submit2STRINGdb == 0)   return(NULL)
 		if( is.null(input$selectContrast)) return(NULL)
 		if( is.null( input$selectGO2) ) return (NULL)
-		if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
+		#if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
 
 		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
@@ -6577,7 +6577,7 @@ output$stringDB_network1 <- renderPlot({
 		#if (input$submit2STRINGdb == 0)   return(NULL)
 		if( is.null(input$selectContrast)) return(NULL)
 		if( is.null( input$selectGO2) ) return (NULL)
-		if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
+		#if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
 
 		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2
@@ -6625,7 +6625,7 @@ output$stringDB_network_link <- renderUI({
 		#if (input$submit2STRINGdb == 0)   return(NULL)
 		if( is.null(input$selectContrast)) return(NULL)
 		if( is.null( input$selectGO2) ) return (NULL)
-		if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
+		#if( input$selectGO2 == "ID not recognized!" ) return ( as.matrix("Gene ID not recognized.")) #No matching species
 
 		tem = input$selectOrg; tem = input$noIDConversion; tem=input$missingValue
 		tem=input$limmaPval; tem=input$limmaFC; tem = input$selectContrast; tem = input$selectGO2

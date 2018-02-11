@@ -505,9 +505,9 @@ tableOutput('species' ),
 						,conditionalPanel("input.MAPlotBox == 1",plotlyOutput("MAplotly",width = "550px", height = "550px") )
 				   )
 				   ,bsModal("modalExampleSTRING", "Enrichment and network visualization using STRING API", "STRINGdb_GO", size = "large"
-						,h5("iDEP first sends the DEGs to the",
+						,h5("iDEP first tries to send the DEGs to the",
 							a(" STRING server", href="https://www.bioconductor.org/packages/release/bioc/html/STRINGdb.html",target="_blank"),
-								" with its best guess of species ID. Please wait until it finishes. Meditate 5 minutes?")
+								" with its best guess of a species name. If it is running, please wait until it finishes.")
 						,htmlOutput("STRINGDB_species_stat") 
 						,tags$head(tags$style("#STRINGDB_species_stat{color: blue;font-size: 15px;}"))						
 						, selectizeInput('speciesName', label=NULL,choices = " ",
@@ -532,9 +532,9 @@ tableOutput('species' ),
 						,tableOutput("stringDB_GO_enrichment")
    				   )
 				   ,bsModal("ModalExamplePPI", "Analyze top DEGs on protein interaction networks (PPIs)", "ModalPPI", size = "large"
-						,h5("This can take 5 minutes. Patience will pay off! By sending top DEGs(ranked by fold-change) to STRING website, 
+						,h5("By sending top DEGs(ranked by fold-change) to STRING website, 
 						    we are retrieving a network, calculating PPI enrichment, 
-						  and also generating a custom URL to the STRING website containing your genes. ")
+						  and also generating a custom URL to the STRING website containing your genes. This can take 5 minutes. Patience will pay off! ")
 						,sliderInput("nGenesPPI", label = h5("Top up- or down-regulated genes to include:"), min = 0, max = 400, value = 100,step=10) 
 						,htmlOutput("stringDB_network_link")
 						,tags$head(tags$style("#stringDB_network_link{color: blue; font-size: 15px;}"))
