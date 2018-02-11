@@ -6448,7 +6448,7 @@ output$STRINGDB_species_stat <- renderUI({
 		if(length(ix) !=0 && !is.na(ix) ) 
 		 tem = paste(tem, "If ",STRING10_species$official_name[ix], "is NOT the correct species, change below:")		
 	 }  else
-		 tem = paste(tem, " Enter species name below:")		
+		 tem = paste(tem, " Select species below:")		
 		
 
 	return( HTML(tem) )

@@ -532,21 +532,17 @@ tableOutput('species' ),
 						,tableOutput("stringDB_GO_enrichment")
    				   )
 				   ,bsModal("ModalExamplePPI", "Analyze top DEGs on protein interaction networks (PPIs)", "ModalPPI", size = "large"
-						,h5("By sending top DEGs(ranked by fold-change) to STRING website, 
-						    we are retrieving a network, calculating PPI enrichment, 
-						  and also generating a custom URL to the STRING website containing your genes. This can take 5 minutes. Patience will pay off! ")
+						,h5("By sending top DEGs (ranked by fold-change) to the STRING website, 
+						    iDEP is retrieving a sub-network, calculating PPI enrichment, 
+						  and generating custom URLs to the STRING website containing your genes. This can take 5 minutes. Patience will pay off! ")
 						,sliderInput("nGenesPPI", label = h5("Top up- or down-regulated genes to include:"), min = 0, max = 400, value = 100,step=10) 
 						,htmlOutput("stringDB_network_link")
 						,tags$head(tags$style("#stringDB_network_link{color: blue; font-size: 15px;}"))
 						,br(),br(),h5("Interactions among proteins encoded by top up-regulated proteins",align = "center")
-						,plotOutput("stringDB_network1")		 
-
-				   
+						,plotOutput("stringDB_network1")		 	   
 				   
 				   )
 
-				   
-				   
 				   	,bsModal("modalExample1", "Enriched TF binding motifs in promoters of DEGs", "showMotif", size = "large"
 				   ,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
 				   ,tableOutput("DEG.Promoter"))
