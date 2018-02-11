@@ -6447,10 +6447,10 @@ output$STRINGDB_species_stat <- renderUI({
 		ix = match(findTaxonomyID(), STRING10_species$species_id )
 		if(length(ix) !=0 && !is.na(ix) ) 
 		 tem = paste(tem, "If ",STRING10_species$official_name[ix], "is NOT the correct species, change below:")		
-		if(length(ix) ==0) 
-		 tem = paste(tem, "  Enter species name below:")		
+	 }  else
+		 tem = paste(tem, " Enter species name below:")		
 		
-	 }
+
 	return( HTML(tem) )
 
 }) 

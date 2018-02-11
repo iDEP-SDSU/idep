@@ -505,9 +505,9 @@ tableOutput('species' ),
 						,conditionalPanel("input.MAPlotBox == 1",plotlyOutput("MAplotly",width = "550px", height = "550px") )
 				   )
 				   ,bsModal("modalExampleSTRING", "Enrichment and network visualization using STRING API", "STRINGdb_GO", size = "large"
-						,h5("iDEP first tries to send the DEGs to the",
+						,h5("iDEP tries to match your species with the 115 archaeal, 1678 bacterial, and 238 eukaryotic species in the",
 							a(" STRING server", href="https://www.bioconductor.org/packages/release/bioc/html/STRINGdb.html",target="_blank"),
-								" with its best guess of a species name. If it is running, please wait until it finishes.")
+								" and send the DEGs. If it is running, please wait until it finishes.")
 						,htmlOutput("STRINGDB_species_stat") 
 						,tags$head(tags$style("#STRINGDB_species_stat{color: blue;font-size: 15px;}"))						
 						, selectizeInput('speciesName', label=NULL,choices = " ",
