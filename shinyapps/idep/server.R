@@ -65,13 +65,15 @@ maxFactors =6  # max number of factors in DESeq2 models
 set.seed(2) # seed for random number generator
 mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
 #Each row of this matrix represents a color scheme;
-
+maxSamples = 100   # DESeq2 gets really slow when more than 50 samples
+maxSamplesDefault = 30   # change default from DESeq2 to limma
+maxComparisons = 20 # max number of pair wise comparisons in DESeq2
 hmcols <- colorRampPalette(rev(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF",
 "#E0F3F8", "#91BFDB", "#4575B4")))(75)
 heatColors = rbind(      greenred(75),     bluered(75),     colorpanel(75,"green","black","magenta"),colorpanel(75,"blue","yellow","red"),hmcols )
 rownames(heatColors) = c("Green-Black-Red","Blue-White-Red","Green-Black-Magenta","Blue-Yellow-Red","Blue-white-brown")
 colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull down menu
-
+maxSamplesEDAplot = 60  # max number of samples for EDA plots
 ################################################################
 #   Input files
 ################################################################
@@ -1238,15 +1240,32 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 	ix <- which( groups %in% g)  
 	groups <- groups[ix]   
 	rawCounts <- rawCounts[,ix] 
+	Exp.type = paste(length(g)," sample groups detected.")	
 	
-	
-	Exp.type = paste(length(g)," sample groups detected.")
+	# if too many samples 
+	if(ncol(rawCounts)  > maxSamples) { 
+		#comparisons <- comparisons[1:maxComparisons]
+		return( list(results= NULL, comparisons = NULL, 
+			Exp.type = paste(Exp.type," Too many samples for DESeq2. Please choose limma-voom or limma-trend." ),
+			topGenes=NULL))
+		}	
+		
+	# all pair-wise comparisons
+
 	comparisons = ""
 	for( i in 1:(length(g)-1) )
 		for (j in (i+1):length(g)) 
 		comparisons = c(comparisons,paste(g[j],"-",g[i],sep="" ) )
 	comparisons <- comparisons[-1]
 
+   # if too many comparisons 
+	if(length(comparisons)  > maxComparisons) { 
+		Exp.type = paste(Exp.type," Too many comparisons. Only first",maxComparisons, "of the ", length(comparisons), 
+			"comparisons calculated. Please choose comparisons. " )
+		comparisons <- comparisons[1:maxComparisons]
+		}	
+	
+	
 	colData = cbind(colnames(rawCounts), groups )
 
 	# no sample file, but user selected comparisons using column names
@@ -1258,7 +1277,7 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 	dds = DESeqDataSetFromMatrix(countData=rawCounts,
 								colData=colData,
 								design=~groups)								
-	
+
 	if( is.null(modelFactors)  ) 
 		dds = DESeq(dds)  	else  
 	{    # using selected factors and comparisons
@@ -1345,10 +1364,11 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 		}
 	} # if selected factors	
 	
-	# extract contrasts according to comprisons defined above
+	# extract contrasts according to comparisons defined above
 	result1 = NULL; allCalls = NULL;
 	topGenes = list(); pk = 1 # counter
 	pp=0 # first results?
+
 	for( kk in 1:length(comparisons) ) {
 		tem = unlist( strsplit(comparisons[kk],"-") )
 		
@@ -1461,16 +1481,16 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 
 
 
-
 #---
 	#if( length(comparisons) == 1) topGenes <- topGenes[[1]] # if only one comparison, topGenes is not a list, just a data frame itself.
 	if(! is.null(result1)) { 
-	# note that when you only select 1 column from a data frame it automatically converts to a vector. drop =FALSE prevents that.
-	allCalls = as.matrix( result1[,grep("calls",colnames(result1)), drop = FALSE  ] )
-	colnames(allCalls)= gsub("___.*","", colnames(allCalls))
-	colnames(allCalls)= gsub("\\.","-", colnames(allCalls)) # note that samples names should have no "."
-	colnames(allCalls)= gsub("^I-","I:", colnames(allCalls))
+		# note that when you only select 1 column from a data frame it automatically converts to a vector. drop =FALSE prevents that.
+		allCalls = as.matrix( result1[,grep("calls",colnames(result1)), drop = FALSE  ] )
+		colnames(allCalls)= gsub("___.*","", colnames(allCalls))
+		colnames(allCalls)= gsub("\\.","-", colnames(allCalls)) # note that samples names should have no "."
+		colnames(allCalls)= gsub("^I-","I:", colnames(allCalls))
 	}
+
 	return( list(results= allCalls, comparisons = comparisons2, Exp.type=Exp.type, topGenes=topGenes)) 
 }
 
@@ -2286,9 +2306,9 @@ observe({  updateSelectInput(session, "heatColors1", choices = colorChoices )   
 observe({  updateSelectInput(session, "distFunctions", choices = distChoices )      })
 observe({  updateSelectInput(session, "hclustFunctions", choices = hclustChoices )      })
 # update species for STRING-db related API access
-observe({  	updateSelectInput(session, "speciesName",
-									choices = sort(STRING10_species$official_name) )
-			})
+observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_species$official_name) ) 	})
+
+
 	################################################################
 	#   Read data
 	################################################################
@@ -2893,20 +2913,30 @@ output$EDA <- renderPlot({
 
 	
     x <- readData()$data
+	memo =""
+	if( ncol(x) > maxSamplesEDAplot ) { # if too many samples, just show the first 40 or 60
+		#part= sample(1:ncol(x), maxSamplesEDAplot)
+		part = 1:maxSamplesEDAplot
+		x <- x[, part ]
+		memo =paste("(only showing", maxSamplesEDAplot, "samples)")
+		}
+		
+     maxDensity = max( apply(x,2, function(y) max(density(y)$y ) ) )
+		
 	 par(mfrow=c(3,1))
 	par(mar=c(14,6,4,4))
 	myColors = rainbow(dim(x)[2])
 	plot(density(x[,1]),col = myColors[1], lwd=2,
-	  xlab="Expresson values", ylab="Density", main= "Distribution of transformed data",
-	  cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2, ylim=c(0, max(density(x[,1])$y)+.02 ) )
+	  xlab="Expresson values", ylab="Density", main= paste("Distribution of transformed data",memo),
+	  cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2, ylim=c(0, maxDensity+0.01 )  )  #ylim=c(0,1)
 	  
 	for( i in 2:dim(x)[2] )
-	lines(density(x[,i]),col=myColors[i], lwd=2 )
+	lines(density(x[,i]),col=myColors[i],  lwd=1 )
 	if(dim(x)[2]< 31 ) # if too many samples do not show legends
-		legend("topright", cex=1.2,colnames(x), lty=rep(1,dim(x)[2]), col=myColors )	
+		legend("topright", colnames(x), lty=rep(1,dim(x)[2]), col=myColors )	
    # boxplot of first two samples, often technical replicates
    
-	boxplot(x, las = 2, ylab="Transformed expression levels", main="Distribution of transformed data"
+	boxplot(x, las = 2, ylab="Transformed expression levels", main=paste("Distribution of transformed data",memo)
 		,cex.lab=1.5, cex.axis=1.5, cex.main=2, cex.sub=2)
 	plot(x[,1:2],xlab=colnames(x)[1],ylab=colnames(x)[2], main="Scatter plot of first two samples",cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2)
 	
@@ -3155,9 +3185,17 @@ output$totalCounts <- renderPlot({
 	
     par(mar=c(16,2,2,2))
     x <- readData()$rawCounts
-	barplot( colSums(x)/1e6, col="green",las=3, cex.axis=1.3, cex =1.5, main="Total read counts (millions)")
+	memo =""
+	if( ncol(x) > maxSamplesEDAplot ) { 
+		#part= sample(1:ncol(x), maxSamplesEDAplot)
+		part=1:maxSamplesEDAplot
+		x <- x[,part]
+		memo =paste(" only showing", maxSamplesEDAplot, "samples)")
+	}
+	#barplot( colSums(x)/1e6, col="green",las=3, cex.axis=1.3, cex =1.5, main="Total read counts (millions)")
+	barplot( colSums(x)/1e6, col="green",las=3,  main=paste("Total read counts (millions)", memo) )
 
-},width=400) # height is automatic, this enables the display of other plots below.
+}) # height is automatic, this enables the display of other plots below.
 
 
 ################################################################
@@ -3257,7 +3295,7 @@ output$heatmap1 <- renderPlot({
 		,labRow=""
 		,margins=c(10,0)
 		,srtCol=45
-		,cexCol=2  # size of font for sample names
+		#,cexCol=1.5  # size of font for sample names
 		,lmat = lmat, lwid = lwid, lhei = lhei
 		)
 
@@ -3272,7 +3310,7 @@ output$heatmap1 <- renderPlot({
 		,margins=c(18,12)
 		,cexRow=1
 		,srtCol=45
-		,cexCol=1.8  # size of font for sample names
+		#,cexCol=1.5  # size of font for sample names
 		,lmat = lmat, lwid = lwid, lhei = lhei
 	)
 	
@@ -3288,7 +3326,7 @@ output$heatmap1 <- renderPlot({
 	incProgress(1,"Done")
 	})
 
-} , height = 800, width = 400 )  
+} , height = 900, width = 600 )  #
 
 #heatmap for download
 plotHeatmap1 <- reactive ({
@@ -3410,13 +3448,13 @@ plotHeatmap1 <- reactive ({
 output$downloadHeatmap1 <- downloadHandler(
       filename = "heatmap.tiff",
       content = function(file) {
-	tiff(file, width = 8, height = 16, units = 'in', res = 300, compression = 'lzw')
+	tiff(file, width = 10, height = 15, units = 'in', res = 300, compression = 'lzw')
 
         plotHeatmap1()
         dev.off()
       })  
 # interactive heatmap with plotly
-output$heatmap <- renderPlotly({
+output$heatmapPlotly <- renderPlotly({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	##################################  
 	# these are needed to make it responsive to changes in parameters
@@ -3531,6 +3569,21 @@ output$downloadData <- downloadHandler(
 	    }
 	)
 
+correlationMatrixData <- reactive({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		# heatmap of correlation matrix
+		x <- readData()$data
+		maxGene <- apply(x,1,max)
+		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
+		
+	    round(cor(x),3)
+})
+output$downloadCorrelationMatrix <- downloadHandler(
+		filename = function() {"correlationMatrix.csv"},
+		content = function(file) {
+			write.csv(correlationMatrixData(), file)
+	    }
+	)
 output$correlationMatrix <- renderPlot({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		# heatmap of correlation matrix
@@ -3539,39 +3592,38 @@ output$correlationMatrix <- renderPlot({
 		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
 		
 	   melted_cormat <- melt(round(cor(x),2), na.rm = TRUE)
-	# melted_cormat <- melted_cormat[which(melted_cormat[,1] != melted_cormat[,2] ) , ]
+		# melted_cormat <- melted_cormat[which(melted_cormat[,1] != melted_cormat[,2] ) , ]
 		# Create a ggheatmap
 		ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
-		 geom_tile(color = "white")+
-		 scale_fill_gradient2(low = "green", high = "red",  mid = "white", 
+			geom_tile(color = "white")+
+			scale_fill_gradient2(low = "green", high = "red",  mid = "white", 
 			space = "Lab",  limit = c(min(melted_cormat[,3]) ,max(melted_cormat[,3])), midpoint = median(melted_cormat[,3]),
-			name="Pearson\nCorrelation"
-		  ) +
-		  theme_minimal()+ # minimal theme
-		 theme(axis.text.x = element_text(angle = 45, vjust = 1, 
-			size = 15, hjust = 1))+
-		 theme(axis.text.y = element_text( 
-			size = 15))+
-		 coord_fixed()
+			name="Pearson's \nCorrelation") +
+			theme_minimal()+ # minimal theme
+			theme(axis.text.x = element_text(angle = 45, vjust = 1, size=14,hjust = 1))+
+			theme(axis.text.y = element_text( size = 14 ))+
+			coord_fixed()
 		# print(ggheatmap)
-		 ggheatmap + 
-		geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
-		theme(
-		  axis.title.x = element_blank(),
-		  axis.title.y = element_blank(),
-		  panel.grid.major = element_blank(),
-		  panel.border = element_blank(),
-		  panel.background = element_blank(),
-		  axis.ticks = element_blank(),
-		 legend.justification = c(1, 0),
-		  legend.position = c(0.6, 0.7),
-		 legend.direction = "horizontal")+
-		 guides(fill = FALSE) # + ggtitle("Pearson's Correlation Coefficient (all genes)")
-		 
+		 if(input$labelPCC && ncol(x)<20)
+				ggheatmap <- ggheatmap +  geom_text(aes(Var2, Var1, label = value), color = "black", size = 4)
+				
+		ggheatmap + 
+		  theme(axis.title.x = element_blank(),
+				axis.title.y = element_blank(),
+				panel.grid.major = element_blank(),
+				panel.border = element_blank(),
+				panel.background = element_blank(),
+				axis.ticks = element_blank(),
+				legend.justification = c(1, 0),
+				legend.position = c(0.6, 0.7),
+				legend.direction = "horizontal")+
+				guides(fill = FALSE) # + ggtitle("Pearson's Correlation Coefficient (all genes)")
+
+			# why legend does not show up??????	
 		 
 
  
-  }  )#, height = 500, width = 500)
+  }, height = 600, width = 700  )#)
 
   
 output$sampleTree <- renderPlot({
@@ -3657,12 +3709,20 @@ output$PCA <- renderPlot({
 	colnames(pcaData) = c("PC1", "PC2", "Sample_Name")
 	percentVar=round(100*summary(pca.object)$importance[2,1:2],0)
 	if(is.null(readSampleInfo())) { 
-		p=ggplot(pcaData, aes(PC1, PC2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
+		p=ggplot(pcaData, aes(PC1, PC2, color=Sample_Name, shape = Sample_Name)) 
 		} else {
 		pcaData = cbind(pcaData,readSampleInfo() )
-		p=ggplot(pcaData, aes_string("PC1", "PC2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
-		
+		p=ggplot(pcaData, aes_string("PC1", "PC2", color=input$selectFactors,shape=input$selectFactors2))  
+
 		}
+	 if(ncol(x)<20) # change size depending of # samples
+		p <- p + geom_point(size=5)  else if(ncol(x)<50)
+		 p <- p + geom_point(size=3)  else 
+		 p <- p + geom_point(size=2)
+		 
+
+    p <- p+	 scale_shape_manual(values= 1:25)	 
+	
 	p=p+xlab(paste0("PC1: ",percentVar[1],"% variance")) 
 	p=p+ylab(paste0("PC2: ",percentVar[2],"% variance")) 
 	p=p+ggtitle("Principal component analysis (PCA)")+coord_fixed(ratio=1.0)+ 
@@ -3734,11 +3794,18 @@ output$PCA <- renderPlot({
 	
 
 	if(is.null(readSampleInfo())) { 
-	p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
+	p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name))  
 	} else {
 		pcaData = cbind(pcaData,readSampleInfo() )
-		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
+		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2))  
 		}
+		
+	if(ncol(x)<20) # change size depending of # samples
+		p <- p + geom_point(size=5)  else if(ncol(x)<50)
+		 p <- p + geom_point(size=3)  else 
+		 p <- p + geom_point(size=2)
+    p <- p+	 scale_shape_manual(values= 1:25)	 
+	
 	p=p+xlab("Dimension 1") 
 	p=p+ylab("Dimension 2") 
 	p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
@@ -3760,13 +3827,20 @@ output$PCA <- renderPlot({
 	pcaData = as.data.frame(tsne$Y); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
 	colnames(pcaData) = c("x1", "x2", "Sample_Name")
 	
+	#pcaData$Sample_Name = as.factor( pcaData$Sample_Name)
 
 	if(is.null(readSampleInfo())) { 
-	p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name)) + geom_point(size=5) 
+		p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name)) 
 	} else {
 		pcaData = cbind(pcaData,readSampleInfo() )
-		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) + geom_point(size=5) 
+		p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) 
 		}
+		
+	if(ncol(x)<20) # change size depending of # samples
+		p <- p + geom_point(size=5)  else if(ncol(x)<50)
+		 p <- p + geom_point(size=3)  else 
+		 p <- p + geom_point(size=2)
+    p <- p+	 scale_shape_manual(values= 1:25)	  
 	p=p+xlab("Dimension 1") 
 	p=p+ylab("Dimension 2") 
 	p=p+ggtitle("t-SNE plot")+ coord_fixed(ratio=1.)+ 
@@ -3781,7 +3855,7 @@ output$PCA <- renderPlot({
 	 }
 	
 	 
-  }, height = 500, width = 500)
+  }, height = 600, width = 600)
 
 PCAplots4Download <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -4965,7 +5039,7 @@ output$sigGeneStats <- renderPlot({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
-		
+		if(is.null(limma()$results) ) return(NULL)
 		##################################  
 		# these are needed to make it responsive to changes in parameters
 		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
@@ -4984,7 +5058,7 @@ output$sigGeneStats <- renderPlot({
 		
 		isolate({ 
 		
-			results = limma()$results
+		results = limma()$results
 
 		 library(reshape2)
 		 Up =  apply(results, 2, function(x) sum(x == 1) )
@@ -5020,7 +5094,7 @@ output$sigGeneStatsTable <- renderTable({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		tem = input$selectOrg
 		tem=input$limmaPval; tem=input$limmaFC
-		
+		if(is.null(limma()$results) ) return(NULL)		
 		##################################  
 		# these are needed to make it responsive to changes in parameters
 		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion

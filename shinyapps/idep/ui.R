@@ -240,7 +240,10 @@ tableOutput('species' ),
 						
 						
 						# ,verbatimTextOutput("event")
-						,bsModal("modalExample8", "Correlation matrix using top 75% genes", "showCorrelation", size = "large",plotOutput("correlationMatrix"))
+						,bsModal("modalExample8", "Correlation matrix using top 75% genes", "showCorrelation", size = "large"
+							,downloadButton("downloadCorrelationMatrix")
+							,checkboxInput("labelPCC", "Label w/ Pearson's correlation coefficients", value = TRUE)
+							,plotOutput("correlationMatrix"))
 						,bsModal("modalExample228", "Hierarchical clustering tree.", "showSampleTree", size = "large"
 							,h4("Using genes whose maximum expression level is at top 75%. Data is transformed and clustered as specified in the main page. ")
 							,plotOutput("sampleTree"))
@@ -248,7 +251,7 @@ tableOutput('species' ),
 						,bsModal("modalExample28", "Heatmap with hierarchical clustering tree", "showStaticHeatmap", size = "large",
 						sliderInput("nGenesPlotly", label = h4("Most variable genes to include:"), min = 10, max = 6000, value = 50,step=50),
 						h5("Mouse over to see gene names. To zoom, click and drag up or downward and release."),
-						plotlyOutput("heatmap",width = "100%", height = "800px"))
+						plotlyOutput("heatmapPlotly",width = "100%", height = "800px"))
 					 
 					)
 					)       
@@ -337,8 +340,9 @@ tableOutput('species' ),
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/pca/",target="_blank")				
 				),
                 mainPanel(
+				
                   plotOutput("PCA")
-				  ,br(),br(),br(),br(),br(),br()
+				  ,br(),br(),br(),br(),br(),br(),br(),br(),br()
 				 ,conditionalPanel("input.PCA_MDS == 1" # only show if PCA or MDS (not pathway)
 					,htmlOutput('PCA2factor')
 					)
@@ -810,6 +814,7 @@ tableOutput('species' ),
 	 ,h5("2/6/2018: Fixed errors caused by gene symbol matching for unknown species. More user control of hierarchical clustering tree")
 	 ,h5("2/9/2018: V 0.65 Added API access to STRINGdb website on the DEG2 tab. Supports thousands of bacterial species")
 	 ,h5("2/10/2018: V 0.66 Improved API access to STRINGdb, by adding automatic species matching.")
+	 ,h5("2/11/2018: V 0.67 Tested with larger dataset of 259 samples. Changed figure configurations.")
 	 ,h5("In loving memory of my parents.")
  ) ))
 
