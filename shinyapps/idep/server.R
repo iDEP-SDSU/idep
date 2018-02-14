@@ -7905,6 +7905,9 @@ output$KeggImage <- renderImage({
 	if(is.null(gagePathwayData() ) ) return(blank)
 	if(is.null( input$sigPathways))  return (blank) 
 	# if( is.null(selectedPathwayData()) ) return(blank)
+	isolate({ 
+	withProgress(message="Rendering KEGG pathway plot", {
+	incProgress(1/5, "Loading the pathview package") 
 
 	library(pathview,verbose=FALSE)
 
@@ -8352,9 +8355,6 @@ my.keggview.native <- function (plot.data.gene = NULL, plot.data.cpd = NULL, col
     }
     return(invisible(pv.pars))
 }
-	isolate({ 
-	withProgress(message="Rendering KEGG pathway plot", {
-	incProgress(1/5, "Loading the pathview package") 
 
 # modify function in a package, change namespace
 # http://stackoverflow.com/questions/23279904/modifying-an-r-package-function-for-current-r-session-assigninnamespace-not-beh
