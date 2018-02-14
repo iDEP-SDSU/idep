@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.66"
+iDEPversion = "iDEP 0.68"
 ################################################################
 # R packages
 ################################################################
@@ -726,6 +726,9 @@ keggPathwayID <- function (pathwayDescription, Species, GO,selectOrg) {
 	}
 	pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
 	
+	# change Parkinson's disease to Parkinson\'s disease    otherwise SQL 
+	pathwayDescription <- gsub("\'","\'\'",pathwayDescription)
+							
 	pathwayInfo <- dbGetQuery( pathway, paste( " select * from pathwayInfo where description =  '", 
 							pathwayDescription,   "' AND name LIKE '",GO,"%'",sep="") )
 	dbDisconnect(pathway);
@@ -4158,7 +4161,7 @@ output$KmeansHeatmap <- renderPlot({ # Kmeans clustering
 	myheatmap2(Kmeans()$x-apply(Kmeans()$x,1,mean), Kmeans()$bar,1000,mycolor=input$heatColors1)
 	
 	incProgress(1, detail = paste("Done")) }) #progress 
-  } , height = 500)
+  }, width=600, height = 500)
 
 KmeansHeatmap4Download <- reactive({ # Kmeans clustering
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -6772,14 +6775,15 @@ output$stringDB_network_link <- renderUI({
  
  
 # this updates geneset categories based on species and file
-output$selectGO1 <- renderUI({
+output$selectGO1 <- renderUI({   # gene set for pathway analysis
 	  tem = input$selectOrg;
       if (is.null(input$file1)&& input$goButton == 0 )
-       { selectInput("selectGO", label = NULL, # h6("Funtional Category"), 
+       { selectInput("selectGO", label = h5("Select genesets (Choose KEGG to show pathway diagrams):"), 
                   choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
                                 "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else { 
 								
-	  selectInput("selectGO", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
+	  selectInput("selectGO", label=h5("Select genesets (Choose KEGG to show pathway diagrams):"),
+		choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
 	     ,selected = "GOBP" )   } 
 	})
 
@@ -6806,7 +6810,6 @@ output$selectGO3 <- renderUI({
 	  selectInput("selectGO3", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
 	     ,selected = "GOBP" )   } 
 	})
-
 	
 output$selectGO4 <- renderUI({
 	  tem = input$selectOrg
@@ -7068,11 +7071,6 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 				iz= match( readSampleInfo()[,selectedfactor], unlist(strsplit( input$selectContrast1, "-"))	  )
 				iz = which(!is.na(iz))				
 			}
-			
-		
-
-
-			
 		 }
 
 		 if (grepl("I:",input$selectContrast1)) iz=1:(dim(convertedData())[2]) # if it is factor design use all samples
@@ -7082,12 +7080,12 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	genes = genes[,iz]
 
 	subtype = detectGroups(colnames(genes )) 
-    if(length( GeneSets() )  == 0)  { return(as.matrix("No significant pathway!"))} else {
+    if(length( GeneSets() )  == 0)  { return(as.data.frame("No significant pathway!"))} else {
 	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
 	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
 					 
-	if( is.null(result$pg3) ) { return(as.matrix("No significant pathway!"))} else 
-	   return( result$pg3)
+	if( is.null(result$pg3) ) { return(as.data.frame("No significant pathway!"))} else 
+	   return( as.data.frame(result$pg3) )
     }
 	
 	})
@@ -7240,12 +7238,12 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
 	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
 					 
-	if( is.null(result$pg3) ) { return(as.matrix("No significant pathway!"))} else 
+	if( is.null(result$pg3) ) { return(as.data.frame("No significant pathway!"))} else 
 	result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
 	             GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
 					 
-	if( is.null(result$pg3) ) { return(as.matrix("No significant pathway!"))} else 
-	   return( result$pg3)
+	if( is.null(result$pg3) ) { return(as.data.frame("No significant pathway!"))} else 
+	   return( as.data.frame(result$pg3) )
     }
 	
 	})
@@ -7703,16 +7701,35 @@ output$listSigPathways <- renderUI({
 			if(!is.null(gagePathwayData())) 
 				if(dim(gagePathwayData())[2] >1) 
 				choices <- gagePathwayData()[,2] 
-		} else if( input$pathwayMethod == 3) 
+		} 
+		if( input$pathwayMethod == 2) {
+			if(!is.null(PGSEAplot.data()))  
+				if(dim(PGSEAplot.data())[2] >1) 
+					{ 	pathways <- as.data.frame( PGSEAplot.data())
+						choices <- substr(rownames(pathways),10, nchar( rownames(pathways)) )
+					}
+					
+		}
+		if( input$pathwayMethod == 3) 
 		{ 	if(!is.null(fgseaPathwayData())) 
 			if(dim(fgseaPathwayData())[2] >1) 
 				choices <- fgseaPathwayData()[,2] 
-		} else if( input$pathwayMethod == 5) {
+		} 
+		if( input$pathwayMethod == 4) 
+			if(!is.null(PGSEAplotAllSamples.data())) 
+				if(dim(PGSEAplotAllSamples.data())[2] >1) {
+					pathways <- as.data.frame( PGSEAplotAllSamples.data())
+					choices <-  substr(rownames(pathways),10, nchar( rownames(pathways)) )
+				
+				}
+				
+		if( input$pathwayMethod == 5) {
 			if(!is.null(ReactomePAPathwayData())) 
 				if(dim(ReactomePAPathwayData())[2] >1) 
 					choices <- ReactomePAPathwayData()[,2] 
 		}
-		selectInput("sigPathways", label="Select a pathway to show expression pattern of related genes:"
+		
+		selectInput("sigPathways", label="Select a pathway to show expression pattern of related genes on a heatmap or a KEGG pathway diagram:"
 						,choices=choices)
 	        } 
 	})
@@ -7856,6 +7873,39 @@ output$selectedPathwayHeatmap <- renderPlot({
 
 
 output$KeggImage <- renderImage({
+    if (is.null(input$file1)&& input$goButton == 0)   return(blank)
+
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO; tem = input$noIDConversion; tem=input$missingValue
+	tem = input$selectContrast
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold	
+	tem = input$sigPathways; 
+	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
+	tem= input$selectModelComprions;  tem= input$selectInteractions
+	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
+	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
+	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
+	####################################
+	
+   # First generate a blank image. Otherse return(NULL) gives us errors.
+    outfile <- tempfile(fileext='.png')
+    png(outfile, width=400, height=300)
+
+    frame()
+	dev.off()
+    blank <- list(src = outfile,
+         contentType = 'image/png',
+         width = 400,
+         height = 300,
+         alt = " ")	
+
+	if(is.null( input$selectGO ) ) return(blank)
+	if(input$selectGO != "KEGG") return(blank)
+	if(is.null(gagePathwayData() ) ) return(blank)
+	if(is.null( input$sigPathways))  return (blank) 
+	# if( is.null(selectedPathwayData()) ) return(blank)
+
 	library(pathview,verbose=FALSE)
 
 # these two functions are from the pathview package, modified to write to a designated folder: temp.
@@ -8169,7 +8219,7 @@ mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species =
 my.keggview.native <- function (plot.data.gene = NULL, plot.data.cpd = NULL, cols.ts.gene = NULL, 
     cols.ts.cpd = NULL, node.data, pathway.name, out.suffix = "pathview", 
     kegg.dir = ".", multi.state = TRUE, match.data = TRUE, same.layer = TRUE, 
-    res = 300, cex = 0.25, discrete = list(gene = FALSE, cpd = FALSE), 
+    res = 400, cex = 0.25, discrete = list(gene = FALSE, cpd = FALSE), 
     limit = list(gene = 1, cpd = 1), bins = list(gene = 10, cpd = 10), 
     both.dirs = list(gene = T, cpd = T), low = list(gene = "green", 
         cpd = "blue"), mid = list(gene = "gray", cpd = "gray"), 
@@ -8302,6 +8352,9 @@ my.keggview.native <- function (plot.data.gene = NULL, plot.data.cpd = NULL, col
     }
     return(invisible(pv.pars))
 }
+	isolate({ 
+	withProgress(message="Rendering KEGG pathway plot", {
+	incProgress(1/5, "Loading the pathview package") 
 
 # modify function in a package, change namespace
 # http://stackoverflow.com/questions/23279904/modifying-an-r-package-function-for-current-r-session-assigninnamespace-not-beh
@@ -8309,39 +8362,6 @@ tmpfun <- get("keggview.native", envir = asNamespace("pathview"))
 environment(my.keggview.native) <- environment(tmpfun)
 attributes(my.keggview.native) <- attributes(tmpfun)  # don't know if this is really needed
 
-   # First generate a blank image. Otherse return(NULL) gives us errors.
-    outfile <- tempfile(fileext='.png')
-    png(outfile, width=400, height=300)
-    frame()
-	dev.off()
-    blank <- list(src = outfile,
-         contentType = 'image/png',
-         width = 400,
-         height = 300,
-         alt = " ")
-    if (is.null(input$file1)&& input$goButton == 0)   return(blank)
-
-	tem = input$selectOrg ; #tem = input$listComparisonsPathway
-	tem = input$selectGO; tem = input$noIDConversion; tem=input$missingValue
-	tem = input$selectContrast
-	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
-	tem=input$nPathwayShow; tem=input$absoluteFold	
-	tem = input$sigPathways; 
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################
-	if(is.null( input$selectGO ) ) return(blank)
-	if(input$selectGO != "KEGG") return(blank)
-	if(is.null(gagePathwayData() ) ) return(blank)
-	if(is.null( input$sigPathways))  return (blank) 
-	# if( is.null(selectedPathwayData()) ) return(blank)
-	
-	isolate({ 
-	withProgress(message="Rendering KEGG pathway plot", {
-	
 	if (is.null(input$selectContrast1 ) ) return(blank)
 	
 	if(input$sigPathways == "All") return (blank) 
@@ -8368,11 +8388,9 @@ attributes(my.keggview.native) <- attributes(tmpfun)  # don't know if this is re
      keggSpecies <- as.character( keggSpeciesID[which(keggSpeciesID[,1] == Species),3] )
 	 
      if(nchar( keggSpecies) <=2 ) return(blank) # not in KEGG
-	 
 
 	 # kegg pathway id
 	incProgress(1/2, "Download pathway graph from KEGG.")
-	#incProgress(1/2, outfile)
 	pathID = keggPathwayID(input$sigPathways, Species, "KEGG",input$selectOrg)
 	#cat("\nhere5  ",keggSpecies, " ",Species," ",input$sigPathways, "pathID:",pathID,"End", fold[1:5],names(fold)[1:5],"\n")
 	#cat("\npathway:",is.na(input$sigPathways))
@@ -8380,7 +8398,7 @@ attributes(my.keggview.native) <- attributes(tmpfun)  # don't know if this is re
     if(is.null(pathID) ) return(blank) # kegg pathway id not found.
 	if(nchar(pathID)<3 ) return(blank)
 	randomString <- gsub(".*file","",tempfile()) 
-	 tempFolder <- tempdir() # tempFolder = "temp";
+	tempFolder <- tempdir() # tempFolder = "temp";
 	outfile <- paste( tempFolder,"/",pathID,".",randomString,".png",sep="")
 	
 	pv.out <- mypathview(gene.data = fold, pathway.id = pathID, kegg.dir = tempFolder,  out.suffix = randomString, species = keggSpecies, kegg.native=TRUE)
@@ -8397,8 +8415,8 @@ attributes(my.keggview.native) <- attributes(tmpfun)  # don't know if this is re
     # Return a list containing the filename
     list(src = outfile,
          contentType = 'image/png',
-       width = "200%",
-        height = "200%",
+       width = "100%",
+        height = "100%",
          alt = "KEGG pathway image.")
 		}) 
 	})
@@ -8525,6 +8543,7 @@ output$enrichmentPlotPathway <- renderPlot({
 	enrichmentPlot(pathwayListData(), 45  )
 
 }, height=600, width=800)
+
 output$enrichmentPlotPathway4Download <- downloadHandler(
       filename = "enrichmentPlotPathway.tiff",
       content = function(file) {
@@ -9554,7 +9573,6 @@ wgcna <- reactive ({
 		}) # isolate
 	})
 
-	
 output$moduleStatistics <- renderText({
 		if(is.null(wgcna() ) ) return(NULL)
 		##################################  

@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.66"
+iDEPversion = "iDEP.68"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -284,8 +284,8 @@ tableOutput('species' ),
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/k-means/",target="_blank")
 				),
                 mainPanel(
-                  plotOutput("KmeansHeatmap")
-				  ,br(),br(),br(),br(),br(),br()
+                  plotOutput("KmeansHeatmap",inline=TRUE)
+				  ,br()
 				  ,h4("Enriched pathways for each cluster")
 				  ,tableOutput("KmeansGO")
 				  ,bsModal("modalExample2", "Enriched TF binding motifs in promoters of Kmeans clusters", "showMotifKmeans", size = "large"
@@ -472,9 +472,9 @@ tableOutput('species' ),
 				
 				mainPanel(
 					#h4("Expression pattern of DEGs for selected comparison:")
-                   plotOutput("selectedHeatmap")
+                   plotOutput("selectedHeatmap", inline=TRUE)
 				   ,br()
-				   ,h4("Enriched pathways in DEGs for selected comparison:")				    
+				   ,h4("Enriched pathways in DEGs for the selected comparison:")				    
 				   ,tableOutput("geneListGO")
 				   ,h4("Top Genes for selected comparison:"),tableOutput('geneList')
 				   ,bsModal("modalExample4", "Volcano plot", "showVolcano", size = "large",
@@ -561,22 +561,25 @@ tableOutput('species' ),
                 sidebarPanel(
 				htmlOutput("listComparisonsPathway")
 				,tags$style(type='text/css', "#listComparisonsPathway { width:100%;   margin-top:-12px}")
-			,selectInput("pathwayMethod", label = "Select method and genesets:", choices = list("GAGE" = 1, 
+			,selectInput("pathwayMethod", label = "Select method:", choices = list("GAGE" = 1, 
 																								"GSEA (preranked fgsea)" =3,
 																								"PGSEA" = 2, 
 																								"PGSEA w/ all samples" =4, 
 																								"ReactomePA" = 5
 																								), selected = 3) #
 				,tags$style(type='text/css', "#pathwayMethod { width:100%;   margin-top:-12px}")
+				#,h5("Select genesets (use KEGG to show pathway diagrams w/ fold-change):")
 				,htmlOutput("selectGO1")
 				,tags$style(type='text/css', "#selectGO1 { width:100%;   margin-top:-12px}")
-                ,h5("Genesets size filter:")
+                #,h5("Filter genesets by size:")
 				,fluidRow( 
-				column(6,numericInput("minSetSize", label = "Min", min = 5, max = 30, value = 15,step=1) 
-			           ),
-				column(6,numericInput("maxSetSize", label = "Max", min = 1000, max = 2000, value = 2000,step=100) 
-						)
+				column(6,numericInput("minSetSize", label = h5("Geneset size: Min."), 
+						min = 5, max = 30, value = 15,step=1) ),
+				column(6,numericInput("maxSetSize", label = h5("Max."), 
+					min = 1000, max = 2000, value = 2000,step=100) )
 				) # fluidRow
+				,tags$style(type='text/css', "#minSetSize { width:100%;   margin-top:-12px}")
+				,tags$style(type='text/css', "#maxSetSize { width:100%;   margin-top:-12px}")
 				,numericInput("pathwayPvalCutoff", label = h5("Pathway signifiance cutoff (FDR)"), value = 0.2,min=1e-20,max=1,step=.05)
 				,tags$style(type='text/css', "#pathwayPvalCutoff { width:100%;   margin-top:-12px}")
 				,numericInput("nPathwayShow", label = h5("Number of top pathways to show"), value = 30, min=5,max=100,step=5)
@@ -584,9 +587,10 @@ tableOutput('species' ),
 				,checkboxInput("absoluteFold", label = "Use absolute values of fold changes for GSEA and GAGE", value = FALSE)
 				,numericInput("GenePvalCutoff", label = h5("Remove genes with big FDR before pathway analysis:"), value = 1,min=1e-20,max=1,step=.05)
 				,conditionalPanel("input.pathwayMethod == 1 | input.pathwayMethod == 2 | input.pathwayMethod == 3| input.pathwayMethod == 4" 
-				,actionButton("ModalEnrichmentPlotPathway", "Pathway tree") 
-				,actionButton("ModalEnrichmentNetworkPathway", "Pathway network")
-				,downloadButton('downloadPathwayListData', "Pathway list w/ genes")
+					,actionButton("ModalEnrichmentPlotPathway", "Pathway tree") 
+					,actionButton("ModalEnrichmentNetworkPathway", "Pathway network")
+#					,actionButton("ModalExaminePathways", "Gene expression by pathway")
+					,downloadButton('downloadPathwayListData', "Pathway list w/ genes")
 					
 				)
 
@@ -596,14 +600,16 @@ tableOutput('species' ),
 
 				#,actionButton("examinePathway", "Examine individual pathways")
 				#,conditionalPanel("input.pathwayMethod == 2",downloadButton('download.PGSEAplot.data', 'Download PGSEA pathway data'))
-							
+			,h5("* Warning! The many combinations can lead to false positives in pathway analyses.")				
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/pathways/",target="_blank")		
 				),
                 mainPanel(	  
 					
 				  conditionalPanel("input.pathwayMethod == 2",
-				  	h5("Red and blue indicates activated and suppressed pathways, respectively. ") 
-                    ,plotOutput("PGSEAplot") )
+				  	 h5("Red and blue indicates activated and suppressed pathways, respectively. ")				  
+					 ,plotOutput("PGSEAplot", inline=TRUE)
+
+				  )
 				  ,conditionalPanel("input.pathwayMethod == 1",
                   tableOutput("gagePathway") )
 				  ,conditionalPanel("input.pathwayMethod == 3",
@@ -612,14 +618,24 @@ tableOutput('species' ),
                   tableOutput("ReactomePAPathway") )
 				  ,conditionalPanel("input.pathwayMethod == 4",
 				  h5("Red and blue indicates activated and suppressed pathways, respectively.  ") 
-				  ,plotOutput("PGSEAplotAllSamples")
+				  ,plotOutput("PGSEAplotAllSamples", inline=TRUE)
 				  )
-				   ,conditionalPanel("input.pathwayMethod == 1 | input.pathwayMethod == 3" 
-				    ,htmlOutput("listSigPathways")
-					,downloadButton('downloadSelectedPathwayData', 'Expression data for genes in selected pathway')  )
-					,conditionalPanel(" (input.pathwayMethod == 1 | input.pathwayMethod == 3 ) & input.selectGO == 'KEGG'",imageOutput("KeggImage"))
-					,conditionalPanel("(input.pathwayMethod == 1 | input.pathwayMethod == 3 ) & input.selectGO != 'KEGG'",plotOutput("selectedPathwayHeatmap")) 
-				   ,bsModal("ModalEnrichmentPlotPathway1", "Significant pathways", "ModalEnrichmentPlotPathway", size="large"
+				  
+				  #,bsModal("ModalExaminePathway", "Gene expression on pathways", "ModalExaminePathways", size="large"				  
+				     ,conditionalPanel("input.pathwayMethod == 1 | input.pathwayMethod == 2
+											| input.pathwayMethod == 3|input.pathwayMethod == 4" 
+				      ,htmlOutput("listSigPathways")
+					  ,downloadButton('downloadSelectedPathwayData', 'Expression data for genes in selected pathway')  )
+					  ,conditionalPanel(" (input.pathwayMethod == 1 | input.pathwayMethod == 2| 
+											input.pathwayMethod == 3 |input.pathwayMethod == 4) & input.selectGO == 'KEGG'"
+							,h5("Red and green represent up- and down-regulated genes, respectively.")
+							,imageOutput("KeggImage", width = "100%", height = "100%"))
+					  ,conditionalPanel(" (input.pathwayMethod == 1 | input.pathwayMethod == 2 
+						|input.pathwayMethod == 3 |input.pathwayMethod == 4) & input.selectGO != 'KEGG'",
+						plotOutput("selectedPathwayHeatmap")) 
+					#)
+
+			,bsModal("ModalEnrichmentPlotPathway1", "Significant pathways", "ModalEnrichmentPlotPathway", size="large"
 						,h5("Gene sets closer on the tree share more genes. Sizes of dot correspond to adjuested Pvalues")
 						,downloadButton('enrichmentPlotPathway4Download',"Figure")
 						,plotOutput('enrichmentPlotPathway')
@@ -815,6 +831,7 @@ tableOutput('species' ),
 	 ,h5("2/9/2018: V 0.65 Added API access to STRINGdb website on the DEG2 tab. Supports thousands of bacterial species")
 	 ,h5("2/10/2018: V 0.66 Improved API access to STRINGdb, by adding automatic species matching.")
 	 ,h5("2/11/2018: V 0.67 Tested with larger dataset of 259 samples. Changed figure configurations.")
+	 ,h5("2/14/2018: V 0.68 Fixed Pathview loading code. Connected Pathview to PGSEA.")
 	 ,h5("In loving memory of my parents.")
  ) ))
 
