@@ -3696,7 +3696,8 @@ output$PCA <- renderPlot({
 			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
 		}
 	####################################
-	
+	# for showing shapes on ggplot2. The first 6 are default. Default mapping can only show 6 types.
+	shapes = c(16,17,15,3,7,8,   1,2,4:6,9:15,18:25  )
 	x <- convertedData();
      if(input$PCA_MDS ==1) {   #PCA
 	 pca.object <- prcomp(t(x))
@@ -3724,7 +3725,7 @@ output$PCA <- renderPlot({
 		 p <- p + geom_point(size=2)
 		 
 
-    p <- p+	 scale_shape_manual(values= 1:25)	 
+    p <- p+	 scale_shape_manual(values= shapes)	 
 	
 	p=p+xlab(paste0("PC1: ",percentVar[1],"% variance")) 
 	p=p+ylab(paste0("PC2: ",percentVar[2],"% variance")) 
@@ -3807,7 +3808,7 @@ output$PCA <- renderPlot({
 		p <- p + geom_point(size=5)  else if(ncol(x)<50)
 		 p <- p + geom_point(size=3)  else 
 		 p <- p + geom_point(size=2)
-    p <- p+	 scale_shape_manual(values= 1:25)	 
+    p <- p+	 scale_shape_manual(values= shapes)	 
 	
 	p=p+xlab("Dimension 1") 
 	p=p+ylab("Dimension 2") 
@@ -3843,7 +3844,7 @@ output$PCA <- renderPlot({
 		p <- p + geom_point(size=5)  else if(ncol(x)<50)
 		 p <- p + geom_point(size=3)  else 
 		 p <- p + geom_point(size=2)
-    p <- p+	 scale_shape_manual(values= 1:25)	  
+    p <- p+	 scale_shape_manual(values= shapes)	  
 	p=p+xlab("Dimension 1") 
 	p=p+ylab("Dimension 2") 
 	p=p+ggtitle("t-SNE plot")+ coord_fixed(ratio=1.)+ 
