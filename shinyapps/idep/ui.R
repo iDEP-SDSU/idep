@@ -316,14 +316,14 @@ tableOutput('species' ),
      ,tabPanel("PCA",
               sidebarLayout(
                 sidebarPanel(
-				radioButtons("PCA_MDS", "Methods", c("Principal Component Analysis"=1, "Pathway Analysis of PCA rotation" =2, 
-				"Multidimensional Scaling"=3,"t-SNE"=4 ))
+				radioButtons("PCA_MDS", "Methods", c("Principal Component Analysis"=1, 
+				"Multidimensional Scaling"=3,"t-SNE"=4, "Pathway Analysis of PCA rotation" =2 ))
 
-				,conditionalPanel("input.PCA_MDS == 4", # only show if PCA or MDS (not pathway)
-					actionButton("tsneSeed2", "Re-calculate tSNE")
-				)
-			
-			,br()
+
+
+			,conditionalPanel("input.PCA_MDS == 2" # only show if PCA or MDS (not pathway)
+				,htmlOutput('selectGO6')
+			)
 			,conditionalPanel("input.PCA_MDS != 2" # only show if PCA or MDS (not pathway)
 				,htmlOutput('listFactors')
 				,htmlOutput('listFactors2')
@@ -341,9 +341,13 @@ tableOutput('species' ),
 				),
                 mainPanel(
 				
-                  plotOutput("PCA")
-				  ,br(),br(),br(),br(),br(),br(),br(),br(),br()
-				 ,conditionalPanel("input.PCA_MDS == 1" # only show if PCA or MDS (not pathway)
+                  plotOutput("PCA", inline=TRUE)
+				  
+				  ,conditionalPanel("input.PCA_MDS == 4", # only show if PCA or MDS (not pathway)
+					actionButton("tsneSeed2", "Re-calculate t-SNE"),br(),br())
+				
+				  ,br(),br()
+				 ,conditionalPanel("input.PCA_MDS == 1 |input.PCA_MDS == 2 " # only show if PCA or MDS (not pathway)
 					,htmlOutput('PCA2factor')
 					)
                 )
@@ -586,6 +590,8 @@ tableOutput('species' ),
 				,tags$style(type='text/css', "#nPathwayShow { width:100%;   margin-top:-12px}")
 				,checkboxInput("absoluteFold", label = "Use absolute values of fold changes for GSEA and GAGE", value = FALSE)
 				,numericInput("GenePvalCutoff", label = h5("Remove genes with big FDR before pathway analysis:"), value = 1,min=1e-20,max=1,step=.05)
+				,tags$style(type='text/css', "#GenePvalCutoff { width:100%;   margin-top:-12px}")
+
 				,conditionalPanel("input.pathwayMethod == 1 | input.pathwayMethod == 2 | input.pathwayMethod == 3| input.pathwayMethod == 4" 
 					,actionButton("ModalEnrichmentPlotPathway", "Pathway tree") 
 					,actionButton("ModalEnrichmentNetworkPathway", "Pathway network")
