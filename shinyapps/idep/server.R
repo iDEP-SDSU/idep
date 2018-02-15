@@ -3691,7 +3691,7 @@ output$listFactors2 <- renderUI({
 	        } 
 	})
 
-	
+# note this function is cloned below for download. Any changes made to it, a similar change need to be made to PCAplots4Download	
 output$PCA <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	##################################  
@@ -3799,8 +3799,8 @@ output$PCA <- renderPlot({
 		incProgress(3/8, detail ="Running PGSEA")
 		#tem = t(tem); tem = t( (tem - apply(tem,1,mean)) ) #/apply(tem,1,sd) )
 
-		smcPlot(tem,scale =  c(-max(tem), max(tem)), show.grid = T, margins = c(3,1, 13, 35),
-			col = .rwb,cex.lab=0.5)
+		smcPlot(tem,scale =  c(-max(tem), max(tem)), show.grid = T, margins = c(1,1, 3, 35),
+			col = .rwb,cex.lab=0.8)
 
 	}
 	 
@@ -3884,7 +3884,7 @@ output$PCA <- renderPlot({
 	 incProgress(1)
 		 }) # progress
 
-  }, height = 600, width = 600)
+  }, height = 700, width = 700)
 
 PCAplots4Download <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -3993,8 +3993,8 @@ PCAplots4Download <- reactive({
 		incProgress(3/8, detail ="Running PGSEA")
 		#tem = t(tem); tem = t( (tem - apply(tem,1,mean)) ) #/apply(tem,1,sd) )
 
-		smcPlot(tem,scale =  c(-max(tem), max(tem)), show.grid = T, margins = c(3,1, 13, 35),
-			col = .rwb,cex.lab=0.5)
+		smcPlot(tem,scale =  c(-max(tem), max(tem)), show.grid = T, margins = c(1,1, 3, 30),
+			col = .rwb,cex.lab=0.8)
 
 	}
 	 
