@@ -2973,8 +2973,9 @@ output$genePlot <- renderPlot({
     x <- convertedData()
 	
 	Symbols <- rownames(x)
-	if( input$selectOrg != "NEW" &&  ncol(allGeneInfo()) != 1 ) {
-		ix = match( rownames(x), allGeneInfo()[,1])
+	
+	if( input$selectGO != "ID not recognized!" & input$selectOrg != "NEW" &&  ncol(allGeneInfo()) != 1 ) {
+	ix = match( rownames(x), allGeneInfo()[,1])
 		if( sum( is.na(allGeneInfo()$symbol )) != dim(allGeneInfo() )[1] ) {  # symbol really exists? 
 			Symbols = as.character( allGeneInfo()$symbol[ix] )
 			Symbols[which( nchar(Symbols) <= 2 ) ] <- rownames(x) [which( nchar(Symbols) <= 2 ) ] 
@@ -7965,7 +7966,7 @@ output$KeggImage <- renderImage({
 	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
 	####################################
 	
-   # First generate a blank image. Otherse return(NULL) gives us errors.
+   # First generate a blank image. Otherwise return(NULL) gives us errors.
     outfile <- tempfile(fileext='.png')
     png(outfile, width=400, height=300)
 
@@ -7982,6 +7983,7 @@ output$KeggImage <- renderImage({
 	if(is.null(gagePathwayData() ) ) return(blank)
 	if(is.null( input$sigPathways))  return (blank) 
 	# if( is.null(selectedPathwayData()) ) return(blank)
+	
 	isolate({ 
 	withProgress(message="Rendering KEGG pathway plot", {
 	incProgress(1/5, "Loading the pathview package") 
@@ -8218,6 +8220,7 @@ mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species =
                   message("Warning: ", warn.msg)
                 }
                 else {
+				  plot.data.gene$labels = NA # Try to fix this error: Error in $<-.data.frame: replacement has 97 rows, data has 103
                   plot.data.gene$labels = eg2id(as.character(plot.data.gene$kegg.names), 
                     category = "SYMBOL", pkg.name = gene.annotpkg)[, 
                     2]
