@@ -2504,25 +2504,16 @@ readData <- reactive ({
 						#11       1      11       1 
 						
 						n2 = ( dim(x)[2] %/% 2) # 5 --> 2
-						# It looks like it contains P values
-						# ranges of columns add 0.2 and round to whole. For P value columns this should be 1
-						tem = round( apply(x, 2, function( y) max(y)- min(y))  + .2)     
-						if( sum(tem[(1:n2)*2  ] ==  1 ) == n2 | 
-							sum(tem[(1:n2)*2-1  ] ==  1 ) == n2 ) { 		
-							x = x[,1:(2*n2) ,drop=FALSE ] # if 5, change it to 4			
-							if(tem[2] == 1) { # FDR follows Fold-change
-								pvals = x [,2*(1:n2 ),drop=FALSE ]  # 2, 4, 6
-								x = x[, 2*(1:n2 )-1,drop=FALSE]   # 1, 3, 5
 
-							} else {	# FDR follows Fold-change
-								pvals = x [,2*(1:n2 )-1,drop=FALSE ]  # 2, 4, 6		
-								x = x[, 2*(1: n2 ),drop=FALSE]   # 1, 3, 5
-							}
-						}
-					ix =  which(apply(x,1, function(y) max(y)- min(y) ) > 0  )
-					x <- x[ix,]  # remove rows with all the same levels
-					if(!is.null(pvals) )
-						pvals = pvals[ix,]
+						if(!input$noFDR) { 	 # if we have FDR
+							pvals = x [,2*(1:n2 ),drop=FALSE ]  # 2, 4, 6
+							x = x[, 2*(1:n2 )-1,drop=FALSE]   # 1, 3, 5				
+						}	
+						
+						ix =  which(apply(x,1, function(y) max(y)- min(y) ) > 0  )
+						x <- x[ix,]  # remove rows with all the same levels
+						if(!is.null(pvals) )
+							pvals = pvals[ix,]
 						
 					}
 					

@@ -30,7 +30,10 @@ iDEPversion,
 		,p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))
 		,radioButtons("dataFileFormat", label = "1. Choose data type", choices = list("Read counts data (recommended)" = 1, 
 													"Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2,
-													"Fold-changes with FDRs from CuffDiff or any other program" =3),selected = 1)
+													"Fold-changes and corrected P values from CuffDiff or any other program" =3),selected = 1)
+		 ,conditionalPanel("input.dataFileFormat == 3"
+		 		,checkboxInput("noFDR", "Fold-changes only, no corrected P values", value = FALSE)		 
+		 )
 		,fileInput('file1', '2. Upload expression data (CSV or text)',
                   accept = c(
                     'text/csv',
@@ -82,6 +85,7 @@ tableOutput('species' ),
       tableOutput('sampleInfoTable')
      ,tableOutput('contents')
 		#,h3("Dear users, Thank you for using iDEP. Please help make it better by sending us criticisms, suggestions or feature/functionality requests. We also answer your questions on how to use iDEP to analyze your data.",a("Just email us.",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"))
+		,h5("New v0.68! Try the STRING-db API access on the DEG2 page that offer protein interaction networks and GO enrichment for thousands species, including bacteria.")
 		,h5("Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data.  See ",
 			a(" documentation", href="https://idepsite.wordpress.com/",target="_blank"), "and",
 			a(" manuscript.", href="http://biorxiv.org/content/biorxiv/early/2017/06/09/148411.full.pdf",target="_blank"),
@@ -841,7 +845,7 @@ tableOutput('species' ),
 	 ,h5("In loving memory of my parents.")
  ) ))
 
-  ,tags$head(includeScript("ga.js")) # tracking usage  
+  #,tags$head(includeScript("ga.js")) # tracking usage  
   )# Navibar
 
 )
