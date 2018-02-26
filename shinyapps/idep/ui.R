@@ -845,7 +845,7 @@ tableOutput('species' ),
 	 ,h5("In loving memory of my parents.")
  ) ))
 
-  #,tags$head(includeScript("ga.js")) # tracking usage  
+  ,tags$head(includeScript("ga.js")) # tracking usage  
   )# Navibar
 
 )
