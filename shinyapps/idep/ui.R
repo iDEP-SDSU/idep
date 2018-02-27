@@ -147,7 +147,7 @@ tableOutput('species' ),
 					,tags$style(type='text/css', "#NminSamples { width:100%;   margin-top:-12px}")
 							
 					,radioButtons("CountsTransform", "Transform counts data for clustering & PCA.",  c("VST: variance stabilizing transform"=2, 
-					"rlog: regularized log (slow) "= 3,"Log transformatoin: log2(x+c)" = 1),selected = 1 )
+					"rlog: regularized log (slow) "= 3,"Log transformation: log2(x+c)" = 1),selected = 1 )
 					,conditionalPanel("input.CountsTransform == 1",
 						fluidRow(
 							column(5, h5("Constant c:")  )
@@ -159,11 +159,11 @@ tableOutput('species' ),
  				#,radioButtons("CountsDEGMethod", "Detect differntial expression using:",  c("limma-voom"=2,"limma-trend"=1,"DESeq2"= 3) )
 				
 				)
-				,selectInput("missingValue", label = "Missing values inputation:",choices = list("Gene median"="geneMedian",
+				,selectInput("missingValue", label = "Missing values imputation:",choices = list("Gene median"="geneMedian",
 																							"Treat as zero"="treatAsZero", 
 																							"Median within sample groups"="geneMedianInGroup"),
 																							selected = "geneMedian")
-				,actionButton("genePlot1", "Barplot for one or more genes")
+				,actionButton("genePlot1", "Plot one or more genes")
 				,br(),br()
 				,actionButton("examineDataB", "Search processed data")
                  ,br(),br()
@@ -519,7 +519,7 @@ tableOutput('species' ),
 				   ,bsModal("modalExampleSTRING", "Enrichment and network visualization using STRING API", "STRINGdb_GO", size = "large"
 						,h5("iDEP tries to match your species with the 115 archaeal, 1678 bacterial, and 238 eukaryotic species in the",
 							a(" STRING server", href="https://www.bioconductor.org/packages/release/bioc/html/STRINGdb.html",target="_blank"),
-								" and send the DEGs. If it is running, please wait until it finishes.")
+								" and send the DEGs. If it is running, please wait until it finishes. This can take 5 minutes, especially for the first time when iDEP downloads large annotation files.")
 						,htmlOutput("STRINGDB_species_stat") 
 						,tags$head(tags$style("#STRINGDB_species_stat{color: blue;font-size: 15px;}"))						
 						, selectizeInput('speciesName', label=NULL,choices = " ",
@@ -842,6 +842,7 @@ tableOutput('species' ),
 	 ,h5("2/10/2018: V 0.66 Improved API access to STRINGdb, by adding automatic species matching.")
 	 ,h5("2/11/2018: V 0.67 Tested with larger dataset of 259 samples. Changed figure configurations.")
 	 ,h5("2/14/2018: V 0.68 Fixed Pathview loading code. Connected Pathview to PGSEA.")
+	 ,h5("2/25/2018: V 0.68 Fixed Fold-change, FDR data upload and parsing. Figure resolution using the res=150 option help improve readability of labels.")
 	 ,h5("In loving memory of my parents.")
  ) ))
 

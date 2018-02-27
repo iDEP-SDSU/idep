@@ -2965,7 +2965,7 @@ output$genePlot <- renderPlot({
 	
 	Symbols <- rownames(x)
 	
-	if( input$selectGO != "ID not recognized!" & input$selectOrg != "NEW" &&  ncol(allGeneInfo()) != 1 ) {
+	if( input$selectOrg != "NEW" &&  ncol(allGeneInfo()) != 1 ) {
 	ix = match( rownames(x), allGeneInfo()[,1])
 		if( sum( is.na(allGeneInfo()$symbol )) != dim(allGeneInfo() )[1] ) {  # symbol really exists? 
 			Symbols = as.character( allGeneInfo()$symbol[ix] )
@@ -2979,10 +2979,10 @@ output$genePlot <- renderPlot({
 	#ix = grep("HOXA",toupper(x$Genes) )
 	# ix = grep(toupper(input$geneSearch),toupper(x$Genes))  # sox --> Tsox  
 	# matching from the beginning of symbol
-	ix = which(regexpr(  paste("^" , toupper(input$geneSearch),sep="")   ,toupper(x$Genes)) > 0)
-	
-	if(grepl(" ", input$geneSearch)  )  # if there is space character, do exact match
-		ix = match(gsub(" ","", toupper(input$geneSearch)), toupper(x$Genes) )
+	searchWord = gsub("^ ","",input$geneSearch )
+	ix = which(regexpr(  paste("^" , toupper(searchWord),sep="")   ,toupper(x$Genes)) > 0)
+	if(grepl(" $", searchWord)  )  # if there is space character, do exact match
+		ix = match(gsub(" ","", toupper(searchWord)), toupper(x$Genes) )
 	
 	# too few or too many genes found
 	if(length(ix) == 0 | length(ix) > 50 ) return(NULL)
@@ -4356,7 +4356,7 @@ output$tSNEgenePlot <- renderPlot({
 	
 	
 	 #progress 
-  }, height = 700, width = 700 )
+  }, height = 800, width = 800,res=120 )
 
 output$distributionSD <- renderPlot({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -4403,7 +4403,7 @@ output$distributionSD <- renderPlot({
 	
 	
 	 #progress 
-  }, height = 400, width = 600 )
+  }, height = 600, width = 800,res=150 )
 
   
 output$downloadDataKmeans <- downloadHandler(
