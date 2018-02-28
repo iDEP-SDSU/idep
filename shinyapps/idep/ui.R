@@ -182,7 +182,7 @@ tableOutput('species' ),
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/pre-process/",target="_blank")
                ),
                mainPanel(
-			   conditionalPanel("input.dataFileFormat == 1", plotOutput("totalCounts",inline=TRUE) )
+			   conditionalPanel("input.dataFileFormat == 1", plotOutput("totalCounts") )
                   , plotOutput("EDA")				  
 				  ,bsModal("modalExample10", "Converted data (Most variable genes on top)", "examineDataB", size = "large", DT::dataTableOutput('examineData'))
 				  ,bsModal("modalExample1021", "Search for genes", "genePlot1", size = "large", 
