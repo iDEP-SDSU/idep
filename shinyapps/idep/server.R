@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.68"
+iDEPversion = "iDEP 0.69"
 ################################################################
 # R packages
 ################################################################
@@ -2938,13 +2938,15 @@ output$EDA <- renderPlot({
 	lines(density(x[,i]),col=myColors[i],  lwd=1 )
 	if(dim(x)[2]< 31 ) # if too many samples do not show legends
 		legend("topright", colnames(x), lty=rep(1,dim(x)[2]), col=myColors )	
-   # boxplot of first two samples, often technical replicates
+
+	# boxplot of first two samples, often technical replicates
    
 	boxplot(x, las = 2, ylab="Transformed expression levels", main=paste("Distribution of transformed data",memo)
 		,cex.lab=1.5, cex.axis=1.5, cex.main=2, cex.sub=2)
-	plot(x[,1:2],xlab=colnames(x)[1],ylab=colnames(x)[2], main="Scatter plot of first two samples",cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2)
+	plot(x[,1:2],xlab=colnames(x)[1],ylab=colnames(x)[2], main="Scatter plot of first two samples",
+	cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2)
 	
-   }, height = 1600, width = 800)
+   }, height = 2000, width = 800)
    
 output$genePlot <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -3200,8 +3202,7 @@ output$totalCounts <- renderPlot({
 	#barplot( colSums(x)/1e6, col="green",las=3, cex.axis=1.3, cex =1.5, main="Total read counts (millions)")
 	barplot( colSums(x)/1e6, col="green",las=3,  main=paste("Total read counts (millions)", memo) )
 
-}) # height is automatic, this enables the display of other plots below.
-
+},height =500,inline=TRUE) 
 
 ################################################################
 #   Heatmaps
@@ -3238,6 +3239,7 @@ output$heatmap1 <- renderPlot({
 	n=input$nGenes
 	#if(n>6000) n = 6000 # max
 	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+	if(n<10) n = 10 # min
 	# this will cutoff very large values, which could skew the color 
 	if(input$geneCentering)
 		x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
@@ -3286,7 +3288,7 @@ output$heatmap1 <- renderPlot({
 	par(mar = c(5, 4, 1.4, 0.2))
 	
 
-	if( n>110) 
+	if( n>110) # no labels when too many genes
 	heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
 		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
 		,Colv=!input$noSampleClustering
@@ -3458,6 +3460,7 @@ output$downloadHeatmap1 <- downloadHandler(
         plotHeatmap1()
         dev.off()
       })  
+
 # interactive heatmap with plotly
 output$heatmapPlotly <- renderPlotly({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -3478,7 +3481,8 @@ output$heatmapPlotly <- renderPlotly({
 	n=input$nGenesPlotly
 	#if(n>6000) n = 6000 # max
 	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-
+	if(n<10) n = 10 # min
+	
 	if(input$geneCentering)
 		x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
 	# standardize by gene
@@ -3500,19 +3504,31 @@ output$heatmapPlotly <- renderPlotly({
 	rownames( x) = geneSymbols;
 
 	incProgress(1/2, "Clustering of genes")	
+	
+    # clustering genes------
 	clust <- x %>% 
 	  dist2() %>% 
 	  hclust2()
-
 	# Get order
-	ord <- clust$order
+	ord_row <- clust$order
 
+	#clustering samples --------
+	if( input$noSampleClustering )
+	  ord_column = 1:ncol(x) else { 
+		clust <- t(x) %>% 
+		  dist2() %>% 
+		  hclust2()
+		# Get order
+		ord_column <- clust$order	
+	}
+	
 	# Re-arrange based on order
-	df <- t( x[ord,] )%>%
+	df <- t( x[ord_row,ord_column] )%>%
 	   melt()
 	   
 	colnames(df)[1:2] <- c("X","Y")
     colorNames = unlist(strsplit(tolower(rownames(heatColors)[ as.integer(input$heatColors1)   ]),"-" ) )
+
 	p <- df %>%
 	  ggplot(aes(X, Y, fill = value)) + 
 		   geom_tile()+ scale_fill_gradient2(low = colorNames[1], mid = colorNames[2],high = colorNames[3]) +
@@ -4169,6 +4185,7 @@ Kmeans <- reactive({ # Kmeans clustering
 	n=input$nGenesKNN
 	if(n>maxGeneClustering) n = maxGeneClustering # max
 	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+	if(n<10) n = 10 # min
 	#x1 <- x;
 	#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
 	#x = 100* x[1:n,] / apply(x[1:n,],1,sum) 
@@ -4261,6 +4278,7 @@ output$KmeansNclusters <- renderPlot({ # Kmeans clustering
 	n=input$nGenesKNN
 	#if(n>6000) n = 6000 # max
 	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
+	if(n<10) n = 10 # min
 	#x1 <- x;
 	#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
 	x = 100* x[1:n,] / apply(x[1:n,],1,sum)  # this is causing problem??????

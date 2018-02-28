@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.68"
+iDEPversion = "iDEP.69"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -203,7 +203,7 @@ tableOutput('species' ),
     ,tabPanel("Heatmap",
               sidebarLayout(
                 sidebarPanel(
-   					sliderInput("nGenes", label = h4("Most variable genes to include:"), min = 10, max = 6000, value = 1000,step=50) 
+   					sliderInput("nGenes", label = h4("Most variable genes to include:"), min = 0, max = 6000, value = 1000,step=100) 
 					,actionButton("showStaticHeatmap", "Interactive heatmap")
 					,br()
 					,actionButton("showCorrelation", "Correlation matrix")	
@@ -253,7 +253,7 @@ tableOutput('species' ),
 							,plotOutput("sampleTree"))
 
 						,bsModal("modalExample28", "Heatmap with hierarchical clustering tree", "showStaticHeatmap", size = "large",
-						sliderInput("nGenesPlotly", label = h4("Most variable genes to include:"), min = 10, max = 6000, value = 50,step=50),
+						sliderInput("nGenesPlotly", label = h4("Most variable genes to include:"), min = 0, max = 6000, value = 50,step=100),
 						h5("Mouse over to see gene names. To zoom, click and drag up or downward and release."),
 						plotlyOutput("heatmapPlotly",width = "100%", height = "800px"))
 					 
@@ -267,7 +267,7 @@ tableOutput('species' ),
               sidebarLayout(
                 sidebarPanel(
 				#numericInput("nClusters", label = h4("Number of Clusters (often <15) "), value = 6)
-   				sliderInput("nGenesKNN", label = h4("Most variable genes to include "), min = 10, max = 6000, value = 2000,step=100) 
+   				sliderInput("nGenesKNN", label = h4("Most variable genes to include "), min = 0, max = 6000, value = 2000,step=100) 
 				,sliderInput("nClusters", label = h4("Number of Clusters"), min = 2, max = 20, value = 4,step=1) 
 				,actionButton("KmeansReRun", "Re-Run")
 				,actionButton("NClusters", "How many clusters?")
@@ -843,6 +843,7 @@ tableOutput('species' ),
 	 ,h5("2/11/2018: V 0.67 Tested with larger dataset of 259 samples. Changed figure configurations.")
 	 ,h5("2/14/2018: V 0.68 Fixed Pathview loading code. Connected Pathview to PGSEA.")
 	 ,h5("2/25/2018: V 0.68 Fixed Fold-change, FDR data upload and parsing. Figure resolution using the res=150 option help improve readability of labels.")
+	 ,h5("2/28/2018: V0.69 Change interactive heat maps to re-order columns")
 	 ,h5("In loving memory of my parents.")
  ) ))
 
