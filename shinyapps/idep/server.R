@@ -3202,7 +3202,7 @@ output$totalCounts <- renderPlot({
 	#barplot( colSums(x)/1e6, col="green",las=3, cex.axis=1.3, cex =1.5, main="Total read counts (millions)")
 	barplot( colSums(x)/1e6, col="green",las=3,  main=paste("Total read counts (millions)", memo) )
 
-},height =500,inline=TRUE) 
+},height =500) 
 
 ################################################################
 #   Heatmaps
