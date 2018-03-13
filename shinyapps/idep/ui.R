@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.69"
+iDEPversion = "iDEP.70"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -85,6 +85,8 @@ tableOutput('species' ),
       tableOutput('sampleInfoTable')
      ,tableOutput('contents')
 		#,h3("Dear users, Thank you for using iDEP. Please help make it better by sending us criticisms, suggestions or feature/functionality requests. We also answer your questions on how to use iDEP to analyze your data.",a("Just email us.",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"))
+		,h5("New v0.70  iDEP generates R and R Markdown codes for users to run in stand-alone!")
+		,a(h5("R Markdown example.",align = "right"), href="http://rpubs.com/ge600/Rmd",target="_blank")
 		,h5("New v0.68! Try the STRING-db API access on the DEG2 page that offer protein interaction networks and GO enrichment for thousands species, including bacteria.")
 		,h5("Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data.  See ",
 			a(" documentation", href="https://idepsite.wordpress.com/",target="_blank"), "and",
@@ -830,8 +832,31 @@ tableOutput('species' ),
 ###############################################################################################################################
  
 ,tabPanel("R",
-      fluidRow(
+      fluidRow(	  
        column(12,
+	   	h4( a("Email us", href= "mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP", target="_top") , 
+		  " for questions, suggestions, or data contributions. Stay connected via ", 
+		  a("user group", href="https://groups.google.com/d/forum/idep",target="_blank"), " or ",
+	      a("Twitter", href="https://twitter.com/useIDEP", target="_blank"),"." ), 
+	    h2("R as in Reproducibility"),	   
+	   h5("To improve reproducibility, iDEP generates custom  R code  
+	    based on your data and choices of parameters. Users with some R coding experience should be able to re-run most analyses 
+		by downloading scripts, annotation files(except ID conversion database), 
+		and the data file with gene IDs converted to Ensembl IDs. Click through all the tabs and then download all these file to a folder: "),
+	   downloadButton('downloadRcode',"Customized R code"),   
+	   downloadButton('downloadRcodeMarkdown',"Customized R code(Markdown)"),  
+	   downloadButton('downloadRfunctions',"iDEP core functions"),
+	   downloadButton('downloadGeneInfo',"Gene Info file"),
+	   downloadButton('downloadPathwayFile',"Pathway file"),
+	   conditionalPanel("input.dataFileFormat == 1",	   
+			downloadButton('downloadConvertedCountsRtab',"Converted counts")),
+	   conditionalPanel("input.dataFileFormat == 2",	   
+			downloadButton('downloadProcessedDataRtab',"Converted data")),
+	   conditionalPanel("input.file2 > 0 | input.goButton > 0",				
+		downloadButton('downloadSampleInfoFile',"Experiment design file")),
+	   #textOutput('Rcode'),
+	   #tags$style(type="text/css", "#Rcode {white-space: pre-wrap; font-family: \"Courier New\"}"),
+	   br(),br(),
      htmlOutput('RsessionInfo')
 	 ,h4("Changes")
 	 ,h5("iDEP v0.62 2/5/2018:  Add  tree and networks to visualize 
@@ -844,8 +869,11 @@ tableOutput('species' ),
 	 ,h5("2/14/2018: V 0.68 Fixed Pathview loading code. Connected Pathview to PGSEA.")
 	 ,h5("2/25/2018: V 0.68 Fixed Fold-change, FDR data upload and parsing. Figure resolution using the res=150 option help improve readability of labels.")
 	 ,h5("2/28/2018: V0.69 Change interactive heat maps to re-order columns")
+	 ,h5("3/12/2018: V0.70 Generating R code and downloading annotation files used in analysis.")
 	 ,h5("In loving memory of my parents.")
- ) ))
+ ) 
+ )
+ )
 
   ,tags$head(includeScript("ga.js")) # tracking usage  
   )# Navibar

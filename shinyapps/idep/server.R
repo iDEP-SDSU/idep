@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.69"
+iDEPversion = "iDEP 0.70"
 ################################################################
 # R packages
 ################################################################
@@ -1907,6 +1907,23 @@ enrichmentNetworkPlotly <- function(enrichedTerms){
 	   
 }
 
+	# output Parameter: This function outputs values in the input$variable to input_variable 
+	op <- function (i,para, annot=NULL, textInfo = FALSE) {
+		if(is.null(para)  )
+			return( paste0(i,"\n ", gsub("\\$","_",
+					deparse(substitute(para)))," <- NULL \t#",annot)  )	else
+		if(length(para) == 1  ) { # only 1 elements
+			if(! textInfo )
+				return( paste0(i,"\n ", gsub("\\$","_",
+						deparse(substitute(para)))," <- ", para, "\t#",annot)  ) else		
+				return( paste0(i,"\n ", gsub("\\$","_",
+					deparse(substitute(para)))," <- \'", para, "'\t#",annot) )
+		} else # a vector, note must be string vector   c("p53","treatment")
+				return( paste0(i,"\n ", gsub("\\$","_",
+					deparse(substitute(para)))," <- c('", paste0(para, collapse="','" ), "')\t#",annot) )
+
+	}
+
  if(0 ){ # pathway testing
 	x = read.csv("expression.csv")
 	x = read.csv("expression1_no_duplicate.csv")
@@ -2820,6 +2837,7 @@ convertedPvals <- reactive({
 		})
 		})
 	})
+
 GeneSetsPCA <- reactive({
 		if (is.null(input$file1) && input$goButton == 0)	return()
 		tem = input$selectOrg
@@ -2831,6 +2849,7 @@ GeneSetsPCA <- reactive({
 				return( readGMTRobust(inFile) ) }else
 		return( readGeneSets( converted(), convertedData(), input$selectGO6,input$selectOrg,c(input$minSetSize, input$maxSetSize)  ) ) }) 
 	})	
+
 GeneSets <- reactive({
 		if (is.null(input$file1) && input$goButton == 0)	return()
 		tem = input$selectOrg
@@ -2843,16 +2862,7 @@ GeneSets <- reactive({
 		return( readGeneSets( converted(), convertedData(), input$selectGO,input$selectOrg,c(input$minSetSize, input$maxSetSize)  ) ) }) 
 	})
 
-output$downloadSampleInfoData <- downloadHandler(
-  filename <- function() {
-		paste("sampleInformation.csv")
-	  },
-
-content <- function(file) {
-		file.copy(demoDataFile2 , file)
-	  },
-	  contentType = "application/zip"
-	)	
+	
 	
 ####### [TODO] Kevin Indentation Work 10/5 #######
 
@@ -2937,7 +2947,7 @@ output$EDA <- renderPlot({
 	for( i in 2:dim(x)[2] )
 	lines(density(x[,i]),col=myColors[i],  lwd=1 )
 	if(dim(x)[2]< 31 ) # if too many samples do not show legends
-		legend("topright", colnames(x), lty=rep(1,dim(x)[2]), col=myColors )	
+		legend("topright", colnames(x), lty=rep(1,dim(x)[2]), col=myColors, cex = 2 )	
 
 	# boxplot of first two samples, often technical replicates
    
@@ -3157,7 +3167,7 @@ output$downloadProcessedData <- downloadHandler(
 output$downloadConvertedCounts <- downloadHandler(
 		filename = function() {"Converted_Counts_Data.csv"},
 		content = function(file) {
-      write.csv( processedCountsData(), file)	    
+      write.csv( processedCountsData(), file, row.names=FALSE)	    
 	})
  
 
@@ -3671,7 +3681,7 @@ output$sampleTree <- renderPlot({
 
 
  distFuns[[as.integer(input$distFunctions)]]
-  }  )#, height = 500, width = 500)
+  } )#, height = 500, width = 500)
 
 ################################################################
 #   PCA
@@ -4421,7 +4431,7 @@ output$distributionSD <- renderPlot({
 	
 	
 	 #progress 
-  }, height = 600, width = 800,res=150 )
+  }, height = 600, width = 800,res=120 )
 
   
 output$downloadDataKmeans <- downloadHandler(
@@ -5048,8 +5058,8 @@ output$textLimma <- renderText({
 	limma()$Exp.type
 	#paste( limma()$comparisons,collapse=" "     )  
 	})	
-  
-  
+
+    
 output$vennPlot <- renderPlot({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		tem = input$selectOrg
@@ -5089,7 +5099,7 @@ output$vennPlot <- renderPlot({
 			
 			ixa = c()
 			for (comps in  input$selectComparisonsVenn) { 
-				 if(!grepl("^I:|^I-", comps) ) {  # if not interaction term
+				 if(!grepl("^I:|^I-|^Up_I:|^Up_I-|^Down_I:|^Down_I-", comps) ) {  # if not interaction term
 					ix = match(comps, colnames(results)) 
 				  } else {
 						#mismatch in comparison names for interaction terms for DESeq2
@@ -6844,11 +6854,10 @@ output$stringDB_network_link <- renderUI({
 		}) #isolate			
 
 }) 
+
 ################################################################
 #   Pathway analysis
 ################################################################
- 
- 
  
 # this updates geneset categories based on species and file
 output$selectGO1 <- renderUI({   # gene set for pathway analysis
@@ -10030,8 +10039,7 @@ output$downloadSelectedModule <- downloadHandler(
 	  },
 	  contentType = "text file"
 	)
-	
-  	
+	  	
 output$moduleNetwork <- renderPlot({
   		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 
@@ -10135,17 +10143,11 @@ output$moduleNetwork <- renderPlot({
 output$RsessionInfo <- renderUI({
 	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		
-	i = "<h4> <a href=\"mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP\" target=\"_top\">Email us</a> for questions, 
-	suggestions, or data contributions. Stay connected via <a href=\"https://groups.google.com/d/forum/idep\"target=\"_blank\"> user group</a>, or
-	   <a href=\"https://twitter.com/useIDEP\"target=\"_blank\"> Twitter. </a></h4>"  
-	i = c(i,"<h2>R as in Reproducibility</h2>")
+	i =""
 	i = c(i,"We recommend users to save the following details about their analyses.")
-	i = c(i,paste("Analysis were conducted using the awesome ",iDEPversion, 
-		", hosted at http://ge-lab.org on ", date(),".",sep="") )
-		
-	
-	i = c(i,"If you really need it, here is my embarrassingly  
-	messy <a href=\"https://github.com/iDEP-SDSU/idep\"target=\"_blank\"> source code.</a>")
+	i = c(i,paste("Analyses of read count data were conducted using  ",iDEPversion, 
+		", hosted at http://ge-lab.org/idep/ on ", date(),".",sep="") )	
+	i = c(i,"<a href=\"https://github.com/iDEP-SDSU/idep\"target=\"_blank\"> Source code on Github.</a>")
 	
 	#inFile <- input$file1
 	#inFile <- inFile$datapath
@@ -10203,5 +10205,796 @@ output$RsessionInfo <- renderUI({
 	i = c(i,capture.output(sessionInfo()) )
 	HTML(paste(i, collapse='<br/>') )
   })
+	# output user settings and session info
+
+output$downloadConvertedCountsRtab <- downloadHandler(
+		filename = function() {"Downloaded_Converted_Data.csv"},
+		content = function(file) {
+      write.csv( processedCountsData(), file, row.names=FALSE)	    
+	})
+output$downloadProcessedDataRtab <- downloadHandler(
+		filename = function() {"Downloaded_Converted_Data.csv"},
+		content = function(file) {
+      write.csv( convertedData(), file)	    
+	}) 
+output$downloadRcode <- downloadHandler(
+		filename = function() {"iDEP_Rcode.R"},
+		content = function(file) {
+      write( Rcode(), file)	    
+	})
+	
+# find the corresponding file names for gene info, for download	
+geneInfoFileName <- reactive({
+  	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+
+	ix = grep(converted()$species[1,1],geneInfoFiles)
+	if (length(ix) == 0 ) {return(NULL)} else {
+		# If selected species is not the default "bestMatch", use that species directly
+		if(input$selectOrg != speciesChoice[[1]]) {  
+			ix = grep(findSpeciesById(selectOrg)[1,1], geneInfoFiles )
+		}
+		if(length(ix) == 1)  # if only one file           #WBGene0000001 some ensembl gene ids in lower case
+			{x = as.character(geneInfoFiles[ix]); 	return(x) }else # read in the chosen file 
+			return(NULL )   
+	}
+
+})	
+	
+output$downloadGeneInfo <- downloadHandler(
+  filename <- function() {
+    gsub(".*/","",geneInfoFileName())
+  },
+  content <- function(file) {
+    file.copy(as.character(geneInfoFileName()), file)
+  }
+)
+# sampleInfo file name
+sampleInfoFileName <- reactive({
+  	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	if( is.null(input$file2) && !is.null( readData()$sampleInfoDemo ) ) # if using demo data
+		return(demoDataFile2) else 
+	if( is.null(input$file2) )
+		return(NULL)  else
+	{ 	
+	  inFile <- input$file2    # user data
+	  inFile <- inFile$datapath
+	  return(inFile)		
+	}
+
+})	
+output$downloadSampleInfoFile <- downloadHandler(
+  filename <- function() {
+    "Downloaded_sampleInfoFile.csv"
+  },
+  content <- function(file) {
+    file.copy(sampleInfoFileName(), file)
+  }
+)
+# find the corresponding file names for gene info, for download	
+pathwayFileName <- reactive({
+  	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+
+	ix = grep(converted()$species[1,1],gmtFiles)
+	if (length(ix) == 0 ) {return(NULL)} else {
+		# If selected species is not the default "bestMatch", use that species directly
+		if(input$selectOrg != speciesChoice[[1]]) {  
+			ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
+		}
+		if(length(ix) == 1)  # if only one file           #WBGene0000001 some ensembl gene ids in lower case
+			{x = as.character(gmtFiles[ix]); 	return(x) }else # read in the chosen file 
+			return(NULL )   
+	}
+
+})	
+	
+output$downloadPathwayFile <- downloadHandler(
+  filename <- function() {
+    gsub(".*/","",pathwayFileName())
+  },
+  content <- function(file) {
+    file.copy(pathwayFileName(), file)
+  }
+)
+output$downloadRfunctions <- downloadHandler(
+  filename <- function() {
+    "iDEP_core_functions.R"
+  },
+  content <- function(file) {
+    file.copy("iDEP_core_functions.R", file)
+  }
+)
+output$downloadRcode <- downloadHandler(
+		filename = function() {"iDEP_customized_R_code.R"},
+		content = function(file) {
+      write( Rcode(), file)	    
+	})	
+
+# generate R code based on user input	
+Rcode <- reactive({
+	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	
+	i = "# R code for stand-alone iDEP analysis"
+	i = paste(i,"\n# by Steven Xijin Ge, South Dakota State University,  gexijin@gmail.com ")
+	i = paste(i, "\n# Generated by ",iDEPversion, 
+		" hosted at http://ge-lab.org/idep/ ", date() )	
+	i = paste(i, "\n\n##########################\n# 1. Read data\n##########################" )
+	i= paste(i,"\n setwd('C:/Users/Xijin.Ge/Downloads')   # Needs to be changed ")
+    i=paste(i, "\n source('iDEP_core_functions.R')")
+
+	i= paste(i,"\n\n # Input files")
+	i = paste(i, "\n # Expression file has to use Ensembl for gene ID. Otherwise, use custom pathway database with matching IDs.")
+	i = paste(i,"\n inputFile <- 'Downloaded_Converted_Data.csv'  # Expression matrix")  
+	if(is.null( sampleInfoFileName() ) ) # if no experiment design file
+		i = paste0(i,"\n sampleInfoFile <- NULL ")	 else	
+		i = paste0(i,"\n # Experiment design file\n sampleInfoFile <- 'Downloaded_sampleInfoFile.csv'  ")
+	i = paste0(i,"\n  #Gene symbols, location etc. \n geneInfoFile <- '",gsub(".*/","",geneInfoFileName()), "' ")
+	i = paste0(i,"\n # pathway database in SQL; can be GMT format ")
+	i = paste0(i, "\n geneSetFile <- '",gsub(".*/","",pathwayFileName()), "'   ")
+	i = paste0(i,"\n STRING10_speciesFile <- 'https://raw.githubusercontent.com/iDEP-SDSU/idep/master/shinyapps/idep/STRING10_species.csv'")
+
+	
+	i= paste(i,"\n\n # Parameters")	
+	i = op(i,input$missingValue, "Missing values imputation method", TRUE)
+	i = op(i, input$dataFileFormat, "1- read counts, 2 FKPM/RPKM or DNA microarray")
+	
+	if(input$dataFileFormat == 1) { # counts data
+		i = op(i, input$minCounts, "Min counts")		
+		i = op(i, input$NminSamples, "Minimum number of samples ") 
+		i = op(i, input$countsLogStart, "Pseudo count for log CPM")
+		i = op(i, input$CountsTransform, "Methods for data transformation of counts. 1-VST, 2-rlog, 3-EdgeR")		
+	}
+	
+	if(input$dataFileFormat == 2) {  # FPKM or microrray data
+		i = op(i, input$lowFilter, "Min expression score for FPKM")
+		i = op(i, input$NminSamples2, "Minimum number of samples ")
+		i = op(i, input$logStart, "Pseudo count for FPKM ")
+		i = op(i, input$transform, "Log transformation")	
+	}
+	
+	i = paste(i,"\n\n #Read data files\n readData.out <- readData(inputFile)")	
+	if(input$dataFileFormat== 2)
+		i = paste(i,"\n textTransform() ")
+	
+	if(!is.null( sampleInfoFileName() ) )
+		i = paste(i,"\n readSampleInfo.out <- readSampleInfo(sampleInfoFile)") else 
+		i = paste(i,"\n readSampleInfo.out <- NULL") 	
+	i = paste(i, "\n input_selectOrg =\"NEW\" ")
+	i = op(i, input$selectGO, "Gene set category", TRUE)	# selectGO is for pathway analysis
+	i = paste(i, "\n input_noIDConversion = TRUE ")
+	
+	i = paste(i,"\n allGeneInfo.out <- geneInfo(geneInfoFile)")	
+	i = paste(i, 
+"\n converted.out = NULL 
+ convertedData.out <- convertedData()	 
+ nGenesFilter() ")
+  	if(input$dataFileFormat == 1) 
+		i = paste("\n convertedCounts.out <- convertedCounts()  ")		
+			
+	# 2. Pre-process
+	i = paste(i, "\n\n##########################\n# 2. Pre-Process \n##########################" )
+	i = paste(i,"\n parDefault = par() \n par(mar=c(12,4,2,2))")	
+	if(input$dataFileFormat == 1 ) { # if read counts data
+		i = paste(i,"\n # barplot of total read counts")
+		i = paste(i, "\n barplot( colSums(readData.out$rawCounts)/1e6, 
+		col=\"green\",las=3, main=\"Total read counts (millions)\") ")
+	}
+	i = paste(i,"\n\n # Box plot")
+	i = paste(i,"\n x = readData.out$data")
+	i = paste(i, "\n boxplot(x, las = 2, 
+    ylab='Transformed expression levels',
+    main='Distribution of transformed data')")
+
+	i = paste(i,"\n\n # Density plot")
+	i = paste(i, "\n par(parDefault) \n densityPlot()      ")
+
+	i = paste(i,"\n\n # Scatter plot of the first two samples")
+	i = paste(i, "\n plot(x[,1:2],xlab=colnames(x)[1],ylab=colnames(x)[2], 
+    main='Scatter plot of first two samples')")
+	
+	i = paste(i, "\n\n #plot gene or gene family\n input_selectOrg =\"BestMatch\" ")	
+	i = op(i, input$geneSearch, "Gene ID for searching", TRUE)	# selectGO is for pathway analysis	 
+	i = paste(i, "\n genePlot() ")	 
+	i = op(i, input$useSD, "Use standard deviation instead of standard error in error bar?", TRUE)	# selectGO is for pathway analysis	 
+	i = paste(i, "\n geneBarPlotError()      ")
+
+	i = paste(i, "\n\n##########################\n# 3. Heatmap \n##########################" )
+	i = paste(i,
+"\n # hierarchical clustering tree
+ x <- readData.out$data
+ maxGene <- apply(x,1,max)
+ # remove bottom 25% lowly expressed genes, which inflate the PPC
+ x <- x[which(maxGene > quantile(maxGene)[1] ) ,] 
+ plot(as.dendrogram(hclust2( dist2(t(x)))), ylab=\"1 - Pearson C.C.\", type = \"rectangle\")" )
+
+	i = paste(i,"\n #Correlation matrix")
+	i = op(i, input$labelPCC, "Show correlation coefficient?", FALSE)	# selectGO is for pathway analysis	 
+	i = paste(i,"\n correlationMatrix()")
+	i = paste(i,"\n\n # Parameters for heatmap")
+	i = op(i, input$nGenes, "Top genes for heatmap")
+	i = op(i, input$geneCentering, "centering genes ?")
+	i = op(i, input$sampleCentering, "Center by sample?")
+	i = op(i, input$geneNormalize, "Normalize by gene?")
+	i = op(i, input$sampleNormalize, "Normalize by sample?")
+	i = op(i, input$noSampleClustering, "Use original sample order")
+	i = op(i, input$heatmapCutoff, "Remove outliers beyond number of SDs ")
+	i = op(i, input$distFunctions, "which distant funciton to use")
+	i = op(i, input$hclustFunctions, "Linkage type")
+	i = op(i, input$heatColors1, "Colors")
+	i = op(i, input$selectFactorsHeatmap, "Sample coloring factors", TRUE)
+	i = paste(i, "\n\n staticHeatmap() #Legends not showing due to margin.\n #For a better figure, plot to a file")
+	i = paste(i, "\n dev.off() # close plot")
+	i = paste(i, "\n tiff('heatmap.tiff', width = 10, height = 15, units = 'in', res = 300, compression = 'lzw')")
+	i = paste(i, "\n staticHeatmap() \n dev.off() \n  browseURL('heatmap.tiff') # show heatmap in browser")
+	i = paste(i, "\n heatmapPlotly() # interactive heatmap using Plotly")	
+ 
+	i = paste(i, "\n\n##########################\n# 4. k-Means clustering \n##########################" )
+
+	i = op(i, input$nGenesKNN, "Number of genes fro k-Means")	
+	i = op(i, input$nClusters, "Number of clusters")
+	i = paste(i, "\n maxGeneClustering = 12000")
+	i = op(i, input$kmeansNormalization, "Normalization", TRUE)	
+	i = op(i, input$KmeansReRun, "Random seed")
+	
+	i = paste(i, "\n\n distributionSD()  #Distribution of standard deviations")
+	i = paste(i, "\n KmeansNclusters()  #Number of clusters")
+
+	i = paste(i, "\n\n Kmeans.out = Kmeans()   #Running K-means")	
+	i = paste(i, "\n KmeansHeatmap()   #Heatmap for k-Means \n")
+	
+	i = paste(i, "\n\n #Read gene sets for enrichment analysis \n sqlite  <- dbDriver('SQLite')")	
+	i = op(i, input$selectGO3, "Gene set category", TRUE)	
+	i = op(i, input$minSetSize, "Min gene set size")
+	i = op(i, input$maxSetSize, "Max gene set size")
+	i = paste(i, "\n GeneSets.out <-readGeneSets( geneSetFile,
+    convertedData.out, input_selectGO3,input_selectOrg,
+    c(input_minSetSize, input_maxSetSize)  ) ")	
+	i = paste(i, "\n # Alternatively, users can use their own GMT files by
+ #GeneSets.out <- readGMTRobust('somefile.GMT') ")	
+	
+	i = paste(i, "\n KmeansGO()  #Enrichment analysis for k-Means clusters\n")	
+	
+	i = op(i, input$seedTSNE, "Random seed for t-SNE")
+	i = op(i, input$colorGenes, "Color genes in t-SNE plot?")	
+	i = paste(i, "\n tSNEgenePlot()  #Plot genes using t-SNE")		
+
+	i = paste(i, "\n\n##########################\n# 5. PCA and beyond \n##########################" )
+	i = op(i, input$selectFactors, "Factor coded by color", TRUE) 
+	i = op(i, input$selectFactors2, "Factor coded by shape", TRUE) 
+
+ 	i = op(i, input$tsneSeed2, "Random seed for t-SNE") 
+	i = paste(i, "\n #PCA, MDS and t-SNE plots\n PCAplot()	\n MDSplot()\n tSNEplot() ")
+
+	i = paste(i, "\n\n #Read gene sets for pathway analysis using PGSEA on principal components")
+	if(is.null(input$selectGO6 ) ) 
+		i = paste(i, "\n input_selectGO6 <- 'GOBP'") else 
+		i = op(i, input$selectGO6, "Gene set category", TRUE) 
+	i = paste(i, "\n GeneSets.out <-readGeneSets( geneSetFile,
+    convertedData.out, input_selectGO6,input_selectOrg,
+    c(input_minSetSize, input_maxSetSize)  ) ")
+
+	i = paste(i,"\n PCApathway() # Run PGSEA analysis" );
+	i = paste(i,"\n cat( PCA2factor() )   #The correlation between PCs with factors");
+
+	i = paste(i, "\n\n##########################\n# 6. DEG1 \n##########################" )
+	i = op(i, input$CountsDEGMethod, "DESeq2= 3,limma-voom=2,limma-trend=1 ")
+	i = op(i, input$limmaPval, "FDR cutoff")
+	i = op(i, input$limmaFC, "Fold-change cutoff")
+	i = op(i, input$selectModelComprions, "Selected comparisons", TRUE)
+	i = op(i, input$selectFactorsModel, "Selected comparisons", TRUE)
+	
+	i = op(i, input$selectInteractions, "Selected comparisons", TRUE)
+	i = op(i, input$selectBlockFactorsModel, "Selected comparisons", TRUE)
+	if( is.null(factorReferenceLevels() ) )
+		i = paste(i, "\n factorReferenceLevels.out <- NULL") else
+		i = paste0(i, "\n factorReferenceLevels.out <- c('", paste0(factorReferenceLevels(), collapse="','" ),"')")
+	i = paste(i,"\n\n limma.out <- limma()
+ limma.out$comparisons
+ DEG.data.out <- DEG.data()")
+	if(is.null(input$selectComparisonsVenn) ) 
+		i = paste(i, "\n input_selectComparisonsVenn = limma.out$comparisons[1:3] # use first three comparisons") else
+		i = op(i, input$selectComparisonsVenn, "Selected comparisons for Venn diagram", TRUE)
+ 	i = op(i, input$UpDownRegulated, "Split up and down regulated genes") 
+	i = paste(i, "\n vennPlot() # Venn diagram
+ sigGeneStats() # number of DEGs as figure
+ sigGeneStatsTable() # number of DEGs as table")
+
+ 
+	i = paste(i, "\n\n##########################\n# 7. DEG2 \n##########################" ) 
+	if(is.null(input$selectContrast) ) 
+		i = paste(i, "\n input_selectComparisonsVenn = limma.out$comparisons[1] # use first  comparisons") else
+		i = op(i, input$selectContrast, "Selected comparisons", TRUE)
+	i = paste(i, "\n selectedHeatmap.data.out <- selectedHeatmap.data()
+ selectedHeatmap()   # heatmap for DEGs in selected comparison
+\n # Save gene lists and data into files
+ write.csv( selectedHeatmap.data()$genes, 'heatmap.data.csv') 
+ write.csv(DEG.data(),'DEG.data.csv' )
+ write(AllGeneListsGMT() ,'AllGeneListsGMT.gmt')\n")
+	
+	i = op(i, input$selectGO2, "Gene set category",TRUE) 
+	i = paste(i,"\n geneListData.out <- geneListData()
+ volcanoPlot() 
+ scatterPlot()
+ MAplot() 
+ geneListGOTable.out <- geneListGOTable() ")
+	i = paste(i, "\n # Read pathway data again \n GeneSets.out <-readGeneSets( geneSetFile,
+    convertedData.out, input_selectGO2,input_selectOrg,
+    c(input_minSetSize, input_maxSetSize)  ) ")	
+ 	i = op(i, input$removeRedudantSets, "Remove highly redundant gene sets?") 
+	i = paste(i,"\n geneListGO()");
+	
+#enrichmentPlot(geneListGOTable.out, rightMargin=25  )
+#enrichmentNetwork(geneListGOTable.out )	
+	i = paste(i,"\n\n # STRING-db API access" )
+	i = paste(i,"\n STRING10_species = read.csv(STRING10_speciesFile) ")
+	i = paste(i,"\n ix = grep('Mus musculus', STRING10_species$official_name )
+ findTaxonomyID.out <- STRING10_species[ix,1] # find taxonomyID
+ findTaxonomyID.out  
+ # users can also skip the above and assign NCBI taxonomy id directly by
+ # findTaxonomyID.out = 10090 # mouse 10090, human 9606 etc.
+ STRINGdb_geneList.out <- STRINGdb_geneList() #convert gene lists")
+	
+ 	i = op(i, input$STRINGdbGO, "'Process', 'Component', 'Function', 'KEGG', 'Pfam', 'InterPro'", TRUE) 
+	i = paste(i,"\n stringDB_GO_enrichmentData()")
+	
+	i = paste(i,"\n\n # PPI network retrieval and analysis")	
+ 	i = op(i, input$nGenesPPI, "Number of top genes for PPI retrieval and analysis") 
+	i = paste(i,"\n stringDB_network1(1) #Show PPI network")
+	i = paste(i,"\n write(stringDB_network_link(), 'PPI_results.html') # write results to html file")
+	i = paste(i,"\n browseURL('PPI_results.html') # open in browser" )
+	
+
+	i = paste(i, "\n\n##########################\n# 8. Pathway analysis \n##########################" )  
+   	i = op(i, input$selectContrast1, "select Comparison", TRUE) 
+	i = paste(i,"\n #input_selectContrast1 = limma.out$comparisons[3] # manually set")
+	i = op(i, input$selectGO, "Gene set category", TRUE) 
+	i = paste(i,"\n #input_selectGO='custom' # if custom gmt file" ) 
+  	i = op(i, input$minSetSize, "Min size for gene set")  
+  	i = op(i, input$maxSetSize, "Max size for gene set")  
+	i = paste(i, "\n # Read pathway data again \n GeneSets.out <-readGeneSets( geneSetFile,
+    convertedData.out, input_selectGO,input_selectOrg,
+    c(input_minSetSize, input_maxSetSize)  ) ")	
+  	i = op(i, input$pathwayPvalCutoff, "FDR cutoff") 
+  	i = op(i, input$nPathwayShow, "Top pathways to show") 	
+  	i = op(i, input$absoluteFold, "Use absolute values of fold-change?") 	
+  	i = op(i, input$GenePvalCutoff, "FDR to remove genes") 
+
+	i = paste(i,"\n\n input_pathwayMethod = 1  # 1  GAGE
+ gagePathwayData.out <- gagePathwayData()  # pathway analysis using GAGE  
+ gagePathwayData.out
+  pathwayListData.out = pathwayListData()
+ enrichmentPlot(pathwayListData.out, 25  )
+ enrichmentNetwork(pathwayListData.out )
+ enrichmentNetworkPlotly(pathwayListData.out)
+
+ input_pathwayMethod = 3  # 1  fgsea 
+ fgseaPathwayData.out <- fgseaPathwayData() #Pathway analysis using fgsea
+ fgseaPathwayData.out
+ pathwayListData.out = pathwayListData()
+ enrichmentPlot(pathwayListData.out, 25  )
+ enrichmentNetwork(pathwayListData.out )
+ enrichmentNetworkPlotly(pathwayListData.out) 
   
+ PGSEAplot() # pathway analysis using PGSEA" )
+	
+# PGSEA for selected contrast not showing up
+
+	i = paste(i, "\n\n##########################\n# 9. Chromosome \n##########################" )  
+   	i = op(i, input$selectContrast2, "select Comparison", TRUE) 
+	i = paste(i,"\n #input_selectContrast2 = limma.out$comparisons[3] # manually set")
+  	i = op(i, input$limmaPvalViz, "FDR to filter genes") 
+  	i = op(i, input$limmaFCViz, "FDR to filter genes") 
+	i = paste(i, "\n genomePlotly() # shows fold-changes on the genome")
+	
+	
+	i = paste(i, "\n\n##########################\n# 10. Bicluster \n##########################" )  
+  	i = op(i, input$nGenesBiclust, "Top genes for biclustering") 
+  	i = op(i, input$biclustMethod, "Method: 'BCCC', 'QUBIC', 'runibic' ...", TRUE) 
+	i = paste(i, "\n biclustering.out = biclustering()  # run analysis\n")
+  	i = op(i, input$selectBicluster, "select a cluster") 	
+	i = paste(i, "\n biclustHeatmap()   # heatmap for selected cluster" )
+  	i = op(i, input$selectGO4, "Gene set", TRUE)
+	i = paste(i, "\n # Read pathway data again \n GeneSets.out <-readGeneSets( geneSetFile,
+    convertedData.out, input_selectGO4,input_selectOrg,
+    c(input_minSetSize, input_maxSetSize)  ) ")		
+	i = paste(i, "\n geneListBclustGO()  # enrichment analysis")
+	
+	i = paste(i, "\n\n##########################\n# 11. Co-expression network \n##########################" )  
+  	i = op(i, input$mySoftPower, "SoftPower to cutoff") 
+  	i = op(i, input$nGenesNetwork, "Number of top genes") 
+  	i = op(i, input$minModuleSize, "Module size minimum") 
+	i = paste(i, "\n wgcna.out = wgcna()   # run WGCNA
+ softPower()  # soft power curve
+ modulePlot()  # plot modules
+ listWGCNA.Modules.out = listWGCNA.Modules() #modules\n")
+  	i = op(i, input$selectGO5, "Gene set", TRUE) 
+	i = paste(i, "\n # Read pathway data again \n GeneSets.out <-readGeneSets( geneSetFile,
+    convertedData.out, input_selectGO5,input_selectOrg,
+    c(input_minSetSize, input_maxSetSize)  ) ")	
+  	i = op(i, input$selectWGCNA.Module, "Select a module", TRUE) 
+  	i = op(i, input$topGenesNetwork, "SoftPower to cutoff") 
+  	i = op(i, input$edgeThreshold, "Number of top genes") 
+	i = paste(i, "\n moduleNetwork()	# show network of top genes in selected module\n")
+	
+
+  	i = op(i, input$removeRedudantSets, "Remove redundant gene sets")
+	i = paste(i, "\n networkModuleGO()	# Enrichment analysis of selected module")
+ 
+	return(i)
+ })
+
+output$downloadRcodeMarkdown <- downloadHandler(
+		filename = function() {"iDEP_customized_R_code.Rmd"},
+		content = function(file) {
+      write( RcodeMarkdown(), file)	    
+	})
+# generate R code based on user input	
+RcodeMarkdown <- reactive({
+	if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	
+
+	i = "---
+title: 'Analyzing gene expression data using iDEP'
+author: "
+	i = paste(i,iDEPversion, " http://ge-lab.org/idep/, by Steven Xijin.Ge@sdstate.edu ")
+	i = paste(i,"\ndate:", date() )
+	i = paste(i," 
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```")
+		
+	i = paste(i, "\n## 1. Read data ")	
+		
+#	i = paste(i, "\n\n##########################\n# 1. Read data\n##########################" )
+	i= paste(i,"\n```{r, message=FALSE} \n setwd('C:/Users/Xijin.Ge/Downloads')   # Needs to be changed ")
+    i=paste(i, "\n source('iDEP_core_functions.R')")
+#	i= paste(i,"\n\n # Input files")
+#	i = paste(i, "\n ### Expression file has to use Ensembl for gene ID. Otherwise, use custom pathway database with matching IDs.")
+	i = paste(i,"\n inputFile <- 'Downloaded_Converted_Data.csv'  # Expression matrix")  
+	if(is.null( sampleInfoFileName() ) ) # if no experiment design file
+		i = paste0(i,"\n sampleInfoFile <- NULL ")	 else	
+		i = paste0(i,"\n sampleInfoFile <- 'Downloaded_sampleInfoFile.csv' # Experiment design file ")
+	i = paste0(i,"\n geneInfoFile <- '",gsub(".*/","",geneInfoFileName()), "' #Gene symbols, location etc. ")
+	i = paste0(i, "\n geneSetFile <- '",gsub(".*/","",pathwayFileName()), "'  # pathway database in SQL; can be GMT format ")
+	i = paste0(i,"\n STRING10_speciesFile <- 'https://raw.githubusercontent.com/iDEP-SDSU/idep/master/shinyapps/idep/STRING10_species.csv'")
+
+	
+
+	i = op(i,input$missingValue, "Missing values imputation method", TRUE)
+	i = op(i, input$dataFileFormat, "1- read counts, 2 FKPM/RPKM or DNA microarray")
+	
+	if(input$dataFileFormat == 1) { # counts data
+		i = op(i, input$minCounts, "Min counts")		
+		i = op(i, input$NminSamples, "Minimum number of samples ") 
+		i = op(i, input$countsLogStart, "Pseudo count for log CPM")
+		i = op(i, input$CountsTransform, "Methods for data transformation of counts. 1-VST, 2-rlog, 3-EdgeR")		
+	}
+	
+	if(input$dataFileFormat == 2) {  # FPKM or microrray data
+		i = op(i, input$lowFilter, "Min expression score for FPKM")
+		i = op(i, input$NminSamples2, "Minimum number of samples ")
+		i = op(i, input$logStart, "Pseudo count for FPKM ")
+		i = op(i, input$transform, "Log transformation")	
+	}
+	
+ 	i = paste(i,"\n```\n```{r, message=FALSE  } ") # R Markdown block-------------------------------------			
+	i = paste(i,"\n\n readData.out <- readData(inputFile)")	
+	i = paste(i,"\n head(readData.out$data) ")
+	if(input$dataFileFormat== 2)
+		i = paste(i,"\n textTransform() ")	
+	i = paste(i,"\n```\n```{r, message=FALSE  } ") # R Markdown block
+
+	if(!is.null( sampleInfoFileName() ) )
+		i = paste(i,"\n readSampleInfo.out <- readSampleInfo(sampleInfoFile) \n readSampleInfo.out") else 
+		i = paste(i,"\n readSampleInfo.out <- NULL") 	
+	i = paste(i, "\n input_selectOrg =\"NEW\" ")
+	i = op(i, input$selectGO, "Gene set category", TRUE)	# selectGO is for pathway analysis
+	i = paste(i, "\n input_noIDConversion = TRUE ")
+	
+	i = paste(i,"\n allGeneInfo.out <- geneInfo(geneInfoFile)")	
+	i = paste(i, 
+"\n converted.out = NULL 
+ convertedData.out <- convertedData()	 
+ nGenesFilter() ")
+
+ 	if(input$dataFileFormat == 1) 
+	 i = paste(i, "\n convertedCounts.out <- convertedCounts()  # converted counts")  		
+ 	i = paste(i,"\n```\n## 2. Pre-process \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------			
+	# 2. Pre-process
+#	i = paste(i, "\n\n##########################\n# 2. Pre-Process \n##########################" )
+	i = paste(i,"\n parDefault = par() \n par(mar=c(12,4,2,2))")	
+	if(input$dataFileFormat == 1 ) { # if read counts data
+		i = paste(i,"\n # barplot of total read counts")
+		i = paste(i, "\n barplot( colSums(readData.out$rawCounts)/1e6, 
+		col=\"green\",las=3, main=\"Total read counts (millions)\") ")
+	}
+ 	i = paste(i,"\n```\n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+	i = paste(i,"\n\n ### Box plot")
+	i = paste(i,"\n x = readData.out$data")
+	i = paste(i, "\n boxplot(x, las = 2, 
+    ylab='Transformed expression levels',
+    main='Distribution of transformed data')")
+ 	i = paste(i,"\n```\n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	i = paste(i,"\n\n #### Density plot")
+	i = paste(i, "\n par(parDefault) \n densityPlot()      ")
+ 	i = paste(i,"\n```\n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	i = paste(i,"\n\n ### Scatter plot of the first two samples")
+	i = paste(i, "\n plot(x[,1:2],xlab=colnames(x)[1],ylab=colnames(x)[2], 
+    main='Scatter plot of first two samples')")
+ 	i = paste(i,"\n```\n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+	i = paste(i, "\n\n ####plot gene or gene family\n input_selectOrg =\"BestMatch\" ")	
+	i = op(i, input$geneSearch, "Gene ID for searching", TRUE)	# selectGO is for pathway analysis	 
+	i = paste(i, "\n genePlot() ")	 
+ 	i = paste(i,"\n```\n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+	i = op(i, input$useSD, "Use standard deviation instead of standard error in error bar?", TRUE)	# selectGO is for pathway analysis	 
+	i = paste(i, "\n geneBarPlotError()      ")
+ 	i = paste(i,"\n```  \n## 3. Heatmap  \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	
+#	i = paste(i, "\n\n##########################\n# 3. Heatmap \n##########################" )
+	i = paste(i,
+"\n # hierarchical clustering tree
+ x <- readData.out$data
+ maxGene <- apply(x,1,max)
+ # remove bottom 25% lowly expressed genes, which inflate the PPC
+ x <- x[which(maxGene > quantile(maxGene)[1] ) ,] 
+ plot(as.dendrogram(hclust2( dist2(t(x)))), ylab=\"1 - Pearson C.C.\", type = \"rectangle\")" )
+	i = paste(i,"\n```\n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+
+	i = paste(i,"\n #Correlation matrix")
+	i = op(i, input$labelPCC, "Show correlation coefficient?", FALSE)	# selectGO is for pathway analysis	 
+	i = paste(i,"\n correlationMatrix()")
+	i = paste(i,"\n```\n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+
+	i = paste(i,"\n\n # Parameters for heatmap")
+	i = op(i, input$nGenes, "Top genes for heatmap")
+	i = op(i, input$geneCentering, "centering genes ?")
+	i = op(i, input$sampleCentering, "Center by sample?")
+	i = op(i, input$geneNormalize, "Normalize by gene?")
+	i = op(i, input$sampleNormalize, "Normalize by sample?")
+	i = op(i, input$noSampleClustering, "Use original sample order")
+	i = op(i, input$heatmapCutoff, "Remove outliers beyond number of SDs ")
+	i = op(i, input$distFunctions, "which distant funciton to use")
+	i = op(i, input$hclustFunctions, "Linkage type")
+	i = op(i, input$heatColors1, "Colors")
+	i = op(i, input$selectFactorsHeatmap, "Sample coloring factors", TRUE)
+	i = paste(i, "\n png('heatmap.png', width = 10, height = 15, units = 'in', res = 300)")
+	i = paste(i, "\n staticHeatmap() \n dev.off() ")
+	i = paste(i,"\n```\n  ![heatmap] (heatmap.png)   \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+
+	i = paste(i, "\n heatmapPlotly() # interactive heatmap using Plotly")	
+ 	i = paste(i,"\n```  \n## 4. K-means clustering   \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+
+#	i = paste(i, "\n\n##########################\n# 4. k-Means clustering \n##########################" )
+
+	i = op(i, input$nGenesKNN, "Number of genes fro k-Means")	
+	i = op(i, input$nClusters, "Number of clusters")
+	i = paste(i, "\n maxGeneClustering = 12000")
+	i = op(i, input$kmeansNormalization, "Normalization", TRUE)	
+	i = op(i, input$KmeansReRun, "Random seed")
+	i = paste(i, "\n\n distributionSD()  #Distribution of standard deviations")
+ 	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+	i = paste(i, "\n KmeansNclusters()  #Number of clusters")
+ 	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	i = paste(i, "\n\n Kmeans.out = Kmeans()   #Running K-means")	
+	i = paste(i, "\n KmeansHeatmap()   #Heatmap for k-Means \n")
+ 	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+	i = paste(i, "\n\n #Read gene sets for enrichment analysis \n sqlite  <- dbDriver('SQLite')")	
+	i = op(i, input$selectGO3, "Gene set category", TRUE)	
+	i = op(i, input$minSetSize, "Min gene set size")
+	i = op(i, input$maxSetSize, "Max gene set size")
+	i = paste(i, "\n GeneSets.out <-readGeneSets( geneSetFile,
+    convertedData.out, input_selectGO3,input_selectOrg,
+    c(input_minSetSize, input_maxSetSize)  ) ")	
+	i = paste(i, "\n # Alternatively, users can use their own GMT files by
+ #GeneSets.out <- readGMTRobust('somefile.GMT') ")	
+	
+	i = paste(i, "\n KmeansGO()  #Enrichment analysis for k-Means clusters\n")	
+ 	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	
+	i = op(i, input$seedTSNE, "Random seed for t-SNE")
+	i = op(i, input$colorGenes, "Color genes in t-SNE plot?")	
+	i = paste(i, "\n tSNEgenePlot()  #Plot genes using t-SNE")		
+ 	i = paste(i,"\n``` \n## 5. PCA and beyond   \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	
+#	i = paste(i, "\n\n##########################\n# 5. PCA and beyond \n##########################" )
+	if(is.null(input$selectFactors ) )
+		i = paste(i,"\n input_selectFactors <- 'Sample_Name' ") else 
+		i = op(i, input$selectFactors, "Factor coded by color", TRUE) 
+	if(is.null(input$selectFactors2 ) )
+		i = paste(i,"\n input_selectFactors2 <- 'Sample_Name' ") else 		
+		i = op(i, input$selectFactors2, "Factor coded by shape", TRUE) 
+
+ 	i = op(i, input$tsneSeed2, "Random seed for t-SNE") 
+	i = paste(i, "\n #PCA, MDS and t-SNE plots\n PCAplot() ")
+ 	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+	i = paste(i, "\n MDSplot()")
+ 	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+	i = paste(i,"\n tSNEplot() ")
+ 	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	i = paste(i, "\n\n #Read gene sets for pathway analysis using PGSEA on principal components")
+	if(is.null(input$selectGO6 ) ) 
+		i = paste(i, "\n input_selectGO6 <- 'GOBP'") else 
+		i = op(i, input$selectGO6, "Gene set category", TRUE) 
+	i = paste(i, "\n GeneSets.out <-readGeneSets( geneSetFile,
+    convertedData.out, input_selectGO6,input_selectOrg,
+    c(input_minSetSize, input_maxSetSize)  ) ")
+
+	i = paste(i,"\n PCApathway() # Run PGSEA analysis" );
+ 	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+	i = paste(i,"\n cat( PCA2factor() )   #The correlation between PCs with factors");
+ 	i = paste(i,"\n```  \n## 6. DEG1   \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	
+#	i = paste(i, "\n\n##########################\n# 6. DEG1 \n##########################" )
+	i = op(i, input$CountsDEGMethod, "DESeq2= 3,limma-voom=2,limma-trend=1 ")
+	i = op(i, input$limmaPval, "FDR cutoff")
+	i = op(i, input$limmaFC, "Fold-change cutoff")
+	i = op(i, input$selectModelComprions, "Selected comparisons", TRUE)
+	i = op(i, input$selectFactorsModel, "Selected comparisons", TRUE)
+	
+	i = op(i, input$selectInteractions, "Selected comparisons", TRUE)
+	i = op(i, input$selectBlockFactorsModel, "Selected comparisons", TRUE)
+	if( is.null(factorReferenceLevels() ) )
+		i = paste(i, "\n factorReferenceLevels.out <- NULL") else
+		i = paste0(i, "\n factorReferenceLevels.out <- c('", paste0(factorReferenceLevels(), collapse="','" ),"')")
+	i = paste(i,"\n\n limma.out <- limma()
+ DEG.data.out <- DEG.data()
+ limma.out$comparisons")
+ 
+  	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+	if(is.null(input$selectComparisonsVenn) ) 
+		i = paste(i, "\n input_selectComparisonsVenn = limma.out$comparisons[1:3] # use first three comparisons") else
+		i = op(i, input$selectComparisonsVenn, "Selected comparisons for Venn diagram", TRUE)
+ 	i = op(i, input$UpDownRegulated, "Split up and down regulated genes") 
+	i = paste(i, "\n vennPlot() # Venn diagram")
+  	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+	i = paste(i, "\n  sigGeneStats() # number of DEGs as figure")
+  	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------			
+	i = paste(i, "\n  sigGeneStatsTable() # number of DEGs as table")
+ 	i = paste(i,"\n```  \n## 7. DEG2   \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+ 
+#	i = paste(i, "\n\n##########################\n# 7. DEG2 \n##########################" ) 
+	if(is.null(input$selectContrast) ) 
+		i = paste(i, "\n input_selectComparisonsVenn = limma.out$comparisons[1] # use first  comparisons") else
+		i = op(i, input$selectContrast, "Selected comparisons", TRUE)
+	i = paste(i, "\n selectedHeatmap.data.out <- selectedHeatmap.data()
+ selectedHeatmap()   # heatmap for DEGs in selected comparison
+\n # Save gene lists and data into files
+ write.csv( selectedHeatmap.data()$genes, 'heatmap.data.csv') 
+ write.csv(DEG.data(),'DEG.data.csv' )
+ write(AllGeneListsGMT() ,'AllGeneListsGMT.gmt')\n")
+  	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	
+	i = op(i, input$selectGO2, "Gene set category",TRUE) 
+	i = paste(i,"\n geneListData.out <- geneListData() ")
+	i = paste(i,"\n  volcanoPlot() ")
+  	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	 
+	i = paste(i,"\n  scatterPlot() ")
+  	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	i = paste(i,"\n  MAplot() ")
+  	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+	i = paste(i,"\n  geneListGOTable.out <- geneListGOTable() ")
+	i = paste(i, "\n # Read pathway data again \n GeneSets.out <-readGeneSets( geneSetFile,
+    convertedData.out, input_selectGO2,input_selectOrg,
+    c(input_minSetSize, input_maxSetSize)  ) ")	
+ 	i = op(i, input$removeRedudantSets, "Remove highly redundant gene sets?") 
+	i = paste(i,"\n geneListGO()");
+  	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	
+#enrichmentPlot(geneListGOTable.out, rightMargin=25  )
+#enrichmentNetwork(geneListGOTable.out )	
+	i = paste(i,"\n\n # STRING-db API access" )
+	i = paste(i,"\n STRING10_species = read.csv(STRING10_speciesFile) ")
+	i = paste(i,"\n ix = grep('Mus musculus', STRING10_species$official_name )
+ findTaxonomyID.out <- STRING10_species[ix,1] # find taxonomyID
+ findTaxonomyID.out  
+ # users can also skip the above and assign NCBI taxonomy id directly by
+ # findTaxonomyID.out = 10090 # mouse 10090, human 9606 etc.")
+   	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	i = paste(i,"\n  STRINGdb_geneList.out <- STRINGdb_geneList() #convert gene lists")
+	
+ 	i = op(i, input$STRINGdbGO, "'Process', 'Component', 'Function', 'KEGG', 'Pfam', 'InterPro'", TRUE) 
+	i = paste(i,"\n stringDB_GO_enrichmentData()")
+   	i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+	i = paste(i,"\n\n # PPI network retrieval and analysis")	
+ 	i = op(i, input$nGenesPPI, "Number of top genes for PPI retrieval and analysis") 
+	i = paste(i,"\n stringDB_network1(1) #Show PPI network")
+	i = paste(i,"\n write(stringDB_network_link(), 'PPI_results.html') # write results to html file")
+	i = paste(i,"\n browseURL('PPI_results.html') # open in browser" )
+   	i = paste(i,"\n```  \n## 8. Pathway analysis   \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------			
+
+#	i = paste(i, "\n\n##########################\n# 8. Pathway analysis \n##########################" )  
+   	i = op(i, input$selectContrast1, "select Comparison", TRUE) 
+	i = paste(i,"\n #input_selectContrast1 = limma.out$comparisons[3] # manually set")
+	i = op(i, input$selectGO, "Gene set category", TRUE) 
+	i = paste(i,"\n #input_selectGO='custom' # if custom gmt file" ) 
+  	i = op(i, input$minSetSize, "Min size for gene set")  
+  	i = op(i, input$maxSetSize, "Max size for gene set")  
+	i = paste(i, "\n # Read pathway data again \n GeneSets.out <-readGeneSets( geneSetFile,
+    convertedData.out, input_selectGO,input_selectOrg,
+    c(input_minSetSize, input_maxSetSize)  ) ")	
+  	i = op(i, input$pathwayPvalCutoff, "FDR cutoff") 
+  	i = op(i, input$nPathwayShow, "Top pathways to show") 	
+  	i = op(i, input$absoluteFold, "Use absolute values of fold-change?") 	
+  	i = op(i, input$GenePvalCutoff, "FDR to remove genes") 
+
+	i = paste(i,"\n\n input_pathwayMethod = 1  # 1  GAGE
+ gagePathwayData.out <- gagePathwayData()  # pathway analysis using GAGE  
+ gagePathwayData.out ")
+    i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+	i = paste(i,"\n  pathwayListData.out = pathwayListData() 
+ enrichmentPlot(pathwayListData.out, 25  )")
+    i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	 
+ 	i = paste(i,"\n  enrichmentNetwork(pathwayListData.out ) ")
+    i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+ 	i = paste(i,"\n  enrichmentNetworkPlotly(pathwayListData.out)")
+    i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	
+	i = paste(i,"\n\n input_pathwayMethod = 3  # 1  fgsea 
+ fgseaPathwayData.out <- fgseaPathwayData() #Pathway analysis using fgsea
+ fgseaPathwayData.out")
+    i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+	i = paste(i,"\n  pathwayListData.out = pathwayListData() 
+ enrichmentPlot(pathwayListData.out, 25  )")
+    i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	 
+ 	i = paste(i,"\n  enrichmentNetwork(pathwayListData.out ) ")
+    i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+ 	i = paste(i,"\n  enrichmentNetworkPlotly(pathwayListData.out)")
+    i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	
+
+ 	i = paste(i,"\n   PGSEAplot() # pathway analysis using PGSEA" )
+	
+# PGSEA for selected contrast not showing up
+    i = paste(i,"\n```  \n## 9. Chromosome   \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+#	i = paste(i, "\n\n##########################\n# 9. Chromosome \n##########################" )  
+   	i = op(i, input$selectContrast2, "select Comparison", TRUE) 
+	i = paste(i,"\n #input_selectContrast2 = limma.out$comparisons[3] # manually set")
+  	i = op(i, input$limmaPvalViz, "FDR to filter genes") 
+  	i = op(i, input$limmaFCViz, "FDR to filter genes") 
+	i = paste(i, "\n genomePlotly() # shows fold-changes on the genome")
+	
+    i = paste(i,"\n```  \n## 10. Biclustering   \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+#	i = paste(i, "\n\n##########################\n# 10. Bicluster \n##########################" )  
+  	i = op(i, input$nGenesBiclust, "Top genes for biclustering") 
+  	i = op(i, input$biclustMethod, "Method: 'BCCC', 'QUBIC', 'runibic' ...", TRUE) 
+	i = paste(i, "\n biclustering.out = biclustering()  # run analysis\n")
+  	i = op(i, input$selectBicluster, "select a cluster") 	
+	i = paste(i, "\n biclustHeatmap()   # heatmap for selected cluster" )
+    i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	
+  	i = op(i, input$selectGO4, "Gene set", TRUE)
+	i = paste(i, "\n # Read pathway data again \n GeneSets.out <-readGeneSets( geneSetFile,
+    convertedData.out, input_selectGO4,input_selectOrg,
+    c(input_minSetSize, input_maxSetSize)  ) ")		
+	i = paste(i, "\n geneListBclustGO()  # enrichment analysis")
+    i = paste(i,"\n```  \n## 11. Co-expression network    \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	
+#	i = paste(i, "\n\n##########################\n# 11. Co-expression network \n##########################" )  
+  	i = op(i, input$mySoftPower, "SoftPower to cutoff") 
+  	i = op(i, input$nGenesNetwork, "Number of top genes") 
+  	i = op(i, input$minModuleSize, "Module size minimum") 
+	i = paste(i, "\n wgcna.out = wgcna()   # run WGCNA
+ softPower()  # soft power curve")
+    i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	i = paste(i, "\n  modulePlot()  # plot modules ")
+	i = paste(i, "\n  listWGCNA.Modules.out = listWGCNA.Modules() #modules\n")
+    i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------	
+	i = op(i, input$selectGO5, "Gene set", TRUE) 
+	i = paste(i, "\n # Read pathway data again \n GeneSets.out <-readGeneSets( geneSetFile,
+    convertedData.out, input_selectGO5,input_selectOrg,
+    c(input_minSetSize, input_maxSetSize)  ) ")	
+  	i = op(i, input$selectWGCNA.Module, "Select a module", TRUE) 
+  	i = op(i, input$topGenesNetwork, "SoftPower to cutoff") 
+  	i = op(i, input$edgeThreshold, "Number of top genes") 
+	i = paste(i, "\n moduleNetwork()	# show network of top genes in selected module\n")
+    i = paste(i,"\n```     \n```{r, message=FALSE  } ") # R Markdown block-------------------------------------		
+
+  	i = op(i, input$removeRedudantSets, "Remove redundant gene sets")
+	i = paste(i, "\n networkModuleGO()	# Enrichment analysis of selected module")
+    i = paste(i,"\n```   ") # R Markdown block-------------------------------------	
+	return(i)
+ })
+ 
+ 
 })  # shiny Server
