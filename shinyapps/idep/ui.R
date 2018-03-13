@@ -86,7 +86,7 @@ tableOutput('species' ),
      ,tableOutput('contents')
 		#,h3("Dear users, Thank you for using iDEP. Please help make it better by sending us criticisms, suggestions or feature/functionality requests. We also answer your questions on how to use iDEP to analyze your data.",a("Just email us.",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"))
 		,h5("New v0.70  iDEP generates R and R Markdown codes for users to run in stand-alone!")
-		,a(h5("R Markdown example.",align = "right"), href="http://rpubs.com/ge600/Rmd",target="_blank")
+		,a(h5("R Markdown example.",align = "left"), href="http://rpubs.com/ge600/Rmd",target="_blank")
 		,h5("New v0.68! Try the STRING-db API access on the DEG2 page that offer protein interaction networks and GO enrichment for thousands species, including bacteria.")
 		,h5("Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data.  See ",
 			a(" documentation", href="https://idepsite.wordpress.com/",target="_blank"), "and",

@@ -10368,7 +10368,7 @@ Rcode <- reactive({
  convertedData.out <- convertedData()	 
  nGenesFilter() ")
   	if(input$dataFileFormat == 1) 
-		i = paste("\n convertedCounts.out <- convertedCounts()  ")		
+		i = paste(i, "\n convertedCounts.out <- convertedCounts()  ")		
 			
 	# 2. Pre-process
 	i = paste(i, "\n\n##########################\n# 2. Pre-Process \n##########################" )
