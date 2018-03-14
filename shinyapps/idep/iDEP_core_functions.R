@@ -16,8 +16,8 @@
 #cat("\n Installing lots of R packages, this may take several hours ... \n
 #   Each of these packages took years to develop.\n So be a patient thief.\n
 #   \n Note 1: Sometimes dependencies needs to be installed manually. 
-#   \n Note 2: If you are using an older version of R, and having trouble with package installation.
-#   \n         Sometimes, it is easier to install the new version of R and remove all old packages, and start fresh. 
+#   \n Note 2: If you are using an older version of R, and having trouble with package installation,
+#   \n         sometimes, it is easier to install the new version of R and delete all old packages, and start fresh. 
 #  ")
 
 list.of.packages <- c("dendextend", "htmlwidgets","RSQLite", 
@@ -946,7 +946,7 @@ tSNEplot <- function() {  # t-SNE
 		}
 	p=p+xlab("Dimension 1") 
 	p=p+ylab("Dimension 2") 
-	p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
+	p=p+ggtitle("t-SNE plot")+ coord_fixed(ratio=1.)+ 
      theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
 	 	 theme(axis.text.x = element_text( size = 16),
 	       axis.text.y = element_text( size = 16),
@@ -1181,6 +1181,35 @@ PCA2factor <- function( ){
 	  return( a )
 		  
 } 
+
+# detecting sequencing depth bias
+readCountsBias <- function( ){
+
+	totalCounts = colSums(readData.out$rawCounts) 
+	groups = as.factor( detectGroups(colnames(readData.out$rawCounts ) ) )
+	tem = NULL
+	# ANOVA of total read counts vs sample groups parsed by sample name
+	pval = summary( aov(totalCounts ~ groups ))[[1]][["Pr(>F)"]][1]
+	if(pval <0.05)
+	  tem = paste("Warning! Sequencing depth bias detected. Total read counts are significantly different among sample groups (p=",
+				sprintf("%-3.2e",pval),") based on ANOVA.")
+
+	# ANOVA of total read counts vs factors in experiment design
+	if(!is.null(readSampleInfo.out   )  ) {
+	  y <- readSampleInfo.out
+		for (j in 1:ncol(y) ) { 
+		pval = summary( aov(totalCounts ~ as.factor(y[,j])))[[1]][["Pr(>F)"]][1]
+
+		if(pval <0.05)
+		tem = paste(tem, " Total read counts seem to be correlated with factor",colnames(y)[j], 
+					"(p=",  sprintf("%-3.2e",pval),").  ")
+	  }
+	 }
+	if(is.null(tem)) return( "No bias detected") else
+	return( tem )
+		  
+} 
+
 
 ################################################################
 # K-means clustering
@@ -3770,6 +3799,7 @@ pathwayListData  <- function(){
 
 	pathways$adj.Pval = as.numeric(pathways$adj.Pval)
 	
+	if(nrow(pathways)>1)
 	for( i in 2:nrow(pathways) )
 		if(nchar(pathways$Direction[i]) <=1)
 			pathways$Direction[i] = pathways$Direction[i-1]

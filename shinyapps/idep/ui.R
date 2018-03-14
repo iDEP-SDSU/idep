@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.70"
+iDEPversion = "iDEP.71"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -119,7 +119,7 @@ tableOutput('species' ),
     ,tabPanel("Pre-Process",
              sidebarLayout(
                sidebarPanel(
-			     conditionalPanel("input.dataFileFormat == 2",
+			     conditionalPanel("input.dataFileFormat == 2",   # FPKM data
 				 strong("Only keep genes above this level in at least n samples:" )
 				 ,fluidRow(
 					column(6, numericInput("lowFilter", label = h5(" Min. level"), value = -1000))
@@ -136,9 +136,11 @@ tableOutput('species' ),
 								 font-style: italic;
 								 }"
 						 ) )
+					 
+						 
 					
 				)
-				,conditionalPanel("input.dataFileFormat == 1",
+				,conditionalPanel("input.dataFileFormat == 1",   # read count data
 					 
 					strong("Keep genes with minimal counts per million (CPM) in at least n libraries:")
 					,fluidRow(
@@ -148,11 +150,12 @@ tableOutput('species' ),
 					,tags$style(type='text/css', "#minCounts { width:100%;   margin-top:-12px}")
 					,tags$style(type='text/css', "#NminSamples { width:100%;   margin-top:-12px}")
 							
-					,radioButtons("CountsTransform", "Transform counts data for clustering & PCA.",  c("VST: variance stabilizing transform"=2, 
-					"rlog: regularized log (slow) "= 3,"Log transformation: log2(x+c)" = 1),selected = 1 )
+					,radioButtons("CountsTransform", "Transform counts data for clustering & PCA.",  
+					c("VST: variance stabilizing transform"=2, 
+					"rlog: regularized log (slow) "= 3,"EdgeR's logCPM: log2(CPM+c)" = 1),selected = 1 )
 					,conditionalPanel("input.CountsTransform == 1",
 						fluidRow(
-							column(5, h5("Constant c:")  )
+							column(5, h5("Pseudo count c:")  )
 							,column(7, numericInput("countsLogStart", label = NULL, value = 4) )
 						)
 					        
@@ -181,6 +184,14 @@ tableOutput('species' ),
 											 }"
 									 )
 					)
+					,textOutput("readCountsBias") 
+					,tags$head(tags$style("#readCountsBias{color: red;
+								 font-size: 16px;
+								 font-style: italic;
+								 }"
+						 ) )		
+					
+					
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/pre-process/",target="_blank")
                ),
                mainPanel(
@@ -841,13 +852,12 @@ tableOutput('species' ),
 	    h2("R as in Reproducibility"),	   
 	   h5("To improve reproducibility, iDEP generates custom  R code  
 	    based on your data and choices of parameters. Users with some R coding experience should be able to re-run most analyses 
-		by downloading scripts, annotation files(except ID conversion database), 
-		and the data file with gene IDs converted to Ensembl IDs. Click through all the tabs and then download all these file to a folder: "),
+		by downloading all of the files below. If Ensembl IDs is not used in users' original file, we should use the converted data file. Click through all the tabs and then download all these file to a folder. Run the Customized R code or the Markdown file. "),
 	   downloadButton('downloadRcode',"Customized R code"),   
 	   downloadButton('downloadRcodeMarkdown',"Customized R code(Markdown)"),  
 	   downloadButton('downloadRfunctions',"iDEP core functions"),
 	   downloadButton('downloadGeneInfo',"Gene Info file"),
-	   downloadButton('downloadPathwayFile',"Pathway file"),
+	   downloadButton('downloadPathwayFile',"Pathway file (large)"),
 	   conditionalPanel("input.dataFileFormat == 1",	   
 			downloadButton('downloadConvertedCountsRtab',"Converted counts")),
 	   conditionalPanel("input.dataFileFormat == 2",	   
@@ -856,7 +866,7 @@ tableOutput('species' ),
 		downloadButton('downloadSampleInfoFile',"Experiment design file")),
 	   #textOutput('Rcode'),
 	   #tags$style(type="text/css", "#Rcode {white-space: pre-wrap; font-family: \"Courier New\"}"),
-	   br(),br(),
+	   br(),
      htmlOutput('RsessionInfo')
 	 ,h4("Changes")
 	 ,h5("iDEP v0.62 2/5/2018:  Add  tree and networks to visualize 
@@ -870,6 +880,7 @@ tableOutput('species' ),
 	 ,h5("2/25/2018: V 0.68 Fixed Fold-change, FDR data upload and parsing. Figure resolution using the res=150 option help improve readability of labels.")
 	 ,h5("2/28/2018: V0.69 Change interactive heat maps to re-order columns")
 	 ,h5("3/12/2018: V0.70 Generating R code and downloading annotation files used in analysis.")
+	 ,h5("3/14/2018: V0.71 Improve R markdown file; add color to EDA plots; detect bias in sequencing depth ")
 	 ,h5("In loving memory of my parents.")
  ) 
  )
