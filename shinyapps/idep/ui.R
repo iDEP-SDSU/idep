@@ -881,6 +881,7 @@ tableOutput('species' ),
 	 ,h5("2/28/2018: V0.69 Change interactive heat maps to re-order columns")
 	 ,h5("3/12/2018: V0.70 Generating R code and downloading annotation files used in analysis.")
 	 ,h5("3/14/2018: V0.71 Improve R markdown file; add color to EDA plots; detect bias in sequencing depth ")
+	 ,h5("3/18/2018: v0.711 Fixed error caused by gene names containing characters such as \' or \" ")
 	 ,h5("In loving memory of my parents.")
  ) 
  )
