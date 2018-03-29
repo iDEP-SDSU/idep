@@ -73,7 +73,7 @@ hmcols <- colorRampPalette(rev(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF",
 heatColors = rbind(      greenred(75),     bluered(75),     colorpanel(75,"green","black","magenta"),colorpanel(75,"blue","yellow","red"),hmcols )
 rownames(heatColors) = c("Green-Black-Red","Blue-White-Red","Green-Black-Magenta","Blue-Yellow-Red","Blue-white-brown")
 colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull down menu
-maxSamplesEDAplot = 60  # max number of samples for EDA plots
+maxSamplesEDAplot = 100  # max number of samples for EDA plots
 ################################################################
 #   Input files
 ################################################################
@@ -2502,7 +2502,7 @@ readData <- reactive ({
 					incProgress(1/2,"transforming raw counts")
 					# regularized log  or VST transformation
 					if( input$CountsTransform == 3 ) { # rlog is slow, only do it with 10 samples
-						if(dim(x)[2]<=20 ) { 
+						if(dim(x)[2]<=50 ) { 
 						 x <- rlog(dds, blind=TRUE); x <- assay(x) } else 
 						 x <- log2( counts(dds, normalized=TRUE) + input$countsLogStart ) 
 						 }  
@@ -2942,28 +2942,34 @@ output$EDA <- renderPlot({
 	   col1 = "green"  else
 	   col1 = rainbow(nlevels(groups))[ groups ]	
 	   
-     maxDensity = max( apply(x,2, function(y) max(density(y)$y ) ) )
-		
-	 par(mfrow=c(3,1))
-	par(mar=c(14,6,4,4))
+	par(mfrow=c(3,1))
+	par(mar=c(18,8,4,4))
 	myColors = rainbow(dim(x)[2])
-	plot(density(x[,1]),col = myColors[1], lwd=2,
-	  xlab="Expresson values", ylab="Density", main= paste("Distribution of transformed data",memo),
-	  cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2, ylim=c(0, maxDensity+0.01 )  )  #ylim=c(0,1)
+	
+	if(ncol(x) < 31 )  
+	   cexFactor = 2.2 else
+	   cexFactor =1.6
+	#------------------------boxplot
+	boxplot(x, las = 2,  main=paste("Distribution of transformed data",memo)
+		,cex.lab=2.2,  cex.axis=cexFactor, cex.main=2, cex.sub=2,col=col1)	
+	
+	#----------------------- density plot
+     maxDensity = max( apply(x,2, function(y) max(density(y)$y ) ) )	
+	plot(density(x[,1]),col = col1[1], lwd=2,
+	  xlab="Expression values", main= paste("Density plot of transformed data",memo),
+	  cex.lab=2.2, cex.axis=2.2, cex.main=2, cex.sub=2, ylim=c(0, maxDensity+0.01 )  )  #ylim=c(0,1)
 	  
 	for( i in 2:dim(x)[2] )
-	lines(density(x[,i]),col=myColors[i],  lwd=1 )
-	if(dim(x)[2]< 31 ) # if too many samples do not show legends
-		legend("topright", colnames(x), lty=rep(1,dim(x)[2]), col=myColors, cex = 2 )	
+	lines(density(x[,i]),col=col1[i],  lwd=1 )
+	if(nlevels(groups)< 31 ) # if too many samples do not show legends
+		legend("topright", levels(groups), lty=rep(1,nlevels(groups)), col=rainbow(nlevels(groups)), cex = 2 )	
 
-	# boxplot of first two samples, often technical replicates
    
-	boxplot(x, las = 2, ylab="Transformed expression levels", main=paste("Distribution of transformed data",memo)
-		,cex.lab=1.5, cex.axis=1.5, cex.main=2, cex.sub=2,col=col1)
+
 	plot(x[,1:2],xlab=colnames(x)[1],ylab=colnames(x)[2], main="Scatter plot of first two samples",
-	cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2)
+	cex.lab=2.2, cex.axis=2.2, cex.main=2, cex.sub=2)
 	
-   }, height = 2000, width = 800)
+   }, height = 1600)
    
 output$genePlot <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -3207,22 +3213,28 @@ output$totalCounts <- renderPlot({
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
 	####################################
 	
-    par(mar=c(16,2,2,2))
+    par(mar=c(20,4,2,2))
     x <- readData()$rawCounts
 	memo =""
 	if( ncol(x) > maxSamplesEDAplot ) { 
 		#part= sample(1:ncol(x), maxSamplesEDAplot)
 		part=1:maxSamplesEDAplot
 		x <- x[,part]
-		memo =paste(" only showing", maxSamplesEDAplot, "samples)")
+		memo =paste(" (only showing", maxSamplesEDAplot, "samples)")
 	}
 	groups = as.factor( detectGroups(colnames(x ) ) )
 	if(nlevels(groups)<=1 | nlevels(groups) >20)  
 	   col1 = "green"  else
 	   col1 = rainbow(nlevels(groups))[ groups ]	
-	
-	#barplot( colSums(x)/1e6, col="green",las=3, cex.axis=1.3, cex =1.5, main="Total read counts (millions)")
-	barplot( colSums(x)/1e6, col=col1,las=3,  main=paste("Total read counts (millions)", memo) )
+	   
+	if(ncol(x) < 31 )  
+	   cexFactor = 1.5 else
+	   cexFactor =1
+	   
+	barplot( colSums(x)/1e6, col=col1,las=3, 
+		cex.axis=1.5,    # expansion factor for numeric axis labels.
+		cex.names=cexFactor,  # expansion factor for axis names (bar labels).
+		main=paste("Total read counts (millions)", memo) ) 
 
 },height =500) 
 
@@ -3305,7 +3317,11 @@ output$heatmap1 <- renderPlot({
 	# row centering and normalize
 	x <- scale(x, center = input$sampleCentering, scale = input$sampleNormalize) 
 
-	
+	if(ncol(x) < 20 )  
+	   cexFactor = 2 else
+	if(ncol(x) < 31 ) 
+	   cexFactor = 1.5 else
+	cexFactor =1	
 	
 	cutoff = median(unlist(x)) + input$heatmapCutoff * sd (unlist(x)) 
 	x[x>cutoff] <- cutoff
@@ -3356,7 +3372,7 @@ output$heatmap1 <- renderPlot({
 		,labRow=""
 		,margins=c(10,0)
 		,srtCol=45
-		#,cexCol=1.5  # size of font for sample names
+		,cexCol=cexFactor  # size of font for sample names
 		,lmat = lmat, lwid = lwid, lhei = lhei
 		)
 
@@ -3371,7 +3387,7 @@ output$heatmap1 <- renderPlot({
 		,margins=c(18,12)
 		,cexRow=1
 		,srtCol=45
-		#,cexCol=1.5  # size of font for sample names
+		,cexCol=cexFactor  # size of font for sample names
 		,lmat = lmat, lwid = lwid, lhei = lhei
 	)
 	
@@ -3387,7 +3403,7 @@ output$heatmap1 <- renderPlot({
 	incProgress(1,"Done")
 	})
 
-} , height = 900, width = 600 )  #
+} , height = 900 )  #, width = 600
 
 #heatmap for download
 plotHeatmap1 <- reactive ({
@@ -3420,8 +3436,6 @@ plotHeatmap1 <- reactive ({
 		
 	# row centering and normalize
 	x <- scale(x, center = input$sampleCentering, scale = input$sampleNormalize) 
-
-	
 	
 	cutoff = median(unlist(x)) + input$heatmapCutoff * sd (unlist(x)) 
 	x[x>cutoff] <- cutoff
@@ -3457,6 +3471,11 @@ plotHeatmap1 <- reactive ({
 
 	par(mar = c(5, 4, 1.4, 0.2))
 	
+	if(ncol(x) < 20 )  
+	   cexFactor = 2 else
+	if(ncol(x) < 31 ) 
+	   cexFactor = 1.5 else
+	cexFactor =1	
 
 	if( n>110) 
 	heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
@@ -3472,7 +3491,7 @@ plotHeatmap1 <- reactive ({
 		,labRow=""
 		,margins=c(8,0)
 		,srtCol=45
-		,cexCol=2  # size of font for sample names
+		,cexCol=cexFactor  # size of font for sample names
 		,lmat = lmat, lwid = lwid, lhei = lhei
 		)
 
@@ -3487,7 +3506,7 @@ plotHeatmap1 <- reactive ({
 		,margins=c(18,12)
 		,cexRow=1
 		,srtCol=45
-		,cexCol=1.8  # size of font for sample names
+		,cexCol=cexFactor  # size of font for sample names
 		,lmat = lmat, lwid = lwid, lhei = lhei
 	)
 	

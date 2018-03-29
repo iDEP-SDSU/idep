@@ -152,7 +152,7 @@ tableOutput('species' ),
 							
 					,radioButtons("CountsTransform", "Transform counts data for clustering & PCA.",  
 					c("VST: variance stabilizing transform"=2, 
-					"rlog: regularized log (slow) "= 3,"EdgeR's logCPM: log2(CPM+c)" = 1),selected = 1 )
+					"rlog: regularized log (slow) "= 3,"EdgeR: log2(CPM+c)" = 1),selected = 1 )
 					,conditionalPanel("input.CountsTransform == 1",
 						fluidRow(
 							column(5, h5("Pseudo count c:")  )
@@ -195,8 +195,10 @@ tableOutput('species' ),
 			,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/pre-process/",target="_blank")
                ),
                mainPanel(
-			   conditionalPanel("input.dataFileFormat == 1", plotOutput("totalCounts") )
-                  , plotOutput("EDA")				  
+				  h5("Aspect ratios of figures can be adjusted by changing the width of browser window.")
+				,br(),br()
+			   ,conditionalPanel("input.dataFileFormat == 1", plotOutput("totalCounts") )
+                  ,plotOutput("EDA")
 				  ,bsModal("modalExample10", "Converted data (Most variable genes on top)", "examineDataB", size = "large", DT::dataTableOutput('examineData'))
 				  ,bsModal("modalExample1021", "Search for genes", "genePlot1", size = "large", 
 					textInput("geneSearch", "Enter full or partial gene ID:", "HOXA"),
@@ -852,7 +854,8 @@ tableOutput('species' ),
 	    h2("R as in Reproducibility"),	   
 	   h5("To improve reproducibility, iDEP generates custom  R code  
 	    based on your data and choices of parameters. Users with some R coding experience should be able to re-run most analyses 
-		by downloading all of the files below. If Ensembl IDs is not used in users' original file, we should use the converted data file. Click through all the tabs and then download all these file to a folder. Run the Customized R code or the Markdown file. "),
+		by downloading all of the files below. If Ensembl IDs is not used in users' original file, we should use the converted data file. Click through all the tabs and then download all these file to a folder. Run the Customized R code or the Markdown file. ",a("R Markdown example.",align = "left", href="http://rpubs.com/ge600/R",target="_blank")),
+		
 	   downloadButton('downloadRcode',"Customized R code"),   
 	   downloadButton('downloadRcodeMarkdown',"Customized R code(Markdown)"),  
 	   downloadButton('downloadRfunctions',"iDEP core functions"),
@@ -882,6 +885,7 @@ tableOutput('species' ),
 	 ,h5("3/12/2018: V0.70 Generating R code and downloading annotation files used in analysis.")
 	 ,h5("3/14/2018: V0.71 Improve R markdown file; add color to EDA plots; detect bias in sequencing depth ")
 	 ,h5("3/18/2018: v0.711 Fixed error caused by gene names containing characters such as \' or \" ")
+	 ,h5("3/28/2018: v0.712 Fine tuned EDA plots")
 	 ,h5("In loving memory of my parents.")
  ) 
  )
