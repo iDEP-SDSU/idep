@@ -219,10 +219,12 @@ tableOutput('species' ),
               sidebarLayout(
                 sidebarPanel(
    					sliderInput("nGenes", label = h4("Most variable genes to include:"), min = 0, max = 6000, value = 1000,step=100) 
+					,actionButton("showGeneSD_heatmap", "Gene SD distribution")		
 					,actionButton("showStaticHeatmap", "Interactive heatmap")
 					,br()
 					,actionButton("showCorrelation", "Correlation matrix")	
-					,actionButton("showSampleTree", "Sample Tree")						
+					,actionButton("showSampleTree", "Sample Tree")
+			
 					,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
 					,strong("Customize hierarchical clustering (Default values work well):")
 					,fluidRow(
@@ -270,7 +272,9 @@ tableOutput('species' ),
 						,bsModal("modalExample28", "Heatmap with hierarchical clustering tree", "showStaticHeatmap", size = "large",
 						sliderInput("nGenesPlotly", label = h4("Most variable genes to include:"), min = 0, max = 6000, value = 50,step=100),
 						h5("Mouse over to see gene names. To zoom, click and drag up or downward and release."),
-						plotlyOutput("heatmapPlotly",width = "100%", height = "800px"))
+						plotlyOutput("heatmapPlotly",width = "100%", height = "800px")),
+						bsModal("modalExample1233", "Distribution of variations among genes", "showGeneSD_heatmap", size = "large", plotOutput('distributionSD_heatmap'))
+						
 					 
 					)
 					)       
@@ -288,7 +292,10 @@ tableOutput('species' ),
 				,actionButton("NClusters", "How many clusters?")
 				,actionButton("showGeneSD", "Gene SD distribution")
 				,actionButton("geneTSNE", "t-SNE map")
-				,selectInput("kmeansNormalization", h5("Normalize by gene:"), choices = list("Mean center"="geneMean","Standardization"= "geneStandardization","L1 Norm"= "L1Norm"), selected = "geneMean")	
+				,selectInput("kmeansNormalization", h5("Normalize by gene:"), 
+					choices = list("Mean center"="geneMean",
+									"Standardization"= "geneStandardization",
+									"L1 Norm"= "L1Norm"), selected = "Standardization")	
 				,tags$style(type='text/css', "#kmeansNormalization { width:100%;   margin-top:-9px}")
 				,actionButton("showMotifKmeans", "Enriched TF binding motifs")
 				,br(),downloadButton('downloadDataKmeans', 'K-means data')
@@ -478,7 +485,7 @@ tableOutput('species' ),
 				 ,downloadButton('downloadSelectedHeatmap',"High-resolution figure")
 				  #,radioButtons("radio.promoter", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300)
 				,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') # a solid line
-				 ,h5("Enrichment analysis")
+				 ,h5("Enrichment analysis for DEGs:")
 
 				 
 				 ,htmlOutput("selectGO2")
@@ -886,6 +893,7 @@ tableOutput('species' ),
 	 ,h5("3/14/2018: V0.71 Improve R markdown file; add color to EDA plots; detect bias in sequencing depth ")
 	 ,h5("3/18/2018: v0.711 Fixed error caused by gene names containing characters such as \' or \" ")
 	 ,h5("3/28/2018: v0.712 Fine tuned EDA plots")
+	 ,h5("4/3/2018: V0.713 add permutations for fgsea. Expand quotes.")
 	 ,h5("In loving memory of my parents.")
  ) 
  )

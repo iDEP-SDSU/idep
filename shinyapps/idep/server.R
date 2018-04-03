@@ -1649,6 +1649,7 @@ findContrastSamples <- function(selectContrast, allSampleNames,sampleInfo=NULL, 
 # gene set size if represented by the size of marker
 enrichmentPlot <- function( enrichedTerms, rightMargin=33) {
   if(class(enrichedTerms) != "data.frame") return(NULL)
+  if(nrow(enrichedTerms) <=1 ) return(NULL)  # only one term or less
   library(dendextend) # customizing tree
   
   geneLists = lapply(enrichedTerms$Genes, function(x) unlist( strsplit(as.character(x)," " )   ) )
@@ -1704,10 +1705,6 @@ enrichmentPlot <- function( enrichedTerms, rightMargin=33) {
  
  }
 
- 
- 
-
- 
   Terms = paste( sprintf("%-1.0e",as.numeric(enrichedTerms$adj.Pval)), 
 				names(geneLists))
   rownames(w) = Terms
@@ -1719,9 +1716,16 @@ enrichmentPlot <- function( enrichedTerms, rightMargin=33) {
   ix = dend$order # permutated order of leaves
 
   leafType= as.factor( gsub(" .*","", enrichedTerms$Direction[ix] ) )
-  if(length(unique(enrichedTerms$Direction)  ) ==2 )
-	leafColors = c("green","red")  else  # mycolors
-	leafColors = mycolors 
+  #if(length(unique(enrichedTerms$Direction)  ) <=2 )
+  if( max( nchar(enrichedTerms$Direction[ix] )) >= 1)   # if "Up regulated or Downregulated"; not "A", "B"
+	#leafColors = c("green","red")  else  # mycolors # k-Means
+	leafColors = mycolors[1:2] else
+		{ 	# convert c("B","D","E") to c(2, 4, 5)
+			#leafType= as.factor( gsub(" .*","", enrichedTerms$Direction[ix] ) )
+			leafType= match(gsub(" .*","", enrichedTerms$Direction[ix] ), toupper(letters)   )   
+			
+			leafColors = mycolors 
+		}
   #leafSize = unlist( lapply(geneLists,length) ) # leaf size represent number of genes
   #leafSize = sqrt( leafSize[ix] )  
   leafSize = -log10(as.numeric( enrichedTerms$adj.Pval[ix] ) ) # leaf size represent P values
@@ -1737,7 +1741,7 @@ enrichmentPlot <- function( enrichedTerms, rightMargin=33) {
   #legend("top",pch=19, col=leafColors[1:2],legend=levels(leafType),bty = "n",horiz =T  )
   # add legend using a second layer
   	par(lend = 1)           # square line ends for the color legend
-	add_legend("top",pch=19, col=leafColors[1:2],legend=levels(leafType),bty = "n",horiz =T 
+	add_legend("top",pch=19, col=leafColors,legend=levels(leafType),bty = "n",horiz =T 
 
 	)
   
@@ -2889,7 +2893,7 @@ output$contents <- renderTable({
 output$species <-renderTable({   
       if (is.null(input$file1) && input$goButton == 0)    return()
       isolate( {  #tem <- convertID(input$input_text,input$selectOrg );
-	  	  withProgress(message="Converting gene IDs", {
+	  	  withProgress(message=sample(quotes,1), detail="Converting gene IDs", {
                   tem <- converted()
 			incProgress(1, detail = paste("Done"))	  })
 		  
@@ -3251,7 +3255,7 @@ output$readCountsBias <- renderText({
 
 	means = aggregate(totalCounts, by=list(groups), mean)
 	maxMinRatio = max(means[,2])/min(means[,2])
-	if(pval <0.01)
+	if(pval <0.05)
 	  tem = paste("Warning! Sequencing depth bias detected. Total read counts are significantly different among sample groups (p=",
 				sprintf("%-3.2e",pval),") based on ANOVA. Total read counts max/min =",round(maxMinRatio,2))
 
@@ -3301,7 +3305,7 @@ output$heatmap1 <- renderPlot({
 	####################################
 		
     x <- readData()$data   # x = read.csv("expression1.csv")
-	withProgress(message="Runing hierarchical clustering ", {
+	withProgress(message=sample(quotes,1), detail ="Runing hierarchical clustering ", {
 	n=input$nGenes
 	#if(n>6000) n = 6000 # max
 	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
@@ -3746,6 +3750,56 @@ output$sampleTree <- renderPlot({
  distFuns[[as.integer(input$distFunctions)]]
   } )#, height = 500, width = 500)
 
+ 
+output$distributionSD_heatmap <- renderPlot({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if( is.null(Kmeans()) ) return(NULL)
+
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+				
+		tem = input$nGenes
+		####################################
+		withProgress(message="Calculating SD distribution", {
+		isolate({ 
+
+		
+		SDs=apply(convertedData(),1,sd)
+		maxSD = mean(SDs)+ 4*sd(SDs)
+		SDs[ SDs > maxSD] = maxSD
+		
+		top = input$nGenes
+		if(top > length(SDs)) top = length(SDs)
+		Cutoff=sort(SDs,decreasing=TRUE)[top] 
+
+		SDs = as.data.frame(SDs)
+
+		p <- ggplot(SDs, aes(x=SDs)) + 
+		  geom_density(color="darkblue", fill="lightblue") +
+		  labs(x = "Standard deviations of all genes", y="Density")+
+		  geom_vline(aes(xintercept=Cutoff),
+					color="red", linetype="dashed", size=1) +
+					annotate("text", x = Cutoff + 0.4*sd(SDs[,1]), 
+						y = 1,colour = "red", label = paste0("Top ", top)) +
+					theme(axis.text=element_text(size=14),
+					axis.title=element_text(size=16,face="bold"))
+			incProgress(1)
+		p
+		})
+	
+	})
+	
+	
+	 #progress 
+  }, height = 600, width = 800,res=120 )
+
 ################################################################
 #   PCA
 ################################################################
@@ -3792,7 +3846,7 @@ output$PCA <- renderPlot({
 	# for showing shapes on ggplot2. The first 6 are default. Default mapping can only show 6 types.
 	shapes = c(16,17,15,3,7,8,   1,2,4:6,9:15,18:25  )
 
-	withProgress(message="Running ", {
+	withProgress(message=sample(quotes,1), detail ="Running ", {
 
 	x <- convertedData();
 	
@@ -4251,7 +4305,7 @@ Kmeans <- reactive({ # Kmeans clustering
 	tem = input$KmeansReRun
 	####################################
 	
-	withProgress(message="k-means clustering", {
+	withProgress(message=sample(quotes,1), detail ="k-means clustering", {
     x <- convertedData()
 	#x <- readData()
 	#par(mfrow=c(1,2))
@@ -4352,11 +4406,13 @@ output$KmeansNclusters <- renderPlot({ # Kmeans clustering
 	#if(n>6000) n = 6000 # max
 	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
 	if(n<10) n = 10 # min
-	#x1 <- x;
-	#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	x = 100* x[1:n,] / apply(x[1:n,],1,sum)  # this is causing problem??????
-	#x = x - apply(x,1,mean)  # this is causing problem??????
-	#colnames(x) = gsub("_.*","",colnames(x))
+	x = x[1:n,]
+	if( input$kmeansNormalization == 'L1Norm')
+		x = 100* x / apply(x,1,function(y) sum(abs(y))) else # L1 norm
+	if( input$kmeansNormalization == 'geneMean')
+		x = x - apply(x,1,mean)  else # this is causing problem??????
+	if( input$kmeansNormalization == 'geneStandardization')	
+		x = (x - apply(x,1,mean) ) / apply(x,1,sd)
 	set.seed(2)
 	# determining number of clusters
 	incProgress(.3, detail = paste("Performing k-means..."))
@@ -4485,7 +4541,10 @@ output$distributionSD <- renderPlot({
 		  labs(x = "Standard deviations of all genes", y="Density")+
 		  geom_vline(aes(xintercept=Cutoff),
 					color="red", linetype="dashed", size=1) +
-					annotate("text", x = Cutoff + 0.4*sd(SDs[,1]), y = 1,colour = "red", label = paste0("Top ", top))
+					annotate("text", x = Cutoff + 0.4*sd(SDs[,1]), 
+					y = 1,colour = "red", label = paste0("Top ", top))+				
+					theme(axis.text=element_text(size=14),
+						axis.title=element_text(size=16,face="bold"))
 			incProgress(1)
 		p
 		})
@@ -5042,7 +5101,7 @@ limma <- reactive({
 	####################################
 	
 	isolate({ 
-	withProgress(message="Identifying differentially expressed genes", {
+	withProgress(message=sample(quotes,1), detail ="Identifying differentially expressed genes", {
 	if(input$dataFileFormat == 1 ) {  # if count data
 		 if(input$CountsDEGMethod == 3 ) {    # if DESeq2 method
 				# rawCounts = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
@@ -7019,7 +7078,7 @@ output$PGSEAplot <- renderPlot({
 	if(is.null(input$selectGO ) ) return (NULL)
 	if(input$selectGO == "ID not recognized!" ) return( NULL)
 	isolate({ 
-	withProgress(message="Running pathway analysis", {
+	withProgress(message=sample(quotes,1), detail ="Running pathway analysis", {
 	myrange = c(input$minSetSize, input$maxSetSize)
 	genes = convertedData()
 if (is.null(input$selectContrast1 ) ) return(NULL)
@@ -7044,7 +7103,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 					 
 	if( is.null(result$pg3) ) { plot.new(); text(0.5,1, "No significant pathway found!")} else 
 	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), 
-	show.grid = T, margins = c(3,1, 13, 38), col = .rwb,cex.lab=0.5, main="Pathway Analysis:PGSEA")
+	show.grid = T, margins = c(3,1, 13, 38), col = .rwb,cex.lab=0.5)
     }
 	
 	})
@@ -7103,7 +7162,7 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
 					 
 	if( is.null(result$pg3) ) { plot.new(); text(0.5,1, "No significant pathway found!")} else 
 	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), 
-	show.grid = T, margins = c(3,1, 13, 38), col = .rwb,cex.lab=0.5, main="Pathway Analysis:PGSEA")
+	show.grid = T, margins = c(3,1, 13, 38), col = .rwb,cex.lab=0.5)
     }
 	
 	})
@@ -7118,67 +7177,6 @@ output$PGSEAplot.Download <- downloadHandler(
         dev.off()
       })
 	  
-output$PGSEAplot_backup <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	library(PGSEA,verbose=FALSE)
-	tem = input$selectOrg ; #tem = input$listComparisonsPathway
-	tem = input$selectGO;		tem = input$selectContrast1
-	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
-	tem=input$nPathwayShow; tem=input$absoluteFold	
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-	tem = input$CountsDEGMethod;
-	tem= input$selectFactorsModel;    tem= input$selectBlockFactorsModel; 
-	tem= input$selectModelComprions;  tem= input$selectInteractions
-	tem= input$referenceLevelFactor1; tem= input$referenceLevelFactor2;
-	tem= input$referenceLevelFactor3; tem= input$referenceLevelFactor4; 
-	tem= input$referenceLevelFactor5; tem= input$referenceLevelFactor6; 
-	####################################	
-	if(is.null(input$selectGO ) ) return (NULL)
-	if(input$selectGO == "ID not recognized!" ) return( NULL)
-	isolate({ 
-	withProgress(message="Running pathway analysis", {
-	myrange = c(input$minSetSize, input$maxSetSize)
-	genes = convertedData()
-	if (is.null(input$selectContrast1 ) ) return(NULL)
-	if(is.null(PGSEAplot.data()) ) return(NULL)
-
-	incProgress(1/4,"Retrieving gene sets")
-	gmt = GeneSets()
-	incProgress(2/4,"Runing PGSEA.")
-
-	# find related samples
-	iz = findContrastSamples(input$selectContrast1, colnames(convertedData()),readSampleInfo(),
-										input$selectFactorsModel,input$selectModelComprions, 
-										factorReferenceLevels(),input$CountsDEGMethod,
-										input$dataFileFormat  )
-
-	
-	
-	genes = genes[,iz]	
-	
-	subtype = detectGroups(colnames(genes )) 
-    if(length( GeneSets() )  == 0)  { plot.new(); text(0.5,0.5, "No gene sets!")} else {
-	#result = PGSEApathway(converted(),genes, input$selectOrg,input$selectGO,
-	 #            GeneSets(),  myrange, input$pathwayPvalCutoff, input$nPathwayShow 	)
-	result = PGSEAplot.data();				 
-	if( is.null(result) ) { plot.new(); text(0.5,1, "No significant pathway found!")} else 
-	smcPlot(result,factor(subtype),scale = c(-max(result), max(result)), 
-	show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5, main="Pathway Analysis:PGSEA")
-    }
-	
-	})
-	})
-    }, height = 800, width = 500)
-
 PGSEAplot.data <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
@@ -7279,7 +7277,7 @@ output$PGSEAplotAllSamples <- renderPlot({
 	if(is.null(input$selectGO ) ) return (NULL)
 	if(input$selectGO == "ID not recognized!" ) return( NULL)
 	isolate({ 
-	withProgress(message="Running pathway analysis", {
+	withProgress(message=sample(quotes,1), detail ="Running pathway analysis", {
 	myrange = c(input$minSetSize, input$maxSetSize)
 	genes = convertedData()
 	if (is.null(input$selectContrast1 ) ) return(NULL)
@@ -7293,7 +7291,7 @@ output$PGSEAplotAllSamples <- renderPlot({
 					 
 	if( is.null(result$pg3) ) { plot.new(); text(0.5,1, "No significant pathway found!")} else 
 	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), 
-	show.grid = T, margins = c(3,1, 13, 38), col = .rwb,cex.lab=0.5, main="Pathway Analysis:PGSEA")
+	show.grid = T, margins = c(3,1, 13, 38), col = .rwb,cex.lab=0.5)
     }
 	
 	})
@@ -7342,7 +7340,7 @@ PGSEAplotAllSamples4download <- reactive({
 					 
 	if( is.null(result$pg3) ) { plot.new(); text(0.5,1, "No significant pathway found!")} else 
 	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), 
-	show.grid = T, margins = c(3,1, 13, 38), col = .rwb,cex.lab=0.5, main="Pathway Analysis:PGSEA")
+	show.grid = T, margins = c(3,1, 13, 38), col = .rwb,cex.lab=0.5)
     }
 	
 	})
@@ -7471,7 +7469,7 @@ gagePathwayData <- reactive({
 	if(is.null(input$selectGO ) ) return (NULL)
 	if(input$selectGO == "ID not recognized!" ) return( as.data.frame("Gene ID not recognized." ))
 	isolate({ 
-		withProgress(message="Running pathway analysis using GAGE", {
+		withProgress(message=sample(quotes,1), detail ="Running pathway analysis using GAGE", {
 		if (is.null(input$selectContrast1 ) ) return(NULL)
 		myrange = c(input$minSetSize, input$maxSetSize)
 		noSig = as.data.frame("No significant pathway found.")
@@ -7597,7 +7595,7 @@ fgseaPathwayData <- reactive({
 	####################################
 	
 	isolate({ 
-	withProgress(message="Running pathway analysis using fgsea", {
+	withProgress(message=sample(quotes,1), detail ="Running pathway analysis using fgsea", {
 	if (is.null(input$selectContrast1 ) ) return(NULL)
 	myrange = c(input$minSetSize, input$maxSetSize)
 	noSig = as.data.frame("No significant pathway found.")
@@ -7624,14 +7622,15 @@ fgseaPathwayData <- reactive({
 	  #
 	   #gmt = readGeneSets(converted, top1, input$selectGO, input$selectOrg, myrange )
      # cat("Sets",length(gmt))
-	 incProgress(2/4,"Runing GSEA using the fgsea package.")
+	 incProgress(2/4,message=sample(quotes,1), detail = "Runing GSEA using the fgsea package.")
 	 fold = top1[,1]; names(fold) <- rownames(top1)
 	 if(input$absoluteFold) fold <- abs(fold) # use absolute value of fold change, disregard direction
 	 paths <- fgsea(pathways = gmt, 
                   stats = fold,
                   minSize=input$minSetSize,
                   maxSize=input$maxSetSize,
-                  nperm=10000)
+				  nproc = 4, # cpu cores
+                  nperm=100000)
 	 # paths <-  rbind(paths$greater,paths$less)
 	  if(dim(paths)[1] < 1  ) return( noSig )
 	       paths <- as.data.frame(paths)
@@ -7699,7 +7698,7 @@ ReactomePAPathwayData <- reactive({
 	####################################
 	
 	isolate({ 
-	withProgress(message="Running pathway analysis using ReactomePA", {
+	withProgress(message=sample(quotes,1), detail ="Running pathway analysis using ReactomePA", {
 	if (is.null(input$selectContrast1 ) ) return(NULL)
 	
 	ensemblSpecies <- c("hsapiens_gene_ensembl","rnorvegicus_gene_ensembl", "mmusculus_gene_ensembl",
@@ -8779,7 +8778,7 @@ output$genomePlotly <- renderPlotly({
 		####################################
 		
 	  isolate({ 
-		withProgress(message="Visualzing expression on the genome", {
+		withProgress(message=sample(quotes,1), detail ="Visualzing expression on the genome", {
 		# default plot
 		fake = data.frame(a=1:3,b=1:3)
 		p <- ggplot(fake, aes(x = a, y = b)) +
