@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<!-- saved from url=(0042)https://ws.sharethis.com/secure/index.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+	<meta name="description" content="">
+	<title>ShareThis</title>
+	<script type="text/javascript">
+		var glo_initFrag=document.location.hash;
+	</script>
+	<!-- <link href="font-awesome/css/font-awesome.min.css" rel="stylesheet" media="screen">
+	<link href="css/styles.css" rel="stylesheet" media="screen"> -->
+</head>
+<body>
+<div id="borderContainer" class="st4xM">
+	<div id="outercontainer" class="qsbMpad">
+		<div id="loadingPage" style="display: block;">
+			<div class="loading_box" id="loading_box">&nbsp;</div>
+			<div class="clearFloats"></div>
+		</div>	
+		<div class="errorMessage" id="errorMsg"></div>
+		<div class="errorBottom" id="errorBottom"></div>
+		<div class="qsbMhead">
+			<span class="userName">
+				<a id="btnShareAgain" class="backToDefault" href="javascript:void(0);">Share again »</a>
+				<a id="btnClose" class="backToDefault" href="javascript:void(0);">Close</a>
+				<a id="btnBack" class="backToDefault" href="javascript:void(0);">« Back</a>
+			</span>
+			<em class="popular" id="popular">Share this with friends!</em>
+			<div class="clearFloats"></div>
+		</div>
+		<div id="main">
+			<div id="mainPage" style="display:none;">
+				<div class="qsbMselect qsbMselectNoBorder">
+					<div id="chicklet_search" class="findAservice findAserviceAlt">
+						<i class="fa fa-search"></i>
+						<input class="initialTxt commentTxt" type="text" placeholder="Search for services" value="Search for services..." id="chicklet_search_field">
+					</div>
+					<div id="all_chicklets" class="qsbMselectTop socSvcs">
+						<ul id="top_chicklets"><li><a class="email rpChicklet" title="Email" id="post_email_link" onclick="getEmailService();" href="javascript:void(0);">Email<div class="largeChicklet lc_email"></div></a></li><li><a class="facebook rpChicklet" href="javascript:void(0);" title="Facebook" id="post_facebook_link" stservice="facebook" onclick="serviceClicked(this);">Facebook<div class="largeChicklet lc_facebook"></div></a></li><li><a class="twitter rpChicklet" href="javascript:void(0);" title="Twitter" id="post_twitter_link" stservice="twitter" onclick="serviceClicked(this);">Twitter<div class="largeChicklet lc_twitter"></div></a></li><li><a class="pinterest rpChicklet" href="javascript:void(0);" title="Pinterest" id="post_pinterest_link" stservice="pinterest" onclick="serviceClicked(this);">Pinterest<div class="largeChicklet lc_pinterest"></div></a></li><li><a class="linkedin rpChicklet" href="javascript:void(0);" title="LinkedIn" id="post_linkedin_link" stservice="linkedin" onclick="serviceClicked(this);">LinkedIn<div class="largeChicklet lc_linkedin"></div></a></li><li><a class="googleplus rpChicklet" href="javascript:void(0);" title="Google +" id="post_googleplus_link" stservice="googleplus" onclick="serviceClicked(this);">Google +<div class="largeChicklet lc_googleplus"></div></a></li><li><a class="digg rpChicklet" href="javascript:void(0);" title="Digg" id="post_digg_link" stservice="digg" onclick="serviceClicked(this);">Digg<div class="largeChicklet lc_digg"></div></a></li><li><a class="stumbleupon rpChicklet" href="javascript:void(0);" title="StumbleUpon" id="post_stumbleupon_link" stservice="stumbleupon" onclick="serviceClicked(this);">StumbleUpon<div class="largeChicklet lc_stumbleupon"></div></a></li><li><a class="reddit rpChicklet" href="javascript:void(0);" title="Reddit" id="post_reddit_link" stservice="reddit" onclick="serviceClicked(this);">Reddit<div class="largeChicklet lc_reddit"></div></a></li><li><a class="tumblr rpChicklet" href="javascript:void(0);" title="Tumblr" id="post_tumblr_link" stservice="tumblr" onclick="serviceClicked(this);">Tumblr<div class="largeChicklet lc_tumblr"></div></a></li><li><a class="adfty rpChicklet" href="javascript:void(0);" title="Adfty" id="post_adfty_link" stservice="adfty" onclick="serviceClicked(this);">Adfty<div class="largeChicklet lc_adfty"></div></a></li><li><a class="allvoices rpChicklet" href="javascript:void(0);" title="Allvoices" id="post_allvoices_link" stservice="allvoices" onclick="serviceClicked(this);">Allvoices<div class="largeChicklet lc_allvoices"></div></a></li><li><a class="amazon_wishlist rpChicklet" href="javascript:void(0);" title="Amazon Wishlist" id="post_amazon_wishlist_link" stservice="amazon_wishlist" onclick="serviceClicked(this);">Amazon Wishlist<div class="largeChicklet lc_amazon_wishlist"></div></a></li><li><a class="arto rpChicklet" href="javascript:void(0);" title="Arto" id="post_arto_link" stservice="arto" onclick="serviceClicked(this);">Arto<div class="largeChicklet lc_arto"></div></a></li><li><a class="att rpChicklet" href="javascript:void(0);" title="AT&amp;T" id="post_att_link" stservice="att" onclick="serviceClicked(this);">AT&amp;T<div class="largeChicklet lc_att"></div></a></li><li><a class="baidu rpChicklet" href="javascript:void(0);" title="Baidu" id="post_baidu_link" stservice="baidu" onclick="serviceClicked(this);">Baidu<div class="largeChicklet lc_baidu"></div></a></li><li><a class="blinklist rpChicklet" href="javascript:void(0);" title="Blinklist" id="post_blinklist_link" stservice="blinklist" onclick="serviceClicked(this);">Blinklist<div class="largeChicklet lc_blinklist"></div></a></li><li><a class="blip rpChicklet" href="javascript:void(0);" title="Blip" id="post_blip_link" stservice="blip" onclick="serviceClicked(this);">Blip<div class="largeChicklet lc_blip"></div></a></li><li><a class="blogmarks rpChicklet" href="javascript:void(0);" title="Blogmarks" id="post_blogmarks_link" stservice="blogmarks" onclick="serviceClicked(this);">Blogmarks<div class="largeChicklet lc_blogmarks"></div></a></li><li><a class="blogger rpChicklet" href="javascript:void(0);" title="Blogger" id="post_blogger_link" stservice="blogger" onclick="serviceClicked(this);">Blogger<div class="largeChicklet lc_blogger"></div></a></li><li><a class="buddymarks rpChicklet" href="javascript:void(0);" title="BuddyMarks" id="post_buddymarks_link" stservice="buddymarks" onclick="serviceClicked(this);">BuddyMarks<div class="largeChicklet lc_buddymarks"></div></a></li><li><a class="buffer rpChicklet" href="javascript:void(0);" title="Buffer" id="post_buffer_link" stservice="buffer" onclick="serviceClicked(this);">Buffer<div class="largeChicklet lc_buffer"></div></a></li><li><a class="care2 rpChicklet" href="javascript:void(0);" title="Care2" id="post_care2_link" stservice="care2" onclick="serviceClicked(this);">Care2<div class="largeChicklet lc_care2"></div></a></li><li><a class="chiq rpChicklet" href="javascript:void(0);" title="chiq" id="post_chiq_link" stservice="chiq" onclick="serviceClicked(this);">chiq<div class="largeChicklet lc_chiq"></div></a></li><li><a class="citeulike rpChicklet" href="javascript:void(0);" title="CiteULike" id="post_citeulike_link" stservice="citeulike" onclick="serviceClicked(this);">CiteULike<div class="largeChicklet lc_citeulike"></div></a></li><li><a class="corkboard rpChicklet" href="javascript:void(0);" title="Corkboard" id="post_corkboard_link" stservice="corkboard" onclick="serviceClicked(this);">Corkboard<div class="largeChicklet lc_corkboard"></div></a></li><li><a class="dealsplus rpChicklet" href="javascript:void(0);" title="Dealspl.us" id="post_dealsplus_link" stservice="dealsplus" onclick="serviceClicked(this);">Dealspl.us<div class="largeChicklet lc_dealsplus"></div></a></li><li><a class="delicious rpChicklet" href="javascript:void(0);" title="Delicious" id="post_delicious_link" stservice="delicious" onclick="serviceClicked(this);">Delicious<div class="largeChicklet lc_delicious"></div></a></li><li><a class="diigo rpChicklet" href="javascript:void(0);" title="Diigo" id="post_diigo_link" stservice="diigo" onclick="serviceClicked(this);">Diigo<div class="largeChicklet lc_diigo"></div></a></li><li><a class="dzone rpChicklet" href="javascript:void(0);" title="DZone" id="post_dzone_link" stservice="dzone" onclick="serviceClicked(this);">DZone<div class="largeChicklet lc_dzone"></div></a></li><li><a class="edmodo rpChicklet" href="javascript:void(0);" title="Edmodo" id="post_edmodo_link" stservice="edmodo" onclick="serviceClicked(this);">Edmodo<div class="largeChicklet lc_edmodo"></div></a></li><li><a class="embed_ly rpChicklet" href="javascript:void(0);" title="Embed.ly" id="post_embed_ly_link" stservice="embed_ly" onclick="serviceClicked(this);">Embed.ly<div class="largeChicklet lc_embed_ly"></div></a></li><li><a class="evernote rpChicklet" href="javascript:void(0);" title="Evernote" id="post_evernote_link" stservice="evernote" onclick="serviceClicked(this);">Evernote<div class="largeChicklet lc_evernote"></div></a></li><li><a class="fark rpChicklet" href="javascript:void(0);" title="Fark" id="post_fark_link" stservice="fark" onclick="serviceClicked(this);">Fark<div class="largeChicklet lc_fark"></div></a></li><li><a class="fashiolista rpChicklet" href="javascript:void(0);" title="Fashiolista" id="post_fashiolista_link" stservice="fashiolista" onclick="serviceClicked(this);">Fashiolista<div class="largeChicklet lc_fashiolista"></div></a></li><li><a class="flipboard rpChicklet" href="javascript:void(0);" title="Flipboard" id="post_flipboard_link" stservice="flipboard" onclick="serviceClicked(this);">Flipboard<div class="largeChicklet lc_flipboard"></div></a></li><li><a class="folkd rpChicklet" href="javascript:void(0);" title="folkd.com" id="post_folkd_link" stservice="folkd" onclick="serviceClicked(this);">folkd.com<div class="largeChicklet lc_folkd"></div></a></li><li><a class="foodlve rpChicklet" href="javascript:void(0);" title="FoodLve" id="post_foodlve_link" stservice="foodlve" onclick="serviceClicked(this);">FoodLve<div class="largeChicklet lc_foodlve"></div></a></li><li><a class="fresqui rpChicklet" href="javascript:void(0);" title="Fresqui" id="post_fresqui_link" stservice="fresqui" onclick="serviceClicked(this);">Fresqui<div class="largeChicklet lc_fresqui"></div></a></li><li><a class="friendfeed rpChicklet" href="javascript:void(0);" title="FriendFeed" id="post_friendfeed_link" stservice="friendfeed" onclick="serviceClicked(this);">FriendFeed<div class="largeChicklet lc_friendfeed"></div></a></li><li><a class="funp rpChicklet" href="javascript:void(0);" title="Funp" id="post_funp_link" stservice="funp" onclick="serviceClicked(this);">Funp<div class="largeChicklet lc_funp"></div></a></li><li><a class="fwisp rpChicklet" href="javascript:void(0);" title="fwisp" id="post_fwisp_link" stservice="fwisp" onclick="serviceClicked(this);">fwisp<div class="largeChicklet lc_fwisp"></div></a></li><li><a class="google rpChicklet" href="javascript:void(0);" title="Google" id="post_google_link" stservice="google" onclick="serviceClicked(this);">Google<div class="largeChicklet lc_google"></div></a></li><li><a class="google_bmarks rpChicklet" href="javascript:void(0);" title="Bookmarks" id="post_google_bmarks_link" stservice="google_bmarks" onclick="serviceClicked(this);">Bookmarks<div class="largeChicklet lc_google_bmarks"></div></a></li><li><a class="google_reader rpChicklet" href="javascript:void(0);" title="Google Reader" id="post_google_reader_link" stservice="google_reader" onclick="serviceClicked(this);">Google Reader<div class="largeChicklet lc_google_reader"></div></a></li><li><a class="google_translate rpChicklet" href="javascript:void(0);" title="Google Translate" id="post_google_translate_link" stservice="google_translate" onclick="serviceClicked(this);">Google Translate<div class="largeChicklet lc_google_translate"></div></a></li><li><a class="hatena rpChicklet" href="javascript:void(0);" title="Hatena" id="post_hatena_link" stservice="hatena" onclick="serviceClicked(this);">Hatena<div class="largeChicklet lc_hatena"></div></a></li><li><a class="instapaper rpChicklet" href="javascript:void(0);" title="Instapaper" id="post_instapaper_link" stservice="instapaper" onclick="serviceClicked(this);">Instapaper<div class="largeChicklet lc_instapaper"></div></a></li><li><a class="jumptags rpChicklet" href="javascript:void(0);" title="Jumptags" id="post_jumptags_link" stservice="jumptags" onclick="serviceClicked(this);">Jumptags<div class="largeChicklet lc_jumptags"></div></a></li><li><a class="kaboodle rpChicklet" href="javascript:void(0);" title="Kaboodle" id="post_kaboodle_link" stservice="kaboodle" onclick="serviceClicked(this);">Kaboodle<div class="largeChicklet lc_kaboodle"></div></a></li><li><a class="linkagogo rpChicklet" href="javascript:void(0);" title="linkaGoGo" id="post_linkagogo_link" stservice="linkagogo" onclick="serviceClicked(this);">linkaGoGo<div class="largeChicklet lc_linkagogo"></div></a></li><li><a class="livejournal rpChicklet" href="javascript:void(0);" title="LiveJournal" id="post_livejournal_link" stservice="livejournal" onclick="serviceClicked(this);">LiveJournal<div class="largeChicklet lc_livejournal"></div></a></li><li><a class="mail_ru rpChicklet" href="javascript:void(0);" title="mail.ru" id="post_mail_ru_link" stservice="mail_ru" onclick="serviceClicked(this);">mail.ru<div class="largeChicklet lc_mail_ru"></div></a></li><li><a class="meneame rpChicklet" href="javascript:void(0);" title="Meneame" id="post_meneame_link" stservice="meneame" onclick="serviceClicked(this);">Meneame<div class="largeChicklet lc_meneame"></div></a></li><li><a class="messenger rpChicklet" href="javascript:void(0);" title="Messenger" id="post_messenger_link" stservice="messenger" onclick="serviceClicked(this);">Messenger<div class="largeChicklet lc_messenger"></div></a></li><li><a class="mister_wong rpChicklet" href="javascript:void(0);" title="Mr Wong" id="post_mister_wong_link" stservice="mister_wong" onclick="serviceClicked(this);">Mr Wong<div class="largeChicklet lc_mister_wong"></div></a></li><li><a class="moshare rpChicklet" href="javascript:void(0);" title="moShare" id="post_moshare_link" stservice="moshare" onclick="serviceClicked(this);">moShare<div class="largeChicklet lc_moshare"></div></a></li><li><a class="myspace rpChicklet" href="javascript:void(0);" title="MySpace" id="post_myspace_link" stservice="myspace" onclick="serviceClicked(this);">MySpace<div class="largeChicklet lc_myspace"></div></a></li><li><a class="n4g rpChicklet" href="javascript:void(0);" title="N4G" id="post_n4g_link" stservice="n4g" onclick="serviceClicked(this);">N4G<div class="largeChicklet lc_n4g"></div></a></li><li><a class="netlog rpChicklet" href="javascript:void(0);" title="Netlog" id="post_netlog_link" stservice="netlog" onclick="serviceClicked(this);">Netlog<div class="largeChicklet lc_netlog"></div></a></li><li><a class="netvouz rpChicklet" href="javascript:void(0);" title="Netvouz" id="post_netvouz_link" stservice="netvouz" onclick="serviceClicked(this);">Netvouz<div class="largeChicklet lc_netvouz"></div></a></li><li><a class="newsvine rpChicklet" href="javascript:void(0);" title="Newsvine" id="post_newsvine_link" stservice="newsvine" onclick="serviceClicked(this);">Newsvine<div class="largeChicklet lc_newsvine"></div></a></li><li><a class="nujij rpChicklet" href="javascript:void(0);" title="NUjij" id="post_nujij_link" stservice="nujij" onclick="serviceClicked(this);">NUjij<div class="largeChicklet lc_nujij"></div></a></li><li><a class="odnoklassniki rpChicklet" href="javascript:void(0);" title="Odnoklassniki" id="post_odnoklassniki_link" stservice="odnoklassniki" onclick="serviceClicked(this);">Odnoklassniki<div class="largeChicklet lc_odnoklassniki"></div></a></li><li><a class="oknotizie rpChicklet" href="javascript:void(0);" title="Oknotizie" id="post_oknotizie_link" stservice="oknotizie" onclick="serviceClicked(this);">Oknotizie<div class="largeChicklet lc_oknotizie"></div></a></li><li><a class="pocket rpChicklet" href="javascript:void(0);" title="Pocket" id="post_pocket_link" stservice="pocket" onclick="serviceClicked(this);">Pocket<div class="largeChicklet lc_pocket"></div></a></li><li><a class="print rpChicklet" href="javascript:void(0);" title="Print" id="post_print_link" stservice="print" onclick="serviceClicked(this);">Print<div class="largeChicklet lc_print"></div></a></li><li><a class="raise_your_voice rpChicklet" href="javascript:void(0);" title="Raise Your Voice" id="post_raise_your_voice_link" stservice="raise_your_voice" onclick="serviceClicked(this);">Raise Your Voice<div class="largeChicklet lc_raise_your_voice"></div></a></li><li><a class="segnalo rpChicklet" href="javascript:void(0);" title="Segnalo" id="post_segnalo_link" stservice="segnalo" onclick="serviceClicked(this);">Segnalo<div class="largeChicklet lc_segnalo"></div></a></li><li><a class="sina rpChicklet" href="javascript:void(0);" title="Sina" id="post_sina_link" stservice="sina" onclick="serviceClicked(this);">Sina<div class="largeChicklet lc_sina"></div></a></li><li><a class="sonico rpChicklet" href="javascript:void(0);" title="Sonico" id="post_sonico_link" stservice="sonico" onclick="serviceClicked(this);">Sonico<div class="largeChicklet lc_sonico"></div></a></li><li><a class="startaid rpChicklet" href="javascript:void(0);" title="Startaid" id="post_startaid_link" stservice="startaid" onclick="serviceClicked(this);">Startaid<div class="largeChicklet lc_startaid"></div></a></li><li><a class="startlap rpChicklet" href="javascript:void(0);" title="Startlap" id="post_startlap_link" stservice="startlap" onclick="serviceClicked(this);">Startlap<div class="largeChicklet lc_startlap"></div></a></li><li><a class="stumpedia rpChicklet" href="javascript:void(0);" title="Stumpedia" id="post_stumpedia_link" stservice="stumpedia" onclick="serviceClicked(this);">Stumpedia<div class="largeChicklet lc_stumpedia"></div></a></li><li><a class="typepad rpChicklet" href="javascript:void(0);" title="TypePad" id="post_typepad_link" stservice="typepad" onclick="serviceClicked(this);">TypePad<div class="largeChicklet lc_typepad"></div></a></li><li><a class="viadeo rpChicklet" href="javascript:void(0);" title="Viadeo" id="post_viadeo_link" stservice="viadeo" onclick="serviceClicked(this);">Viadeo<div class="largeChicklet lc_viadeo"></div></a></li><li><a class="virb rpChicklet" href="javascript:void(0);" title="Virb" id="post_virb_link" stservice="virb" onclick="serviceClicked(this);">Virb<div class="largeChicklet lc_virb"></div></a></li><li><a class="vkontakte rpChicklet" href="javascript:void(0);" title="Vkontakte" id="post_vkontakte_link" stservice="vkontakte" onclick="serviceClicked(this);">Vkontakte<div class="largeChicklet lc_vkontakte"></div></a></li><li><a class="voxopolis rpChicklet" href="javascript:void(0);" title="VOXopolis" id="post_voxopolis_link" stservice="voxopolis" onclick="serviceClicked(this);">VOXopolis<div class="largeChicklet lc_voxopolis"></div></a></li><li><a class="weheartit rpChicklet" href="javascript:void(0);" title="We Heart It" id="post_weheartit_link" stservice="weheartit" onclick="serviceClicked(this);">We Heart It<div class="largeChicklet lc_weheartit"></div></a></li><li><a class="wordpress rpChicklet" title="WordPress" id="post_wordpress_link" onclick="createPoster(&quot;wordpress&quot;)" href="javascript:void(0);">WordPress<div class="largeChicklet lc_wordpress"></div></a></li><li><a class="xerpi rpChicklet" href="javascript:void(0);" title="Xerpi" id="post_xerpi_link" stservice="xerpi" onclick="serviceClicked(this);">Xerpi<div class="largeChicklet lc_xerpi"></div></a></li><li><a class="xing rpChicklet" href="javascript:void(0);" title="Xing" id="post_xing_link" stservice="xing" onclick="serviceClicked(this);">Xing<div class="largeChicklet lc_xing"></div></a></li><li><a class="yammer rpChicklet" href="javascript:void(0);" title="Yammer" id="post_yammer_link" stservice="yammer" onclick="serviceClicked(this);">Yammer<div class="largeChicklet lc_yammer"></div></a></li></ul>
+					</div>
+					<div class="clearFloats"></div>
+				</div>
+			</div>
+			<div id="emailPage" style="display:none;">
+				<div class="qsbMselect qsbMselectNoBorder">
+					<div id="email_main" class="qsbMpad5 flL">
+						<a href="javascript:void(0);" data-value="gmail" class="extEmail gmail" title="GMail">&nbsp;</a>
+						<a href="javascript:void(0);" data-value="yahoo" class="extEmail yahoo" title="Yahoo!">&nbsp;</a>
+						<a href="javascript:void(0);" data-value="mailto" class="extEmail mailto" title="Email">&nbsp;</a>
+						<a href="javascript:void(0);" data-value="outlook" class="extEmail outlook" title="Outlook">&nbsp;</a>
+					</div>
+					<div class="clearFloats"></div>
+				</div>
+			</div>
+			<div id="donePage" style="display:none;">
+				<div class="qsbMselect qsbMselectNoBorder altBGcta">
+					<div class="qsbMpad5">
+						<img id="imgDoneScreenMonitor" src="https://ws.sharethis.com/secure/index.html" alt="Share from Anywhere">
+						<!-- <div id="imgDoneScreenMonitorText">Want to share from Anywhere?</div> -->
+					</div>
+					<div class="clearFloats"></div>
+				</div>
+			</div>
+			<div id="posterPage" style="display:none;">
+				<div id="poster_main" class="qsbMselect qsbMselectNoBorder">
+					<div id="comment_box" class="qsbMselectTop">
+						<div id="poster_message">Message:</div>
+						<textarea class="initialTxt commentTxt" id="poster_textArea" name="poster_textArea" cols="10" rows="3"></textarea>
+					</div>
+					<div id="poster_input_div">
+						<div id="poster_message2">Blog URL</div>
+						<div class="poster_inputBoxDiv"><input id="poster_inputBox" type="text" autocomplete="off"></div>
+					</div>
+					<div class="clear"></div>
+					<div id="poster_message_counter"><span id="counter">117</span> Characters Left</div>
+
+					<div class="socVertSp"></div>
+					<button id="posterCancel" class="qsbMclose cancelBtn btnR" type="submit" onclick="poster.cancel()">Cancel</button>
+					<button id="posterSubmit" class="completeShare2 sendBtn btnR" type="submit" onclick="poster.post()">Submit</button>		
+					<div class="socVertSp"></div>
+					<div class="clearFloats"></div>
+				</div>
+				<div class="clearFloats"></div>
+			</div>
+			<div class="clearFloats"></div>
+		</div>
+		<div class="st4xMfoot"><div id="footer" class="qsbMpad">
+			<div class="footBgColor">
+				<a href="javascript:void(0);"><button id="btnBookmark" class="stBtnChrome" type="submit">Share Again »</button></a>
+			</div>
+			<div class="footBotRow">
+				<div class="flL"><span id="powered_text">Powered by&nbsp;&nbsp;</span><a class="st-logo-foot flR" target="_blank" href="http://www.sharethis.com/" title="ShareThis">ShareThis</a></div>
+				<div class="flR">
+					<span id="doNotTrack"><a id="doNotTrack_text" href="http://www.sharethis.com/privacy" target="_blank">Opt out</a></span>
+				</div>
+				<div class="clearFloats"></div>
+			</div>
+			<div class="clearFloats"></div>
+		</div></div>
+		<div class="clearFloats"></div>
+	</div>
+</div>
+<div id="segmentDiv" style="display:none;"></div>	
+
+<!-- end of body add js here -->
+<script src="./st.b7f1e24b62a467e8582caa6dd39a1a63.js.download" type="text/javascript"></script>
+
+<script type="text/javascript">
+	//array of language supported by application
+	var langArray=new Array("es","fr","de","it");
+	//default langauge
+	//var lang='en';
+	
+	var navigatorLanguage = (navigator.language) ? navigator.language: navigator.browserLanguage;
+	
+	var languageVar = navigatorLanguage.substr(0,2).toLowerCase();
+	
+	var subLanguageVar = navigatorLanguage.substr(3,2).toLowerCase();
+
+	if(languageVar!='en')
+	{
+		var jsFile = null;
+		//check for language
+		switch (languageVar) {
+		case "zh":
+			jsFile="https://ws.sharethis.com/secure/js/local/cn/message.js";
+			if ("tw" == subLanguageVar) {
+				jsFile="https://ws.sharethis.com/secure/js/local/tw/message.js";
+			}
+			break;
+		case "es":
+			jsFile="https://ws.sharethis.com/secure/js/local/es/message.e5cdbb7671ab474b46221772dfb45ce3.js";
+			break;
+		case "fr":
+			jsFile="https://ws.sharethis.com/secure/js/local/fr/message.aa62a365cfe8afe4816e26a3e24a6f15.js";
+			break;					
+		case "de":
+			jsFile="https://ws.sharethis.com/secure/js/local/de/message.73f25a1bc8ca75a47317635afd4124f4.js";
+			break;
+		case "it":
+			jsFile="https://ws.sharethis.com/secure/js/local/it/message.3b41efd9228f109db72042a16b4b648c.js";
+			break;
+		case "ja":
+			jsFile="https://ws.sharethis.com/secure/js/local/jp/message.js";
+			break;	
+		case "nl":
+			jsFile="https://ws.sharethis.com/secure/js/local/nl/message.js";
+			break;	
+		case "pt":
+			jsFile="https://ws.sharethis.com/secure/js/local/pt/message.js";
+			break;
+		case "ru":
+			jsFile="https://ws.sharethis.com/secure/js/local/ru/message.js";
+			break;
+		case "tr":
+			jsFile="https://ws.sharethis.com/secure/js/local/tr/message.js";
+			break;	
+		case "ua":
+			jsFile="https://ws.sharethis.com/secure/js/local/ua/message.js";
+			break;	
+		case "vn":
+			jsFile="https://ws.sharethis.com/secure/js/local/vn/message.js";
+			break;	
+		default: 
+		}
+		//message file to include
+		if (jsFile != null) {
+			document.write('<script type="text/javascript" src="'+ jsFile +'"><\/script>');
+		}
+	}
+</script>
+
+
+
+</body></html>
