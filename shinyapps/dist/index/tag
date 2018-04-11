@@ -1,6 +1,0 @@
-BrightTag.site('sPLaZHQ',function(s){
-s.errors(1523398130210);
-s.domready(function(){
-s.tag('\x3cimg height\x3d\x221\x22 width\x3d\x221\x22 style\x3d\x22border-style:none;\x22 alt\x3d\x22\x22 src\x3d\x22//insight.adsrvr.org/track/evnt/?adv\x3dn593q4b\x26ct\x3d0:7wo8kjw\x26fmt\x3d3\x22/\x3e',{tagId:5814859});
-});
-});
