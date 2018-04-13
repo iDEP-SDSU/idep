@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.71"
+iDEPversion = "iDEP.72"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -894,6 +894,7 @@ tableOutput('species' ),
 	 ,h5("3/18/2018: v0.711 Fixed error caused by gene names containing characters such as \' or \" ")
 	 ,h5("3/28/2018: v0.712 Fine tuned EDA plots")
 	 ,h5("4/3/2018: V0.713 add permutations for fgsea. Expand quotes.")
+	 ,h5("4/13/2018: V0.72 fixed bug caused error in R Markdown file when users choose species other than the default.")
 	 ,h5("In loving memory of my parents.")
  ) 
  )

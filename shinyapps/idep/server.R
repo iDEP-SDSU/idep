@@ -1,6 +1,6 @@
 ## PLAN dplyr should be used for all filter and mutate process
 
-iDEPversion = "iDEP 0.71"
+iDEPversion = "iDEP 0.72"
 ################################################################
 # R packages
 ################################################################
@@ -3395,14 +3395,15 @@ output$heatmap1 <- renderPlot({
 		,lmat = lmat, lwid = lwid, lhei = lhei
 	)
 	
-	
-	par(lend = 1)           # square line ends for the color legend
-	add_legend("topleft",
-		legend = unique(groups), # category labels
-		col = groups.colors[ unique(as.factor(groups))],  # color key
-		lty= 1,             # line style
-		lwd = 10            # line width
-	)
+	if(length(unique(groups) ) <= 30 ) {  # only add legend when there is less categories
+		par(lend = 1)           # square line ends for the color legend
+		add_legend("topleft",
+			legend = unique(groups), # category labels
+			col = groups.colors[ unique(as.factor(groups))],  # color key
+			lty= 1,             # line style
+			lwd = 10            # line width
+		)
+	}
 	
 	incProgress(1,"Done")
 	})
@@ -3514,7 +3515,7 @@ plotHeatmap1 <- reactive ({
 		,lmat = lmat, lwid = lwid, lhei = lhei
 	)
 	
-	
+	if(length(unique(groups) ) <= 30 ) {  # only add legend when there is less categories
 	par(lend = 1)           # square line ends for the color legend
 	add_legend("topleft",
 		legend = unique(groups), # category labels
@@ -3522,7 +3523,7 @@ plotHeatmap1 <- reactive ({
 		lty= 1,             # line style
 		lwd = 10            # line width
 	)
-	
+	}
 	incProgress(1,"Done")
 	})
 
@@ -4586,7 +4587,7 @@ KmeansGOdata <- reactive({
 	tem = input$nClusters
 	tem = input$removeRedudantSets
 	####################################
-	withProgress(message="GO Enrichment", {
+	withProgress(message=sample(quotes,1), detail ="GO Enrichment", {
 		# GO
 		pp=0
 		minFDR = 0.01
@@ -10294,7 +10295,7 @@ geneInfoFileName <- reactive({
 	if (length(ix) == 0 ) {return(NULL)} else {
 		# If selected species is not the default "bestMatch", use that species directly
 		if(input$selectOrg != speciesChoice[[1]]) {  
-			ix = grep(findSpeciesById(selectOrg)[1,1], geneInfoFiles )
+			ix = grep(findSpeciesById(input$selectOrg)[1,1], geneInfoFiles )
 		}
 		if(length(ix) == 1)  # if only one file           #WBGene0000001 some ensembl gene ids in lower case
 			{x = as.character(geneInfoFiles[ix]); 	return(x) }else # read in the chosen file 
@@ -10341,7 +10342,7 @@ pathwayFileName <- reactive({
 	if (length(ix) == 0 ) {return(NULL)} else {
 		# If selected species is not the default "bestMatch", use that species directly
 		if(input$selectOrg != speciesChoice[[1]]) {  
-			ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
+			ix = grep(findSpeciesById(input$selectOrg)[1,1], gmtFiles )
 		}
 		if(length(ix) == 1)  # if only one file           #WBGene0000001 some ensembl gene ids in lower case
 			{x = as.character(gmtFiles[ix]); 	return(x) }else # read in the chosen file 
