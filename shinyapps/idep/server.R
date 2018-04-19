@@ -2505,10 +2505,10 @@ readData <- reactive ({
 
 					incProgress(1/2,"transforming raw counts")
 					# regularized log  or VST transformation
-					if( input$CountsTransform == 3 ) { # rlog is slow, only do it with 10 samples
-						if(dim(x)[2]<=50 ) { 
-						 x <- rlog(dds, blind=TRUE); x <- assay(x) } else 
-						 x <- log2( counts(dds, normalized=TRUE) + input$countsLogStart ) 
+					if( input$CountsTransform == 3 ) { # rlog is slow
+						#if(dim(x)[2]<=50 )   # disable the menu when large sample size	?				 
+						{ x <- rlog(dds, blind=TRUE); x <- assay(x)  } # else 
+						# x <- log2( counts(dds, normalized=TRUE) + input$countsLogStart ) 
 						 }  
 
 						else {
@@ -7630,8 +7630,8 @@ fgseaPathwayData <- reactive({
                   stats = fold,
                   minSize=input$minSetSize,
                   maxSize=input$maxSetSize,
-				  nproc = 4, # cpu cores
-                  nperm=100000)
+				  nproc = 6, # cpu cores
+                  nperm=10000)
 	 # paths <-  rbind(paths$greater,paths$less)
 	  if(dim(paths)[1] < 1  ) return( noSig )
 	       paths <- as.data.frame(paths)
