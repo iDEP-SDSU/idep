@@ -41,6 +41,8 @@ geneInfoFiles = paste(datapath,"geneInfo/",geneInfoFiles,sep="")
 motifFiles = list.files(path = paste0(datapath,"motif"),pattern=".*\\.db")
 motifFiles = paste(datapath,"motif/",motifFiles,sep="")
 
+STRING10_species = read.csv("STRING10_species.csv")
+
 # # Create a list of GMT files in /gmt sub folder
 # gmtFiles = list.files(path = "./pathwayDB",pattern=".*\\.db")
 # gmtFiles = paste("pathwayDB/",gmtFiles,sep="")
@@ -100,6 +102,12 @@ findSpeciesById <- function (speciesID){ # find species name use id
 # just return name
 findSpeciesByIdName <- function (speciesID){ # find species name use id
   return( orgInfo[which(orgInfo$id == speciesID),3]  )
+}
+
+#Homo sapies --> hsapiens
+shortSpeciesNames <- function(tem){
+	 tem2 = strsplit(as.character(tem)," " ) 	   
+	 return( tolower( paste0(substr(tem2[[1]][1],1,1), tem2[[1]][2]  ) ) )
 }
 
 # convert sorted species:idType combs into a list for repopulate species choice
@@ -345,6 +353,233 @@ promoter <- function (converted,selectOrg, radio){
 }
 
 
+
+mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
+
+# a program for ploting enrichment results by highlighting the similarities among terms
+# must have columns: Direction, adj.Pval   Pathways Genes
+#  Direction	adj.Pval	nGenes	Pathways		Genes
+#Down regulated	3.58E-59	131	Ribonucleoprotein complex biogenesis	36	Nsun5 Nhp2 Rrp15 
+#Down regulated	2.55E-57	135	NcRNA metabolic process	23	Nsun5 Nhp2 Rrp15 Emg1 Ddx56 Rsl1d1 enrichmentPlot <- function( enrichedTerms){
+# Up or down regulation is color-coded
+# gene set size if represented by the size of marker
+enrichmentPlot <- function( enrichedTerms, rightMargin=33) {
+  if(class(enrichedTerms) != "data.frame") return(NULL)
+  if(nrow(enrichedTerms) <=1 ) return(NULL)  # only one term or less
+  library(dendextend) # customizing tree
+  
+  geneLists = lapply(enrichedTerms$Genes, function(x) unlist( strsplit(as.character(x)," " )   ) )
+  names(geneLists)= enrichedTerms$Pathways
+
+  # compute overlaps percentage--------------------
+
+  n = length(geneLists)
+  w <- matrix(NA, nrow = n, ncol = n)
+# compute overlaps among all gene lists
+    for (i in 1:n) {
+        for (j in i:n) {
+            u <- unlist(geneLists[i])
+            v <- unlist(geneLists[j])
+            w[i, j] = length(intersect(u, v))/length(unique(c(u,v)))
+        }
+    }
+# the lower half of the matrix filled in based on symmetry
+    for (i in 1:n) 
+        for (j in 1:(i-1)) 
+            w[i, j] = w[j,i] 
+ 
+
+ # compute overlaps P value---------------------
+  if(0) {
+ total_elements = 30000
+  n = length(geneLists)
+  w <- matrix(rep(0,n*n), nrow = n, ncol = n)
+# compute overlaps among all gene lists
+    for (i in 1:n) {
+        for (j in (i+1):n) {
+            u <- unlist(geneLists[i])
+            v <- unlist(geneLists[j])
+            xx= length( intersect(u, v) )
+			if(xx == 0)
+				next;
+			mm = length(u)
+			nn <- total_elements - mm	
+			kk = length(v)
+			w[i,j] = -sqrt( -phyper(xx-1,mm,nn,kk, lower.tail=FALSE,log.p = TRUE ));
+			
+        }
+    }
+	
+
+# the lower half of the matrix filled in based on symmetry
+    for (i in 1:n) 
+        for (j in 1:(i-1)) 
+            w[i, j] = w[j,i] 
+			
+	# w =  w-min(w) 			
+	# for( i in 1:n) 		w[i,i] = 0;
+ 
+ }
+
+  Terms = paste( sprintf("%-2.1e",as.numeric(enrichedTerms$adj.Pval)), 
+				names(geneLists))
+  rownames(w) = Terms
+  colnames(w) = Terms
+  par(mar=c(0,0,1,rightMargin)) # a large margin for showing 
+
+  dend <- as.dist(1-w) %>%
+	hclust (method="average") 
+  ix = dend$order # permutated order of leaves
+
+  leafType= as.factor( gsub(" .*","", enrichedTerms$Direction[ix] ) )
+  #if(length(unique(enrichedTerms$Direction)  ) <=2 )
+  if( max( nchar(enrichedTerms$Direction[ix] )) >= 1)   # if "Up regulated or Downregulated"; not "A", "B"
+	#leafColors = c("green","red")  else  # mycolors # k-Means
+	leafColors = mycolors[1:2] else
+		{ 	# convert c("B","D","E") to c(2, 4, 5)
+			#leafType= as.factor( gsub(" .*","", enrichedTerms$Direction[ix] ) )
+			leafType= match(gsub(" .*","", enrichedTerms$Direction[ix] ), toupper(letters)   )   
+			
+			leafColors = mycolors 
+		}
+  #leafSize = unlist( lapply(geneLists,length) ) # leaf size represent number of genes
+  #leafSize = sqrt( leafSize[ix] )  
+  leafSize = -log10(as.numeric( enrichedTerms$adj.Pval[ix] ) ) # leaf size represent P values
+  leafSize = 1.5*leafSize/max( leafSize ) + .2
+  
+	dend %>% 
+	as.dendrogram(hang=-1) %>%
+	set("leaves_pch", 19) %>%   # type of marker
+	set("leaves_cex", leafSize) %>% #Size
+	set("leaves_col", leafColors[leafType]) %>% # up or down genes
+	plot(horiz=TRUE)
+	
+  #legend("top",pch=19, col=leafColors[1:2],legend=levels(leafType),bty = "n",horiz =T  )
+  # add legend using a second layer
+  #	par(lend = 1)           # square line ends for the color legend
+  # add_legend("top",pch=19, col=leafColors,legend=levels(leafType),bty = "n",horiz =T )
+
+	
+  
+}
+
+
+# numChar=100 maximum number of characters
+# n=200  maximum number of nodes
+# degree.cutoff = 0    Remove node if less connected
+#from PPInfer
+enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue, 
+    n = 50, numChar = NULL, pvalue.cutoff = 0.05, edge.cutoff = 0.05, 
+    degree.cutoff = 0, edge.width = function(x) {
+        5 * x^2
+    }, node.size = function(x) {
+        2.5 * log10(x)
+    }, group = FALSE, group.color = c("green","red" ), group.shape = c("circle", 
+        "square"), legend.parameter = list("topright"), show.legend = TRUE, plotting=TRUE,
+    ...) 
+{
+	library(igraph)
+	
+    x <- data.frame(x, group)
+    colnames(x)[length(colnames(x))] <- "Group"
+    x <- x[as.numeric( x[, pvalue]) < pvalue.cutoff, ]
+    x <- x[order(x[, pvalue]), ]
+    n <- min(nrow(x), n)
+    if (n == 0) {
+        stop("no enriched term found...")
+    }
+    x <- x[1:n, ]
+    index <- match(x[, node.id], names(gene.set))
+    geneSets <- list()
+    for (i in 1:n) {
+        geneSets[[i]] <- gene.set[[index[i]]]
+    }
+    names(geneSets) <- x[, node.name]
+    if (is.null(numChar)) {
+        numChar <- max(nchar(as.character(x[, node.name])))
+    }
+    else {
+        if (length(unique(substr(x[, node.name], 1, numChar))) < 
+            nrow(x)) {
+            numChar <- max(nchar(as.character(x[, node.name])))
+            message("Note : numChar is too small.", "\n")
+        }
+    }
+    x[, node.name] <- paste(substr(x[, node.name], 1, numChar), 
+        ifelse(nchar(as.character(x[, node.name])) > numChar, 
+            "...", ""), sep = "")
+    w <- matrix(NA, nrow = n, ncol = n)
+
+    for (i in 1:n) {
+        for (j in i:n) {
+            u <- unlist(geneSets[i])
+            v <- unlist(geneSets[j])
+            w[i, j] = length(intersect(u, v))/length(unique(c(u, 
+                v)))
+        }
+    }
+    list.edges <- stack(data.frame(w))
+    list.edges <- cbind(list.edges[, 1], rep(x[, node.name], 
+        n), rep(x[, node.name], each = n))
+    list.edges <- list.edges[list.edges[, 2] != list.edges[,3], ]
+    list.edges <- list.edges[!is.na(list.edges[, 1]), ]
+    g <- graph.data.frame(list.edges[, -1], directed = FALSE)
+    E(g)$width = edge.width(as.numeric(list.edges[, 1]))
+    V(g)$size <- node.size(lengths(geneSets))
+    g <- delete.edges(g, E(g)[as.numeric(list.edges[, 1]) < edge.cutoff])
+    index.deg <- igraph::degree(g) >= degree.cutoff
+    g <- delete.vertices(g, V(g)[!index.deg])
+    x <- x[index.deg, ]
+    index <- index[index.deg]
+    if (length(V(g)) == 0) {
+        stop("no categories greater than degree.cutoff...")
+    }
+    n <- min(nrow(x), n)
+    x <- x[1:n, ]
+    group.level <- sort(unique(group))
+    pvalues <- x[, pvalue]
+    for (i in 1:length(group.level)) {
+        index <- x[, "Group"] == group.level[i]
+        V(g)$shape[index] <- group.shape[i]
+        group.pvalues <- pvalues[index]
+        if (length(group.pvalues) > 0) {
+            if (max(group.pvalues) == min(group.pvalues)) {
+                V(g)$color[index] <- adjustcolor(group.color[i], 
+                  alpha.f = 0.5)
+            }
+            else {
+                V(g)$color[index] <- sapply(1 - (group.pvalues - 
+                  min(group.pvalues))/(max(group.pvalues) - min(group.pvalues)), 
+                  function(x) {
+                    adjustcolor(group.color[i], alpha.f = x)
+                  })
+            }
+        }
+    }
+	if(plotting) { 
+		plot(g,, vertex.label.dist=1, ...)
+		if (show.legend) {
+			legend.parameter$legend <- group.level
+			legend.parameter$text.col <- group.color
+			legend.parameter$bty <- "n"	
+			do.call(legend, legend.parameter)
+		}}
+    return(g)
+}
+
+
+enrichmentNetwork <- function(enrichedTerms){
+	geneLists = lapply(enrichedTerms$Genes, function(x) unlist( strsplit(as.character(x)," " )   ) )
+	names(geneLists)= enrichedTerms$Pathways
+	enrichedTerms$Direction = gsub(" .*","",enrichedTerms$Direction )
+
+	g <- enrich.net2(enrichedTerms, geneLists, node.id = "Pathways", numChar = 100, 
+	   pvalue = "adj.Pval", edge.cutoff = 0.2, pvalue.cutoff = 1, degree.cutoff = 0,
+	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 1, vertex.label.color = "black")
+
+}
+
+
 shinyServer(
   function(input, output,session){
     options(warn=-1)
@@ -352,6 +587,9 @@ shinyServer(
     observe({  updateSelectInput(session, "selectOrg", choices = speciesChoice )      })
 	#observe({  updateSelectInput(session, "selectGO", choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
      #                           "KEGG metabolic pathways" = "KEGG"), selected = "All")     })
+
+	 # update species for STRING-db related API access
+observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_species$official_name) ) 	})
 
 	# this defines an reactive object that can be accessed from other rendering functions
 	converted <- reactive({
@@ -465,6 +703,7 @@ output$downloadGeneInfo <- downloadHandler(
 			write.csv(conversionTableData(), file, row.names=FALSE)
 	    }
   )
+  
 output$table <-renderTable({
       if (input$goButton == 0  )    return()
 	  myMessage = "Those genes seem interesting! Let me see what I can do.
@@ -476,6 +715,39 @@ output$table <-renderTable({
 	  if(dim(tem$x)[2] ==1 ) tem$x else tem$x[,1:4]  # If no significant enrichment found x only has 1 column.
     }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
+significantOverlaps2 <- reactive({
+    if (input$goButton == 0  )    return()
+    tem <- significantOverlaps();
+    if(dim(tem$x)[2] ==1 ) return(NULL)
+	tem <- tem$x;
+    colnames(tem)= c("adj.Pval","nGenesList","nGenesCategor","Pathways","Genes")
+    tem$Direction ="Diff"	
+    tem
+})
+	
+output$GOTermsTree <- renderPlot({
+    if(input$goButton == 0) return(NULL)
+	if(is.null(significantOverlaps2() ) ) return(NULL)
+	enrichmentPlot(significantOverlaps2(), 52  )
+
+}, height=700, width=900)
+	
+output$GOTermsTree4Download <- downloadHandler(
+      filename = "GO_terms_Tree.tiff",
+      content = function(file) {
+	  tiff(file, width = 10, height = 6, units = 'in', res = 300, compression = 'lzw');
+	  enrichmentPlot(significantOverlaps2(), 45  )
+      dev.off()
+      })
+
+output$enrichmentNetworkPlot <- renderPlot({
+    if(is.null(significantOverlaps2())) return(NULL)
+	tem = input$removeRedudantSets
+	enrichmentNetwork(significantOverlaps2() )
+
+}, height=900)	  
+ 
+	  
 output$downloadEnrichment <- downloadHandler(
 	  filename = function() {"enrichment.csv"},
 		content = function(file) {
@@ -483,8 +755,274 @@ output$downloadEnrichment <- downloadHandler(
 	    }
   )
 
+ 
+#----------------------------------------------------
+# STRING-db functionality
+# find Taxonomy ID from species official name 
+findTaxonomyID <- reactive({
+      if (input$goButton == 0  )    return(NULL)
+		
+    if(!is.null(input$speciesName) ) { # if species name is entered
+	   ix = match(input$speciesName, STRING10_species$official_name)
+	   } else if( input$selectGO != "ID not recognized!" )
+	   { # if no species is entered, try to resolve species using existing info 	
+			codedNames = sapply(STRING10_species$compact_name,shortSpeciesNames )
+			ix = match( gsub("_.*","", converted()$species[1,1] ), codedNames)
+			if(input$selectOrg != speciesChoice[[1]]) {  # if species is entered
+				selectedSpecies = findSpeciesById(input$selectOrg)[1,1]
+				ix = match( gsub("_.*","", selectedSpecies ), codedNames)				
+			}
+
+		} else return(NULL) 
+ 
+    if(length(ix) == 0 | is.na(ix) ) return(NULL) 
+    return(STRING10_species$species_id[ix])
+})
+
+
+STRINGdb_geneList <- reactive({
+
+      if (input$goButton == 0  )    return(NULL)						   
+	library(STRINGdb,verbose=FALSE)
+
+
+		####################################
+
+		if( is.null(conversionTableData()) ) return(NULL) # this has to be outside of isolate() !!!
+		#if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+		NoSig = as.data.frame("No significant enrichment found.")
+		taxonomyID = findTaxonomyID()
+
+		if(is.null( taxonomyID ) ) return(NULL)
+
+		isolate({
+		withProgress(message=sample(quotes,1), detail ="Mapping gene ids (5 minutes)", {
+		
+		#Intialization
+		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+							   score_threshold=0, input_directory="" )
+				
+		# using expression data
+		genes <- conversionTableData()
+		colnames(genes)[3]=c("gene")
+		genes$lfc = 1
+		mapped <- string_db$map(genes,"gene", removeUnmappedRows = TRUE )
+
+		incProgress(1/4,detail = paste("up regulated")  )
+		up= subset(mapped, lfc>0, select="STRING_id", drop=TRUE )
+
+		incProgress(1/2, detail ="Down regulated")
+		down= subset(mapped, lfc<0, select="STRING_id", drop=TRUE )		
+		
+		mappingRatio = nrow(mapped)/ nrow(genes)
+		if(nrow(mapped) == 0) return(NULL) else
+		 return( list(up=up, down=down, ratio=mappingRatio, geneTable=mapped ) )
+		incProgress(1)
+		 })#progress
+		}) #isolate						   
+
+})
+
+output$STRINGDB_species_stat <- renderUI({
+	tem =""
+    if(is.null(input$speciesName) && !is.null(findTaxonomyID() ) ) {
+		ix = match(findTaxonomyID(), STRING10_species$species_id )
+		if(length(ix) !=0 && !is.na(ix) ) 
+		 tem = paste(tem, "If ",STRING10_species$official_name[ix], "is NOT the correct species, change below:")		
+	 }  else
+		 tem = paste(tem, " Select species below:")		
+		
+
+	return( HTML(tem) )
+
+}) 
+
+output$STRINGDB_mapping_stat <- renderText({
+						   
+      if (input$goButton == 0  )    return(NULL)	
+
+		if( is.null(STRINGdb_geneList() ) ) return("No genes mapped by STRINGdb. Please enter or double-check species name above.")
+		if(! is.null(STRINGdb_geneList() ) ) { 
+			tem=paste0( 100*round(STRINGdb_geneList()$ratio,3), "% genes mapped by STRING web server.")
+			if(STRINGdb_geneList()$ratio <0.3 ) tem = paste(tem, "Warning!!! Very few gene mapped. Double check if the correct species is selected.")
+			return( tem  )
+		}
+}) 
+
+stringDB_GO_enrichmentData <- reactive({
+      if (input$goButton == 0  )    return(NULL)	
+	library(STRINGdb,verbose=FALSE)
+
+	tem = input$STRINGdbGO
+		taxonomyID = findTaxonomyID(  )
+		if(is.null( taxonomyID ) ) return(NULL)		
+		####################################
+
+		#if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
+		NoSig = as.data.frame("No significant enrichment found.")
+		if(is.null(STRINGdb_geneList() ) ) return(NULL)
+		
+		isolate({
+		withProgress(message=sample(quotes,1), detail ="Enrichment analysis", {
+		#Intialization
+		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+							   score_threshold=0, input_directory="" )
+				
+		# using expression data
+
+		genes <- conversionTableData()
+		#rownames(genes)= genes[,3]
+		minGenesEnrichment=3
+		if(is.null(genes) ) return(NULL) 
+
+		if(dim(genes)[1] <= minGenesEnrichment ) return(NoSig) # if has only few genes
+		
+		fc = rep(1, dim(genes)[1] )		
+		# GO
+		results1 <- NULL; result <- NULL
+		pp <- 0
+		for( i in c(1) ) {
+			#incProgress(1/2,detail = paste("Mapping gene ids")  )
+			ids = STRINGdb_geneList()[[i]]
+			if( length(ids) <= minGenesEnrichment) next; 			
+			incProgress(1/3  )
+			result <- string_db$get_enrichment( ids, category = input$STRINGdbGO, methodMT = "fdr", iea = TRUE )
+			if(nrow(result) == 0 ) next; 
+			if(nrow(result) > 30)  result <- result[1:30,]
+
+			if( dim(result)[2] ==1) next;   # result could be NULL
+			#if(i == 1) result$direction = "Up regulated"  else result$direction = "Down regulated"
+			if (pp==0 ) { results1 <- result; pp = 1;} else  results1 = rbind(results1,result)
+		}
+
+		if ( pp == 0 ) return (NoSig)
+
+		if ( is.null( results1) ) return (NoSig)
+	
+		if( dim(results1)[2] == 1 ) return(NoSig)  # Returns a data frame: "No significant results found!"
+		
+		results1= results1[,c(5,3, 6)]
+		colnames(results1)= c("FDR","nGenes","GO terms or pathways")
+		minFDR = 0.01
+
+		if(min(results1$FDR) > minFDR ) results1 = as.data.frame("No signficant enrichment found.") else
+		results1 = results1[which(results1$FDR < minFDR),]
+		
+		incProgress(1, detail = paste("Done")) 
+		
+		if(dim(results1)[2] != 3) return(NoSig)
+		colnames(results1)= c("adj.Pval","nGenes","Pathways")
+		results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )	
+		rownames(results1)=1:nrow(results1)
+		#results1[ duplicated (results1[,1] ),1 ] <- ""  
+		
+		return( results1 )
+		 })#progress
+		}) #isolate						   
+
+}) 
+
+output$stringDB_GO_enrichment <- renderTable({
+		if(is.null(stringDB_GO_enrichmentData() ) ) return(NULL)
+
+		 stringDB_GO_enrichmentData()	   
+
+}, digits = 0,spacing="s",include.rownames=F,striped=TRUE,bordered = TRUE, width = "auto",hover=T) 
+
+output$STRING_enrichmentDownload <- downloadHandler(
+		filename = function() {paste0("STRING_enrichment",input$STRINGdbGO,".csv")},
+		content = function(file) {
+			write.csv(stringDB_GO_enrichmentData(), file)
+	    }
+	) 
+
+
+  
+output$stringDB_network1 <- renderPlot({
+	library(STRINGdb)
+      if (input$goButton == 0  )    return(NULL)							   
+
+		tem = input$STRINGdbGO
+		tem = input$nGenesPPI
+		taxonomyID = findTaxonomyID( )
+		if(is.null( taxonomyID ) ) return(NULL)		
+		####################################
+
+		if(is.null(STRINGdb_geneList() ) ) return(NULL)
+
+		isolate({
+		withProgress(message=sample(quotes,1), detail ="Enrichment analysis", {
+		#Intialization
+		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+							   score_threshold=0, input_directory="" )
+		# only up regulated is ploted		
+		   ngenes1 = input$nGenesPPI
+		   if(ngenes1 <2) ngenes1 = 2
+		for( i in c(1:1) ) {
+			incProgress(1/2,detail = paste("Plotting network")  )
+			
+		
+			ids = STRINGdb_geneList()[[i]]
+			if(length(ids)> ngenes1 )  # n of genes cannot be more than 400
+				ids <- ids[1:ngenes1]
+			incProgress(1/3  )
+			string_db$plot_network( ids,add_link=FALSE)
+
+
+		}
+
+		 })#progress
+		}) #isolate						   
+}, width = 1000, height=600)
+
+output$stringDB_network_link <- renderUI({
+		library(STRINGdb,verbose=FALSE)
+						   
+		tem = input$STRINGdbGO
+		tem = input$nGenesPPI
+		taxonomyID = findTaxonomyID( )
+		if(is.null( taxonomyID ) ) return(NULL)		
+		
+		####################################
+		if(is.null(STRINGdb_geneList() ) ) return(NULL)
+		
+		isolate({
+		withProgress(message=sample(quotes,1), detail ="PPI Enrichment and link", {
+		#Intialization
+		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+							   score_threshold=0, input_directory="" )
+			# upregulated
+		   ids = STRINGdb_geneList()[[1]]
+		   
+		   ngenes1 = input$nGenesPPI
+		   if(ngenes1 <2) ngenes1 = 2
+		   
+			if(length(ids)> ngenes1 )  # n of genes cannot be more than 400
+				ids <- ids[1:ngenes1]
+			incProgress(1/4  )
+			link1 = string_db$get_link( ids)
+			Pval1 = string_db$get_ppi_enrichment( ids)
+
+			tem = paste( "<a href=\"", link1, "\" target=\"_blank\"> Click here for an interactive and annotated network </a>"  )
+           tem2 = paste("<h5> PPI enrichment P value: ")  
+			tem2 = paste0(tem2, sprintf("%-3.2e",Pval1[1]))
+			tem2 = paste(tem2, ".</h5>  <h5> Small P value indicates more PPIs among your proteins than background. </h5>" )
+			tem = paste(tem2,tem )
+			return(HTML(tem))	
+		
+			incProgress(1  )
+
+		 })#progress
+		}) #isolate			
+
+}) 
+	
+	
+	
+
+	
     # this updates geneset categories based on species and file
-    output$selectGO1 <- renderUI({
+output$selectGO1 <- renderUI({
       if (input$goButton == 0 | class(significantOverlaps())=="data.frame"  )
        { selectInput("selectGO", label = NULL, # h6("Funtional Category"),
                   choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
@@ -493,9 +1031,10 @@ output$downloadEnrichment <- downloadHandler(
 	  selectInput("selectGO", label=NULL,choices=significantOverlaps()$categoryChoices,selected="GOBP" )   }
 	})
 
-	output$tableDetail <-renderTable({
+output$tableDetail <-renderTable({
       if (input$goButton == 0)    return()
       tem <- significantOverlaps(); tem$x
+	  
     }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
 	output$grouping <-renderTable({
@@ -522,7 +1061,7 @@ output$downloadGrouping <- downloadHandler(
      # Ddx39b excluded as it has multiple ensembl gene ids?
 	})
 
-    output$genomePlot <- renderPlot({
+ output$genomePlot <- renderPlot({
 	  if (input$goButton == 0  )    return()
 	  isolate( {
        x = geneInfoLookup()
@@ -586,7 +1125,8 @@ output$downloadGrouping <- downloadHandler(
 	   x2 = x[which(x$gene_biotype == "protein_coding"),]  # only coding for some analyses
      if(dim(x)[1]>=minGenes) # only making plots if more than 20 genes
        { # only plot when there 10 genes or more   # some columns have too many missing values
-	   par(mfrow=c(5,2))
+	   par(mfrow=c(10,1))
+	   par(mar=c(8,6,8,2))
    	   #chromosomes
 	   if( sum(!is.na( x$chromosome_name) ) >= minGenes && length(unique(x$chromosome_name) ) > 2 && length(which(x$Set == "List") ) > minGenes )
 	   {
@@ -595,15 +1135,19 @@ output$downloadGrouping <- downloadHandler(
 		   if(dim(freq)[2] >1 && dim(freq)[1]>1 ) { # some organisms do not have fully seuqence genome: chr. names: scaffold_99816
 				Pval = chisq.test(freq)$p.value
 				sig = paste("Distribution of query genes on chromosomes \nChi-squared test P=",formatC(Pval, digits=2, format="G") )
-			   if( Pval <PvalGeneInfo)  sig = paste(sig," ****************" )
+			   if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
 			   freq <- freq[order( as.numeric(row.names(freq) )), ]
 				freq[,1] <- freq[,1] *colSums(freq)[2]/colSums(freq)[1] # expected
 				freq = freq[,c(2,1)] # reverse order
-			   barplot(t(freq), beside=TRUE,las=3,col=c("red","lightgrey"), ylab="Number of Genes",main= sig,xlab =c("Chromosome") )
-		   legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n")
+			   barplot(t(freq), beside=TRUE,las=3,col=c("red","lightgrey"), ylab="Number of Genes",main= sig,
+			   cex.lab=1.5, cex.axis= 2,cex.names=2, cex.main=1.5   )
+
+		   legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n", cex =2)
 			}
 		}
 		incProgress(1/8)
+		
+		
 	   # gene type
 	    if( sum(!is.na( x$gene_biotype) ) >= minGenes && length(unique(x$gene_biotype) ) > 2  && length(which(x$Set == "List") ) > minGenes ) {
 	 	freq = table( x$gene_biotype,x$Set );
@@ -611,20 +1155,33 @@ output$downloadGrouping <- downloadHandler(
 	   if(dim(freq)[2] >1 && dim(freq)[1]>1 ) {
 	    Pval = chisq.test(freq)$p.value
 		sig=paste("Distribution by gene type \nChi-squared test P=",formatC(Pval, digits=2, format="G") )
-        if( Pval <PvalGeneInfo)  sig = paste(sig," ****************" )
+        if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
 		freq <- freq[order(    freq[,1], decreasing=T), ]
 		freq[,1] <- freq[,1] *colSums(freq)[2]/colSums(freq)[1]
 		tem = gsub("protein_coding","Coding",rownames(freq));
 		tem =gsub("processed_pseudogene","proc_pseudo",tem)
 	    tem =gsub("processed","proc",tem); #row.names(freq)= tem
-		par(mar=c(12,4.1,4.1,2.1))
+		par(mar=c(20,6,4.1,2.1))
 		freq = freq[,c(2,1)] # reverse order
+		head(freq)
+		
         barplot(t(freq), beside=TRUE,las=2,col=c("red","lightgrey"), ylab="Number of Genes",
-	      main= sig)
-	    legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n")
-		} }
-		incProgress(1/8)
+	      main= sig,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
 
+	    legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n", cex=2)
+		if(0) { 
+        plt = barplot(t(freq), beside=TRUE,las=2,col=c("red","lightgrey"), ylab="Number of Genes",
+	      main= sig,cex.lab=1.5, cex.axis= 2, cex.names=1.5, cex.main=1.5, str=45, adj=1, xpd=TRUE,xaxt="n" )
+		text( plt,par("usr")[3], labels = rownames(freq), srt = 45, adj=c(1.1,1.1), xpd=TRUE ,cex = 1.5  )
+		}
+
+
+		}
+		}
+		
+		
+		incProgress(1/8)
+		par(mar=c(12,6,4.1,2.1))
         # N. exons
 
 		if( sum(!is.na( x2$nExons) ) >= minGenes && length(unique(x2$nExons) ) > 2  && length(which(x2$Set == "List") ) > minGenes ) {
@@ -633,13 +1190,13 @@ output$downloadGrouping <- downloadHandler(
 	    if(dim(freq)[2] >1 && dim(freq)[1]>1 ) {
 	    Pval = chisq.test(freq)$p.value
 		sig=paste("Number of exons (coding genes only) \nChi-squared test P=",formatC(Pval, digits=2, format="G") )
-        if( Pval <PvalGeneInfo)  sig = paste(sig," ****************" )
-		freq <- freq[order(    freq[,1], decreasing=T), ]
+        if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
+		#freq <- freq[order(    freq[,1], decreasing=T), ]
 		freq[,1] <- freq[,1] *colSums(freq)[2]/colSums(freq)[1]
 		freq = freq[,c(2,1)] # reverse order
         barplot(t(freq), beside=TRUE,las=2,col=c("red","lightgrey"), ylab="Number of Genes",
-	      main= sig ,xlab =c("Number of exons"))
-	    legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n")
+	      main= sig ,xlab =c("Number of exons"),cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
+	    legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n",cex=2)
 		}}
 		incProgress(1/8)
 
@@ -650,45 +1207,45 @@ output$downloadGrouping <- downloadHandler(
 		if(dim(freq)[2] >1 && dim(freq)[1]>1 ) {
 	    Pval = chisq.test(freq)$p.value
 		sig=paste("Number of transcript isoforms per coding gene \nChi-squared test P=",formatC(Pval, digits=2, format="G"))
-        if( Pval <PvalGeneInfo)  sig = paste(sig," ****************" )
+        if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
 		freq <- freq[order(    freq[,1], decreasing=T), ]
 		freq[,1] <- freq[,1] *colSums(freq)[2]/colSums(freq)[1]
 		freq = freq[,c(2,1)] # reverse order
         barplot(t(freq), beside=TRUE,las=2,col=c("red","lightgrey"), ylab="Number of Genes",
-	      main= sig,xlab =c("Number of transcripts per gene") )
-	    legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n")
+	      main= sig,xlab =c("Number of transcripts per gene") ,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5 )
+	    legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n",cex=2)
        } }
 	   incProgress(1/8)
 
 	  if( sum(!is.na( x2$cds_length) ) >= minGenes && length(unique(x2$cds_length) ) > 2 && length(which(x2$Set == "List") ) > minGenes) {
 	   Pval = t.test(cds_length~Set, data=x2 )$p.value
 	   sig = paste("Coding Sequence length \n T-test P=",formatC(Pval, digits=2, format="G"),sep="")
-	   if( Pval <PvalGeneInfo)  sig = paste(sig," ****************" )
-	   boxplot(cds_length~Set,ylim=c(0,4000), data=x,main=sig)
+	   if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
+	   boxplot(cds_length~Set,ylim=c(0,4000), data=x,main=sig ,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
        }
 	   incProgress(1/8)
 
 	  if( sum(!is.na( x2$transcript_length) ) >= minGenes && length(unique(x2$transcript_length) ) > 2 && length(which(x2$Set == "List") ) > minGenes ) {
        Pval = t.test(transcript_length~Set, data=x2 )$p.value
 	   sig = paste("Transcript length (coding genes only)\nT-test  P=",formatC(Pval, digits=2, format="G"),sep="")
-	   if( Pval <PvalGeneInfo)  sig = paste(sig," ****************" )
-	   boxplot(transcript_length~Set,ylim=c(0,6000), data=x,main=sig)
+	   if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
+	   boxplot(transcript_length~Set,ylim=c(0,6000), data=x,main=sig,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
 	  }
 	  incProgress(1/8)
 
 	  if( sum(!is.na( x2$genomeSpan) ) >= minGenes && length(unique(x2$genomeSpan) ) > 2 && length(which(x2$Set == "List") ) > minGenes ) {
        Pval = t.test(genomeSpan~Set, data=x2 )$p.value
 	   sig = paste("Genome span (coding genes only) T-test \n P=",formatC(Pval, digits=2, format="G"),sep="")
-	   if( Pval <PvalGeneInfo)  sig = paste(sig," ****************" )
-	   boxplot(genomeSpan~Set,ylim=c(0,80000), data=x,main=sig)
+	   if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
+	   boxplot(genomeSpan~Set,ylim=c(0,80000), data=x,main=sig,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
 	   }
 	   incProgress(1/8)
 
 	  if( sum(!is.na( x2$FiveUTR) ) >= minGenes && length(unique(x2$FiveUTR) ) > 2 && length(which(x2$Set == "List") ) > minGenes ) {
        Pval = t.test(FiveUTR~Set, data=x2 )$p.value
 	   sig = paste("5' UTR length (coding genes only)\n T-test P=",formatC(Pval, digits=2, format="G"),sep="")
-	   if( Pval <PvalGeneInfo)  sig = paste(sig," ****************" )
-	   boxplot(FiveUTR~Set, data=x,ylim=c(0,400),main=sig)
+	   if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
+	   boxplot(FiveUTR~Set, data=x,ylim=c(0,400),main=sig,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
 	}
 	incProgress(1/8)
 
@@ -696,20 +1253,22 @@ output$downloadGrouping <- downloadHandler(
        Pval = t.test(ThreeUTR~Set, data=x2 )$p.value
 	   sig = paste("3' UTR length (coding genes only) \n T-test P=",formatC(Pval, digits=2, format="G"),sep="")
 	   if( Pval <PvalGeneInfo)  sig = paste(sig," ****************" )
-	   boxplot(ThreeUTR~Set, ylim=c(0,2000),data=x,main=sig)
+	   boxplot(ThreeUTR~Set, ylim=c(0,2000),data=x,main=sig,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
 	  }
 	  incProgress(1/8)
 
 	  if( sum(!is.na( x2$percentage_gc_content) ) >= minGenes && length(unique(x2$percentage_gc_content) ) > 2 && length(which(x2$Set == "List") ) > minGenes ) {
        Pval = t.test(percentage_gc_content~Set, data=x2 )$p.value
 	   sig = paste("%GC content (coding genes only)\n T-test P=",formatC(Pval, digits=2, format="G"),sep="")
-	   if( Pval <PvalGeneInfo)  sig = paste(sig," ****************" )
-	   boxplot(percentage_gc_content~Set, ylim = c(20,80), data=x,main=sig)
+	   if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
+	   boxplot(percentage_gc_content~Set, ylim = c(20,80), data=x,main=sig,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
 	   }
      } # if minGenes
 	 incProgress(1/8, detail = paste("Done"))	  })
 	 }) #isolate
-    }, height = 1500, width = 600)
+    }, height = 4000)
+	
+
 
     }
 )

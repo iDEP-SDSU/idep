@@ -1,14 +1,14 @@
 library(shiny)
+library(shinyBS,verbose=FALSE) # for popup figures
 shinyUI(
   fluidPage(
     # Application title
-    titlePanel("ShinyGO: Gene Ontology Enrichment Analysis & More v0.1"),
-      h5("Based on annotation of 69 metazoa and 42 plant genomes in Ensembl BioMart as of 11/15/2016."
+    titlePanel("ShinyGO v0.2: Gene Ontology Enrichment Analysis & More "),
+      h5("Based on annotation of 163 animal and 45 plant genomes in Ensembl BioMart as of 12/15/2017."
             ," Additional  data from",a("MSigDB (human),", href="https://doi.org/10.1093/bioinformatics/btr260") 
          ,a("GSKB (mouse)", href="http://biorxiv.org/content/early/2016/10/24/082511") 
          ,"and",a("  araPath (arabidopsis).", href="https://doi.org/10.1093/bioinformatics/bts421") 
-         , "Built with R and", a("Shiny!",href="http://shiny.rstudio.com/")
-         ," For feedbacks or data contributions (genes and GO mapping of any species), please"
+         ," For feedbacks or data contributions, please"
          ,a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=ShinyGO" )
          , "or visit our",a(" homepage.", href="http://ge-lab.org/")
          ),
@@ -34,15 +34,58 @@ shinyUI(
 		                     downloadButton('downloadEnrichment', 'Download') )  
 		    )
         ,tabPanel("Details", tableOutput('tableDetail')  )
+		,tabPanel("Tree", downloadButton('GOTermsTree4Download','Figure' ),plotOutput('GOTermsTree')   )
+		,tabPanel("Network", plotOutput('enrichmentNetworkPlot')   )
+
         ,tabPanel("Genes", tableOutput("conversionTable"), downloadButton('downloadGeneInfo', 'Download')  )
         ,tabPanel("Groups", tableOutput("grouping"), downloadButton('downloadGrouping', 'Download')   )          
         ,tabPanel("Plots", plotOutput("genePlot")  )
         , tabPanel("Genome", plotOutput("genomePlot", width = "100%")  )
         ,tabPanel("Promoter", tableOutput("promoter"), downloadButton('downloadPromoter', 'Download')   )  
+		,tabPanel("STRING API", 
+						h5("ShinyGO tries to match your species with the 115 archaeal, 1678 bacterial, 
+						and 238 eukaryotic species in the",
+							a(" STRING server", href="https://string-db.org/",target="_blank"),
+								" and send the genes. If it is running, please wait until it finishes. This can take 5 minutes, especially for the first time when iDEP downloads large annotation files.")
+						,htmlOutput("STRINGDB_species_stat") 
+						,tags$head(tags$style("#STRINGDB_species_stat{color: blue;font-size: 15px;}"))						
+						, selectizeInput('speciesName', label=NULL,choices = " ",
+							   multiple = TRUE, options = list(maxItems = 1,							 
+								 placeholder = 'Species name (e.g. Homo sapiens)',
+								 onInitialize = I('function() { this.setValue(""); }')
+							   )
+							 )
+						,textOutput('STRINGDB_mapping_stat')
+						,tags$head(tags$style("#STRINGDB_mapping_stat{color: blue;font-size: 15px;}"))
+						,br()
+				,actionButton("ModalPPI","PPI network of DEGs"),br(),br()
+						,selectInput("STRINGdbGO", label="Functional Enrichment", choices = list("GO Biological Process"= "Process"
+																			  ,"GO Cellular Component"= "Component"
+																			  ,"GO Molecular Function"= "Function"
+																			  ,"KEGG" = "KEGG"
+																			  ,"Pfam" = "Pfam"
+																			  ,"InterPro" = "InterPro")
+																, selected = "Process")							
+						#,actionButton("submit2STRINGdb", "Submit")
+						,downloadButton("STRING_enrichmentDownload")
+						,tableOutput("stringDB_GO_enrichment")		
+		
+		)				
        ) #tabsetPanel
+	   ,bsModal("ModalExamplePPI", "Protein-protein interaction(PPIs) networks ", "ModalPPI", size = "large"
+		,h5("By sending your genes to the STRING website, 
+			shinyGO is retrieving a sub-network, calculating PPI enrichment, 
+		  and generating custom URLs to the STRING website containing your genes. This can take 5 minutes. Patience will pay off! ")
+		,sliderInput("nGenesPPI", label = h5("Genes to include:"), min = 0, max = 400, value = 20,step=10) 
+		,htmlOutput("stringDB_network_link")
+		,tags$head(tags$style("#stringDB_network_link{color: blue; font-size: 15px;}"))
+
+		,plotOutput("stringDB_network1")		 	   
+   
+     )# bsModal
      ) # mainPanel
-    ), #sidebarLayout
-    tags$head(includeScript("google_analytics.js")) # tracking usage
+    ) #sidebarLayout
+    ,tags$head(includeScript("google_analytics.js")) # tracking usage
   ) #fluidPage
 )
 
