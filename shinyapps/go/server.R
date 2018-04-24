@@ -1,3 +1,7 @@
+#1. selectGO updates
+#2. pathview
+
+
 library(shiny)
 library(RSQLite)
 
@@ -42,17 +46,6 @@ motifFiles = list.files(path = paste0(datapath,"motif"),pattern=".*\\.db")
 motifFiles = paste(datapath,"motif/",motifFiles,sep="")
 
 STRING10_species = read.csv("STRING10_species.csv")
-
-# # Create a list of GMT files in /gmt sub folder
-# gmtFiles = list.files(path = "./pathwayDB",pattern=".*\\.db")
-# gmtFiles = paste("pathwayDB/",gmtFiles,sep="")
-
-# geneInfoFiles = list.files(path = "./geneInfo",pattern=".*GeneInfo\\.csv")
-# geneInfoFiles = paste("geneInfo/",geneInfoFiles,sep="")
-
-# motifFiles = list.files(path = "./motif",pattern=".*\\.db")
-# motifFiles = paste("motif/",motifFiles,sep="")
-
 
 # Create a list for Select Input options
 orgInfo <- dbGetQuery(convert, paste("select distinct * from orgInfo " ))
@@ -271,7 +264,7 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR) {
   x= cbind(x,sapply( x$pathwayID, sharedGenesPrefered ) )
   colnames(x)[7]= "Genes"
   x <- subset(x,select = c(FDR,overlap,n,description,Genes) )
-  colnames(x) = c("Corrected P value (FDR)", "Genes in list", "Total genes in category","Functional Category","Genes"  )
+  colnames(x) = c("Enrichment FDR", "Genes in list", "Total genes","Functional Category","Genes"  )
   }
 
  dbDisconnect(pathway)
@@ -351,7 +344,6 @@ promoter <- function (converted,selectOrg, radio){
     return( TFs )
    }
 }
-
 
 
 mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
@@ -579,45 +571,142 @@ enrichmentNetwork <- function(enrichedTerms){
 
 }
 
+keggSpeciesID = read.csv(paste0(datapath,"data_go/KEGG_Species_ID.csv"))
 
+# finds id index corresponding to entrez gene and KEGG for id conversion
+idType_Entrez <- dbGetQuery(convert, paste("select distinct * from idIndex where idType = 'entrezgene'" ))
+if(dim(idType_Entrez)[1] != 1) {cat("Warning! entrezgene ID not found!")}
+idType_Entrez = as.numeric( idType_Entrez[1,1])
+idType_KEGG <- dbGetQuery(convert, paste("select distinct * from idIndex where idType = 'kegg'" ))
+if(dim(idType_KEGG)[1] != 1) {cat("Warning! KEGG ID not found!")}
+idType_KEGG = as.numeric( idType_KEGG[1,1])
+
+convertEnsembl2Entrez <- function (query,Species) { 
+	querySet <- cleanGeneSet( unlist( strsplit( toupper(names( query)),'\t| |\n|\\,' )  ) )
+	speciesID <- orgInfo$id[ which(orgInfo$ensembl_dataset == Species)]  # note uses species Identifying
+	# idType 6 for entrez gene ID
+	result <- dbGetQuery( convert,
+						paste( " select  id,ens,species from mapping where ens IN ('", paste(querySet,collapse="', '"),
+								"') AND  idType ='",idType_Entrez,"'",sep="") )	# slow
+							
+	if( dim(result)[1] == 0  ) return(NULL)
+	result <- subset(result, species==speciesID, select = -species)
+
+	ix = match(result$ens,names(query)  )
+
+	tem <- query[ix];  names(tem) = result$id
+	return(tem)
+  
+}
+
+#Given a KEGG pathway description, found pathway ids
+keggPathwayID <- function (pathwayDescription, Species, GO,selectOrg) {
+	ix = grep(Species,gmtFiles)
+
+	if (length(ix) == 0 ) {return(NULL)}
+	
+	# If selected species is not the default "bestMatch", use that species directly
+	if(selectOrg != speciesChoice[[1]]) {  
+		ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
+		if (length(ix) == 0 ) {return(NULL )}
+		totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
+	}
+	pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
+	
+	# change Parkinson's disease to Parkinson\'s disease    otherwise SQL 
+	pathwayDescription <- gsub("\'","\'\'",pathwayDescription)
+							
+	pathwayInfo <- dbGetQuery( pathway, paste( " select * from pathwayInfo where description =  '", 
+							pathwayDescription,   "' AND name LIKE '",GO,"%'",sep="") )
+	dbDisconnect(pathway);
+	if(dim(pathwayInfo)[1] != 1 ) {return(NULL) }
+	tem = gsub(".*:","",pathwayInfo[1,2])  
+	return( gsub("_.*","",tem) )
+}
+
+# not working, for updating GO cateory choices
+gmtCategory <- function (converted,  selectOrg) {
+
+	idNotRecognized = as.data.frame("ID not recognized!")
+	if(is.null(converted) ) return(idNotRecognized) # no ID 
+	querySet <- converted$IDs
+	if(length(querySet) == 0) return(idNotRecognized )
+	ix = grep(converted$species[1,1],gmtFiles)
+	if (length(ix) == 0 ) {return(idNotRecognized )}
+	
+	# If selected species is not the default "bestMatch", use that species directly
+	if(selectOrg != speciesChoice[[1]]) {  
+		ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
+		if (length(ix) == 0 ) {return(idNotRecognized )}
+	}
+	pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
+	#cat(paste("selectOrg:",selectOrg) )
+	# Generate a list of geneset categories such as "GOBP", "KEGG" from file
+	geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
+	geneSetCategory  <- sort( geneSetCategory[,1] )
+	categoryChoices <- setNames(as.list( geneSetCategory ), geneSetCategory )
+	categoryChoices <- append( setNames( "All","All available gene sets"), categoryChoices  )
+	
+	# move one element to the 2nd place
+	move1 <- function(i) c(categoryChoices[1],categoryChoices[i],categoryChoices[-c(1,i)])
+	i = which( names(categoryChoices)  == "KEGG"); categoryChoices= move1(i);	
+	i = which( names(categoryChoices)  == "GOMF"); categoryChoices= move1(i);	
+	i = which( names(categoryChoices)  == "GOCC"); categoryChoices= move1(i);	
+	i = which( names(categoryChoices)  == "GOBP"); categoryChoices= move1(i);
+	#change GOBP to the full description for display
+	names(categoryChoices)[ match("GOBP",categoryChoices)  ] <- "GO Biological Process"
+	names(categoryChoices)[ match("GOCC",categoryChoices)  ] <- "GO Cellular Component"
+	names(categoryChoices)[ match("GOMF",categoryChoices)  ] <- "GO Molecular Function"
+	
+	dbDisconnect(pathway)
+	return(categoryChoices )
+} 
+ 
 shinyServer(
   function(input, output,session){
     options(warn=-1)
 
     observe({  updateSelectInput(session, "selectOrg", choices = speciesChoice )      })
-	#observe({  updateSelectInput(session, "selectGO", choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
-     #                           "KEGG metabolic pathways" = "KEGG"), selected = "All")     })
 
 	 # update species for STRING-db related API access
-observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_species$official_name) ) 	})
+	 
+ # tried to solve the double reflashing problems	 
+ #https://stackoverflow.com/questions/30991900/avoid-double-refresh-of-plot-in-shiny
+ #observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_species$official_name) ) 	})
+ #click_saved <- reactiveValues(GO = NULL)
+ #observeEvent(eventExpr = input$selectGO, handlerExpr = { click_saved$GO <- input$selectGO })
+
+
 
 	# this defines an reactive object that can be accessed from other rendering functions
-	converted <- reactive({
+converted <- reactive({
 	  if (input$goButton == 0)    return()
 
-      isolate( {  convertID(input$input_text,input$selectOrg );})
+      convertID(input$input_text,input$selectOrg );
 
 	} )
 
-	geneInfoLookup <- reactive({
+geneInfoLookup <- reactive({
 	  if (input$goButton == 0)    return()
-
-      isolate( { geneInfo(converted(),input$selectOrg )  }) # uses converted gene ids thru converted() call
+		geneInfo(converted(),input$selectOrg )   # uses converted gene ids thru converted() call
 
 	} )
 
-	significantOverlaps <- reactive({
-	  if (input$goButton == 0) return()
-    isolate( {
+significantOverlaps <- reactive({
+	  if (input$goButton == 0 | is.null( input$selectGO) ) return()
+	  isolate({ 
+	  withProgress(message= sample(quotes,1),detail="enrichment analysis", {
   	  #gene info is passed to enable lookup of gene symbols
   	  tem = geneInfoLookup(); tem <- tem[which( tem$Set == "List"),]
   	  FindOverlap( converted(), tem, input$selectGO,input$selectOrg,input$minFDR )
-    })
+	  })
+	})
 	})
 
 
-  output$species <-renderTable({
+output$species <-renderTable({
     if (input$goButton == 0)    return()
+	tem = input$selectGO; tem=input$selectOrg; tem=input$minFDR
     isolate( {  #tem <- convertID(input$input_text,input$selectOrg );
 	  	  withProgress(message="Converting gene IDs", {
                   tem <- converted()
@@ -633,6 +722,7 @@ observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_sp
 promoterData <-reactive({
   if (input$goButton == 0)    return()
 	  tem = input$radio
+	  tem = input$selectOrg
       isolate( {
 	    myMessage ="Promoter analysis";
 		  withProgress(message= sample(quotes,1),detail=myMessage, {
@@ -647,7 +737,7 @@ promoterData <-reactive({
 
 output$promoter <-renderTable({
   if (input$goButton == 0)    return()
-	tem = input$radio
+	tem = input$radio; tem = input$selectOrg
   isolate( {
     promoterData()
   }) # avoid showing things initially
@@ -662,7 +752,8 @@ output$downloadPromoter <- downloadHandler(
 
 conversionTableData <- reactive({
       if (input$goButton == 0)    return()   # still have problems when geneInfo is not found!!!!!
-      isolate( {
+    tem = input$selectGO; tem=input$selectOrg; tem=input$minFDR
+	isolate( {
           tem <- converted();
           tem2 <- geneInfoLookup()
 				  if( is.null(tem)) {as.data.frame("ID not recognized.")} else {
@@ -690,6 +781,7 @@ conversionTableData <- reactive({
 
 output$conversionTable <-renderTable({
       if (input$goButton == 0)    return()   # still have problems when geneInfo is not found!!!!!
+
       isolate( {
 	  conversionTableData()
 
@@ -704,19 +796,25 @@ output$downloadGeneInfo <- downloadHandler(
 	    }
   )
   
-output$table <-renderTable({
-      if (input$goButton == 0  )    return()
+output$EnrichmentTable <-renderTable({
+      if (input$goButton == 0  )    return(NULL)
+
 	  myMessage = "Those genes seem interesting! Let me see what I can do.
 	   I am comparing your query genes to all 150+ types of IDs across 111 species.
 	  This can take up to 3 years. "
+	  if(is.null(significantOverlaps() ) ) return(NULL)
 	  withProgress(message= sample(quotes,1),detail=myMessage, {
-		tem <- significantOverlaps();
+	  tem <- significantOverlaps();
 	  incProgress(1, detail = paste("Done"))	  })
 	  if(dim(tem$x)[2] ==1 ) tem$x else tem$x[,1:4]  # If no significant enrichment found x only has 1 column.
+      	 tem$x[,2]<- as.character (tem$x[,2])
+
+		return( tem$x[,1:4]  )
     }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
 significantOverlaps2 <- reactive({
     if (input$goButton == 0  )    return()
+
     tem <- significantOverlaps();
     if(dim(tem$x)[2] ==1 ) return(NULL)
 	tem <- tem$x;
@@ -727,6 +825,7 @@ significantOverlaps2 <- reactive({
 	
 output$GOTermsTree <- renderPlot({
     if(input$goButton == 0) return(NULL)
+
 	if(is.null(significantOverlaps2() ) ) return(NULL)
 	enrichmentPlot(significantOverlaps2(), 52  )
 
@@ -742,7 +841,7 @@ output$GOTermsTree4Download <- downloadHandler(
 
 output$enrichmentNetworkPlot <- renderPlot({
     if(is.null(significantOverlaps2())) return(NULL)
-	tem = input$removeRedudantSets
+
 	enrichmentNetwork(significantOverlaps2() )
 
 }, height=900)	  
@@ -761,7 +860,7 @@ output$downloadEnrichment <- downloadHandler(
 # find Taxonomy ID from species official name 
 findTaxonomyID <- reactive({
       if (input$goButton == 0  )    return(NULL)
-		
+
     if(!is.null(input$speciesName) ) { # if species name is entered
 	   ix = match(input$speciesName, STRING10_species$official_name)
 	   } else if( input$selectGO != "ID not recognized!" )
@@ -783,8 +882,8 @@ findTaxonomyID <- reactive({
 STRINGdb_geneList <- reactive({
 
       if (input$goButton == 0  )    return(NULL)						   
-	library(STRINGdb,verbose=FALSE)
-
+		library(STRINGdb,verbose=FALSE)
+	  tem=input$selectOrg; 
 
 		####################################
 
@@ -824,6 +923,7 @@ STRINGdb_geneList <- reactive({
 })
 
 output$STRINGDB_species_stat <- renderUI({
+
 	tem =""
     if(is.null(input$speciesName) && !is.null(findTaxonomyID() ) ) {
 		ix = match(findTaxonomyID(), STRING10_species$species_id )
@@ -850,7 +950,8 @@ output$STRINGDB_mapping_stat <- renderText({
 }) 
 
 stringDB_GO_enrichmentData <- reactive({
-      if (input$goButton == 0  )    return(NULL)	
+      if (input$goButton == 0  )    return(NULL)
+
 	library(STRINGdb,verbose=FALSE)
 
 	tem = input$STRINGdbGO
@@ -940,7 +1041,8 @@ output$STRING_enrichmentDownload <- downloadHandler(
   
 output$stringDB_network1 <- renderPlot({
 	library(STRINGdb)
-      if (input$goButton == 0  )    return(NULL)							   
+      if (input$goButton == 0  )    return(NULL)		
+  
 
 		tem = input$STRINGdbGO
 		tem = input$nGenesPPI
@@ -977,7 +1079,7 @@ output$stringDB_network1 <- renderPlot({
 
 output$stringDB_network_link <- renderUI({
 		library(STRINGdb,verbose=FALSE)
-						   
+					   
 		tem = input$STRINGdbGO
 		tem = input$nGenesPPI
 		taxonomyID = findTaxonomyID( )
@@ -1018,32 +1120,31 @@ output$stringDB_network_link <- renderUI({
 }) 
 	
 	
-	
+output$selectGO1 <- renderUI({   # gene set for pathway analysis
+	  if(input$goButton == 0 ) return(NULL)
+	  
+	  selectInput("selectGO", label=NULL,
+		choices=gmtCategory(converted(), input$selectOrg),
+	    selected = "GOBP" )    	
+		
 
-	
-    # this updates geneset categories based on species and file
-output$selectGO1 <- renderUI({
-      if (input$goButton == 0 | class(significantOverlaps())=="data.frame"  )
-       { selectInput("selectGO", label = NULL, # h6("Funtional Category"),
-                  choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
-                                "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else {
-
-	  selectInput("selectGO", label=NULL,choices=significantOverlaps()$categoryChoices,selected="GOBP" )   }
-	})
-
+		
+		
+	})	
 output$tableDetail <-renderTable({
       if (input$goButton == 0)    return()
+
       tem <- significantOverlaps(); tem$x
 	  
     }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
-	output$grouping <-renderTable({
+output$grouping <-renderTable({
       if (input$goButton == 0)    return()
 	  myMessage = "Just a minute. Matching your genes with level 2 and level 3 Gene Ontology biological process terms.
 	       This can take up to 1 minute as we have to glue together a large number of gene names. "
 	 withProgress(message=sample(quotes,1), detail =myMessage , {
 
-        tem <- significantOverlaps()
+     tem <- significantOverlaps()
 
     incProgress(1, detail = paste("Done"))	  })
 	tem$groupings
@@ -1063,6 +1164,7 @@ output$downloadGrouping <- downloadHandler(
 
  output$genomePlot <- renderPlot({
 	  if (input$goButton == 0  )    return()
+	  tem=input$selectOrg; 
 	  isolate( {
        x = geneInfoLookup()
        converted1 = converted()
@@ -1118,8 +1220,9 @@ output$downloadGrouping <- downloadHandler(
 
 
   output$genePlot <- renderPlot({
-	   	  if (input$goButton == 0  )    return()
-		    isolate( {
+	   if (input$goButton == 0  )    return()
+	  tem=input$selectOrg; 
+	isolate( {
 	  withProgress(message="Ploting gene characteristics", {
        x = geneInfoLookup()
 	   x2 = x[which(x$gene_biotype == "protein_coding"),]  # only coding for some analyses
@@ -1269,6 +1372,535 @@ output$downloadGrouping <- downloadHandler(
     }, height = 4000)
 	
 
+	
+output$listSigPathways <- renderUI({
+	tem = input$selectOrg
+	if (input$goButton == 0 | is.null(significantOverlaps())) return(NULL)
 
+	tem <- significantOverlaps();
+
+	if(dim(tem$x)[2] ==1 ) return(NULL)  
+	choices = tem$x[,4]		
+	selectInput("sigPathways", label="Select a KEGG pathway to show diagram with qury genes highlighted in red:"
+			,choices=choices)      
+	})
+	
+
+output$KeggImage <- renderImage({
+
+       tem = input$sigPathways
+
+   # First generate a blank image. Otherwise return(NULL) gives us errors.
+    outfile <- tempfile(fileext='.png')
+    png(outfile, width=400, height=300)
+
+    frame()
+	dev.off()
+    blank <- list(src = outfile,
+         contentType = 'image/png',
+         width = 400,
+         height = 300,
+         alt = " ")	
+	if (input$goButton == 0  )    return(blank)
+	if(is.null( input$selectGO ) ) return(blank)
+	if(input$selectGO != "KEGG") return(blank)
+	if( is.null(significantOverlaps())) return(blank)	
+	
+	library(pathview,verbose=FALSE)
+
+# these two functions are from the pathview package, modified to write to a designated folder: temp.
+mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species = "hsa", 
+    kegg.dir = ".", cpd.idtype = "kegg", gene.idtype = "entrez", 
+    gene.annotpkg = NULL, min.nnodes = 3, kegg.native = TRUE, 
+    map.null = TRUE, expand.node = FALSE, split.group = FALSE, 
+    map.symbol = TRUE, map.cpdname = TRUE, node.sum = "sum", 
+    discrete = list(gene = FALSE, cpd = FALSE), limit = list(gene = 1, 
+        cpd = 1), bins = list(gene = 10, cpd = 10), both.dirs = list(gene = T, 
+        cpd = T), trans.fun = list(gene = NULL, cpd = NULL), 
+    low = list(gene = "green", cpd = "blue"), mid = list(gene = "gray", 
+        cpd = "gray"), high = list(gene = "red", cpd = "yellow"), 
+    na.col = "transparent", ...) 
+{
+    dtypes = !is.null(gene.data) + (!is.null(cpd.data))
+    cond0 = dtypes == 1 & is.numeric(limit) & length(limit) > 
+        1
+    if (cond0) {
+        if (limit[1] != limit[2] & is.null(names(limit))) 
+            limit = list(gene = limit[1:2], cpd = limit[1:2])
     }
-)
+    if (is.null(trans.fun)) 
+        trans.fun = list(gene = NULL, cpd = NULL)
+    arg.len2 = c("discrete", "limit", "bins", "both.dirs", "trans.fun", 
+        "low", "mid", "high")
+    for (arg in arg.len2) {
+        obj1 = eval(as.name(arg))
+        if (length(obj1) == 1) 
+            obj1 = rep(obj1, 2)
+        if (length(obj1) > 2) 
+            obj1 = obj1[1:2]
+        obj1 = as.list(obj1)
+        ns = names(obj1)
+        if (length(ns) == 0 | !all(c("gene", "cpd") %in% ns)) 
+            names(obj1) = c("gene", "cpd")
+        assign(arg, obj1)
+    }
+    if (is.character(gene.data)) {
+        gd.names = gene.data
+        gene.data = rep(1, length(gene.data))
+        names(gene.data) = gd.names
+        both.dirs$gene = FALSE
+        ng = length(gene.data)
+        nsamp.g = 1
+    }
+    else if (!is.null(gene.data)) {
+        if (length(dim(gene.data)) == 2) {
+            gd.names = rownames(gene.data)
+            ng = nrow(gene.data)
+            nsamp.g = 2
+        }
+        else if (is.numeric(gene.data) & is.null(dim(gene.data))) {
+            gd.names = names(gene.data)
+            ng = length(gene.data)
+            nsamp.g = 1
+        }
+        else stop("wrong gene.data format!")
+    }
+    else if (is.null(cpd.data)) {
+        stop("gene.data and cpd.data are both NULL!")
+    }
+    gene.idtype = toupper(gene.idtype)
+    data(bods)
+    if (species != "ko") {
+        species.data = kegg.species.code(species, na.rm = T, 
+            code.only = FALSE)
+    }
+    else {
+        species.data = c(kegg.code = "ko", entrez.gnodes = "0", 
+            kegg.geneid = "K01488", ncbi.geneid = NA, ncbi.proteinid = NA, 
+            uniprot = NA)
+        gene.idtype = "KEGG"
+        msg.fmt = "Only KEGG ortholog gene ID is supported, make sure it looks like \"%s\"!"
+        msg = sprintf(msg.fmt, species.data["kegg.geneid"])
+        message("Note: ", msg)
+    }
+    if (length(dim(species.data)) == 2) {
+        message("Note: ", "More than two valide species!")
+        species.data = species.data[1, ]
+    }
+    species = species.data["kegg.code"]
+    entrez.gnodes = species.data["entrez.gnodes"] == 1
+    if (is.na(species.data["ncbi.geneid"])) {
+        if (!is.na(species.data["kegg.geneid"])) {
+            msg.fmt = "Mapping via KEGG gene ID (not Entrez) is supported for this species,\nit looks like \"%s\"!"
+            msg = sprintf(msg.fmt, species.data["kegg.geneid"])
+            message("Note: ", msg)
+        }
+        else {
+            stop("This species is not annotated in KEGG!")
+        }
+    }
+    if (is.null(gene.annotpkg)) 
+        gene.annotpkg = bods[match(species, bods[, 3]), 1]
+    if (length(grep("ENTREZ|KEGG|NCBIPROT|UNIPROT", gene.idtype)) < 
+        1 & !is.null(gene.data)) {
+        if (is.na(gene.annotpkg)) 
+            stop("No proper gene annotation package available!")
+        if (!gene.idtype %in% gene.idtype.bods[[species]]) 
+            stop("Wrong input gene ID type!")
+        gene.idmap = id2eg(gd.names, category = gene.idtype, 
+            pkg.name = gene.annotpkg, unique.map = F)
+        gene.data = mol.sum(gene.data, gene.idmap)
+        gene.idtype = "ENTREZ"
+    }
+    if (gene.idtype != "KEGG" & !entrez.gnodes & !is.null(gene.data)) {
+        id.type = gene.idtype
+        if (id.type == "ENTREZ") 
+            id.type = "ENTREZID"
+        kid.map = names(species.data)[-c(1:2)]
+        kid.types = names(kid.map) = c("KEGG", "ENTREZID", "NCBIPROT", 
+            "UNIPROT")
+        kid.map2 = gsub("[.]", "-", kid.map)
+        kid.map2["UNIPROT"] = "up"
+        if (is.na(kid.map[id.type])) 
+            stop("Wrong input gene ID type for the species!")
+        message("Info: Getting gene ID data from KEGG...")
+        gene.idmap = keggConv(kid.map2[id.type], species)
+        message("Info: Done with data retrieval!")
+        kegg.ids = gsub(paste(species, ":", sep = ""), "", names(gene.idmap))
+        in.ids = gsub(paste0(kid.map2[id.type], ":"), "", gene.idmap)
+        gene.idmap = cbind(in.ids, kegg.ids)
+        gene.data = mol.sum(gene.data, gene.idmap)
+        gene.idtype = "KEGG"
+    }
+    if (is.character(cpd.data)) {
+        cpdd.names = cpd.data
+        cpd.data = rep(1, length(cpd.data))
+        names(cpd.data) = cpdd.names
+        both.dirs$cpd = FALSE
+        ncpd = length(cpd.data)
+    }
+    else if (!is.null(cpd.data)) {
+        if (length(dim(cpd.data)) == 2) {
+            cpdd.names = rownames(cpd.data)
+            ncpd = nrow(cpd.data)
+        }
+        else if (is.numeric(cpd.data) & is.null(dim(cpd.data))) {
+            cpdd.names = names(cpd.data)
+            ncpd = length(cpd.data)
+        }
+        else stop("wrong cpd.data format!")
+    }
+    if (length(grep("kegg", cpd.idtype)) < 1 & !is.null(cpd.data)) {
+        data(rn.list)
+        cpd.types = c(names(rn.list), "name")
+        cpd.types = tolower(cpd.types)
+        cpd.types = cpd.types[-grep("kegg", cpd.types)]
+        if (!tolower(cpd.idtype) %in% cpd.types) 
+            stop("Wrong input cpd ID type!")
+        cpd.idmap = cpd2kegg(cpdd.names, in.type = cpd.idtype)
+        cpd.data = mol.sum(cpd.data, cpd.idmap)
+    }
+    warn.fmt = "Parsing %s file failed, please check the file!"
+    if (length(grep(species, pathway.id)) > 0) {
+        pathway.name = pathway.id
+        pathway.id = gsub(species, "", pathway.id)
+    }
+    else pathway.name = paste(species, pathway.id, sep = "")
+    kfiles = list.files(path = kegg.dir, pattern = "[.]xml|[.]png")
+    npath = length(pathway.id)
+    out.list = list()
+    tfiles.xml = paste(pathway.name, "xml", sep = ".")
+    tfiles.png = paste(pathway.name, "png", sep = ".")
+    if (kegg.native) 
+        ttype = c("xml", "png")
+    else ttype = "xml"
+    xml.file <- paste(kegg.dir, "/", tfiles.xml, sep = "")
+    for (i in 1:npath) {
+        if (kegg.native) 
+            tfiles = c(tfiles.xml[i], tfiles.png[i])
+        else tfiles = tfiles.xml[i]
+        if (!all(tfiles %in% kfiles)) {
+            dstatus = download.kegg(pathway.id = pathway.id[i], 
+                species = species, kegg.dir = kegg.dir, file.type = ttype)
+            if (dstatus == "failed") {
+                warn.fmt = "Failed to download KEGG xml/png files, %s skipped!"
+                warn.msg = sprintf(warn.fmt, pathway.name[i])
+                message("Warning: ", warn.msg)
+                return(invisible(0))
+            }
+        }
+        if (kegg.native) {
+            node.data = try(node.info(xml.file[i]), silent = T)
+            if (class(node.data) == "try-error") {
+                warn.msg = sprintf(warn.fmt, xml.file[i])
+                message("Warning: ", warn.msg)
+                return(invisible(0))
+            }
+            node.type = c("gene", "enzyme", "compound", "ortholog")
+            sel.idx = node.data$type %in% node.type
+            nna.idx = !is.na(node.data$x + node.data$y + node.data$width + 
+                node.data$height)
+            sel.idx = sel.idx & nna.idx
+            if (sum(sel.idx) < min.nnodes) {
+                warn.fmt = "Number of mappable nodes is below %d, %s skipped!"
+                warn.msg = sprintf(warn.fmt, min.nnodes, pathway.name[i])
+                message("Warning: ", warn.msg)
+                return(invisible(0))
+            }
+            node.data = lapply(node.data, "[", sel.idx)
+        }
+        else {
+            gR1 = try(parseKGML2Graph2(xml.file[i], genes = F, 
+                expand = expand.node, split.group = split.group), 
+                silent = T)
+            node.data = try(node.info(gR1), silent = T)
+            if (class(node.data) == "try-error") {
+                warn.msg = sprintf(warn.fmt, xml.file[i])
+                message("Warning: ", warn.msg)
+                return(invisible(0))
+            }
+        }
+        if (species == "ko") 
+            gene.node.type = "ortholog"
+        else gene.node.type = "gene"
+        if ((!is.null(gene.data) | map.null) & sum(node.data$type == 
+            gene.node.type) > 1) {
+            plot.data.gene = node.map(gene.data, node.data, node.types = gene.node.type, 
+                node.sum = node.sum, entrez.gnodes = entrez.gnodes)
+            kng = plot.data.gene$kegg.names
+            kng.char = gsub("[0-9]", "", unlist(kng))
+            if (any(kng.char > "")) 
+                entrez.gnodes = FALSE
+            if (map.symbol & species != "ko" & entrez.gnodes) {
+                if (is.na(gene.annotpkg)) {
+                  warn.fmt = "No annotation package for the species %s, gene symbols not mapped!"
+                  warn.msg = sprintf(warn.fmt, species)
+                  message("Warning: ", warn.msg)
+                }
+                else {
+				  plot.data.gene$labels = NA # Try to fix this error: Error in $<-.data.frame: replacement has 97 rows, data has 103
+                  plot.data.gene$labels = eg2id(as.character(plot.data.gene$kegg.names), 
+                    category = "SYMBOL", pkg.name = gene.annotpkg)[, 
+                    2]
+                  mapped.gnodes = rownames(plot.data.gene)
+                  node.data$labels[mapped.gnodes] = plot.data.gene$labels
+                }
+            }
+            cols.ts.gene = node.color(plot.data.gene, limit$gene, 
+                bins$gene, both.dirs = both.dirs$gene, trans.fun = trans.fun$gene, 
+                discrete = discrete$gene, low = low$gene, mid = mid$gene, 
+                high = high$gene, na.col = na.col)
+        }
+        else plot.data.gene = cols.ts.gene = NULL
+        if ((!is.null(cpd.data) | map.null) & sum(node.data$type == 
+            "compound") > 1) {
+            plot.data.cpd = node.map(cpd.data, node.data, node.types = "compound", 
+                node.sum = node.sum)
+            if (map.cpdname & !kegg.native) {
+                plot.data.cpd$labels = cpdkegg2name(plot.data.cpd$labels)[, 
+                  2]
+                mapped.cnodes = rownames(plot.data.cpd)
+                node.data$labels[mapped.cnodes] = plot.data.cpd$labels
+            }
+            cols.ts.cpd = node.color(plot.data.cpd, limit$cpd, 
+                bins$cpd, both.dirs = both.dirs$cpd, trans.fun = trans.fun$cpd, 
+                discrete = discrete$cpd, low = low$cpd, mid = mid$cpd, 
+                high = high$cpd, na.col = na.col)
+        }
+        else plot.data.cpd = cols.ts.cpd = NULL
+        if (kegg.native) {
+            pv.pars = my.keggview.native(plot.data.gene = plot.data.gene, 
+                cols.ts.gene = cols.ts.gene, plot.data.cpd = plot.data.cpd, 
+                cols.ts.cpd = cols.ts.cpd, node.data = node.data, 
+                pathway.name = pathway.name[i], kegg.dir = kegg.dir, 
+                limit = limit, bins = bins, both.dirs = both.dirs, 
+                discrete = discrete, low = low, mid = mid, high = high, 
+                na.col = na.col, ...)
+        }
+        else {
+            pv.pars = keggview.graph(plot.data.gene = plot.data.gene, 
+                cols.ts.gene = cols.ts.gene, plot.data.cpd = plot.data.cpd, 
+                cols.ts.cpd = cols.ts.cpd, node.data = node.data, 
+                path.graph = gR1, pathway.name = pathway.name[i], 
+                map.cpdname = map.cpdname, split.group = split.group, 
+                limit = limit, bins = bins, both.dirs = both.dirs, 
+                discrete = discrete, low = low, mid = mid, high = high, 
+                na.col = na.col, ...)
+        }
+        plot.data.gene = cbind(plot.data.gene, cols.ts.gene)
+        if (!is.null(plot.data.gene)) {
+            cnames = colnames(plot.data.gene)[-(1:8)]
+            nsamp = length(cnames)/2
+            if (nsamp > 1) {
+                cnames[(nsamp + 1):(2 * nsamp)] = paste(cnames[(nsamp + 
+                  1):(2 * nsamp)], "col", sep = ".")
+            }
+            else cnames[2] = "mol.col"
+            colnames(plot.data.gene)[-(1:8)] = cnames
+        }
+        plot.data.cpd = cbind(plot.data.cpd, cols.ts.cpd)
+        if (!is.null(plot.data.cpd)) {
+            cnames = colnames(plot.data.cpd)[-(1:8)]
+            nsamp = length(cnames)/2
+            if (nsamp > 1) {
+                cnames[(nsamp + 1):(2 * nsamp)] = paste(cnames[(nsamp + 
+                  1):(2 * nsamp)], "col", sep = ".")
+            }
+            else cnames[2] = "mol.col"
+            colnames(plot.data.cpd)[-(1:8)] = cnames
+        }
+        out.list[[i]] = list(plot.data.gene = plot.data.gene, 
+            plot.data.cpd = plot.data.cpd)
+    }
+    if (npath == 1) 
+        out.list = out.list[[1]]
+    else names(out.list) = pathway.name
+    return(invisible(out.list))
+}# <environment: namespace:pathview>
+my.keggview.native <- function (plot.data.gene = NULL, plot.data.cpd = NULL, cols.ts.gene = NULL, 
+    cols.ts.cpd = NULL, node.data, pathway.name, out.suffix = "pathview", 
+    kegg.dir = ".", multi.state = TRUE, match.data = TRUE, same.layer = TRUE, 
+    res = 400, cex = 0.25, discrete = list(gene = FALSE, cpd = FALSE), 
+    limit = list(gene = 1, cpd = 1), bins = list(gene = 10, cpd = 10), 
+    both.dirs = list(gene = T, cpd = T), low = list(gene = "green", 
+        cpd = "blue"), mid = list(gene = "gray", cpd = "gray"), 
+    high = list(gene = "red", cpd = "yellow"), na.col = "transparent", 
+    new.signature = TRUE, plot.col.key = TRUE, key.align = "x", 
+    key.pos = "topright", ...) 
+{
+    img <- readPNG(paste(kegg.dir, "/", pathway.name, ".png", 
+        sep = ""))
+    width <- ncol(img)
+    height <- nrow(img)
+    cols.ts.gene = cbind(cols.ts.gene)
+    cols.ts.cpd = cbind(cols.ts.cpd)
+    nc.gene = max(ncol(cols.ts.gene), 0)
+    nc.cpd = max(ncol(cols.ts.cpd), 0)
+    nplots = max(nc.gene, nc.cpd)
+    pn.suffix = colnames(cols.ts.gene)
+    if (length(pn.suffix) < nc.cpd) 
+        pn.suffix = colnames(cols.ts.cpd)
+    if (length(pn.suffix) < nplots) 
+        pn.suffix = 1:nplots
+    if (length(pn.suffix) == 1) {
+        pn.suffix = out.suffix
+    }
+    else pn.suffix = paste(out.suffix, pn.suffix, sep = ".")
+    na.col = colorpanel2(1, low = na.col, high = na.col)
+    if ((match.data | !multi.state) & nc.gene != nc.cpd) {
+        if (nc.gene > nc.cpd & !is.null(cols.ts.cpd)) {
+            na.mat = matrix(na.col, ncol = nplots - nc.cpd, nrow = nrow(cols.ts.cpd))
+            cols.ts.cpd = cbind(cols.ts.cpd, na.mat)
+        }
+        if (nc.gene < nc.cpd & !is.null(cols.ts.gene)) {
+            na.mat = matrix(na.col, ncol = nplots - nc.gene, 
+                nrow = nrow(cols.ts.gene))
+            cols.ts.gene = cbind(cols.ts.gene, na.mat)
+        }
+        nc.gene = nc.cpd = nplots
+    }
+    out.fmt = "Working in directory %s"
+    wdir = getwd()
+    out.msg = sprintf(out.fmt, wdir)
+    message("Info: ", out.msg)
+    out.fmt = "Writing image file %s"
+    multi.state = multi.state & nplots > 1
+    if (multi.state) {
+        nplots = 1
+        pn.suffix = paste(out.suffix, "multi", sep = ".")
+        if (nc.gene > 0) 
+            cols.gene.plot = cols.ts.gene
+        if (nc.cpd > 0) 
+            cols.cpd.plot = cols.ts.cpd
+    }
+    for (np in 1:nplots) {
+       # img.file = paste(pathway.name, pn.suffix[np], "png", 
+        #    sep = ".")
+		img.file = paste(kegg.dir,"/",pathway.name, ".",pn.suffix[np], ".png", 
+			sep = "")
+        out.msg = sprintf(out.fmt, img.file)
+        message("Info: ", out.msg)
+        png(img.file, width = width, height = height, res = res)
+        op = par(mar = c(0, 0, 0, 0))
+        plot(c(0, width), c(0, height), type = "n", xlab = "", 
+            ylab = "", xaxs = "i", yaxs = "i")
+        if (new.signature) 
+            img[height - 4:25, 17:137, 1:3] = 1
+        if (same.layer != T) 
+            rasterImage(img, 0, 0, width, height, interpolate = F)
+        if (!is.null(cols.ts.gene) & nc.gene >= np) {
+            if (!multi.state) 
+                cols.gene.plot = cols.ts.gene[, np]
+            if (same.layer != T) {
+                render.kegg.node(plot.data.gene, cols.gene.plot, 
+                  img, same.layer = same.layer, type = "gene", 
+                  cex = cex)
+            }
+            else {
+                img = render.kegg.node(plot.data.gene, cols.gene.plot, 
+                  img, same.layer = same.layer, type = "gene")
+            }
+        }
+        if (!is.null(cols.ts.cpd) & nc.cpd >= np) {
+            if (!multi.state) 
+                cols.cpd.plot = cols.ts.cpd[, np]
+            if (same.layer != T) {
+                render.kegg.node(plot.data.cpd, cols.cpd.plot, 
+                  img, same.layer = same.layer, type = "compound", 
+                  cex = cex)
+            }
+            else {
+                img = render.kegg.node(plot.data.cpd, cols.cpd.plot, 
+                  img, same.layer = same.layer, type = "compound")
+            }
+        }
+        if (same.layer == T) 
+            rasterImage(img, 0, 0, width, height, interpolate = F)
+        pv.pars = list()
+        pv.pars$gsizes = c(width = width, height = height)
+        pv.pars$nsizes = c(46, 17)
+        pv.pars$op = op
+        pv.pars$key.cex = 2 * 72/res
+        pv.pars$key.lwd = 1.2 * 72/res
+        pv.pars$sign.cex = cex
+        off.sets = c(x = 0, y = 0)
+        align = "n"
+        ucol.gene = unique(as.vector(cols.ts.gene))
+        na.col.gene = ucol.gene %in% c(na.col, NA)
+        if (plot.col.key & !is.null(cols.ts.gene) & !all(na.col.gene)) {
+            off.sets = col.key(limit = limit$gene, bins = bins$gene, 
+                both.dirs = both.dirs$gene, discrete = discrete$gene, 
+                graph.size = pv.pars$gsizes, node.size = pv.pars$nsizes, 
+                key.pos = key.pos, cex = pv.pars$key.cex, lwd = pv.pars$key.lwd, 
+                low = low$gene, mid = mid$gene, high = high$gene, 
+                align = "n")
+            align = key.align
+        }
+        ucol.cpd = unique(as.vector(cols.ts.cpd))
+        na.col.cpd = ucol.cpd %in% c(na.col, NA)
+        if (plot.col.key & !is.null(cols.ts.cpd) & !all(na.col.cpd)) {
+            off.sets = col.key(limit = limit$cpd, bins = bins$cpd, 
+                both.dirs = both.dirs$cpd, discrete = discrete$cpd, 
+                graph.size = pv.pars$gsizes, node.size = pv.pars$nsizes, 
+                key.pos = key.pos, off.sets = off.sets, cex = pv.pars$key.cex, 
+                lwd = pv.pars$key.lwd, low = low$cpd, mid = mid$cpd, 
+                high = high$cpd, align = align)
+        }
+        if (new.signature) 
+            pathview.stamp(x = 17, y = 20, on.kegg = T, cex = pv.pars$sign.cex)
+        par(pv.pars$op)
+        dev.off()
+    }
+    return(invisible(pv.pars))
+}
+
+# modify function in a package, change namespace
+# http://stackoverflow.com/questions/23279904/modifying-an-r-package-function-for-current-r-session-assigninnamespace-not-beh
+tmpfun <- get("keggview.native", envir = asNamespace("pathview"))
+environment(my.keggview.native) <- environment(tmpfun)
+attributes(my.keggview.native) <- attributes(tmpfun)  # don't know if this is really needed
+	
+	isolate({ 
+	
+	withProgress(message="Rendering KEGG pathway plot", {
+	incProgress(1/5, "Loading the pathview package") 
+
+	 fold = rep(1, length(converted()$IDs))
+	 names(fold) <- converted()$IDs
+	 Species <- converted()$species[1,1]
+	 fold <- convertEnsembl2Entrez(fold,Species)
+	 
+     keggSpecies <- as.character( keggSpeciesID[which(keggSpeciesID[,1] == Species),3] )
+	 
+     if(nchar( keggSpecies) <=2 ) return(blank) # not in KEGG
+
+	 # kegg pathway id
+	incProgress(1/2, "Download pathway graph from KEGG.")
+	pathID = keggPathwayID(input$sigPathways, Species, "KEGG",input$selectOrg)
+	#cat("\nhere5  ",keggSpecies, " ",Species," ",input$sigPathways, "pathID:",pathID,"End", fold[1:5],names(fold)[1:5],"\n")
+	#cat("\npathway:",is.na(input$sigPathways))
+	#cat("\n",fold[1:5],"\n",keggSpecies,"\n",pathID)
+    if(is.null(pathID) ) return(blank) # kegg pathway id not found.
+	if(nchar(pathID)<3 ) return(blank)
+	randomString <- gsub(".*file","",tempfile()) 
+	tempFolder <- tempdir() # tempFolder = "temp";
+	outfile <- paste( tempFolder,"/",pathID,".",randomString,".png",sep="")
+	
+	pv.out <- mypathview(gene.data = fold, pathway.id = pathID, kegg.dir = tempFolder,  out.suffix = randomString, species = keggSpecies, kegg.native=TRUE)
+
+	
+    # Return a list containing the filename
+    list(src = outfile,
+         contentType = 'image/png',
+       width = "100%",
+        height = "100%",
+         alt = "KEGG pathway image.")
+		}) 
+	})
+  }, deleteFile = TRUE)
+
+
+	
+	
+	
+})
