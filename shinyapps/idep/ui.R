@@ -1,9 +1,9 @@
-# iDEP user interface
+# iDEP user interface, By Steven Ge Xijin.Ge@sdstate.edu
 library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.72"
+iDEPversion = "iDEP.73"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -90,7 +90,7 @@ tableOutput('species' ),
 		,h5("New v0.68! Try the STRING-db API access on the DEG2 page that offer protein interaction networks and GO enrichment for thousands species, including bacteria.")
 		,h5("Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data.  See ",
 			a(" documentation", href="https://idepsite.wordpress.com/",target="_blank"), "and",
-			a(" manuscript.", href="http://biorxiv.org/content/biorxiv/early/2017/06/09/148411.full.pdf",target="_blank"),
+			a(" manuscript.", href="https://www.biorxiv.org/content/early/2018/04/20/148411",target="_blank"),
    			"Based on annotation of",a( " 163 animal and 45 plant genomes ",href="https://idepsite.wordpress.com/species/",target="_blank") ,"in Ensembl BioMart as of 12/15/2017."
  			,a("STRING-db ", href="https://string-db.org/",target="_blank")
 			,"offer API access to protein interaction networks and annotations for 115 archaeal, 1678 bacterial, and 238 eukaryotic species."
@@ -115,7 +115,6 @@ tableOutput('species' ),
              ) #plots
 			 
 ###############################################################################################################################
- 
     ,tabPanel("Pre-Process",
              sidebarLayout(
                sidebarPanel(
@@ -526,10 +525,10 @@ tableOutput('species' ),
 				   )
 				   ,bsModal("ModalEnrichmentPlot2", "Visualize enrichment", "ModalEnrichmentNetwork", size="large"
 						,h5("Connected gene sets share more genes. Color of node correspond to adjuested Pvalues.")
+						
 						,checkboxInput("enrichmentNetworkInteractive", label = "Interactive version", value = FALSE)
 						,conditionalPanel("input.enrichmentNetworkInteractive==0" 
-								,h5("To change network layout, zoom in or out from your browser. Download repeatedly for different layout.")
-								,downloadButton("enrichmentNetworkPlot4Download", "High-resolution figure")
+								,actionButton("layoutButton2", "Change layout"),downloadButton("enrichmentNetworkPlot4Download", "High-resolution figure")
 								,plotOutput('enrichmentNetworkPlot'))
 						,conditionalPanel("input.enrichmentNetworkInteractive==1" ,plotlyOutput('enrichmentNetworkPlotly',width = "900px", height = "800px"))				   
 				   )
@@ -675,10 +674,10 @@ tableOutput('species' ),
 				   )
 				   ,bsModal("ModalEnrichmentPlotPahtway2", "Significant pathways", "ModalEnrichmentNetworkPathway", size="large"
 						,h5("Connected gene sets share more genes. Color of node correspond to adjuested Pvalues.")
+						
 						,checkboxInput("enrichmentNetworkInteractivePathway", label = "Interactive version", value = FALSE)
 						,conditionalPanel("input.enrichmentNetworkInteractivePathway==0"
-								,h5("To change network layout, zoom in or out from your browser. Download repeatedly for different layout.")
-								,downloadButton("enrichmentNetworkPlotPathway4Download","High-resolution figure")
+								,actionButton("layoutButton3", "Change layout"),downloadButton("enrichmentNetworkPlotPathway4Download","High-resolution figure")
 								,plotOutput('enrichmentNetworkPlotPathway'))
 						,conditionalPanel("input.enrichmentNetworkInteractivePathway==1" ,plotlyOutput('enrichmentNetworkPlotlyPathway',width = "900px", height = "800px"))				   
 				   )				   
@@ -895,6 +894,8 @@ tableOutput('species' ),
 	 ,h5("3/28/2018: v0.712 Fine tuned EDA plots")
 	 ,h5("4/3/2018: V0.713 add permutations for fgsea. Expand quotes.")
 	 ,h5("4/13/2018: V0.72 fixed bug caused error in R Markdown file when users choose species other than the default.")
+	 ,h5("4/25/2018: V0.73 Fixed bug for GO terms tree in k-Means. Added layout button for network viz of GO terms")
+	 ,br(),br()
 	 ,h5("In loving memory of my parents.")
  ) 
  )

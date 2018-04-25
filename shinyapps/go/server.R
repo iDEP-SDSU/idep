@@ -1,7 +1,3 @@
-#1. selectGO updates
-#2. pathview
-
-
 library(shiny)
 library(RSQLite)
 
@@ -467,11 +463,11 @@ enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue,
     }, node.size = function(x) {
         2.5 * log10(x)
     }, group = FALSE, group.color = c("green","red" ), group.shape = c("circle", 
-        "square"), legend.parameter = list("topright"), show.legend = TRUE, plotting=TRUE,
+        "square"), legend.parameter = list("topright"), show.legend = TRUE, plotting=TRUE, layoutButton = 0,
     ...) 
 {
 	library(igraph)
-	
+	set.seed(layoutButton)
     x <- data.frame(x, group)
     colnames(x)[length(colnames(x))] <- "Group"
     x <- x[as.numeric( x[, pvalue]) < pvalue.cutoff, ]
@@ -560,14 +556,14 @@ enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue,
 }
 
 
-enrichmentNetwork <- function(enrichedTerms){
+enrichmentNetwork <- function(enrichedTerms,layoutButton=0){
 	geneLists = lapply(enrichedTerms$Genes, function(x) unlist( strsplit(as.character(x)," " )   ) )
 	names(geneLists)= enrichedTerms$Pathways
 	enrichedTerms$Direction = gsub(" .*","",enrichedTerms$Direction )
 
 	g <- enrich.net2(enrichedTerms, geneLists, node.id = "Pathways", numChar = 100, 
 	   pvalue = "adj.Pval", edge.cutoff = 0.2, pvalue.cutoff = 1, degree.cutoff = 0,
-	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 1, vertex.label.color = "black")
+	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 1, vertex.label.color = "black", show.legend=FALSE, layoutButton=layoutButton)
 
 }
 
@@ -842,11 +838,17 @@ output$GOTermsTree4Download <- downloadHandler(
 output$enrichmentNetworkPlot <- renderPlot({
     if(is.null(significantOverlaps2())) return(NULL)
 
-	enrichmentNetwork(significantOverlaps2() )
+	enrichmentNetwork(significantOverlaps2(),layoutButton = input$layoutButton )
 
 }, height=900)	  
  
-	  
+output$enrichmentNetworkPlotDownload <- downloadHandler(
+      filename = "enrichmentPlotNetworkPathway.tiff",
+      content = function(file) {
+	  tiff(file, width = 12, height = 12, units = 'in', res = 300, compression = 'lzw')
+	  enrichmentNetwork(significantOverlaps2(),layoutButton = input$layoutButton )
+        dev.off()
+      })	  
 output$downloadEnrichment <- downloadHandler(
 	  filename = function() {"enrichment.csv"},
 		content = function(file) {
@@ -1898,9 +1900,5 @@ attributes(my.keggview.native) <- attributes(tmpfun)  # don't know if this is re
 		}) 
 	})
   }, deleteFile = TRUE)
-
-
-	
-	
 	
 })

@@ -1,6 +1,5 @@
-## PLAN dplyr should be used for all filter and mutate process
-
-iDEPversion = "iDEP 0.72"
+#iDEP server logic, By Steven Ge Xijin.Ge@sdstate.edu
+iDEPversion = "iDEP 0.73"
 ################################################################
 # R packages
 ################################################################
@@ -1716,16 +1715,10 @@ enrichmentPlot <- function( enrichedTerms, rightMargin=33) {
   ix = dend$order # permutated order of leaves
 
   leafType= as.factor( gsub(" .*","", enrichedTerms$Direction[ix] ) )
-  #if(length(unique(enrichedTerms$Direction)  ) <=2 )
-  if( max( nchar(enrichedTerms$Direction[ix] )) >= 1)   # if "Up regulated or Downregulated"; not "A", "B"
-	#leafColors = c("green","red")  else  # mycolors # k-Means
-	leafColors = mycolors[1:2] else
-		{ 	# convert c("B","D","E") to c(2, 4, 5)
-			#leafType= as.factor( gsub(" .*","", enrichedTerms$Direction[ix] ) )
-			leafType= match(gsub(" .*","", enrichedTerms$Direction[ix] ), toupper(letters)   )   
-			
-			leafColors = mycolors 
-		}
+  if(length(unique(enrichedTerms$Direction)  ) ==2 )
+	leafColors = c("green","red")  else  # mycolors
+	leafColors = mycolors
+	
   #leafSize = unlist( lapply(geneLists,length) ) # leaf size represent number of genes
   #leafSize = sqrt( leafSize[ix] )  
   leafSize = -log10(as.numeric( enrichedTerms$adj.Pval[ix] ) ) # leaf size represent P values
@@ -1759,11 +1752,11 @@ enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue,
     }, node.size = function(x) {
         2.5 * log10(x)
     }, group = FALSE, group.color = c("green","red" ), group.shape = c("circle", 
-        "square"), legend.parameter = list("topright"), show.legend = TRUE, plotting=TRUE,
+        "square"), legend.parameter = list("topright"), show.legend = TRUE, plotting=TRUE, layout_change=0,
     ...) 
 {
 	library(igraph)
-	
+	set.seed(layout_change)
     x <- data.frame(x, group)
     colnames(x)[length(colnames(x))] <- "Group"
     x <- x[as.numeric( x[, pvalue]) < pvalue.cutoff, ]
@@ -1852,25 +1845,25 @@ enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue,
 }
 
 
-enrichmentNetwork <- function(enrichedTerms){
+enrichmentNetwork <- function(enrichedTerms,layout_change = 0 ){
 	geneLists = lapply(enrichedTerms$Genes, function(x) unlist( strsplit(as.character(x)," " )   ) )
 	names(geneLists)= enrichedTerms$Pathways
 	enrichedTerms$Direction = gsub(" .*","",enrichedTerms$Direction )
 
 	g <- enrich.net2(enrichedTerms, geneLists, node.id = "Pathways", numChar = 100, 
 	   pvalue = "adj.Pval", edge.cutoff = 0.2, pvalue.cutoff = 1, degree.cutoff = 0,
-	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 1, vertex.label.color = "black")
+	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 1, vertex.label.color = "black", layout_change = layout_change)
 
 }
 
-enrichmentNetworkPlotly <- function(enrichedTerms){
+enrichmentNetworkPlotly <- function(enrichedTerms, layout_change = 0){
 	geneLists = lapply(enrichedTerms$Genes, function(x) unlist( strsplit(as.character(x)," " )   ) )
 	names(geneLists)= enrichedTerms$Pathways
 
 	g <- enrich.net2(enrichedTerms, geneLists, node.id = "Pathways", numChar = 100, 
 	   pvalue = "adj.Pval", edge.cutoff = 0.2, pvalue.cutoff = 1, degree.cutoff = 0,
 	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 0.8, vertex.label.color = "black"
-	   ,plotting=TRUE)
+	   ,plotting=TRUE, layout_change = layout_change)
 
 	vs <- V(g)
 	es <- as.data.frame(get.edgelist(g))
@@ -4647,6 +4640,7 @@ output$downloadKmeansGO <- downloadHandler(
 			write.csv(KmeansGOdata(), file, row.names=FALSE)
 	    }
 	) 
+	
 output$enrichmentPlotKmeans <- renderPlot({
     if(is.null(KmeansGOdata())) return(NULL)
 	
@@ -4673,9 +4667,9 @@ output$enrichmentPlotKmeans <- renderPlot({
 	####################################
 	
 	
-	tem = KmeansGOdata()
-	colnames(tem)[1]="Direction"
-	enrichmentPlot(tem, 46  )
+	tem1 = KmeansGOdata()
+	colnames(tem1)[1]="Direction"
+	enrichmentPlot(tem1, 46  )
 
 }, width = 800, height = 1600)
 
@@ -4737,7 +4731,6 @@ output$KmeansPromoter <- renderTable({
 	})
   }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
-  
 
 ################################################################
 #   Differential gene expression  1
@@ -5443,8 +5436,7 @@ DEG.data <- reactive({
 ################################################################
 #   Differential gene expression  2
 ################################################################		
-		
-		
+				
 output$selectedHeatmap <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	
@@ -6552,7 +6544,6 @@ output$enrichmentPlotDEG2 <- renderPlot({
 
 }, height=600, width=800)
 
-
 output$enrichmentPlotDEG24Download <- downloadHandler(
       filename = "enrichmentPlotDEG2.tiff",
       content = function(file) {
@@ -6564,7 +6555,7 @@ output$enrichmentPlotDEG24Download <- downloadHandler(
 output$enrichmentNetworkPlot <- renderPlot({
     if(is.null(geneListGOTable())) return(NULL)
 	tem = input$removeRedudantSets
-	enrichmentNetwork(geneListGOTable() )
+	enrichmentNetwork(geneListGOTable(),layout_change = input$layoutButton2 )
 
 }, height=900, width=900)	  
 
@@ -6572,14 +6563,14 @@ output$enrichmentNetworkPlot4Download <- downloadHandler(
       filename = "enrichmentPlotDEG2.tiff",
       content = function(file) {
 	  tiff(file, width = 12, height = 12, units = 'in', res = 300, compression = 'lzw')
-	enrichmentNetwork(geneListGOTable() )
+	enrichmentNetwork(geneListGOTable(),layout_change = input$layoutButton2 )
         dev.off()
       })	  
 
 output$enrichmentNetworkPlotly <- renderPlotly({
     if(is.null(geneListGOTable())) return(NULL)
 	tem = input$removeRedudantSets
-	enrichmentNetworkPlotly(geneListGOTable() )
+	enrichmentNetworkPlotly(geneListGOTable(),layout_change = input$layoutButton2 )
 
 })	  
 	  
@@ -8724,14 +8715,14 @@ output$enrichmentNetworkPlotPathway <- renderPlot({
 	tem=input$nPathwayShow; tem=input$absoluteFold; tem =input$pathwayMethod
 	if(is.null(input$selectGO ) ) return (NULL)
 	
-	enrichmentNetwork(pathwayListData() )
+	enrichmentNetwork(pathwayListData(),layout_change = input$layoutButton3 )
 }, height=900, width=900)	  
 
 output$enrichmentNetworkPlotPathway4Download <- downloadHandler(
       filename = "enrichmentPlotNetworkPathway.tiff",
       content = function(file) {
 	  tiff(file, width = 12, height = 12, units = 'in', res = 300, compression = 'lzw')
-	  enrichmentNetwork(pathwayListData() )
+	  enrichmentNetwork(pathwayListData(),layout_change = input$layoutButton3 )
         dev.off()
       })	
 
@@ -8744,7 +8735,7 @@ output$enrichmentNetworkPlotlyPathway <- renderPlotly({
 	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
 	tem=input$nPathwayShow; tem=input$absoluteFold; tem =input$pathwayMethod
 	if(is.null(input$selectGO ) ) return (NULL)
-	enrichmentNetworkPlotly(pathwayListData() )
+	enrichmentNetworkPlotly(pathwayListData(),layout_change = input$layoutButton3 )
 })	  
 
 

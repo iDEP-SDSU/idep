@@ -41,7 +41,8 @@ shinyUI(
 		    )
         #,tabPanel("Details", tableOutput('tableDetail')  )
 		,tabPanel("Tree", downloadButton('GOTermsTree4Download','Figure' ),plotOutput('GOTermsTree')   )
-		,tabPanel("Network", plotOutput('enrichmentNetworkPlot')   )
+		,tabPanel("Network", actionButton("layoutButton", "Change layout"),downloadButton('enrichmentNetworkPlotDownload')
+		,plotOutput('enrichmentNetworkPlot')   )
 
         ,tabPanel("Genes", tableOutput("conversionTable"), downloadButton('downloadGeneInfo', 'Download')  )
         ,tabPanel("Groups", tableOutput("grouping"), downloadButton('downloadGrouping', 'Download')   )          
@@ -97,7 +98,7 @@ shinyUI(
 		,h5("By sending your genes to the STRING website, 
 			shinyGO is retrieving a sub-network, calculating PPI enrichment, 
 		  and generating custom URLs to the STRING website containing your genes. This can take 5 minutes. Patience will pay off! ")
-		,sliderInput("nGenesPPI", label = h5("Genes to include:"), min = 0, max = 400, value = 20,step=10) 
+		,sliderInput("nGenesPPI", label = h5("Genes to include:"), min = 0, max = 400, value = 50,step=10) 
 		,htmlOutput("stringDB_network_link")
 		,tags$head(tags$style("#stringDB_network_link{color: blue; font-size: 15px;}"))
 
