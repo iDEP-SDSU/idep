@@ -7,9 +7,9 @@ shinyUI(
      sidebarLayout(
       sidebarPanel(
 	  
-	  				 fluidRow(
+	  			fluidRow(
 					column(6, actionButton("goButton", "Submit"))					
-					,column(6, a(h5("Reset all",align = "right"), href="http://ge-lab.org:3838/go/") )					
+					,column(6, a(h5("Reset all",align = "right"), href="http://ge-lab.org/go/") )					
 				),
 	  
 	  
@@ -88,11 +88,34 @@ shinyUI(
 		 ,br(),br()
 		 , a("Full list of supported organisms", href="https://idepsite.wordpress.com/species/",target="_blank")
 		 ,br(),br()
-		 , "ShinyGO Shares many functionalities and databases with ", a("iDEP.", href="http://ge-lab.org/idep/",target="_blank")
+		 , "ShinyGO shares many functionalities and databases with ", a("iDEP.", href="http://ge-lab.org/idep/",target="_blank")
  		 ,br(),br()
+
+		 #,includeHTML("help.htm")
+		 ,h4("Input:")
+		 ,"A list of gene ids, separated by tab, space, comma or new line."
+		 ,h4("Output:")
+		 ,"Enriched GO terms and pathways:"
+		 ,br()
+		 ,img(src='enrich.png', align = "center",width="660", height="380")		 
+		 ,br(),br()		 
+		 ,"In addition to the enrichment table, a set of plots are produced. If KEGG database is choosen, then enriched pathway diagrams are shown, with user's genes highlighted. Like this one below:"
+		 ,br()
+		 ,img(src='KEGG.png', align = "center",width="696", height="494")
+		 ,br(),br()
+		 ,"Many GO terms are related. Some are even redundant, like \"cell cycle\" and \"cell cycle process\". 
+		 To visualize such relatedness in enrichment results, we use a hierarchical clustering tree and network. 
+		 In this tree below, related GO terms are grouped together based on how many genes they share. The size of the solid circle corresponds to the enrichment FDR."
+		 ,br()
+		 ,img(src='GOtree.png', align = "center",width="700", height="361")
+		 ,br(),br()
+		 ,"In this network below, each node represent a enriched GO term. Related GO terms are connected by a line, whose thickness reflect percent of overlapping genes. Size of the node corresponds to number of genes." 
+		 ,br(),img(src='GOnetwork.png', align = "center",width="500", height="248")
+		 ,br(),br()		 
+		 ,"Through API access to STRING-db, we also retrieve protein-protein interaction (PPI) network. In addition to a static network image, users can also get access to an interactive graphics at the www.string-db.org web server."
+		 ,br(),img(src='PPInetwork.png', align = "center",width="700", height="547")
 		 ,h4("Changes:")
-		 ,"4/24/2018: V0.4 Add STRING API, KEGG diagram, tree display and network."
-	) ) 	
+		 ,"4/24/2018: V0.4 Add STRING API, KEGG diagram, tree display and network."	) ) 	
        ) #tabsetPanel
 	   ,bsModal("ModalExamplePPI", "Protein-protein interaction(PPIs) networks ", "ModalPPI", size = "large"
 		,h5("By sending your genes to the STRING website, 

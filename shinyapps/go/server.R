@@ -110,7 +110,12 @@ matchedSpeciesInfo <- function (x) {
 }
 # convert gene IDs to ensembl gene ids and find species
 convertID <- function (query,selectOrg) {
+
   querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,' )  ) )
+  querySet <- gsub(" |\"|\'|\\..*","",querySet) 
+	# remove " in gene ids, mess up SQL query				
+	# remove ' in gene ids				
+	# remove anything after A35244.1 -> A35244
   result <- dbGetQuery( convert,
                         paste( " select distinct id,ens,species from mapping where id IN ('", paste(querySet,collapse="', '"),   "')",sep="") )
   if( dim(result)[1] == 0  ) return(NULL)
@@ -803,9 +808,6 @@ output$EnrichmentTable <-renderTable({
 	  tem <- significantOverlaps();
 	  incProgress(1, detail = paste("Done"))	  })
 	  if(dim(tem$x)[2] ==1 ) tem$x else tem$x[,1:4]  # If no significant enrichment found x only has 1 column.
-      	 tem$x[,2]<- as.character (tem$x[,2])
-
-		return( tem$x[,1:4]  )
     }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
 significantOverlaps2 <- reactive({
