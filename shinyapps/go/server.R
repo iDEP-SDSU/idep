@@ -112,10 +112,11 @@ matchedSpeciesInfo <- function (x) {
 convertID <- function (query,selectOrg) {
 
   querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,' )  ) )
-  querySet <- gsub(" |\"|\'|\\..*","",querySet) 
+  querySet <- gsub(" |\"|\'","",querySet) 
 	# remove " in gene ids, mess up SQL query				
 	# remove ' in gene ids				
-	# remove anything after A35244.1 -> A35244
+	# |\\.[0-9] remove anything after A35244.1 -> A35244  
+	#  some gene ids are like Glyma.01G002100
   result <- dbGetQuery( convert,
                         paste( " select distinct id,ens,species from mapping where id IN ('", paste(querySet,collapse="', '"),   "')",sep="") )
   if( dim(result)[1] == 0  ) return(NULL)
@@ -1165,7 +1166,7 @@ output$downloadGrouping <- downloadHandler(
 	  "Example mouse genes: Hus1 Rad1 Trp63 Trp73 Usp28 Rad9b Fanci Hus1b Cdk1 Cry1 D7Ertd443e Chek1 Foxo4 Zak Pea15a Mapkapk2 Brca1 Taok1 Cdk5rap3 Ddx39b Mdm2 Fzr1 Rad17 Prkdc Cdkn1a Cdc5l Wac Thoc1 Prpf19 Rad9a Pidd1 Atrip Uimc1 Nek6 Atf2 E2f1 Nbn Rpa2 Rint1 Clock Chek2 Casp2 Blm Plk1 Brcc3 Hinfp Fem1b Tipin Atr Cdc14b Rfwd3 Ccar2 Foxn3 Atm Thoc5 Nek11 Fam175a Brsk1 Plk5 Rps27l Ints7 Dtl Tiprl Rbbp8 Clspn Cradd Rhno1 Bre Trp53 Taok2 Taok3 Ccnd1 Sox4 Msh2 Xpc Rad9a Rnaseh2b Fbxo4 Syf2 Cul4a Nek1 Mre11a Pml Ptpn11 Zfp830 Gigyf2 Mapk14 Bcat1 Fbxo31 Babam1 Cep63"
      # Ddx39b excluded as it has multiple ensembl gene ids?
 	})
-
+	
  output$genomePlot <- renderPlot({
 	  if (input$goButton == 0  )    return()
 	  tem=input$selectOrg; 
@@ -1385,7 +1386,7 @@ output$listSigPathways <- renderUI({
 
 	if(dim(tem$x)[2] ==1 ) return(NULL)  
 	choices = tem$x[,4]		
-	selectInput("sigPathways", label="Select a KEGG pathway to show diagram with qury genes highlighted in red:"
+	selectInput("sigPathways", label="Select a KEGG pathway to show diagram with query genes highlighted in red:"
 			,choices=choices)      
 	})
 	

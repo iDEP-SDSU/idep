@@ -3,20 +3,17 @@ library(shinyBS,verbose=FALSE) # for popup figures
 shinyUI(
   fluidPage(
     # Application title
-    titlePanel("ShinyGO v0.4: Gene Ontology Enrichment Analysis & More "),
      sidebarLayout(
+	 
       sidebarPanel(
-	  
-	  			fluidRow(
-					column(6, actionButton("goButton", "Submit"))					
-					,column(6, p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" )) )					
-				),
-	  
+	    titlePanel(h4("ShinyGO v0.4: Gene Ontology Enrichment Analysis + more")),  
+	  	p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" )),					
+
 	  
 #	  a(h5("Reset all",align = "right"), href="http://ge-lab.org:3838/go/"), 
       tags$style(type="text/css", "textarea {width:100%}"),
       tags$textarea(id = 'input_text', placeholder = 'Just paste gene lists and click Submit. Most types of gene IDs accepted. Double check the guessed species,  adjust options and resubmit if needed. Any feedback is appreciated. ', rows = 8, ""),
- #      actionButton("goButton", "Submit"),
+       actionButton("goButton", "Submit"),
       h6(" "),
       htmlOutput("selectGO1"),
 	  #htmlOutput("selectGO1_test"),
@@ -29,14 +26,27 @@ shinyUI(
       ), # sidebarPanel
      mainPanel(
        tabsetPanel(
-        tabPanel("Enrichment", tableOutput('EnrichmentTable'), 
-		    conditionalPanel("input.goButton != 0", 
-		                     downloadButton('downloadEnrichment', 'Download') )
-            ,br(),br()	
+        tabPanel("Enrichment" 
+			,conditionalPanel("input.goButton == 0 "  # welcome screen
+				,h4("Welcome to ShinyGO! Just paste your gene lists to get enriched GO terms and othe pathways. 
+				KEGG pathway diagrams with your genes highlighted. Hierarchical clustering trees and networks summarizing 
+				overlapping terms/pathways. Protein-protein interaction networks. Gene characterristics like gene length, GC content. And enriched promoter motifs.")			
+				,img(src='enrich.png', align = "center",width="660", height="380")
+
+				,img(src='KEGG2.png', align = "center",width="541", height="360")
+				,br(),br(),img(src='GOtree3.png', align = "center",width="500", height="258")
+				,br(),br(),img(src='GOnetwork.png', align = "center",width="500", height="248")
+				,br(),br(),img(src='PPInetwork.png', align = "center",width="500", height="427")						 
+			)
 			,conditionalPanel("input.selectGO == 'KEGG'", 
-				htmlOutput('listSigPathways')	
-				,imageOutput("KeggImage", width = "100%", height = "100%") )
+				imageOutput("KeggImage", width = "100%", height = "100%")
+			
+				,htmlOutput('listSigPathways')	
+				,br(),br()	 )
 				
+		,tableOutput('EnrichmentTable'), 
+		    conditionalPanel("input.goButton != 0", 
+		                     downloadButton('downloadEnrichment', 'Download') )				
 			  
 		    )
         #,tabPanel("Details", tableOutput('tableDetail')  )
@@ -78,7 +88,8 @@ shinyUI(
 						,tableOutput("stringDB_GO_enrichment")		
 		
 		)	
-		,tabPanel("?", 	      h5("Based on annotation of 163 animal and 45 plant genomes in Ensembl BioMart as of 12/15/2017."
+		,tabPanel("?", 
+		h5("Based on annotation of 163 animal and 45 plant genomes in Ensembl BioMart as of 12/15/2017."
             ," Additional  data from",a("MSigDB (human),", href="https://doi.org/10.1093/bioinformatics/btr260",target="_blank") 
          ,a("GSKB (mouse)", href="http://biorxiv.org/content/early/2016/10/24/082511",target="_blank") 
          ,"and",a("  araPath (arabidopsis).", href="https://doi.org/10.1093/bioinformatics/bts421",target="_blank") 
