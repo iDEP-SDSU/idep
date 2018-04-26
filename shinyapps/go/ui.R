@@ -9,7 +9,7 @@ shinyUI(
 	  
 	  			fluidRow(
 					column(6, actionButton("goButton", "Submit"))					
-					,column(6, a(h5("Reset all",align = "right"), href="http://ge-lab.org/go/") )					
+					,column(6, p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" )) )					
 				),
 	  
 	  
