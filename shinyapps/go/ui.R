@@ -6,10 +6,10 @@ shinyUI(
      sidebarLayout(
 	 
       sidebarPanel(
-	    titlePanel("ShinyGO v0.4: Gene Ontology Enrichment Analysis + more"),  
+	    titlePanel("ShinyGO v0.41: Gene Ontology Enrichment Analysis + more"),  
 	  	p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" )),					
       tags$style(type="text/css", "textarea {width:100%}"),
-      tags$textarea(id = 'input_text', placeholder = 'Just paste gene lists and click Submit. Most types of gene IDs accepted. Double check the guessed species,  adjust options and resubmit if needed. Any feedback is appreciated. ', rows = 8, ""),
+      tags$textarea(id = 'input_text', placeholder = 'Just paste gene lists and click Submit. Most types of gene IDs accepted. Double check the guessed species, and adjust options if needed. Any feedback is appreciated. ', rows = 8, ""),
        actionButton("goButton", "Submit"),
       h6(" "),
       htmlOutput("selectGO1"),
@@ -53,7 +53,8 @@ shinyUI(
 
         ,tabPanel("Genes", tableOutput("conversionTable"), downloadButton('downloadGeneInfo', 'Download')  )
         ,tabPanel("Groups", tableOutput("grouping"), downloadButton('downloadGrouping', 'Download')   )          
-        ,tabPanel("Plots", plotOutput("genePlot")  )
+        ,tabPanel("Plots", plotOutput("genePlot", inline = TRUE,width='auto',height='auto')
+			, plotOutput("genePlot2", inline = TRUE,width='auto',height='auto')  )
         #,tabPanel("Plots2", plotOutput("genePlot2")  )
         , tabPanel("Genome", plotOutput("genomePlot", width = "100%")  )
         ,tabPanel("Promoter", tableOutput("promoter"), downloadButton('downloadPromoter', 'Download')   )  
@@ -129,7 +130,10 @@ shinyUI(
 		 
 		 
 		 ,h4("Changes:")
-		 ,"4/24/2018: V0.4 Add STRING API, KEGG diagram, tree display and network."	) ) 	
+		 ,"4/24/2018: V0.4 Add STRING API, KEGG diagram, tree display and network."	
+		 ,"4/27/2018: V0.41 Change to ggplot2, add grid and gridExtra packages"
+		 
+		 ) ) 	
        ) #tabsetPanel
 	   ,bsModal("ModalExamplePPI", "Protein-protein interaction(PPIs) networks ", "ModalPPI", size = "large"
 		,h5("By sending your genes to the STRING website, 
