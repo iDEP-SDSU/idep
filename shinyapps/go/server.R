@@ -110,13 +110,14 @@ matchedSpeciesInfo <- function (x) {
 }
 # convert gene IDs to ensembl gene ids and find species
 convertID <- function (query,selectOrg) {
-
-  querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,' )  ) )
-  querySet <- gsub(" |\"|\'","",querySet) 
-	# remove " in gene ids, mess up SQL query				
+ query <- gsub("\"|\'","",query) 
+ 	# remove " in gene ids, mess up SQL query				
 	# remove ' in gene ids				
 	# |\\.[0-9] remove anything after A35244.1 -> A35244  
 	#  some gene ids are like Glyma.01G002100
+	
+  querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,' )  ) )
+ 	
   result <- dbGetQuery( convert,
                         paste( " select distinct id,ens,species from mapping where id IN ('", paste(querySet,collapse="', '"),   "')",sep="") )
   if( dim(result)[1] == 0  ) return(NULL)
@@ -1376,6 +1377,158 @@ output$downloadGrouping <- downloadHandler(
 	 }) #isolate
     }, height = 4000)
 	
+  output$genePlot2 <- renderPlot({
+	   if (input$goButton == 0  )    return()
+	  tem=input$selectOrg; 
+	isolate( {
+	  withProgress(message="Ploting gene characteristics", {
+       x = geneInfoLookup()
+	   x2 = x[which(x$gene_biotype == "protein_coding"),]  # only coding for some analyses
+     if(dim(x)[1]>=minGenes) # only making plots if more than 20 genes
+       { # only plot when there 10 genes or more   # some columns have too many missing values
+	   par(mfrow=c(10,1))
+	   par(mar=c(8,6,8,2))
+   	   #chromosomes
+	   if( sum(!is.na( x$chromosome_name) ) >= minGenes && length(unique(x$chromosome_name) ) > 2 && length(which(x$Set == "List") ) > minGenes )
+	   {
+		   freq = table( x$chromosome_name,x$Set );
+		   freq <- as.matrix(freq[which(nchar(row.names(freq))<3   ),])# remove unmapped chromosomes
+		   if(dim(freq)[2] >1 && dim(freq)[1]>1 ) { # some organisms do not have fully seuqence genome: chr. names: scaffold_99816
+				Pval = chisq.test(freq)$p.value
+				sig = paste("Distribution of query genes on chromosomes \nChi-squared test P=",formatC(Pval, digits=2, format="G") )
+			   if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
+			   freq <- freq[order( as.numeric(row.names(freq) )), ]
+				freq[,1] <- freq[,1] *colSums(freq)[2]/colSums(freq)[1] # expected
+				freq = freq[,c(2,1)] # reverse order
+				write.csv(freq,"freq1.csv")
+			   barplot(t(freq), beside=TRUE,las=3,col=c("red","lightgrey"), ylab="Number of Genes",main= sig,
+			   cex.lab=1.5, cex.axis= 2,cex.names=2, cex.main=1.5   )
+
+		   legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n", cex =2)
+			}
+		}
+		incProgress(1/8)
+		
+		
+	   # gene type
+	    if( sum(!is.na( x$gene_biotype) ) >= minGenes && length(unique(x$gene_biotype) ) > 2  && length(which(x$Set == "List") ) > minGenes ) {
+	 	freq = table( x$gene_biotype,x$Set );
+		freq <- as.matrix(freq[which( freq[,1]/colSums(freq)[1] >.01),])
+	   if(dim(freq)[2] >1 && dim(freq)[1]>1 ) {
+	    Pval = chisq.test(freq)$p.value
+		sig=paste("Distribution by gene type \nChi-squared test P=",formatC(Pval, digits=2, format="G") )
+        if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
+		freq <- freq[order(    freq[,1], decreasing=T), ]
+		freq[,1] <- freq[,1] *colSums(freq)[2]/colSums(freq)[1]
+		tem = gsub("protein_coding","Coding",rownames(freq));
+		tem =gsub("processed_pseudogene","proc_pseudo",tem)
+	    tem =gsub("processed","proc",tem); #row.names(freq)= tem
+		par(mar=c(20,6,4.1,2.1))
+		freq = freq[,c(2,1)] # reverse order
+		head(freq)
+		
+        barplot(t(freq), beside=TRUE,las=2,col=c("red","lightgrey"), ylab="Number of Genes",
+	      main= sig,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
+
+	    legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n", cex=2)
+		if(0) { 
+        plt = barplot(t(freq), beside=TRUE,las=2,col=c("red","lightgrey"), ylab="Number of Genes",
+	      main= sig,cex.lab=1.5, cex.axis= 2, cex.names=1.5, cex.main=1.5, str=45, adj=1, xpd=TRUE,xaxt="n" )
+		text( plt,par("usr")[3], labels = rownames(freq), srt = 45, adj=c(1.1,1.1), xpd=TRUE ,cex = 1.5  )
+		}
+
+
+		}
+		}
+		
+		
+		incProgress(1/8)
+		par(mar=c(12,6,4.1,2.1))
+        # N. exons
+
+		if( sum(!is.na( x2$nExons) ) >= minGenes && length(unique(x2$nExons) ) > 2  && length(which(x2$Set == "List") ) > minGenes ) {
+		freq = table( x2$nExons,x2$Set );
+		freq <- as.matrix(freq[which( freq[,1]/colSums(freq)[1] >.02),])
+	    if(dim(freq)[2] >1 && dim(freq)[1]>1 ) {
+	    Pval = chisq.test(freq)$p.value
+		sig=paste("Number of exons (coding genes only) \nChi-squared test P=",formatC(Pval, digits=2, format="G") )
+        if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
+		#freq <- freq[order(    freq[,1], decreasing=T), ]
+		freq[,1] <- freq[,1] *colSums(freq)[2]/colSums(freq)[1]
+		freq = freq[,c(2,1)] # reverse order
+        barplot(t(freq), beside=TRUE,las=2,col=c("red","lightgrey"), ylab="Number of Genes",
+	      main= sig ,xlab =c("Number of exons"),cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
+	    legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n",cex=2)
+		}}
+		incProgress(1/8)
+
+		#Transcript count
+		if( sum(!is.na( x2$transcript_count) ) >= minGenes && length(unique(x2$transcript_count) ) > 2  && length(which(x2$Set == "List") ) > minGenes ) {
+		freq = table( x2$transcript_count,x2$Set );
+		freq <- as.matrix(freq[which( freq[,1]/colSums(freq)[1] >.02),])
+		if(dim(freq)[2] >1 && dim(freq)[1]>1 ) {
+	    Pval = chisq.test(freq)$p.value
+		sig=paste("Number of transcript isoforms per coding gene \nChi-squared test P=",formatC(Pval, digits=2, format="G"))
+        if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
+		freq <- freq[order(    freq[,1], decreasing=T), ]
+		freq[,1] <- freq[,1] *colSums(freq)[2]/colSums(freq)[1]
+		freq = freq[,c(2,1)] # reverse order
+        barplot(t(freq), beside=TRUE,las=2,col=c("red","lightgrey"), ylab="Number of Genes",
+	      main= sig,xlab =c("Number of transcripts per gene") ,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5 )
+	    legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n",cex=2)
+       } }
+	   incProgress(1/8)
+
+	  if( sum(!is.na( x2$cds_length) ) >= minGenes && length(unique(x2$cds_length) ) > 2 && length(which(x2$Set == "List") ) > minGenes) {
+	   Pval = t.test(cds_length~Set, data=x2 )$p.value
+	   sig = paste("Coding Sequence length \n T-test P=",formatC(Pval, digits=2, format="G"),sep="")
+	   if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
+	   boxplot(cds_length~Set,ylim=c(0,4000), data=x,main=sig ,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
+       }
+	   incProgress(1/8)
+
+	  if( sum(!is.na( x2$transcript_length) ) >= minGenes && length(unique(x2$transcript_length) ) > 2 && length(which(x2$Set == "List") ) > minGenes ) {
+       Pval = t.test(transcript_length~Set, data=x2 )$p.value
+	   sig = paste("Transcript length (coding genes only)\nT-test  P=",formatC(Pval, digits=2, format="G"),sep="")
+	   if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
+	   boxplot(transcript_length~Set,ylim=c(0,6000), data=x,main=sig,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
+	  }
+	  incProgress(1/8)
+
+	  if( sum(!is.na( x2$genomeSpan) ) >= minGenes && length(unique(x2$genomeSpan) ) > 2 && length(which(x2$Set == "List") ) > minGenes ) {
+       Pval = t.test(genomeSpan~Set, data=x2 )$p.value
+	   sig = paste("Genome span (coding genes only) T-test \n P=",formatC(Pval, digits=2, format="G"),sep="")
+	   if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
+	   boxplot(genomeSpan~Set,ylim=c(0,80000), data=x,main=sig,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
+	   }
+	   incProgress(1/8)
+
+	  if( sum(!is.na( x2$FiveUTR) ) >= minGenes && length(unique(x2$FiveUTR) ) > 2 && length(which(x2$Set == "List") ) > minGenes ) {
+       Pval = t.test(FiveUTR~Set, data=x2 )$p.value
+	   sig = paste("5' UTR length (coding genes only)\n T-test P=",formatC(Pval, digits=2, format="G"),sep="")
+	   if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
+	   boxplot(FiveUTR~Set, data=x,ylim=c(0,400),main=sig,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
+	}
+	incProgress(1/8)
+
+	if( sum(!is.na( x2$ThreeUTR) ) >= minGenes && length(unique(x2$ThreeUTR) ) > 2 && length(which(x2$Set == "List") ) > minGenes ) {
+       Pval = t.test(ThreeUTR~Set, data=x2 )$p.value
+	   sig = paste("3' UTR length (coding genes only) \n T-test P=",formatC(Pval, digits=2, format="G"),sep="")
+	   if( Pval <PvalGeneInfo)  sig = paste(sig," ****************" )
+	   boxplot(ThreeUTR~Set, ylim=c(0,2000),data=x,main=sig,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
+	  }
+	  incProgress(1/8)
+
+	  if( sum(!is.na( x2$percentage_gc_content) ) >= minGenes && length(unique(x2$percentage_gc_content) ) > 2 && length(which(x2$Set == "List") ) > minGenes ) {
+       Pval = t.test(percentage_gc_content~Set, data=x2 )$p.value
+	   sig = paste("%GC content (coding genes only)\n T-test P=",formatC(Pval, digits=2, format="G"),sep="")
+	   if( Pval <PvalGeneInfo)  sig = paste(sig," ***" )
+	   boxplot(percentage_gc_content~Set, ylim = c(20,80), data=x,main=sig,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
+	   }
+     } # if minGenes
+	 incProgress(1/8, detail = paste("Done"))	  })
+	 }) #isolate
+    }, height = 4000)
 
 	
 output$listSigPathways <- renderUI({

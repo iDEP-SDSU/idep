@@ -6,11 +6,8 @@ shinyUI(
      sidebarLayout(
 	 
       sidebarPanel(
-	    titlePanel(h4("ShinyGO v0.4: Gene Ontology Enrichment Analysis + more")),  
+	    titlePanel("ShinyGO v0.4: Gene Ontology Enrichment Analysis + more"),  
 	  	p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" )),					
-
-	  
-#	  a(h5("Reset all",align = "right"), href="http://ge-lab.org:3838/go/"), 
       tags$style(type="text/css", "textarea {width:100%}"),
       tags$textarea(id = 'input_text', placeholder = 'Just paste gene lists and click Submit. Most types of gene IDs accepted. Double check the guessed species,  adjust options and resubmit if needed. Any feedback is appreciated. ', rows = 8, ""),
        actionButton("goButton", "Submit"),
@@ -28,20 +25,20 @@ shinyUI(
        tabsetPanel(
         tabPanel("Enrichment" 
 			,conditionalPanel("input.goButton == 0 "  # welcome screen
-				,h4("Welcome to ShinyGO! Just paste your gene lists to get enriched GO terms and othe pathways. 
-				KEGG pathway diagrams with your genes highlighted. Hierarchical clustering trees and networks summarizing 
-				overlapping terms/pathways. Protein-protein interaction networks. Gene characterristics like gene length, GC content. And enriched promoter motifs.")			
-				,img(src='enrich.png', align = "center",width="660", height="380")
-
-				,img(src='KEGG2.png', align = "center",width="541", height="360")
+				,br(),br(),h4("Welcome to ShinyGO! Just paste your gene list to get enriched GO terms and othe pathways for over 200 plant and animal species. In addition, it also produces
+				KEGG pathway diagrams with your genes highlighted, hierarchical clustering trees and networks summarizing 
+				overlapping terms/pathways, protein-protein interaction networks, gene characterristics plots, and enriched promoter motifs. See example outputs below:")			
+				,br(),img(src='enrich.png', align = "center",width="660", height="339")
+				,br(),br(),img(src='KEGG2.png', align = "center",width="541", height="360")
 				,br(),br(),img(src='GOtree3.png', align = "center",width="500", height="258")
-				,br(),br(),img(src='GOnetwork.png', align = "center",width="500", height="248")
-				,br(),br(),img(src='PPInetwork.png', align = "center",width="500", height="427")						 
+				,br(),br(),img(src='GOnetwork2.png', align = "center",width="500", height="248")
+				,br(),br(),img(src='PPInetwork2.png', align = "center",width="500", height="391")	
+				,br(),br(),img(src='chr.png', align = "center",width="444", height="338")			
+				,br(),br(),img(src='promoter.png', align = "center",width="717", height="288")					
 			)
 			,conditionalPanel("input.selectGO == 'KEGG'", 
-				imageOutput("KeggImage", width = "100%", height = "100%")
-			
-				,htmlOutput('listSigPathways')	
+				imageOutput("KeggImage", width = "100%", height = "100%")		
+				,br(),br(),htmlOutput('listSigPathways')	
 				,br(),br()	 )
 				
 		,tableOutput('EnrichmentTable'), 
@@ -57,6 +54,7 @@ shinyUI(
         ,tabPanel("Genes", tableOutput("conversionTable"), downloadButton('downloadGeneInfo', 'Download')  )
         ,tabPanel("Groups", tableOutput("grouping"), downloadButton('downloadGrouping', 'Download')   )          
         ,tabPanel("Plots", plotOutput("genePlot")  )
+        #,tabPanel("Plots2", plotOutput("genePlot2")  )
         , tabPanel("Genome", plotOutput("genomePlot", width = "100%")  )
         ,tabPanel("Promoter", tableOutput("promoter"), downloadButton('downloadPromoter', 'Download')   )  
 		,tabPanel("STRING API", 
@@ -108,7 +106,7 @@ shinyUI(
 		 ,h4("Output:")
 		 ,"Enriched GO terms and pathways:"
 		 ,br()
-		 ,img(src='enrich.png', align = "center",width="660", height="380")		 
+		 ,img(src='enrich.png', align = "center",width="660", height="339")		 
 		 ,br(),br()		 
 		 ,"In addition to the enrichment table, a set of plots are produced. If KEGG database is choosen, then enriched pathway diagrams are shown, with user's genes highlighted. Like this one below:"
 		 ,br()
@@ -125,6 +123,11 @@ shinyUI(
 		 ,br(),br()		 
 		 ,"Through API access to STRING-db, we also retrieve protein-protein interaction (PPI) network. In addition to a static network image, users can also get access to an interactive graphics at the www.string-db.org web server."
 		 ,br(),img(src='PPInetwork.png', align = "center",width="700", height="547")
+		 ,br(),br()	
+		 ,"ShinyGO also detects transcription factor (TF) binding motifs enriched in the promoters of user's genes."
+		,br(),br(),img(src='promoter.png', align = "center",width="717", height="288")			 
+		 
+		 
 		 ,h4("Changes:")
 		 ,"4/24/2018: V0.4 Add STRING API, KEGG diagram, tree display and network."	) ) 	
        ) #tabsetPanel
