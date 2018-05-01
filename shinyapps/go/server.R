@@ -126,6 +126,8 @@ convertID <- function (query,selectOrg) {
   result <- dbGetQuery( convert,
                         paste( " select distinct id,ens,species from mapping where id IN ('", paste(querySet,collapse="', '"),   "')",sep="") )
   if( dim(result)[1] == 0  ) return(NULL)
+  
+
   if(selectOrg == speciesChoice[[1]]) {
     comb = paste( result$species,result$idType)
     sortedCounts = sort( table(comb ),decreasing=T)
@@ -149,7 +151,8 @@ convertID <- function (query,selectOrg) {
     if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
     speciesMatched <- as.data.frame(paste("Using selected species ", findSpeciesByIdName(selectOrg) )  )
   }
-  result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id
+  result <- result[which(!duplicated(result[,1]) ),] # remove duplicates in query gene ids 
+  result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id  
   colnames(speciesMatched) = c("Matched Species (genes)" )
   conversionTable <- result[,1:2]; colnames(conversionTable) = c("User_input","ensembl_gene_id")
   conversionTable$Species = sapply(result[,3], findSpeciesByIdName )
@@ -445,7 +448,7 @@ enrichmentPlot <- function( enrichedTerms, rightMargin=33) {
   #leafSize = unlist( lapply(geneLists,length) ) # leaf size represent number of genes
   #leafSize = sqrt( leafSize[ix] )  
   leafSize = -log10(as.numeric( enrichedTerms$adj.Pval[ix] ) ) # leaf size represent P values
-  leafSize = 1.5*leafSize/max( leafSize ) + .2
+  leafSize = 1.*leafSize/max( leafSize ) + .1
   
 	dend %>% 
 	as.dendrogram(hang=-1) %>%
@@ -557,7 +560,7 @@ enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue,
         }
     }
 	if(plotting) { 
-		plot(g,, vertex.label.dist=1, ...)
+		plot(g,, vertex.label.dist=0.8, ...)
 		if (show.legend) {
 			legend.parameter$legend <- group.level
 			legend.parameter$text.col <- group.color
@@ -814,6 +817,8 @@ output$EnrichmentTable <-renderTable({
 	  withProgress(message= sample(quotes,1),detail=myMessage, {
 	  tem <- significantOverlaps();
 	  incProgress(1, detail = paste("Done"))	  })
+
+	  if(dim(tem$x)[2] >1 ) tem$x[,2] <- as.character(tem$x[,2])
 	  if(dim(tem$x)[2] ==1 ) tem$x else tem$x[,1:4]  # If no significant enrichment found x only has 1 column.
     }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
@@ -832,9 +837,9 @@ output$GOTermsTree <- renderPlot({
     if(input$goButton == 0) return(NULL)
 
 	if(is.null(significantOverlaps2() ) ) return(NULL)
-	enrichmentPlot(significantOverlaps2(), 52  )
+	enrichmentPlot(significantOverlaps2(), 56  )
 
-}, height=700, width=900)
+}, height=770, width=1000)
 	
 output$GOTermsTree4Download <- downloadHandler(
       filename = "GO_terms_Tree.tiff",
@@ -1230,7 +1235,7 @@ output$downloadGrouping <- downloadHandler(
 	   }, height = 3000, width = 1000)
 
 
-  output$genePlot <- renderPlot({
+output$genePlot <- renderPlot({
 	   if (input$goButton == 0  )    return()
 	  tem=input$selectOrg; 
 	isolate( {
@@ -1348,7 +1353,7 @@ output$downloadGrouping <- downloadHandler(
 	
 	
 	
-  output$genePlot2 <- renderPlot({
+output$genePlot2 <- renderPlot({
 	   if (input$goButton == 0  )    return()
 	  tem=input$selectOrg; 
 	isolate( {
@@ -1466,13 +1471,13 @@ output$downloadGrouping <- downloadHandler(
 	   }		  
 		  
 	   incProgress(1/8)	
-	   grid.arrange(p1,p2,p3,p4,p5,p6, ncol=2)
+	   grid.arrange(p1,p2,p3,p4,p5,p6, ncol=1)
 	   
 	   
 		}
 		 incProgress(1/8, detail = paste("Done"))	  })
 	 }) #isolate
-    }, width=900,height = 1000)
+    }, width=600,height = 2000)
 
 	
 output$listSigPathways <- renderUI({

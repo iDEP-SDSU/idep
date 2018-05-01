@@ -36,16 +36,18 @@ shinyUI(
 				,br(),br(),img(src='chr.png', align = "center",width="444", height="338")			
 				,br(),br(),img(src='promoter.png', align = "center",width="717", height="288")					
 			)
+
+			,tableOutput('EnrichmentTable')	
+		    ,conditionalPanel("input.goButton != 0", 
+		        downloadButton('downloadEnrichment', 'Download')			
+				,br(),br(),"Select KEGG pathways in the left to display pathway diagrams."
+			)			
 			,conditionalPanel("input.selectGO == 'KEGG'", 
-				imageOutput("KeggImage", width = "100%", height = "100%")		
-				,br(),br(),htmlOutput('listSigPathways')	
-				,br(),br()	 )
-				
-		,tableOutput('EnrichmentTable'), 
-		    conditionalPanel("input.goButton != 0", 
-		                     downloadButton('downloadEnrichment', 'Download') )				
-			  
-		    )
+				htmlOutput('listSigPathways')
+				,br(),br(),imageOutput("KeggImage", width = "100%", height = "100%")				
+				,br(),br()	 
+			)
+		) # enrichment tab
         #,tabPanel("Details", tableOutput('tableDetail')  )
 		,tabPanel("Tree", downloadButton('GOTermsTree4Download','Figure' ),plotOutput('GOTermsTree')   )
 		,tabPanel("Network", actionButton("layoutButton", "Change layout"),downloadButton('enrichmentNetworkPlotDownload')
@@ -129,9 +131,10 @@ shinyUI(
 		,br(),br(),img(src='promoter.png', align = "center",width="717", height="288")			 
 		 
 		 
-		 ,h4("Changes:")
+		 ,br(),h4("Changes:")
 		 ,"4/24/2018: V0.4 Add STRING API, KEGG diagram, tree display and network."	
 		 ,"4/27/2018: V0.41 Change to ggplot2, add grid and gridExtra packages"
+		 ,"4/30/2018: V0.42 changed figure configurations for tree."
 		 
 		 ) ) 	
        ) #tabsetPanel
