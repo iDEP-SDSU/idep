@@ -448,8 +448,8 @@ enrichmentPlot <- function( enrichedTerms, rightMargin=33) {
   #leafSize = unlist( lapply(geneLists,length) ) # leaf size represent number of genes
   #leafSize = sqrt( leafSize[ix] )  
   leafSize = -log10(as.numeric( enrichedTerms$adj.Pval[ix] ) ) # leaf size represent P values
-  leafSize = 1.*leafSize/max( leafSize ) + .1
-  
+  leafSize = 1.*(leafSize-min(leafSize))/(max( leafSize )-min(leafSize)+1e-50) + .1   # scale more aggressively
+  # leafSize = 1.*(leafSize)/max( leafSize ) + .1   # ratio scaling, less agressive
 	dend %>% 
 	as.dendrogram(hang=-1) %>%
 	set("leaves_pch", 19) %>%   # type of marker
