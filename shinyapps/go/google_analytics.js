@@ -5,3 +5,16 @@
 
   ga('create', 'UA-87863704-1', 'auto');
   ga('send', 'pageview');
+$(document).on('shiny:inputchanged', function(event) {
+        ga('send', 'pageview');
+});
+
+$(document).on('shiny:inputchanged', function(event) {
+if(event.name == 'file1'){
+        ga('send', 'event','upload','expression','data');
+   }
+});
+
+$(document).on('shiny:error', function(event) {
+        ga('send', 'event','error','error','error');
+});
