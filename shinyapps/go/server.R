@@ -448,7 +448,7 @@ enrichmentPlot <- function( enrichedTerms, rightMargin=33) {
   #leafSize = unlist( lapply(geneLists,length) ) # leaf size represent number of genes
   #leafSize = sqrt( leafSize[ix] )  
   leafSize = -log10(as.numeric( enrichedTerms$adj.Pval[ix] ) ) # leaf size represent P values
-  leafSize = 1.*(leafSize-min(leafSize))/(max( leafSize )-min(leafSize)+1e-50) + .1   # scale more aggressively
+  leafSize = .9*(leafSize-min(leafSize))/(max( leafSize )-min(leafSize)+1e-50) + .1   # scale more aggressively
   # leafSize = 1.*(leafSize)/max( leafSize ) + .1   # ratio scaling, less agressive
 	dend %>% 
 	as.dendrogram(hang=-1) %>%
@@ -1119,13 +1119,14 @@ output$stringDB_network_link <- renderUI({
 				ids <- ids[1:ngenes1]
 			incProgress(1/4  )
 			link1 = string_db$get_link( ids)
-			Pval1 = string_db$get_ppi_enrichment( ids)
+
 
 			tem = paste( "<a href=\"", link1, "\" target=\"_blank\"> Click here for an interactive and annotated network </a>"  )
-           tem2 = paste("<h5> PPI enrichment P value: ")  
-			tem2 = paste0(tem2, sprintf("%-3.2e",Pval1[1]))
-			tem2 = paste(tem2, ".</h5>  <h5> Small P value indicates more PPIs among your proteins than background. </h5>" )
-			tem = paste(tem2,tem )
+		#	Pval1 = string_db$get_ppi_enrichment( ids)
+        #    tem2 = paste("<h5> PPI enrichment P value: ")  
+		#	tem2 = paste0(tem2, sprintf("%-3.2e",Pval1[1]))
+		#	tem2 = paste(tem2, ".</h5>  <h5> Small P value indicates more PPIs among your proteins than background. </h5>" )
+		#	tem = paste(tem2,tem )
 			return(HTML(tem))	
 		
 			incProgress(1  )
@@ -1234,7 +1235,7 @@ output$downloadGrouping <- downloadHandler(
 	   } )# isolate
 	   }, height = 3000, width = 1000)
 
-
+# barplots using R base graphics
 output$genePlot <- renderPlot({
 	   if (input$goButton == 0  )    return()
 	  tem=input$selectOrg; 
@@ -1291,7 +1292,7 @@ output$genePlot <- renderPlot({
 		head(freq)
 		
         barplot(t(freq), beside=TRUE,las=2,col=c("red","lightgrey"), ylab="Number of Genes",
-	      main= sig,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
+	      main= sig,cex.lab=1.5, cex.axis= 1.5,cex.names=1.5, cex.main=1.5)
 
 	    legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n", cex=2)
 		if(0) { 
@@ -1352,7 +1353,7 @@ output$genePlot <- renderPlot({
     }, width=600,height = 1500)
 	
 	
-	
+# density plots using ggplot2	
 output$genePlot2 <- renderPlot({
 	   if (input$goButton == 0  )    return()
 	  tem=input$selectOrg; 
@@ -1365,6 +1366,8 @@ output$genePlot2 <- renderPlot({
 	  # par(mfrow=c(10,1))
 	   # par(mar=c(8,6,8,2))
 	   
+	  # increase fonts
+	  theme_set(theme_gray(base_size = 25)) 
 	   
       #Coding Sequence length 
 	  if( sum(!is.na( x2$cds_length) ) >= minGenes && length(unique(x2$cds_length) ) > 2 && length(which(x2$Set == "List") ) > minGenes) {
@@ -1377,8 +1380,8 @@ output$genePlot2 <- renderPlot({
 	   p1 <- ggplot(x2, aes(cds_length, fill= Set, colour = Set) )+
 			geom_density(alpha = 0.1) + 
 			scale_x_log10() +
-			labs(x = "Coding sequence length") +
-			annotate("text",x= min(x2$cds_length)+50, y = .5, label=sig)				
+			labs(x = "Coding sequence length (bp)") +
+			annotate("text",x= min(x2$cds_length)+50, y = .5, label=sig, size=8)				
        }
 
 	   	   incProgress(1/8)
@@ -1396,7 +1399,7 @@ output$genePlot2 <- renderPlot({
 			p2 <- ggplot(x2, aes(transcript_length, fill= Set, colour = Set) )+
 				geom_density(alpha = 0.1) + 
 				scale_x_log10() +
-				annotate("text",x= min(x2$cds_length)+100, y = .5, label=sig)+	
+				annotate("text",x= min(x2$cds_length)+100, y = .5, label=sig, size=8)+	
 				labs(x = "Transcript length (bp)")		   
 		  }
 	   	   incProgress(1/8)
@@ -1412,7 +1415,7 @@ output$genePlot2 <- renderPlot({
 		p3 <- ggplot(x2, aes(genomeSpan, fill= Set, colour = Set) )+
 			geom_density(alpha = 0.1) + 
 			scale_x_log10() +
-			annotate("text",x=  min(x2$genomeSpan)+200, y = .5, label=sig)+	
+			annotate("text",x=  min(x2$genomeSpan)+200, y = .5, label=sig, size=8)+	
 			labs(x = "Genome span (bp)")		   
 	   }			  
 
@@ -1431,7 +1434,7 @@ output$genePlot2 <- renderPlot({
 			geom_density(alpha = 0.1) + 
 			scale_x_log10() +
 			annotate("text",x= min(x2[ which(!is.na(x2$FiveUTR) &x2$FiveUTR > 0 ),'FiveUTR'])+5, 
-				y = .5, label=sig)+	
+				y = .5, label=sig, size=8)+	
 			labs(x = "5' UTR length(bp)")
 	}	
 
@@ -1448,7 +1451,7 @@ output$genePlot2 <- renderPlot({
 		p5 <- ggplot(x2, aes(ThreeUTR, fill= Set, colour = Set) )+
 			geom_density(alpha = 0.1) + 
 			scale_x_log10() +
-			annotate("text",x= min(x2[ which(!is.na(x2$ThreeUTR) &x2$ThreeUTR > 0 ),'ThreeUTR'])+5, y = .5, label=sig)+	
+			annotate("text",x= min(x2[ which(!is.na(x2$ThreeUTR) &x2$ThreeUTR > 0 ),'ThreeUTR'])+5, y = .5, label=sig, size=8)+	
 			labs(x = "3' UTR length(bp)")
 	  }	
 	   incProgress(1/8)
@@ -1466,8 +1469,8 @@ output$genePlot2 <- renderPlot({
 
 			p6 <- ggplot(x2, aes(percentage_gc_content, fill= Set, colour = Set) )+
 				geom_density(alpha = 0.1) + 
-				annotate("text",x= min(x2$percentage_gc_content)+5, y = .02, label=sig)+	
-				labs(x = "GC content")		   
+				annotate("text",x= min(x2$percentage_gc_content)+5, y = .02, label=sig, size=8)+	
+				labs(x = "GC content (%)")		   
 	   }		  
 		  
 	   incProgress(1/8)	
@@ -1477,7 +1480,7 @@ output$genePlot2 <- renderPlot({
 		}
 		 incProgress(1/8, detail = paste("Done"))	  })
 	 }) #isolate
-    }, width=600,height = 2000)
+    }, width=700,height = 3000)
 
 	
 output$listSigPathways <- renderUI({
