@@ -84,7 +84,7 @@ tableOutput('species' ),
       mainPanel(
       tableOutput('sampleInfoTable')
      ,tableOutput('contents')
-		#,h3("Dear users, Thank you for using iDEP. Please help make it better by sending us criticisms, suggestions or feature/functionality requests. We also answer your questions on how to use iDEP to analyze your data.",a("Just email us.",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"))
+		,h3("We need your support! We are writing a grant proposal (due June 5th) to NIH to seek support for the development and maintenance of iDEP. A brief email on how this tool helped your research would go a long way to support our tiny team, even if you are a graduate student.",a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP support letter"),  style = "color:blue")
 		,h5("New v0.70  iDEP generates R and R Markdown codes for users to run in stand-alone!")
 		,a("R Markdown example.",align = "left", href="http://rpubs.com/ge600/R",target="_blank")
 		,h5("New v0.68! Try the STRING-db API access on the DEG2 page that offer protein interaction networks and GO enrichment for thousands species, including bacteria.")

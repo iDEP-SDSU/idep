@@ -25,6 +25,7 @@ shinyUI(
        tabsetPanel(
         tabPanel("Enrichment" 
 			,conditionalPanel("input.goButton == 0 "  # welcome screen
+				,br(),br(),h3("We need your support! We are writing a grant proposal (due June 5th) to NIH to seek support for the development and maintenance of ShinyGO. A brief email on how this tool helped your research would go a long way to support our tiny team, even if you are a graduate student. ",a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=ShinyGO support letter"),  style = "color:blue")
 				,br(),br(),h4("Welcome to ShinyGO! Just paste your gene list to get enriched GO terms and othe pathways for over 200 plant and animal species. In addition, it also produces
 				KEGG pathway diagrams with your genes highlighted, hierarchical clustering trees and networks summarizing 
 				overlapping terms/pathways, protein-protein interaction networks, gene characterristics plots, and enriched promoter motifs. See example outputs below:")			
@@ -39,7 +40,7 @@ shinyUI(
 
 			,tableOutput('EnrichmentTable')	
 		    ,conditionalPanel("input.goButton != 0", 
-		        downloadButton('downloadEnrichment', 'Download')			
+		        downloadButton('downloadEnrichment', 'Download table with gene IDs')			
 				,br(),br(),"Select KEGG pathways in the left to display pathway diagrams."
 			)			
 			,conditionalPanel("input.selectGO == 'KEGG'", 
@@ -89,23 +90,24 @@ shinyUI(
 						,tableOutput("stringDB_GO_enrichment")		
 		
 		)	
-		,tabPanel("?", 
-		h5("Based on annotation of 163 animal and 45 plant genomes in Ensembl BioMart as of 12/15/2017."
+		,tabPanel("?"
+		,"For Details please see our", a("manuscript", href="https://www.biorxiv.org/content/biorxiv/early/2018/05/04/315150.full.pdf",target="_blank")
+		 ,"and a detailed", a("demo.", href="https://www.biorxiv.org/content/biorxiv/suppl/2018/05/04/315150.DC1/315150-1.pdf",target="_blank") 
+		,h5("Based on annotation of 163 animal and 45 plant genomes in Ensembl BioMart as of 12/15/2017."
             ," Additional  data from",a("MSigDB (human),", href="https://doi.org/10.1093/bioinformatics/btr260",target="_blank") 
          ,a("GSKB (mouse)", href="http://biorxiv.org/content/early/2016/10/24/082511",target="_blank") 
          ,"and",a("  araPath (arabidopsis).", href="https://doi.org/10.1093/bioinformatics/bts421",target="_blank") 
+		 , a("Full list of supported organisms", href="https://idepsite.wordpress.com/species/",target="_blank")		 
          ," For feedbacks or data contributions, please"
          ,a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=ShinyGO" )
          , "or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank")
-		 ,br(),br()
-		 , a("Full list of supported organisms", href="https://idepsite.wordpress.com/species/",target="_blank")
-		 ,br(),br()
+		 ,br()
 		 , "ShinyGO shares many functionalities and databases with ", a("iDEP.", href="http://ge-lab.org/idep/",target="_blank")
  		 ,br(),br()
 
 		 #,includeHTML("help.htm")
 		 ,h4("Input:")
-		 ,"A list of gene ids, separated by tab, space, comma or new line."
+		 ,"A list of gene ids, separated by tab, space, comma or new line characters."
 		 ,h4("Output:")
 		 ,"Enriched GO terms and pathways:"
 		 ,br()
@@ -135,6 +137,7 @@ shinyUI(
 		 ,"4/24/2018: V0.4 Add STRING API, KEGG diagram, tree display and network."	
 		 ,"4/27/2018: V0.41 Change to ggplot2, add grid and gridExtra packages"
 		 ,"4/30/2018: V0.42 changed figure configurations for tree."
+		 
 		 
 		 ) ) 	
        ) #tabsetPanel
