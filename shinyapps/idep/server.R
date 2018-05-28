@@ -5421,9 +5421,10 @@ DEG.data <- reactive({
 		isolate({ 
 			#genes = limma()$results
 			genes = limma()$topGenes[[1]]
-			for( i in 1:length(limma()$topGenes) )
+			if(length(limma()$topGenes ) >1 )
+			  for( i in 2:length(limma()$topGenes) )
 				genes <- cbind(genes, limma()$topGenes[[i]])
-			genes$Expression_data = 0 # add an empty column
+			genes$data = " " # add an empty column
 			genes = merge(genes,convertedData(), by='row.names')
 
 			colnames(genes) = gsub("\\.","-",colnames(genes))
