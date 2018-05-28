@@ -2528,16 +2528,17 @@ readData <- reactive ({
 							x = x[, 2*(1:n2 )-1,drop=FALSE]   # 1, 3, 5				
 						}	
 						
+						if(0) {  
 						ix =  which(apply(x,1, function(y) max(y)- min(y) ) > 0  )
 						x <- x[ix,]  # remove rows with all the same levels
 						if(!is.null(pvals) )
 							pvals = pvals[ix,]
-						
+						 }
 					}
 					
 					
 				dataSize = dim(x);
-				validate( need(dim(x)[1]>5 & dim(x)[2]>1 , 
+				validate( need(dim(x)[1]>5 & dim(x)[2]>=1 , 
 					"Data file not recognized. Please double check."))
 
 				incProgress(1, "Done.")
@@ -5418,21 +5419,30 @@ DEG.data <- reactive({
     	####################################
 		
 		isolate({ 
-		  genes = limma()$results
-		  genes = as.data.frame( genes[which( rowSums(genes) != 0 ),] )
-		  colnames(genes) = colnames( limma()$results )
-		  genes = merge(genes,convertedData(), by='row.names')
-		  colnames(genes)[1] = "1: upregulation, -1: downregulation"
+			#genes = limma()$results
+			genes = limma()$topGenes[[1]]
+			for( i in 1:length(limma()$topGenes) )
+				genes <- cbind(genes, limma()$topGenes[[i]])
+			genes$Expression_data = 0 # add an empty column
+			genes = merge(genes,convertedData(), by='row.names')
+
+			colnames(genes) = gsub("\\.","-",colnames(genes))
 			# add gene symbol
-		ix = match( genes[,1], allGeneInfo()[,1])
-		genes <- cbind(as.character( allGeneInfo()$symbol)[ix],genes) 
-		colnames(genes)[1] = "Symbol"
-		genes <- genes[,c(2,1,3:dim(genes)[2]) ]
-		return(genes)
+			ix = match( genes[,1], allGeneInfo()[,1])
+			genes <- cbind(as.character( allGeneInfo()$symbol)[ix],genes) 
+			colnames(genes)[1] = "Symbol"
+			genes <- genes[,c(2,1,3:dim(genes)[2]) ]	
+			
+			return(genes)
 		})
 		})
 
-		
+output$download.DEG.data <- downloadHandler(
+		filename = function() {"Diff_expression_all_comparisons.csv"},
+		content = function(file) {
+			write.csv(DEG.data(), file,row.names=FALSE)
+	    }
+	)		
 ################################################################
 #   Differential gene expression  2
 ################################################################		
@@ -5600,12 +5610,7 @@ output$download.selectedHeatmap.data <- downloadHandler(
 	    }
 	)
 	
-output$download.DEG.data <- downloadHandler(
-		filename = function() {"Diff_expression_all_comparisons.csv"},
-		content = function(file) {
-			write.csv(DEG.data(), file,row.names=FALSE)
-	    }
-	)
+
 
 AllGeneListsGMT <- reactive({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
