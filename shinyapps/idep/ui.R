@@ -84,8 +84,9 @@ tableOutput('species' ),
       mainPanel(
       tableOutput('sampleInfoTable')
      ,tableOutput('contents')
-		,h3("Send an email to help make sure iDEP continue to exist. We are writing a grant proposal (due June 5th) to NIH to seek support for the development and maintenance of iDEP. A brief email on how this tool helped your research would go a long way to support our tiny team, even if you are a graduate student. ",a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP support letter"),  style = "color:red")
-		,h5("New v0.70  iDEP generates R and R Markdown codes for users to run in stand-alone!")
+		#,h3("Send an email to help make sure iDEP continue to exist. We are writing a grant proposal (due June 5th) to NIH to seek support for the development and maintenance of iDEP. A brief email on how this tool helped your research would go a long way to support our tiny team, even if you are a graduate student. ",a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP support letter"),  style = "color:red")
+     ,h3("Service will not be available starting 6:30 am (US central time) on June 21 (Friday) due to scheduled maintenance. It should take less than 45 minutes. ",  style = "color:red")
+				,h5("New v0.70  iDEP generates R and R Markdown codes for users to run in stand-alone!")
 		,a("R Markdown example.",align = "left", href="http://rpubs.com/ge600/R",target="_blank")
 		,h5("New v0.68! Try the STRING-db API access on the DEG2 page that offer protein interaction networks and GO enrichment for thousands species, including bacteria.")
 		,h5("Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data.  See ",
@@ -895,7 +896,7 @@ tableOutput('species' ),
 	 ,h5("4/3/2018: V0.713 add permutations for fgsea. Expand quotes.")
 	 ,h5("4/13/2018: V0.72 fixed bug caused error in R Markdown file when users choose species other than the default.")
 	 ,h5("4/25/2018: V0.73 Fixed bug for GO terms tree in k-Means. Added layout button for network viz of GO terms")
-	 ,h5("5/28/2018: V0.73 Enabled download of all FDR and fold-changes at the DEG1 tab. ")
+	 ,h5("5/28/2018: V0.73 Enabled download of all FDR and fold-changes at the DEG1 tab. Problem with the FDR and fold-change data with only one columns. ")
 	 ,br(),br()
 	 ,h5("In loving memory of my parents.")
  ) 
