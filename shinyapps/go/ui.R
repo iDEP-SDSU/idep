@@ -25,7 +25,7 @@ shinyUI(
        tabsetPanel(
         tabPanel("Enrichment" 
 			,conditionalPanel("input.goButton == 0 "  # welcome screen
-				,br(),br(),#h3("We need your support! We are writing a grant proposal (due June 5th) to NIH to seek support for the development and maintenance of ShinyGO. A brief email on how this tool helped your research would go a long way to support our tiny team, even if you are a graduate student. ",a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=ShinyGO support letter"),  style = "color:blue")
+				,br(),br()#h3("We need your support! We are writing a grant proposal (due June 5th) to NIH to seek support for the development and maintenance of ShinyGO. A brief email on how this tool helped your research would go a long way to support our tiny team, even if you are a graduate student. ",a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=ShinyGO support letter"),  style = "color:blue")
 				     ,h3("Service will not be available starting 6:30 am (US central time) on June 21 (Friday) due to scheduled maintenance. It should take less than 45 minutes. ",  style = "color:blue")
 
 				,br(),br(),h4("Welcome to ShinyGO! Just paste your gene list to get enriched GO terms and othe pathways for over 200 plant and animal species. In addition, it also produces
