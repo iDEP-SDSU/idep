@@ -22,3 +22,5 @@ tar xvzf convertIDs.db.tar.gz
 
 echo 'Data has been downloaded and unziped'
 
+echo 'All image are ready to run'
+
