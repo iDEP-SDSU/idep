@@ -21,7 +21,7 @@ list.of.bio.packages  <- c(
    "org.Tgondii.eg.db","org.Xl.eg.db"
 )
 
- if(0) { # remove all old packages, to solve problem caused by Bioconductor upgrade
+ if(1) { # remove all old packages, to solve problem caused by Bioconductor upgrade
 	# create a list of all installed packages
 	 ip <- as.data.frame(installed.packages())
 	 head(ip)
