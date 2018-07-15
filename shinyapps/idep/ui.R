@@ -27,6 +27,7 @@ iDEPversion,
                          )
               )	
 		,h5(" and just click the tabs for some magic!",  style = "color:red")
+		,a(h4("Test iDEP v0.80",align = "right"), href="http://bioinformatics.sdstate.edu/idep92/")
 		,p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))
 		,radioButtons("dataFileFormat", label = "1. Choose data type", choices = list("Read counts data (recommended)" = 1, 
 													"Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2,
