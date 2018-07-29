@@ -1,5 +1,5 @@
 #iDEP server logic, By Steven Ge Xijin.Ge@sdstate.edu
-iDEPversion = "iDEP 0.73"
+iDEPversion = "iDEP 0.80"
 ################################################################
 # R packages
 ################################################################
@@ -81,7 +81,7 @@ maxSamplesEDAplot = 100  # max number of samples for EDA plots
 #  setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
 
 # relative path to data files
-datapath = "../../data/"   # production server
+datapath = "../../data/data92/"   # production server
 #datapath = "../../../go/"  # windows
 #datapath = "../go/" # digital ocean
 
@@ -1498,6 +1498,7 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 
 # Find enriched TF binding motifs in promoters
 promoter <- function (converted,selectOrg, radio){
+
 	idNotRecognized = as.data.frame("ID not recognized!") 
 	if(is.null(converted) ) return(idNotRecognized) # no ID 
 	querySet <- converted$IDs;
@@ -1516,11 +1517,12 @@ promoter <- function (converted,selectOrg, radio){
 		return(as.data.frame("Multiple geneInfo file found!") )   
 	
 	motifs <- dbConnect(sqlite,motifFiles[ix],flags=SQLITE_RO) # makes a new file
-		
+
 	sqlQuery = paste( " select * from scores where row_names IN ('", paste(querySet,collapse="', '"),"')" ,sep="")
 	result <- dbGetQuery( motifs, sqlQuery  )
+	
 	if( dim(result)[1] ==0) {return(as.data.frame("No matching species or gene ID file!" ) )}
-	row.names(result) <- result$row_names; result <- result[,-1]
+	row.names(result) <- result$row_names; result <- result[,-1]	
 	TFstat <- as.data.frame( cbind(apply(result,2,mean),apply(result,2,sd) ) )
 		colnames(TFstat) = c("scoreMean1","scoreSD1" )
 	rownames(TFstat) = toupper( colnames(result) )

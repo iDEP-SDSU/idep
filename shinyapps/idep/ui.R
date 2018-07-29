@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.73"
+iDEPversion = "iDEP.80"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -27,7 +27,6 @@ iDEPversion,
                          )
               )	
 		,h5(" and just click the tabs for some magic!",  style = "color:red")
-		,a(h4("Test iDEP v0.80",align = "right"), href="http://bioinformatics.sdstate.edu/idep92/")
 		,p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))
 		,radioButtons("dataFileFormat", label = "1. Choose data type", choices = list("Read counts data (recommended)" = 1, 
 													"Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2,
@@ -87,7 +86,8 @@ tableOutput('species' ),
      ,tableOutput('contents')
 		#,h3("Send an email to help make sure iDEP continue to exist. We are writing a grant proposal (due June 5th) to NIH to seek support for the development and maintenance of iDEP. A brief email on how this tool helped your research would go a long way to support our tiny team, even if you are a graduate student. ",a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP support letter"),  style = "color:red")
      #,h3("Service will not be available starting 6:30 am (US central time) on June 21 (Friday) due to scheduled maintenance. It should take less than 45 minutes. ",  style = "color:red")
-				,h5("New v0.70  iDEP generates R and R Markdown codes for users to run in stand-alone!")
+	 ,h5("New v0.80  Updated annotation database. Comprehensive pathway database for human. TF binding motifs for 200+ speceis. Old versions made available")
+	 ,h5("New v0.70  iDEP generates R and R Markdown codes for users to run in stand-alone!")
 		,a("R Markdown example.",align = "left", href="http://rpubs.com/ge600/R",target="_blank")
 		,h5("New v0.68! Try the STRING-db API access on the DEG2 page that offer protein interaction networks and GO enrichment for thousands species, including bacteria.")
 		,h5("Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data.  See ",
@@ -109,6 +109,8 @@ tableOutput('species' ),
 			, "or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank")
 			, "Send us suggestions or any error message to help improve iDEP."
 			,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions")
+		 
+			
          )
 		,h3("Loading R packages ... ...")
 		,htmlOutput('fileFormat')
@@ -862,7 +864,7 @@ tableOutput('species' ),
 	    h2("R as in Reproducibility"),	   
 	   h5("To improve reproducibility, iDEP generates custom  R code  
 	    based on your data and choices of parameters. Users with some R coding experience should be able to re-run most analyses 
-		by downloading all of the files below. If Ensembl IDs is not used in users' original file, we should use the converted data file. Click through all the tabs and then download all these file to a folder. Run the Customized R code or the Markdown file. ",a("R Markdown example.",align = "left", href="http://rpubs.com/ge600/R",target="_blank")),
+		by downloading all of the files below. If Ensembl IDs is not used in users' original file, we should use the converted data file. Click through all the tabs and then download all these file to a folder. Run the Customized R code or the Markdown file. ",a("R Markdown example.",align = "left", href="https://gex.netlify.com/post/reproducing-idep-analyses-with-auto-generated-r-markdown/",target="_blank")),
 		
 	   downloadButton('downloadRcode',"Customized R code"),   
 	   downloadButton('downloadRcodeMarkdown',"Customized R code(Markdown)"),  
@@ -878,6 +880,9 @@ tableOutput('species' ),
 	   #textOutput('Rcode'),
 	   #tags$style(type="text/css", "#Rcode {white-space: pre-wrap; font-family: \"Courier New\"}"),
 	   br(),
+	   h4("Previous versions of iDEP"),
+	   a("iDEP 0.73 with Ensembl BioMart version 91, archived on July 11, 2018 ", href="http://bioinformatics.sdstate.edu/idep92/"),	           
+	 br(),	
      htmlOutput('RsessionInfo')
 	 ,h4("Changes")
 	 ,h5("iDEP v0.62 2/5/2018:  Add  tree and networks to visualize 

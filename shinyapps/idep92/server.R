@@ -1,5 +1,5 @@
 #iDEP server logic, By Steven Ge Xijin.Ge@sdstate.edu
-iDEPversion = "iDEP 0.80"
+iDEPversion = "iDEP 0.73"
 ################################################################
 # R packages
 ################################################################
@@ -81,7 +81,7 @@ maxSamplesEDAplot = 100  # max number of samples for EDA plots
 #  setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
 
 # relative path to data files
-datapath = "../../data/data92/"   # production server
+datapath = "../../data/data73/"   # production server
 #datapath = "../../../go/"  # windows
 #datapath = "../go/" # digital ocean
 

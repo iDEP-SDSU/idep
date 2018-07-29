@@ -3,7 +3,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.80"
+iDEPversion = "iDEP.73"
 # 0.38 Gene ID conversion, remove redudancy;  rlog option set to blind=TRUE
 # 0.39 reorganized code. Updated to Bioconductor 3.5; solved problems with PREDA 9/8/17
 # 0.40 moved libraries from the beginning to different places to save loading time
@@ -27,6 +27,7 @@ iDEPversion,
                          )
               )	
 		,h5(" and just click the tabs for some magic!",  style = "color:red")
+		,a(h4("Test iDEP v0.80",align = "right"), href="http://bioinformatics.sdstate.edu/idep92/")
 		,p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))
 		,radioButtons("dataFileFormat", label = "1. Choose data type", choices = list("Read counts data (recommended)" = 1, 
 													"Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2,
