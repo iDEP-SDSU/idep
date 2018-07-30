@@ -1,5 +1,10 @@
-#iDEP server logic, By Steven Ge Xijin.Ge@sdstate.edu
+# iDEP server logic, By Steven Ge Xijin.Ge@sdstate.edu
+# Integrated Differential Gene Expression and Pathway analysis
+# hosted at http://ge-lab.org/idep/
+# manuscript: https://www.biorxiv.org/content/early/2018/04/20/148411 
+
 iDEPversion = "iDEP 0.80"
+
 ################################################################
 # R packages
 ################################################################
@@ -10,8 +15,6 @@ iDEPversion = "iDEP 0.80"
 # if(length(notInstalled)>0)
 # 	install.packages(notInstalled)
 
-# To test these packages, start an R session and paste these lines below.
-#library(shiny)   	# for Shiny interface
 library(RSQLite,verbose=FALSE)	# for database connection
 library(gplots,verbose=FALSE)		# for hierarchical clustering
 library(ggplot2,verbose=FALSE)	# graphics
@@ -19,11 +22,16 @@ library(e1071,verbose=FALSE) 		# computing kurtosis
 library(DT,verbose=FALSE) 		# for renderDataTable
 library(plotly,verbose=FALSE) 	# for interactive heatmap
 library(reshape2,verbose=FALSE) 	# for melt correlation matrix in heatmap
+
 # Bioconductor packages
 #source("https://bioconductor.org/biocLite.R")
 #biocLite(c( "limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata","sfsmisc","lokern","multtest" ))
 # annotation packages needed by pathview; will be installed automatically if runing on Windows
-#biocLite( c( "org.Ag.eg.db","org.At.tair.db","org.Bt.eg.db","org.Ce.eg.db","org.Cf.eg.db","org.Dm.eg.db","org.Dr.eg.db","org.EcK12.eg.db","org.EcSakai.eg.db","org.Gg.eg.db","org.Hs.eg.db","org.Hs.ipi.db","org.Mm.eg.db","org.Mmu.eg.db","org.Pf.plasmo.db","org.Pt.eg.db","org.Rn.eg.db","org.Sc.sgd.db","org.Sco.eg.db","org.Ss.eg.db","org.Tgondii.eg.db","org.Xl.eg.db")  )
+#biocLite( c( "org.Ag.eg.db","org.At.tair.db","org.Bt.eg.db","org.Ce.eg.db",
+#"org.Cf.eg.db","org.Dm.eg.db","org.Dr.eg.db","org.EcK12.eg.db","org.EcSakai.eg.db",
+#"org.Gg.eg.db","org.Hs.eg.db","org.Hs.ipi.db","org.Mm.eg.db","org.Mmu.eg.db",
+#"org.Pf.plasmo.db","org.Pt.eg.db","org.Rn.eg.db","org.Sc.sgd.db","org.Sco.eg.db",
+#"org.Ss.eg.db","org.Tgondii.eg.db","org.Xl.eg.db")  )
 # auto install 
 # biocLibs = c( "limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata","sfsmisc","lokern","multtest","hgu133plus2.db","impute" )
 # notInstalled = setdiff(biocLibs, rownames(installed.packages()))
@@ -69,32 +77,31 @@ maxSamplesDefault = 30   # change default from DESeq2 to limma
 maxComparisons = 20 # max number of pair wise comparisons in DESeq2
 hmcols <- colorRampPalette(rev(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF",
 "#E0F3F8", "#91BFDB", "#4575B4")))(75)
-heatColors = rbind(      greenred(75),     bluered(75),     colorpanel(75,"green","black","magenta"),colorpanel(75,"blue","yellow","red"),hmcols )
-rownames(heatColors) = c("Green-Black-Red","Blue-White-Red","Green-Black-Magenta","Blue-Yellow-Red","Blue-white-brown")
-colorChoices = setNames(1:dim(heatColors)[1],rownames(heatColors)) # for pull down menu
+heatColors = rbind(  greenred(75),     bluered(75),     
+                     colorpanel(75,"green", "black","magenta"),
+                     colorpanel(75,"blue", "yellow","red"),hmcols )
+rownames(heatColors) = c("Green-Black-Red", "Blue-White-Red", "Green-Black-Magenta",
+                         "Blue-Yellow-Red", "Blue-white-brown")
+colorChoices = setNames(1:dim(heatColors)[1], rownames(heatColors)) # for pull down menu
 maxSamplesEDAplot = 100  # max number of samples for EDA plots
+
 ################################################################
 #   Input files
 ################################################################
 
-# this need to be removed. Also replace go to go for folder
-#  setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer")
-
 # relative path to data files
 datapath = "../../data/data92/"   # production server
-#datapath = "../../../go/"  # windows
-#datapath = "../go/" # digital ocean
 
 sqlite  <- dbDriver("SQLite")
-convert <- dbConnect(sqlite,paste0(datapath,"convertIDs.db"),flags=SQLITE_RO)  #read only mode
-keggSpeciesID = read.csv(paste0(datapath,"data_go/KEGG_Species_ID.csv"))
+convert <- dbConnect( sqlite, paste0(datapath, "convertIDs.db"), flags=SQLITE_RO)  #read only mode
+keggSpeciesID = read.csv(paste0(datapath, "data_go/KEGG_Species_ID.csv"))
 # List of GMT files in /gmt sub folder
-gmtFiles = list.files(path = paste0(datapath,"pathwayDB"),pattern=".*\\.db")
-gmtFiles = paste(datapath,"pathwayDB/",gmtFiles,sep="")
-geneInfoFiles = list.files(path = paste0(datapath,"geneInfo"),pattern=".*GeneInfo\\.csv")
-geneInfoFiles = paste(datapath,"geneInfo/",geneInfoFiles,sep="")
-motifFiles = list.files(path = paste0(datapath,"motif"),pattern=".*\\.db")
-motifFiles = paste(datapath,"motif/",motifFiles,sep="")
+gmtFiles = list.files(path = paste0(datapath,"pathwayDB"), pattern=".*\\.db")
+gmtFiles = paste(datapath, "pathwayDB/", gmtFiles,sep="")
+geneInfoFiles = list.files(path = paste0(datapath, "geneInfo"), pattern=".*GeneInfo\\.csv")
+geneInfoFiles = paste(datapath, "geneInfo/", geneInfoFiles,sep="")
+motifFiles = list.files(path = paste0(datapath,"motif"), pattern=".*\\.db")
+motifFiles = paste(datapath, "motif/", motifFiles,sep="")
 #demoDataFile = paste0(datapath,"data_go/GSE37704_sailfish_genecounts.csv") #"expression1_no_duplicate.csv"
 #demoDataFile = paste0(datapath,"data_go/BcellGSE71176_p53.csv") # GSE71176
 #demoDataFile2 = paste0(datapath,"data_go/BcellGSE71176_p53_sampleInfo.csv") # sample Info file
@@ -117,21 +124,26 @@ STRING10_species = read.csv("STRING10_species.csv")
 # Functions for hierarchical clustering
 hclust2 <- function(x, method="average", ...)  # average linkage
   hclust(x, method=method, ...)
-hclust.ward.D <- function(x, method="ward.D", ...)  # average linkage
+hclust.ward.D <- function(x, method="ward.D", ...)  # ward.D linkage
   hclust(x, method=method, ...)
-hclust.ward.D2 <- function(x, method="ward.D2", ...)  # average linkage
+hclust.ward.D2 <- function(x, method="ward.D2", ...)  # ward.D2 linkage
   hclust(x, method=method, ...)
-hclust.single <- function(x, method="single", ...)  # average linkage
+hclust.single <- function(x, method="single", ...)  # single linkage
   hclust(x, method=method, ...)
-hclust.mcquitty <- function(x, method="mcquitty", ...)  # average linkage
+hclust.mcquitty <- function(x, method="mcquitty", ...)  # mcquitty linkage
   hclust(x, method=method, ...)
-hclust.median <- function(x, method="median", ...)  # average linkage
+hclust.median <- function(x, method="median", ...)  # median linkage
   hclust(x, method=method, ...)
-hclust.centroid <- function(x, method="centroid", ...)  # average linkage
+hclust.centroid <- function(x, method="centroid", ...)  # centroid linkage
   hclust(x, method=method, ...)
   
-hclustFuns <- list( averge = hclust2, complete=hclust, single=hclust.single,
-					median=hclust.median, centroid=hclust.centroid, mcquitty=hclust.mcquitty)
+hclustFuns <- list( averge   = hclust2, 
+                    complete = hclust, 
+                    single   = hclust.single,
+					median   = hclust.median, 
+                    centroid = hclust.centroid, 
+                    mcquitty = hclust.mcquitty)
+
 hclustChoices = setNames(1:length(hclustFuns),names(hclustFuns)) # for pull down menu
 
 dist2 <- function(x, ...)   # distance function = 1-PCC (Pearson's correlation coefficient)
@@ -144,29 +156,43 @@ dist3 <- function(x, ...)   # distance function = 1-abs(PCC) (Pearson's correlat
 distFuns <- list(Correlation=dist2, Euclidean=dist,AbsolutePCC=dist3)
 distChoices = setNames(1:length(distFuns),names(distFuns)) # for pull down menu
 
-# Given a set of numbers, find the difference between 2nd largest and 2nd smallest
-# 2,3,5,6,1   --> 5-2 = 3
+
 geneChange <- function(x){
-	n = length(x)
-	if( n<4) return( max(x)-min(x)  ) else 
-	return(sort(x)[n-1] - sort(x)[2]   )
+  # Given a set of numbers, find the difference between 2nd largest and 2nd smallest
+  # 2,3,5,6,1   --> 5-2 = 3
+  n <- length(x)
+  if( n<4) { 
+    return( max(x)-min(x) )
+  } else { 
+	return( sort(x)[n-1] - sort(x)[2] )
+  }
 }
 
 dynamicRange <- function( x ) {
-	y = sort(x)
-	if(length(x)>=4)  k =2 else k =1;
-	return( y[length(x)-k+1] - y[k]) 
+  # Given a set of numbers, find the difference between 2nd largest and 2nd smallest 
+  y <- sort(x)
+  if(length(x)>=4) {
+    k <- 2 
+  } else {
+    k <- 1
+  }
+  return( y[length(x)-k+1] - y[k] ) 
 }  
 
-# Define sample groups based on column names
+
  detectGroups <- function (x){  # x are col names
-	tem <- gsub("[0-9]*$","",x) # Remove all numbers from end
-	#tem = gsub("_Rep|_rep|_REP","",tem)
-	tem <- gsub("_$","",tem); # remove "_" from end
-	tem <- gsub("_Rep$","",tem); # remove "_Rep" from end
-	tem <- gsub("_rep$","",tem); # remove "_rep" from end
-	tem <- gsub("_REP$","",tem)  # remove "_REP" from end
- 	return( tem )
+  # Define sample groups based on column names
+  # Args:
+  #   x are vector of characters, column names in data file
+  # Returns: 
+  #   a character vector, representing sample groups.
+  tem <- gsub("[0-9]*$","",x) # Remove all numbers from end
+  #tem = gsub("_Rep|_rep|_REP","",tem)
+  tem <- gsub("_$","",tem); # remove "_" from end
+  tem <- gsub("_Rep$","",tem); # remove "_Rep" from end
+  tem <- gsub("_rep$","",tem); # remove "_rep" from end
+  tem <- gsub("_REP$","",tem)  # remove "_REP" from end
+  return( tem )
  }
 
 # heatmap with color bar define gene groups
@@ -414,8 +440,6 @@ myPGSEA  <- function (exprs, cl, range = c(25, 500), ref = NULL, center = TRUE,
     return(list(results = results, p.results = p.results, means = mean.results, size=Setsize, mean2=mean2, meanSD=meanSD))
 }
 
-
-# [ConvertDB Class START]
 # prepare species list
 
 # Create a list for Select Input options
@@ -5329,6 +5353,7 @@ output$sigGeneStatsTable <- renderTable({
 		 stats = t(stats)
 		 stats=cbind(rownames(stats), stats)
 		 colnames(stats)[1]="Comparisons"
+		 stats <- stats[dim(stats)[1]:1,] # reverse row order, to be the same with plot
 
 		 return(as.data.frame(stats))
 
@@ -5445,7 +5470,65 @@ output$download.DEG.data <- downloadHandler(
 		content = function(file) {
 			write.csv(DEG.data(), file,row.names=FALSE)
 	    }
-	)		
+	)	
+	
+AllGeneListsGMT <- reactive({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+		tem=input$CountsDEGMethod
+		tem = input$selectFactorsModel # responsive to changes in model and comparisons
+		tem = input$selectModelComprions
+		tem = input$submitModelButton 
+
+		####################################
+		
+		isolate({ 
+			# upregulated genes
+			resultsUp <- limma()$results
+			resultsUp[which( resultsUp < 0 )] <- 0
+			colnames(resultsUp) <- paste0( "UP_", colnames(resultsUp) )
+
+			# down-regulated genes
+			resultsDown <- limma()$results
+			resultsDown[which( resultsDown > 0 )] <- 0
+			colnames(resultsDown) <- paste0( "Down_", colnames(resultsDown) )
+
+			results2 <- cbind(resultsUp, resultsDown)
+            # reorder columns
+            columnOrder = c()
+            for( i in 1:dim(resultsUp)[2] )
+               columnOrder = c(columnOrder, i, i + dim(resultsUp)[2] )
+            results2 <- results2[,columnOrder]    
+
+			geneList1 <- function (i) {
+				ix = which(results2[,i] !=0 )
+				return(paste0( gsub("^UP_|^Down_","", colnames(results2)[i]),"\t", 
+                               gsub("_.*","", colnames(results2)[i]),", ", length(ix)," genes\t",
+						paste(rownames(results2 )[ix], collapse="\t" ) ) )			
+			}
+			tem = sapply(1:dim(results2)[2],geneList1 )
+				
+			return( paste(tem, collapse="\n") )
+		})
+    })
+
+output$downloadGeneListsGMT <- downloadHandler(
+		filename = function() {"All_gene_lists_GMT.txt"},
+		content = function(file) {
+			write(AllGeneListsGMT(), file)
+	    }
+	)
 ################################################################
 #   Differential gene expression  2
 ################################################################		
@@ -5615,57 +5698,7 @@ output$download.selectedHeatmap.data <- downloadHandler(
 	
 
 
-AllGeneListsGMT <- reactive({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		tem = input$selectOrg
-		tem=input$limmaPval; tem=input$limmaFC
-		
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-		tem=input$CountsDEGMethod
-		tem = input$selectFactorsModel # responsive to changes in model and comparisons
-		tem = input$selectModelComprions
-		tem = input$submitModelButton 
 
-		####################################
-		
-		isolate({ 
-		
-			results = limma()$results
-
-			results2 = cbind(results, results)
-			colnames(results2)= c( paste0("UP_", colnames(results)),paste0("Down_", colnames(results)) )
-			for(i in 1:dim(results)[2] ) {
-				results2[,i*2-1] = results[,i]
-				results2[ which(results2[,i*2-1] < 0 ) , i*2-1] = 0
-				results2[,i*2] = results[,i]	
-				results2[ which(results2[,i*2] > 0 ) , i*2] = 0	
-			}
-
-			geneList1 <- function (i) {
-				ix = which(results2[,i] !=0 )
-				return(paste0(colnames(results2)[i],"\t", length(ix),"\t",
-						paste(rownames(results2 )[ix], collapse="\t" ) ) )			
-			}
-			tem = sapply(1:dim(results2)[2],geneList1 )
-				
-			return( paste(tem, collapse="\n") )
-		})
-    })
-
-output$downloadGeneListsGMT <- downloadHandler(
-		filename = function() {"All_gene_lists_GMT.txt"},
-		content = function(file) {
-			write(AllGeneListsGMT(), file)
-	    }
-	)
 
 	# Top DEGs  
 output$geneList <- renderTable({

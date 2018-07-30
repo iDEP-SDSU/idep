@@ -5635,21 +5635,27 @@ AllGeneListsGMT <- reactive({
 		####################################
 		
 		isolate({ 
-		
-			results = limma()$results
+			# upregulated genes
+			resultsUp <- limma()$results
+			resultsUp[which( resultsUp < 0 )] <- 0
+			colnames(resultsUp) <- paste0( "UP_", colnames(resultsUp) )
 
-			results2 = cbind(results, results)
-			colnames(results2)= c( paste0("UP_", colnames(results)),paste0("Down_", colnames(results)) )
-			for(i in 1:dim(results)[2] ) {
-				results2[,i*2-1] = results[,i]
-				results2[ which(results2[,i*2-1] < 0 ) , i*2-1] = 0
-				results2[,i*2] = results[,i]	
-				results2[ which(results2[,i*2] > 0 ) , i*2] = 0	
-			}
+			# down-regulated genes
+			resultsDown <- limma()$results
+			resultsDown[which( resultsDown > 0 )] <- 0
+			colnames(resultsDown) <- paste0( "Down_", colnames(resultsDown) )
+
+			results2 <- cbind(resultsUp, resultsDown)
+            # reorder columns
+            columnOrder = c()
+            for( i in 1:dim(resultsUp)[2] )
+               columnOrder = c(columnOrder, i, i + dim(resultsUp)[2] )
+            results2 <- results2[,columnOrder]    
 
 			geneList1 <- function (i) {
 				ix = which(results2[,i] !=0 )
-				return(paste0(colnames(results2)[i],"\t", length(ix),"\t",
+				return(paste0( gsub("^UP_|^Down_","", colnames(results2)[i]),"\t", 
+                               gsub("_.*","", colnames(results2)[i]),", ", length(ix)," genes\t",
 						paste(rownames(results2 )[ix], collapse="\t" ) ) )			
 			}
 			tem = sapply(1:dim(results2)[2],geneList1 )
