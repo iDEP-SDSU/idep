@@ -1131,7 +1131,7 @@ iDEPversion,
         ,br()
         ,h4("Previous versions of iDEP")
         ,a("iDEP 0.73 with Ensembl BioMart version 91, archived on July 11, 2018 "
-            , href="http://bioinformatics.sdstate.edu/idep92/")  
+            , href="http://bioinformatics.sdstate.edu/idep73/")  
   
        ,br()  
        ,htmlOutput('RsessionInfo')

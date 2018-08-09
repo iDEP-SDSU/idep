@@ -5,7 +5,7 @@ library(ggplot2)
 library(gridExtra)
 
 # relative path to data files
-datapath = "../../data/"   # production server
+datapath = "../../data/data92/"   # production server
 
 Min_overlap <- 2
 minSetSize = 3;
