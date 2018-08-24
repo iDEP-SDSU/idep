@@ -2407,10 +2407,12 @@ readData <- reactive ({
 				dataSizeOriginal = dim(x); dataSizeOriginal[2] = dataSizeOriginal[2] -1
 				
 				x[,1] <- toupper(x[,1])
-				x[,1] <- gsub(" |\"|\'|\\..*","",x[,1]) # remove spaces in gene ids
-				# remove " in gene ids, mess up SQL query				
-				# remove ' in gene ids				
-				# remove anything after A35244.1 -> A35244
+				x[,1] <- gsub(" |\"|\'|[0-9]{1,2}$", "", x[ , 1]) 
+				             # remove spaces in gene ids
+				                 # remove " in gene ids, mess up SQL query				
+				                      # remove ' in gene ids		
+				                        # remove one or two digits after "." at the end.
+                                          #A35244.1 -> A35244  or A35244.23 -> A35244, but not more than two.  GLYMA.18G52160 stays the same.	
 				
 				x = x[order(- apply(x[,2:dim(x)[2]],1,sd) ),]  # sort by SD
 				x <- x[!duplicated(x[,1]) ,]  # remove duplicated genes
