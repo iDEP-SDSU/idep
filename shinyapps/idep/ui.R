@@ -245,7 +245,7 @@ iDEPversion,
         sliderInput("nGenes", 
                     label = h4("Most variable genes to include:"), 
                     min   = 0, 
-                    max   = 6000, 
+                    max   = 10000, 
                     value = 1000,
                     step  = 100) 
         ,actionButton("showGeneSD_heatmap", "Gene SD distribution")    
