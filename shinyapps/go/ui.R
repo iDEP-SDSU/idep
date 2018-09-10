@@ -6,7 +6,7 @@ shinyUI(
      sidebarLayout(
 	 
       sidebarPanel(
-	    titlePanel("ShinyGO v0.41: Gene Ontology Enrichment Analysis + more"),  
+	    titlePanel("ShinyGO v0.50: Gene Ontology Enrichment Analysis + more"),  
 	  	p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" )),					
       tags$style(type="text/css", "textarea {width:100%}"),
       tags$textarea(id = 'input_text', placeholder = 'Just paste gene lists and click Submit. Most types of gene IDs accepted. Double check the guessed species, and adjust options if needed. Any feedback is appreciated. ', rows = 8, ""),
@@ -91,23 +91,29 @@ shinyUI(
 		
 		)	
 		,tabPanel("?"
-		,"For Details please see our", a("manuscript", href="https://www.biorxiv.org/content/biorxiv/early/2018/05/04/315150.full.pdf",target="_blank")
+		,"For details, please see our", a("manuscript", href="https://www.biorxiv.org/content/biorxiv/early/2018/05/04/315150.full.pdf",target="_blank")
 		 ,"and a detailed", a("demo.", href="https://www.biorxiv.org/content/biorxiv/suppl/2018/05/04/315150.DC1/315150-1.pdf",target="_blank") 
-		,h5("Based on annotation of 163 animal and 45 plant genomes in Ensembl BioMart as of 12/15/2017."
-            ," Additional  data from",a("MSigDB (human),", href="https://doi.org/10.1093/bioinformatics/btr260",target="_blank") 
-         ,a("GSKB (mouse)", href="http://biorxiv.org/content/early/2016/10/24/082511",target="_blank") 
-         ,"and",a("  araPath (arabidopsis).", href="https://doi.org/10.1093/bioinformatics/bts421",target="_blank") 
-		 , a("Full list of supported organisms", href="https://idepsite.wordpress.com/species/",target="_blank")		 
-         ," For feedbacks or data contributions, please"
-         ,a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=ShinyGO" )
-         , "or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank")
-		 ,br()
 		 , "ShinyGO shares many functionalities and databases with ", a("iDEP.", href="http://ge-lab.org/idep/",target="_blank")
+		     ," Source code at", a(" GitHub. ", href="https://github.com/iDEP-SDSU/idep/tree/master/shinyapps/go",target="_blank")
+         ," For feedbacks, please"
+         ,a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=ShinyGO" )
+         , "or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank")	
+		
+					,h5( "Based on gene onotlogy (GO) annotation and gene ID mapping of ",
+		  a( "167 animal and 53 plant genomes ",href="https://idepsite.wordpress.com/species/",target="_blank"), 
+		  "in Ensembl BioMart as of 12/15/2018."	 
+		  , "Additional pathway data are collected for some model species from difference sources."
+		  ,includeHTML("human_mouse_source.html")
+
+		 ,br()
+		 
  		 ,br(),br()
 
 		 #,includeHTML("help.htm")
 		 ,h4("Input:")
-		 ,"A list of gene ids, separated by tab, space, comma or new line characters."
+		 ,"A list of gene ids, separated by tab, space, comma or new line characters.
+		   Ensembl gene IDs are used internally to identify genes. Other types of IDs will be mapped to Ensembl 
+		   gene IDs using ID mapping information available in Ensembl BioMart. "
 		 ,h4("Output:")
 		 ,"Enriched GO terms and pathways:"
 		 ,br()
@@ -134,10 +140,13 @@ shinyUI(
 		 
 		 
 		 ,br(),h4("Changes:")
-		 ,"4/24/2018: V0.4 Add STRING API, KEGG diagram, tree display and network."	
-		 ,"4/27/2018: V0.41 Change to ggplot2, add grid and gridExtra packages"
-		 ,"4/30/2018: V0.42 changed figure configurations for tree."
-		 
+		 ,h5("9/10/2018: V0.5 Upgraded to Ensembl Biomart 92")
+		 ,h5("4/30/2018: V0.42 changed figure configurations for tree.")
+		 ,h5("4/27/2018: V0.41 Change to ggplot2, add grid and gridExtra packages")		
+		 ,h5("4/24/2018: V0.4 Add STRING API, KEGG diagram, tree display and network.")
+
+
+
 		 
 		 ) ) 	
        ) #tabsetPanel
