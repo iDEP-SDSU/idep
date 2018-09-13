@@ -91,17 +91,25 @@ shinyUI(
 		
 		)	
 		,tabPanel("?"
-		,"For details, please see our", a("manuscript", href="https://www.biorxiv.org/content/biorxiv/early/2018/05/04/315150.full.pdf",target="_blank")
+         ," For feedbacks, please"
+         ,a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=ShinyGO" )
+         , "or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank")
+         ,"For details, please see our", a("manuscript", href="https://www.biorxiv.org/content/biorxiv/early/2018/05/04/315150.full.pdf",target="_blank")
 		 ,"and a detailed", a("demo.", href="https://www.biorxiv.org/content/biorxiv/suppl/2018/05/04/315150.DC1/315150-1.pdf",target="_blank") 
 		 , "ShinyGO shares many functionalities and databases with ", a("iDEP.", href="http://ge-lab.org/idep/",target="_blank")
 		     ," Source code at", a(" GitHub. ", href="https://github.com/iDEP-SDSU/idep/tree/master/shinyapps/go",target="_blank")
-         ," For feedbacks, please"
-         ,a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=ShinyGO" )
-         , "or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank")	
+
+        ,"Previous versions of ShinyGO for reproducibile research:"
+        ,a("ShinyGO V0.41, "
+            , href="http://bioinformatics.sdstate.edu/go41/")
+		     ,"based on database derived from Ensembl BioMart version 91, archived on July 11, 2018"
+         ,br()
+		
+
 		
 					,h5( "Based on gene onotlogy (GO) annotation and gene ID mapping of ",
 		  a( "167 animal and 53 plant genomes ",href="https://idepsite.wordpress.com/species/",target="_blank"), 
-		  "in Ensembl BioMart as of 12/15/2018."	 
+		  "in Ensembl BioMart release 93 as of 7/15/2018."	 
 		  , "Additional pathway data are collected for some model species from difference sources."
 		  ,includeHTML("human_mouse_source.html")
 

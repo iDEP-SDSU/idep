@@ -154,7 +154,7 @@ shinyUI(
      )# bsModal
      ) # mainPanel
     ) #sidebarLayout
-    ,tags$head(includeScript("google_analytics.js")) # tracking usage
+    ,tags$head(includeScript("google_analytics1.js")) # tracking usage
   ) #fluidPage
 )
 
