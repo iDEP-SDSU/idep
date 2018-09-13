@@ -10,7 +10,7 @@
 			labs(x = "Genome span (bp)")		   
 	   }		  
 
-
+     
 	  if( sum(!is.na( x2$FiveUTR) ) >= minGenes && length(unique(x2$FiveUTR) ) > 2 && length(which(x2$Set == "List") ) > minGenes ) {
        Pval = t.test(log(FiveUTR)~Set, data=x2[which(!is.na(x2$FiveUTR)),] )$p.value
 	   sig = paste("5' UTR length (coding genes only)\n T-test P=",formatC(Pval, digits=2, format="G"),sep="")
