@@ -88,7 +88,7 @@ iDEPversion,
     mainPanel(  
       tableOutput('sampleInfoTable')
       ,tableOutput('contents')
-      ,br(),img(src='flowchart.png', align = "center",width="600", height="322")
+      ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
       #,h3("Service will not be available starting 6:30 am (US central time) on June 21 (Friday) 
       #due to scheduled maintenance. It should take less than 45 minutes. ",  style = "color:red")
       ,h5("New v0.80  Updated annotation database. Comprehensive pathway 
