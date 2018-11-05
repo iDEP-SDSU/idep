@@ -4,10 +4,10 @@ library(shiny)
 library(DT) # for renderDataTable
 library("rhdf5")
 
-destination_fileH = "../../countsData/human_matrix.h5"
-destination_fileM = "../../countsData/mouse_matrix.h5"
-sampleInfoFile = "sampleInfo.txt"
-GSEInfoFile = "../../countsData/GSEinfo.txt"
+destination_fileH = "../../data/readCounts/human_matrix.h5"
+destination_fileM = "../../data/readCounts/mouse_matrix.h5"
+sampleInfoFile = "../../data/readCounts/sampleInfo.txt"
+GSEInfoFile = "../../data/readCounts/GSEinfo.txt"
 
 if(file.exists(sampleInfoFile)) {
   sample_info =read.table(sampleInfoFile, sep="\t",header=T )
@@ -51,21 +51,40 @@ if(file.exists(sampleInfoFile)) {
       sample_series_id = h5read(destination_file, "meta/Sample_series_id")
 
       species = rep("mouse",length(GSMs))
-      sample_infoM = cbind(GSMs, tissue, sample_title,sample_series_id,species)
+      sample_infoM = cbind(GSMs, tissue, sample_title, sample_series_id,species)
       H5close()
       # sample info for both human and mouse
       sample_info = as.data.frame( rbind(sample_info, sample_infoM) )
-      write.table(sample_info, sampleInfoFile, sep="\t",row.names=F)
+      #write.table(sample_info, sampleInfoFile, sep="\t",row.names=F)
 }
 
 humanNDataset <<- length(unique(sample_info$sample_series_id[which(sample_info$species == "human")]) )
 mouseNDataset <<- length(unique(sample_info$sample_series_id[which(sample_info$species == "mouse")]) )
 
+
+
 # Define server logic ----
 server <- function(input, output) {
+  dataset.info <- reactive({
+    dataset.info <- read.table(GSEInfoFile, sep="\t",header=T )
+    dataset.info$GEO.ID = as.character(dataset.info$GEO.ID)
+    return(dataset.info)
+  })
+  
+  # retrieve sample info and counts data
   Search <- reactive({
-    if (is.null(input$SearchGSE))   return(NULL)
-    keyword = toupper(input$SearchGSE)
+    if (is.null(input$SearchData_rows_selected))   return(NULL)
+
+    withProgress(message = "Searching ...", {
+      
+      
+    
+    # row selected
+    iy = which( dataset.info()$Species == input$selected.species.archs4 )
+    ix = iy[input$SearchData_rows_selected]
+
+    keyword =  dataset.info()$GEO.ID[ix]
+  
     keyword = gsub(" ","",keyword)
     ix = which(sample_info[,4]== keyword)
 
@@ -89,41 +108,62 @@ server <- function(input, output) {
     tissue = h5read(destination_file, "meta/Sample_source_name_ch1")
     sample_title = h5read(destination_file, "meta/Sample_title")
     H5close()
-
+    incProgress(1/2)
     rownames(expression) <-paste(" ",genes)
     colnames(expression) <- paste( samples[sample_locations], sample_title[sample_locations], sep=" ")
     expression <- expression[,order(colnames(expression))]
     tem = sample_info[ix,c(5,1:3)]
     tem = tem[order(tem[,4]),]
     colnames(tem) <- c("Species", "Sample ID","Tissue","Sample Title")
+    incProgress(1)
     if(dim(tem)[1]>50) tem = tem[1:50,]
     return( list(info=tem, counts = expression ) )
     }
+    })
  })
-  output$samples <- renderTable({
-    if (is.null(input$SearchGSE)  )   return(NULL)
+  
+output$samples <- renderTable({
+  if (is.null(input$SearchData_rows_selected))   return(NULL)
     if (is.null(Search() )  )   return(as.matrix("No dataset found!"))
     Search()$info
   },bordered = TRUE)
 
-  output$downloadSearchedData <- downloadHandler(
-    filename = function() { paste(input$SearchGSE,".csv",sep="")},
+output$downloadSearchedData <- downloadHandler(
+  
+    filename = function() { paste(selectedGSEID(),".csv",sep="")},
     content = function(file) {
       write.csv( Search()$counts, file )	    }
   )
 
-output$SearchGSE <- DT::renderDataTable({
+# search GSE IDs
+output$SearchData <- DT::renderDataTable({
+    if( is.null( dataset.info())) return(NULL)
+  if( is.null( input$selected.species.archs4)) return(NULL) 
+	     dataset.info()[which( dataset.info()$Species == input$selected.species.archs4)    ,]
+	
+  }, selection = 'single'
+	   ,options = list(  pageLength = 5 ) # only 5 rows shown
+	)
 
-    if (!file.exists( GSEInfoFile ))   return(NULL)
-	x=read.table(GSEInfoFile, sep="\t",header=T )
-	x
-  })
 output$humanNsamplesOutput <- renderText({
-    if (is.null(input$SearchGSE)  )   return(NULL)
+  if (is.null(input$SearchData_rows_selected))   return(NULL)
 	 return(as.character(humanNDataset))
 	})
 output$mouseNsamplesOutput <- renderText({
-    if (is.null(input$SearchGSE)  )   return(NULL)
+  if (is.null(input$SearchData_rows_selected))   return(NULL)
 	 return(as.character(mouseNDataset))
 	})
+selectedGSEID <- reactive({
+  if (is.null(input$SearchData_rows_selected))   return(NULL)
+  # indices for a certain species
+  iy = which( dataset.info()$Species == input$selected.species.archs4 )
+  ix = iy[input$SearchData_rows_selected]
+  return(   dataset.info()$GEO.ID[ix]  )
+
+})
+output$selectedDataset <- renderText({
+  if (is.null(input$SearchData_rows_selected))   return(NULL)
+  return(  paste("Selected:",selectedGSEID() ) )
+ 
+})
 }
