@@ -65,6 +65,7 @@ mouseNDataset <<- length(unique(sample_info$sample_series_id[which(sample_info$s
 
 # Define server logic ----
 server <- function(input, output) {
+  
   dataset.info <- reactive({
     dataset.info <- read.table(GSEInfoFile, sep="\t",header=T )
     dataset.info$GEO.ID = as.character(dataset.info$GEO.ID)
@@ -76,10 +77,7 @@ server <- function(input, output) {
     if (is.null(input$SearchData_rows_selected))   return(NULL)
 
     withProgress(message = "Searching ...", {
-      
-      
-    
-    # row selected
+     # row selected
     iy = which( dataset.info()$Species == input$selected.species.archs4 )
     ix = iy[input$SearchData_rows_selected]
 
@@ -166,4 +164,13 @@ output$selectedDataset <- renderText({
   return(  paste("Selected:",selectedGSEID() ) )
  
 })
+
+output$DoneLoading <- renderUI({
+  i = "<h4>Done. Ready to search.</h4>"
+
+  
+  HTML(paste(i, collapse='<br/>') )
+})
+
+
 }

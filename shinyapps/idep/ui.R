@@ -50,7 +50,8 @@ iDEPversion,
                     '.csv',
                     '.tsv'          
                   ) 
-      )    
+      )
+      ,a("New! Download public RNA-seq data", href="http://bioinformatics.sdstate.edu/reads/")    
       ,fileInput('file2', h5('Optional: Upload an experiment design file(CSV or text)'),
                   accept = c(
                     'text/csv',
