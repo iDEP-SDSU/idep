@@ -25,7 +25,7 @@ shinyUI( fluidPage(
          ,br()
          ,fluidRow( column(4, textOutput('selectedDataset'))
                     ,column(3, downloadButton('downloadSearchedData', 'Download'))
-                    ,column(5, a("Return to iDEP", href="http://bioinformatics.sdstate.edu/idep/"))
+                    ,column(5, h5("Edit and uplodad file to ",a("iDEP", href="http://bioinformatics.sdstate.edu/idep/"), "for analysis") )
                             
          )        
          ,br()
