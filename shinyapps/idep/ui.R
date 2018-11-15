@@ -92,8 +92,9 @@ iDEPversion,
 
       #,h3("Service will not be available starting 6:30 am (US central time) on June 21 (Friday) 
       #due to scheduled maintenance. It should take less than 45 minutes. ",  style = "color:red")
-      ,h3("We will re-sbumit our grant proposal to NIH. If you didn't send us a support letter last time, 
-          please consider sending us a brief email/letter before Nov. 15th, with your 
+      ,h3("If you do not want iDEP to disappear, send us a brief letter of support!         
+          We will re-sbumit our grant proposal to NIH. If you didn't send us a support letter last time, 
+          please consider sending us a brief email/letter before noon, Nov. 16th, with your 
           broad area of research and how iDEP helps your work. Thanks!"
       ,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), style = "color:red")
       
