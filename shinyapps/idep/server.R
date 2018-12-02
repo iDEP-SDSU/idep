@@ -3,7 +3,7 @@
 # hosted at http://ge-lab.org/idep/
 # manuscript: https://www.biorxiv.org/content/early/2018/04/20/148411 
 
-iDEPversion = "iDEP 0.80"
+iDEPversion = "iDEP 0.81"
 
 ################################################################
 # R packages
@@ -2996,7 +2996,95 @@ output$EDA <- renderPlot({
 	cex.lab=2.2, cex.axis=2.2, cex.main=2, cex.sub=2)
 	
    }, height = 1600)
+EDA4download <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	
+	##################################  
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2 }
+	####################################
+    
+    # total read counts plots
+	par(mfrow=c(4,1))
+#	par(mar=c(18,8,4,4))
+    par(mar=c(20,4,2,2))
+    x <- readData()$rawCounts
+	memo =""
+	if( ncol(x) > maxSamplesEDAplot ) { 
+		#part= sample(1:ncol(x), maxSamplesEDAplot)
+		part=1:maxSamplesEDAplot
+		x <- x[,part]
+		memo =paste(" (only showing", maxSamplesEDAplot, "samples)")
+	}
+	groups = as.factor( detectGroups(colnames(x ) ) )
+	if(nlevels(groups)<=1 | nlevels(groups) >20)  
+	   col1 = "green"  else
+	   col1 = rainbow(nlevels(groups))[ groups ]	
+	   
+	if(ncol(x) < 31 )  
+	   cexFactor = 1.5 else
+	   cexFactor =1
+	   
+	barplot( colSums(x)/1e6, col=col1,las=3, 
+		cex.axis=1.5,    # expansion factor for numeric axis labels.
+		cex.names=cexFactor,  # expansion factor for axis names (bar labels).
+		main=paste("Total read counts (millions)", memo) ) 
+
+    # boxplot, density plot and scatter plot
+	
+    x <- readData()$data
+	memo =""
+	if( ncol(x) > maxSamplesEDAplot ) { # if too many samples, just show the first 40 or 60
+		#part= sample(1:ncol(x), maxSamplesEDAplot)
+		part = 1:maxSamplesEDAplot
+		x <- x[, part ]
+		memo =paste("(only showing", maxSamplesEDAplot, "samples)")
+		}
+	groups = as.factor( detectGroups(colnames(x ) ) )
+	if(nlevels(groups)<=1 | nlevels(groups) >20 )  
+	   col1 = "green"  else
+	   col1 = rainbow(nlevels(groups))[ groups ]	
+	   
+
+	myColors = rainbow(dim(x)[2])
+	
+	if(ncol(x) < 31 )  
+	   cexFactor = 2.2 else
+	   cexFactor =1.6
+	#------------------------boxplot
+	boxplot(x, las = 2,  main=paste("Distribution of transformed data",memo)
+		,cex.lab=2.2,  cex.axis=cexFactor, cex.main=2, cex.sub=2,col=col1)	
+	
+	#----------------------- density plot
+     maxDensity = max( apply(x,2, function(y) max(density(y)$y ) ) )	
+	plot(density(x[,1]),col = col1[1], lwd=2,
+	  xlab="Expression values", main= paste("Density plot of transformed data",memo),
+	  cex.lab=2.2, cex.axis=2.2, cex.main=2, cex.sub=2, ylim=c(0, maxDensity+0.01 )  )  #ylim=c(0,1)
+	  
+	for( i in 2:dim(x)[2] )
+	lines(density(x[,i]),col=col1[i],  lwd=1 )
+	if(nlevels(groups)< 31 ) # if too many samples do not show legends
+		legend("topright", levels(groups), lty=rep(1,nlevels(groups)), col=rainbow(nlevels(groups)), cex = 2 )	
+
    
+
+	plot(x[,1:2],xlab=colnames(x)[1],ylab=colnames(x)[2], main="Scatter plot of first two samples",
+	cex.lab=2.2, cex.axis=2.2, cex.main=2, cex.sub=2)
+	
+   })
+output$downloadEDAplot <- downloadHandler(
+      filename = "EDA.eps",
+      content = function(file) {
+	  cairo_ps(file, width = 6, height = 24, pointsize = 9)
+        EDA4download()
+      dev.off()
+      })     
 output$genePlot <- renderPlot({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	
@@ -3090,7 +3178,107 @@ output$genePlot <- renderPlot({
 	
 	})
    })
-   
+genePlot4Download <- reactive({
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+	
+	# these are needed to make it responsive to changes in parameters
+	tem = input$selectOrg;  tem = input$dataFileFormat ; tem = input$noIDConversion; tem=input$missingValue
+	if( !is.null(input$dataFileFormat) ) 
+    	if(input$dataFileFormat== 1)  
+    		{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+	if( !is.null(input$dataFileFormat) )
+    	if(input$dataFileFormat== 2) 
+    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+
+	
+	tem = input$geneSearch ; tem = input$genePlotBox; tem = input$useSD
+	isolate({
+    x <- convertedData()
+	
+	Symbols <- rownames(x)
+	
+	if( input$selectOrg != "NEW" &&  ncol(allGeneInfo()) != 1 ) {
+	ix = match( rownames(x), allGeneInfo()[,1])
+		if( sum( is.na(allGeneInfo()$symbol )) != dim(allGeneInfo() )[1] ) {  # symbol really exists? 
+			Symbols = as.character( allGeneInfo()$symbol[ix] )
+			Symbols[which( nchar(Symbols) <= 2 ) ] <- rownames(x) [which( nchar(Symbols) <= 2 ) ] 
+			}
+	   }
+	x = as.data.frame(x)
+	x$Genes = Symbols
+    #write.csv(x,"tem.csv")
+	# Search for genes
+	#ix = grep("HOXA",toupper(x$Genes) )
+	# ix = grep(toupper(input$geneSearch),toupper(x$Genes))  # sox --> Tsox  
+	# matching from the beginning of symbol
+	searchWord = gsub("^ ","",input$geneSearch )
+	ix = which(regexpr(  paste("^" , toupper(searchWord),sep="")   ,toupper(x$Genes)) > 0)
+	if(grepl(" $", searchWord)  )  # if there is space character, do exact match
+		ix = match(gsub(" ","", toupper(searchWord)), toupper(x$Genes) )
+	
+	# too few or too many genes found
+	if(length(ix) == 0 | length(ix) > 50 ) return(NULL)
+	  # no genes found
+	 	 
+	mdf = melt(x[ix,],id.vars="Genes", value.name="value", variable.name="samples")
+	# bar plot of individual samples
+	p1 <- ggplot(data=mdf, aes(x=samples, y=value, group = Genes, shape=Genes, colour = Genes)) +
+		geom_line() +
+		geom_point( size=5,  fill="white")+ #shape=21  circle
+		#theme(axis.text.x = element_text(size=16,angle = 45, hjust = 1)) +
+		labs(y="Transformed expression level") +
+		coord_cartesian(ylim = c(0, max(mdf$value)))
+	p1 <- p1 + theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
+	 theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
+	       axis.text.y = element_text( size = 16),
+		   axis.title.x = element_blank(),
+		   axis.title.y = element_text( size = 16) ) +
+	theme(legend.text=element_text(size=12))	
+		
+		
+	#ggplotly(p) %>% layout(margin = list(b = 250,l=100))  # prevent cutoff of sample names
+
+	# Barplot with error bars
+	mdf$count = 1
+	g = detectGroups(mdf$samples)
+	Means = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = mean, na.rm=TRUE  )
+	SDs = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = sd, na.rm=TRUE  )
+	Ns = aggregate(mdf$count, by= list(g, mdf$Genes) , FUN = sum  )
+	summarized = cbind(Means,SDs[,3],Ns[,3])
+	colnames(summarized)= c("Samples","Genes","Mean","SD","N")
+	summarized$SE = summarized$SD / sqrt(summarized$N)	
+		
+	#http://www.sthda.com/english/wiki/ggplot2-barplots-quick-start-guide-r-software-and-data-visualization
+	p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
+		geom_bar(stat="identity", position=position_dodge()) + # bars represent average
+		geom_errorbar(aes(ymin=Mean-SE, ymax=Mean+SE), width=0.2,position=position_dodge(.9)) +
+		labs(y="Expression Level") 
+	if(input$useSD == 1) { 
+	p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
+		geom_bar(stat="identity", position=position_dodge()) + # bars represent average
+		geom_errorbar(aes(ymin=Mean-SD, ymax=Mean+SD), width=0.2,position=position_dodge(.9)) +
+		labs(y="Expression Level") 
+	}
+	
+	p2 <- p2 +  theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
+	 theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
+	       axis.text.y = element_text( size = 16),
+		   axis.title.x = element_blank(),
+		   axis.title.y = element_text( size = 16) ) +
+	theme(legend.text=element_text(size=16))
+	
+	if( input$genePlotBox == 1)  print(p1) else print(p2)
+	
+	})
+   })
+
+output$downloadGenePlot <- downloadHandler(
+      filename = "genePlot.eps",
+      content = function(file) {
+	cairo_ps(file, width = 8, height = 6, points = 8 )
+        genePlot4Download()
+        dev.off()
+      })     
 
 processedData <- reactive({
 		  if (is.null(input$file1) && input$goButton == 0)    return()
@@ -3553,10 +3741,9 @@ plotHeatmap1 <- reactive ({
 	# conventional heatmap.2 plot
 
 output$downloadHeatmap1 <- downloadHandler(
-      filename = "heatmap.tiff",
+      filename = "heatmap.eps",
       content = function(file) {
-	tiff(file, width = 10, height = 15, units = 'in', res = 300, compression = 'lzw')
-
+	cairo_ps(file, width = 10, height = 15)
         plotHeatmap1()
         dev.off()
       })  
@@ -3746,6 +3933,51 @@ output$correlationMatrix <- renderPlot({
  
   }, height = 600, width = 700  )#)
 
+correlationMatrix4Download <- reactive({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		# heatmap of correlation matrix
+		x <- readData()$data
+		maxGene <- apply(x,1,max)
+		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
+		
+	   melted_cormat <- melt(round(cor(x),2), na.rm = TRUE)
+		# melted_cormat <- melted_cormat[which(melted_cormat[,1] != melted_cormat[,2] ) , ]
+		# Create a ggheatmap
+		ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+			geom_tile(color = "white")+
+			scale_fill_gradient2(low = "green", high = "red",  mid = "white", 
+			space = "Lab",  limit = c(min(melted_cormat[,3]) ,max(melted_cormat[,3])), midpoint = median(melted_cormat[,3]),
+			name="Pearson's \nCorrelation") +
+			theme_minimal()+ # minimal theme
+			theme(axis.text.x = element_text(angle = 45, vjust = 1, size=14,hjust = 1))+
+			theme(axis.text.y = element_text( size = 14 ))+
+			coord_fixed()
+		# print(ggheatmap)
+		 if(input$labelPCC && ncol(x)<20)
+				ggheatmap <- ggheatmap +  geom_text(aes(Var2, Var1, label = value), color = "black", size = 4)
+				
+		ggheatmap <- ggheatmap + 
+		  theme(axis.title.x = element_blank(),
+				axis.title.y = element_blank(),
+				panel.grid.major = element_blank(),
+				panel.border = element_blank(),
+				panel.background = element_blank(),
+				axis.ticks = element_blank(),
+				legend.justification = c(1, 0),
+				legend.position = c(0.6, 0.7),
+				legend.direction = "horizontal")+
+				guides(fill = FALSE) # + ggtitle("Pearson's Correlation Coefficient (all genes)")
+        print(ggheatmap)
+			# why legend does not show up??????	
+ 
+  })#)
+output$downloadCorrelationMatrixPlot <- downloadHandler(
+      filename = "correlation_matrix.eps",
+      content = function(file) {
+	  cairo_ps(file, width = 8, height = 8, points = 7)
+        correlationMatrix4Download()
+        dev.off()
+      }) 
   
 output$sampleTree <- renderPlot({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -3770,10 +4002,42 @@ output$sampleTree <- renderPlot({
 				names(hclustFuns)[as.integer(input$hclustFunctions)],"linkage",")"   ), type = "rectangle")
 
 
- distFuns[[as.integer(input$distFunctions)]]
+# distFuns[[as.integer(input$distFunctions)]]
   } )#, height = 500, width = 500)
 
- 
+sampleTree4download <- reactive({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		# heatmap of correlation matrix
+		x <- readData()$data
+		maxGene <- apply(x,1,max)
+		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
+		if(input$geneCentering)
+			x=as.matrix(x)-apply(x,1,mean)
+		
+		# standardize by gene
+		if(input$geneNormalize) 
+			x <- x / apply(x,1,sd)
+			
+		# row centering and normalize
+		x <- scale(x, center = input$sampleCentering, scale = input$sampleNormalize) 
+		
+		#plot(as.dendrogram(hclust2( dist2(t(x)))), xlab="", ylab="1 - Pearson C.C.", type = "rectangle")
+		plot(as.dendrogram(  hclustFuns[[as.integer(input$hclustFunctions)]] ( 
+				distFuns[[as.integer(input$distFunctions)]](t(x)))) 
+				,xlab="", ylab=paste( names(distFuns)[as.integer(input$distFunctions)],"(", 
+				names(hclustFuns)[as.integer(input$hclustFunctions)],"linkage",")"   ), type = "rectangle")
+
+
+    # distFuns[[as.integer(input$distFunctions)]]
+  } )#, height = 500, width = 500)
+
+output$downloadSampleTree <- downloadHandler(
+      filename = "sample_tree.eps",
+      content = function(file) {
+	  cairo_ps(file, width = 8, height = 6)
+        sampleTree4download()
+        dev.off()
+      }) 
 output$distributionSD_heatmap <- renderPlot({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		if( is.null(Kmeans()) ) return(NULL)
@@ -4241,9 +4505,9 @@ PCAplots4Download <- reactive({
  
 
 output$downloadPCA <- downloadHandler(
-      filename = "PCA_MDS_tSNE.tiff",
+      filename = "PCA_MDS_tSNE.eps",
       content = function(file) {
-	  tiff(file, width = 8, height = 8, units = 'in', res = 300, compression = 'lzw')
+	  cairo_ps(file, width = 6, height = 6)
 	  PCAplots4Download()
         dev.off()
       })    
@@ -4412,9 +4676,9 @@ KmeansHeatmap4Download <- reactive({ # Kmeans clustering
   })
 
 output$downloadKmeansHeatmap <- downloadHandler(
-      filename = "Kmeans_heatmap.tiff",
+      filename = "Kmeans_heatmap.eps",
       content = function(file) {
-	  tiff(file, width = 8, height = 12, units = 'in', res = 300, compression = 'lzw')
+	  cairo_ps(file, width = 8, height = 12)
 	  KmeansHeatmap4Download()
         dev.off()
       })
@@ -4578,7 +4842,70 @@ output$distributionSD <- renderPlot({
 	 #progress 
   }, height = 600, width = 800,res=120 )
 
-  
+distributionSD4Download <- reactive({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		if( is.null(Kmeans()) ) return(NULL)
+
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+				
+		tem = input$colorGenes; tem = input$seedTSNE
+			tem = input$KmeansReRun
+		####################################
+		withProgress(message="Calculating SD distribution", {
+		isolate({ 
+
+		
+		SDs=apply(convertedData(),1,sd)
+		maxSD = mean(SDs)+ 4*sd(SDs)
+		SDs[ SDs > maxSD] = maxSD
+		
+		top = input$nGenesKNN
+		if(top > length(SDs)) top = length(SDs)
+		Cutoff=sort(SDs,decreasing=TRUE)[top] 
+
+		SDs = as.data.frame(SDs)
+
+		p <- ggplot(SDs, aes(x=SDs)) + 
+		  geom_density(color="darkblue", fill="lightblue") +
+		  labs(x = "Standard deviations of all genes", y="Density")+
+		  geom_vline(aes(xintercept=Cutoff),
+					color="red", linetype="dashed", size=1) +
+					annotate("text", x = Cutoff + 0.4*sd(SDs[,1]), 
+					y = 1,colour = "red", label = paste0("Top ", top))+				
+					theme(axis.text=element_text(size=14),
+						axis.title=element_text(size=16,face="bold"))
+			incProgress(1)
+		print(p)
+		})
+	
+	})
+	
+	
+	 #progress 
+  } )
+
+output$downloadDistributionSD <- downloadHandler(
+      filename = "gene_SD_distribution.eps",
+      content = function(file) {
+	  cairo_ps(file, width = 6, height = 4)
+      distributionSD4Download()
+        dev.off()
+      })
+output$downloadDistributionSD1 <- downloadHandler(
+      filename = "gene_SD_distribution.eps",
+      content = function(file) {
+	  cairo_ps(file, width = 6, height = 4)
+      distributionSD4Download()
+      dev.off()
+      })	
 output$downloadDataKmeans <- downloadHandler(
 		filename = function() {"Kmeans.csv"},
 			content = function(file) {
@@ -4704,9 +5031,9 @@ output$enrichmentPlotKmeans <- renderPlot({
 
 
 output$enrichmentPlotKmeans4Download <- downloadHandler(
-      filename = "enrichmentPlotKmeans.tiff",
+      filename = "enrichmentPlotKmeans.eps",
       content = function(file) {
-	  tiff(file, width = 10, height = 16, units = 'in', res = 350, compression = 'lzw')
+	  cairo_ps(file, width = 10, height = 16)
 	  tem = KmeansGOdata()
 	  colnames(tem)[1]="Direction"
 	  enrichmentPlot(tem,41  )
@@ -5269,6 +5596,78 @@ output$vennPlot <- renderPlot({
 		})
     }, height = 600, width = 600)
 
+vennPlot4Download <- reactive({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+		tem=input$CountsDEGMethod
+		tem = input$selectFactorsModel # responsive to changes in model and comparisons
+		tem = input$selectModelComprions
+		tem = input$submitModelButton 
+		tem = input$UpDownRegulated
+		if(is.null(input$selectComparisonsVenn) ) return(NULL)
+		####################################
+		
+		isolate({ 
+		
+			results = limma()$results
+
+			# split by up or down regulation
+			if(input$UpDownRegulated) { 	
+			    resultUp = results; 
+				resultUp[resultUp < 0 ] <- 0;
+				colnames(resultUp) = paste0("Up_", colnames(resultUp))
+			    resultDown = results; 
+				resultDown[resultDown > 0] <- 0;
+				colnames(resultDown) = paste0("Down_", colnames(resultDown))				
+				results <- cbind(resultUp, resultDown)
+			}			
+			
+			ixa = c()
+			for (comps in  input$selectComparisonsVenn) { 
+				 if(!grepl("^I:|^I-|^Up_I:|^Up_I-|^Down_I:|^Down_I-", comps) ) {  # if not interaction term
+					ix = match(comps, colnames(results)) 
+				  } else {
+						#mismatch in comparison names for interaction terms for DESeq2
+						#I:water_Wet.genetic_Hy 	 in the selected Contrast
+						#Diff-water_Wet-genetic_Hy   in column names
+						tem = gsub("^I-","I:" ,colnames(results))
+						tem = gsub("-","\\.",tem)
+						ix = match(comps, tem) 
+
+						if(is.na(ix) ) # this is for limma package
+							ix = match(comps, colnames(results)) 						
+					  }
+					ixa = c(ixa,ix)
+				  }
+					
+			results = results[,ixa,drop=FALSE] # only use selected comparisons
+			if(dim(results)[2] >5) results <- results[,1:5]
+			colnames(results) = gsub("^I-","I:" ,colnames(results))	
+			
+			vennDiagram(results,circle.col=rainbow(5), cex=c(1.,1, 0.7) ) # part of limma package
+
+		})
+    })
+
+output$DownloadVenn <- downloadHandler(
+      filename = "VennDiagram.eps",
+      content = function(file) {
+	  cairo_ps(file, width = 6, height = 6)
+	  vennPlot4Download()
+      dev.off()
+      })
+
 output$sigGeneStats <- renderPlot({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		tem = input$selectOrg
@@ -5323,7 +5722,67 @@ output$sigGeneStats <- renderPlot({
 
 		})
     })
-	
+
+sigGeneStats4Download <- reactive({
+		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+		tem = input$selectOrg
+		tem=input$limmaPval; tem=input$limmaFC
+		if(is.null(limma()$results) ) return(NULL)
+		##################################  
+		# these are needed to make it responsive to changes in parameters
+		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion
+		if( !is.null(input$dataFileFormat) ) 
+			if(input$dataFileFormat== 1)  
+				{  tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+		if( !is.null(input$dataFileFormat) )
+			if(input$dataFileFormat== 2) 
+				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+		tem=input$CountsDEGMethod
+		tem = input$selectFactorsModel # responsive to changes in model and comparisons
+		tem = input$selectModelComprions
+		tem = input$submitModelButton 
+
+		####################################
+		
+		isolate({ 
+		
+		results = limma()$results
+
+		 library(reshape2)
+		 Up =  apply(results, 2, function(x) sum(x == 1) )
+		 Down = apply(results, 2, function(x) sum(x == -1) ) 
+		 stats = rbind(Up, Down)
+				 
+		 gg <- melt(stats)
+
+		 colnames(gg) = c("Regulation","Comparisons","Genes")
+		 
+		# gg <- within(gg, Regulation <- factor(
+		#			Regulation, levels=names(sort(table(Regulation), decreasing=FALSE   ) ) )  )
+		 
+		# gg$Regulation <- factor( gg$Regulation, levels=c("Up","Down")  )
+		# gg$Regulation = as.factor(gg$Regulation)
+		 #gg$Regulation = relevel(gg$Regulation,"Up")
+		 
+		 p= ggplot(gg, aes(x=Comparisons, y=Genes, fill=  Regulation )  )+
+			 geom_bar(position="dodge", stat="identity") + coord_flip() +
+			 theme(legend.position = "top") + 
+			 scale_fill_manual(values=c("red", "blue")) +
+			 ylab("Number of differntially expressed genes") +
+			 theme(axis.title.y=element_blank(),
+				axis.text=element_text(size=14)) 
+			
+		print(p)
+		})
+    })
+
+output$downloadSigGeneStats <- downloadHandler(
+      filename = "DEG_stats.eps",
+      content = function(file) {
+	  cairo_ps(file, width = 8, height = 6, points = 8)
+	  sigGeneStats4Download()
+        dev.off()
+      })	
 output$sigGeneStatsTable <- renderTable({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		tem = input$selectOrg
@@ -5608,9 +6067,9 @@ selectedHeatmap4Download <- reactive({
     })
 
 output$downloadSelectedHeatmap <- downloadHandler(
-      filename = "Heatmap_comparison.tiff",
+      filename = "Heatmap_comparison.eps",
       content = function(file) {
-	  tiff(file, width = 8, height = 12, units = 'in', res = 300, compression = 'lzw')
+	  cairo_ps(file, width = 6, height = 8, points = 8)
 	  selectedHeatmap4Download()
         dev.off()
       })	
@@ -5921,9 +6380,9 @@ volcanoPlot4Download <- reactive({
   })
 
 output$downloadVolcanoPlot <- downloadHandler(
-      filename = "volcanoPlot.tiff",
+      filename = "volcanoPlot.eps",
       content = function(file) {
-	  tiff(file, width = 8, height = 8, units = 'in', res = 500, compression = 'lzw')
+	  cairo_ps(file, width = 8, height = 8)
 	  volcanoPlot4Download()
         dev.off()
       })
@@ -6157,9 +6616,9 @@ scatterPlot4Download <- reactive({
   })
 
 output$downloadScatterPlot <- downloadHandler(
-      filename = "scatterPlot.tiff",
+      filename = "scatterPlot.eps",
       content = function(file) {
-	  tiff(file, width = 8, height = 8, units = 'in', res = 500, compression = 'lzw')
+	  cairo_ps(file, width = 8, height = 8)
 	  scatterPlot4Download()
         dev.off()
       })
@@ -6400,9 +6859,9 @@ MAplot4Download <- reactive({
   })
 
 output$downloadMAPlot <- downloadHandler(
-      filename = "MA_Plot.tiff",
+      filename = "MA_Plot.eps",
       content = function(file) {
-	  tiff(file, width = 8, height = 8, units = 'in', res = 500, compression = 'lzw')
+	  cairo_ps(file, width = 8, height = 8)
 	  MAplot4Download()
         dev.off()
       })
@@ -6588,9 +7047,9 @@ output$enrichmentPlotDEG2 <- renderPlot({
 }, height=600, width=800)
 
 output$enrichmentPlotDEG24Download <- downloadHandler(
-      filename = "enrichmentPlotDEG2.tiff",
+      filename = "enrichmentPlotDEG2.eps",
       content = function(file) {
-	  tiff(file, width = 10, height = 6, units = 'in', res = 300, compression = 'lzw')
+	  cairo_ps(file, width = 10, height = 6)
 	  enrichmentPlot(geneListGOTable(),41  )
         dev.off()
       })
@@ -6603,9 +7062,9 @@ output$enrichmentNetworkPlot <- renderPlot({
 }, height=900, width=900)	  
 
 output$enrichmentNetworkPlot4Download <- downloadHandler(
-      filename = "enrichmentPlotDEG2.tiff",
+      filename = "enrichmentPlotDEG2.eps",
       content = function(file) {
-	  tiff(file, width = 12, height = 12, units = 'in', res = 300, compression = 'lzw')
+	  cairo_ps(file, width = 12, height = 12)
 	enrichmentNetwork(geneListGOTable(),layout_change = input$layoutButton2 )
         dev.off()
       })	  
@@ -7205,9 +7664,9 @@ if (is.null(input$selectContrast1 ) ) return(NULL)
     })
 
 output$PGSEAplot.Download <- downloadHandler(
-      filename = function() {paste0("PGSEA",input$selectContrast1,"(",input$selectGO,")",".tiff")},
+      filename = function() {paste0("PGSEA",input$selectContrast1,"(",input$selectGO,")",".eps")},
       content = function(file) {
-	  tiff(file, width = 10, height = 8, units = 'in', res = 400, compression = 'lzw')
+	  cairo_ps(file, width = 10, height = 8)
 	  PGSEAplot4Download()
         dev.off()
       })
@@ -7383,9 +7842,9 @@ PGSEAplotAllSamples4download <- reactive({
     })
 
 output$PGSEAplotAllSamples.Download <- downloadHandler(
-      filename = function() {paste0("PGSEA_all_samples_",input$selectContrast1,"(",input$selectGO,")",".tiff")},
+      filename = function() {paste0("PGSEA_all_samples_",input$selectContrast1,"(",input$selectGO,")",".eps")},
       content = function(file) {
-	  tiff(file, width = 10, height = 8, units = 'in', res = 400, compression = 'lzw')
+	  cairo_ps(file, width = 10, height = 8)
 	  PGSEAplotAllSamples4download()
         dev.off()
       })
@@ -7665,7 +8124,7 @@ fgseaPathwayData <- reactive({
                   minSize=input$minSetSize,
                   maxSize=input$maxSetSize,
 				  nproc = 6, # cpu cores
-                  nperm=10000)
+                  nperm=100000)
 	 # paths <-  rbind(paths$greater,paths$less)
 	  if(dim(paths)[1] < 1  ) return( noSig )
 	       paths <- as.data.frame(paths)
@@ -8742,9 +9201,9 @@ output$enrichmentPlotPathway <- renderPlot({
 }, height=600, width=800)
 
 output$enrichmentPlotPathway4Download <- downloadHandler(
-      filename = "enrichmentPlotPathway.tiff",
+      filename = "enrichmentPlotPathway.eps",
       content = function(file) {
-	  tiff(file, width = 10, height = 6, units = 'in', res = 300, compression = 'lzw')
+	  cairo_ps(file, width = 10, height = 6, pointsize = 10)
 	  enrichmentPlot(pathwayListData(),41  )
         dev.off()
       })
@@ -8762,9 +9221,9 @@ output$enrichmentNetworkPlotPathway <- renderPlot({
 }, height=900, width=900)	  
 
 output$enrichmentNetworkPlotPathway4Download <- downloadHandler(
-      filename = "enrichmentPlotNetworkPathway.tiff",
+      filename = "enrichmentPlotNetworkPathway.eps",
       content = function(file) {
-	  tiff(file, width = 12, height = 12, units = 'in', res = 300, compression = 'lzw')
+	  cairo_ps(file, width = 12, height = 12)
 	  enrichmentNetwork(pathwayListData(),layout_change = input$layoutButton3 )
         dev.off()
       })	

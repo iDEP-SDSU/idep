@@ -6,7 +6,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.80"
+iDEPversion = "iDEP.81"
 
 shinyUI(
 navbarPage(
@@ -18,7 +18,7 @@ iDEPversion,
 #================================================================================================== 
   
   tabPanel("Load Data",
-  titlePanel("Upload Files "),
+ # titlePanel(h5("Upload Files")),
   sidebarLayout(
     # sidebar---------------------------------
     sidebarPanel(
@@ -92,13 +92,13 @@ iDEPversion,
 
       #,h3("Service will not be available starting 6:30 am (US central time) on June 21 (Friday) 
       #due to scheduled maintenance. It should take less than 45 minutes. ",  style = "color:red")
-      ,h3("If you do not want iDEP to disappear, send us a brief letter of support!         
-          We will re-sbumit our grant proposal to NIH. If you didn't send us a support letter last time, 
-          please consider sending us a brief email/letter before noon, Nov. 16th, with your 
-          broad area of research and how iDEP helps your work. Thanks!"
-      ,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), style = "color:red")
+      #,h3("We will re-sbumit our grant proposal to NIH. If you didn't send us a support letter last time, 
+      #    please consider sending us a brief email/letter before Nov. 15th, with your 
+      #    broad area of research and how iDEP helps your work. Thanks!"
+      #,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), style = "color:red")
       
       ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
+      ,h5("v0.81 Enabled downloading of publication-ready vector graphics files")
       ,h5("New v0.80  Updated annotation database. Comprehensive pathway 
           database for human. TF binding motifs for 200+ speceis. Old version made available."
       )
@@ -163,6 +163,7 @@ iDEPversion,
                       font-style: italic;}"
                      )
           )
+
     ) # conditionalPanel
 
     
@@ -206,6 +207,7 @@ iDEPversion,
         ,downloadButton('downloadProcessedData', 'Processed data') 
         ,conditionalPanel("input.dataFileFormat == 1", 
            downloadButton('downloadConvertedCounts', 'Converted counts data') )
+        ,downloadButton('downloadEDAplot', 'High-resolution figure')  
         ,br(),br()
         ,textOutput('nGenesFilter')
         ,tags$head(tags$style("#nGenesFilter{color: blue;
@@ -236,6 +238,7 @@ iDEPversion,
           plotOutput("genePlot"),
           conditionalPanel("input.genePlotBox == 0", 
           checkboxInput("useSD", label = "Use standard deviation instead of standard error", value = FALSE))
+          ,downloadButton('downloadGenePlot', 'Figure')  
         )
     
       ) # mainPanel
@@ -295,15 +298,18 @@ iDEPversion,
       mainPanel(          
         plotOutput("heatmap1")      
         ,bsModal("modalExample8", "Correlation matrix using top 75% genes", "showCorrelation", size = "large"
-          ,downloadButton("downloadCorrelationMatrix")
+          ,downloadButton("downloadCorrelationMatrix","Data")
+          ,downloadButton('downloadCorrelationMatrixPlot', 'Figure') 
           ,checkboxInput("labelPCC", "Label w/ Pearson's correlation coefficients", value = TRUE)
           ,plotOutput("correlationMatrix")
+
         )  
     
         ,bsModal("modalExample228", "Hierarchical clustering tree.", "showSampleTree", size = "large"
-          ,h4("Using genes whose maximum expression level is at top 75%. Data is transformed 
+          ,h4("Using genes with maximum expression level at the top 75%. Data is transformed 
            and clustered as specified in the main page. ")
-          ,plotOutput("sampleTree")
+          ,plotOutput("sampleTree") 
+          ,downloadButton('downloadSampleTree', 'Figure') 
         )
     
         ,bsModal("modalExample28", "Heatmap with hierarchical clustering tree", "showStaticHeatmap", 
@@ -319,7 +325,9 @@ iDEPversion,
         )
        
         ,bsModal("modalExample1233", "Distribution of variations among genes", "showGeneSD_heatmap", 
-           size = "large", plotOutput('distributionSD_heatmap'))
+           size = "large"
+        ,downloadButton("downloadDistributionSD1","Figure")
+        ,plotOutput('distributionSD_heatmap'))
             
       ) # mainPanel
     )  #sidebarLayout     
@@ -408,7 +416,9 @@ iDEPversion,
         )
       
         ,bsModal("modalExample233", "Distribution of variations among genes", "showGeneSD",
-                 size = "large", plotOutput('distributionSD'))
+                 size = "large"
+                 ,downloadButton('downloadDistributionSD',"Figure") 
+                 ,plotOutput('distributionSD'))
     
         ,bsModal("ModalEnrichmentPlotKmeans1", "Visualize enrichment", "ModalEnrichmentPlotKmeans",
                  size="large"
@@ -466,7 +476,7 @@ iDEPversion,
   ) #tabPanel
 
 #================================================================================================== 
-#  DEG1: Differential gene expression 1
+#  DEG1: Differentially expressed gene 1
 #================================================================================================== 
   ,tabPanel("DEG1",
     sidebarLayout(
@@ -513,6 +523,7 @@ iDEPversion,
         ,fluidRow(
            column(8, downloadButton('download.DEG.data', 'FDR & fold-changes for all genes') )
         )
+        ,downloadButton('downloadSigGeneStats', 'Figure')
         ,br(),h4( textOutput("textLimma") )
         ,tags$head(tags$style("#textLimma{color: blue;font-size: 15px;}"))  
         ,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/degs/",target="_blank")
@@ -531,7 +542,9 @@ iDEPversion,
         ,bsModal("modalExample", "Venn Diagram", "showVenn", size = "large",
            checkboxInput("UpDownRegulated", label = "Split gene lists by up- or down-regulation", value = FALSE)
            ,htmlOutput('listComparisonsVenn')
-           ,plotOutput("vennPlot"))
+           ,downloadButton("DownloadVenn","Figure")
+           ,plotOutput("vennPlot")           
+           )
       
         ,bsModal("modalExample21", "Build model and/or select comparisons", "modelAndComparisons", size = "large",
           fluidRow(
@@ -568,7 +581,7 @@ iDEPversion,
 
   
 #================================================================================================== 
-#  DEG2: Differential gene expression 2
+#  DEG2: Differentially expressed genes 2
 #================================================================================================== 
   ,tabPanel("DEG2",
     sidebarLayout(
@@ -1179,6 +1192,7 @@ iDEPversion,
        ,h5("7/29/2018: v0.80 Orgized UI.R according to", a("Google R style guide.", 
             href="https://google.github.io/styleguide/Rguide.xml") )   
        ,h5("7/30/2018: V0.80 Fixed error in downloaded up- and down-regulated gene lists. We thank Juan Xie for pointing this out. ")    
+       ,h5("12/2/2018: v0.81 High resolution figure download with eps format, which can be eidted with Adobe Illustrator.")
        ,br(),br()
        ,h5("In loving memory of my parents.")
 
