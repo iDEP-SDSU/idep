@@ -6,27 +6,28 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
+
+
 source('views/View.LoadData.R')
 iDEPversion = "iDEP.81"
 
-test111 <- View.LoadData$new()
+LoadDataView <- View.LoadData$new()
 
 shinyUI(
 navbarPage(
-  iDEPversion,
-  id='navBar',
+	iDEPversion,
+	id='navBar',
   
-  #================================================================================================== 
-  #   Load Data
-  #================================================================================================== 
-    
-  tabPanel("Load Data",
- # titlePanel(h5("Upload Files")),
-  sidebarLayout(
-    test111$sidebarLayout()
-  , #sidebarPanel
+	#================================================================================================== 
+	#   Load Data
+	#================================================================================================== 
+		
+  	tabPanel("Load Data",
+ 	# titlePanel(h5("Upload Files")),
+  	sidebarLayout(
+    	LoadDataView$sidebarLayout(), #sidebarPanel
   
-  # Main Panel -------------------------------------
+  	# Main Panel -------------------------------------
     mainPanel(  
       tableOutput('sampleInfoTable')
       ,tableOutput('contents')
