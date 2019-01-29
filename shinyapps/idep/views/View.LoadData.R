@@ -61,7 +61,7 @@ View.LoadData$set(
 					'.tsv'		  
 				) 
 			)
-		)
+		)	
 	}
 )
 
@@ -95,13 +95,13 @@ View.LoadData$set(
 			strong("3. Verify guessed species. Change if neccessary."),
 			selectInput("selectOrg", label = NULL,"Best matching species",width='100%')
 		)
-			}
+	}
 )
 
 # side bar support function: side.CondPanel.GuessSpeciesSection
 View.LoadData$set(  
 	"public",
-	"side.CondPanel.GuessSpeciesSection(),",
+	"side.CondPanel.GuessSpeciesSection",
 	function(){
 		conditionalPanel("input.selectOrg == 'NEW'",
 			fileInput('gmtFile', 'Upload a geneset .GMT file for enrichment analysis (optional)',
@@ -126,8 +126,9 @@ View.LoadData$set(
 	"sidebarLayout", 
 	function(){
 		sidebarPanel(
-			self$sideLoadDemoDataSection(),
 			
+			self$sideLoadDemoDataSection(),
+
 			p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" )),
 
 			self$sideChooseDataTypeSection(),
