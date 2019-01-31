@@ -8,12 +8,12 @@ View.LoadData$set(
 	"sideLoadDemoDataSection",
 	function(){
 		wellPanel(				   
-			actionButton("goButton", "Click here to load demo data"),
+			actionButton("goButton", TxtMsg$`Click here to load demo data`),
 			tags$head(tags$style("#goButton{color: red;
 								font-size: 16px;
 								font-style: italic;
 								}")),					
-			h5(" and just click the tabs for some magic!", style = "color:red")
+			h5(TxtMsg$` and just click the tabs for some magic!`, style = "color:red")
 		)
 	}
 )
@@ -126,7 +126,7 @@ View.LoadData$set(
 	"sidebarLayout", 
 	function(){
 		sidebarPanel(
-			
+
 			self$sideLoadDemoDataSection(),
 
 			p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" )),

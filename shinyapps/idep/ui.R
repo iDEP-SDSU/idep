@@ -8,14 +8,15 @@ library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
 
 
+source('server.config')
 source('views/View.LoadData.R')
-iDEPversion = "iDEP.81"
+
 
 LoadDataView <- View.LoadData$new()
 
 shinyUI(
 navbarPage(
-	iDEPversion,
+  CONFIG_SERVER_VERSION,
 	id='navBar',
   
 	#================================================================================================== 
