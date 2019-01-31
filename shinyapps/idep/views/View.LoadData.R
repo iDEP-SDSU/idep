@@ -26,18 +26,22 @@ View.LoadData$set(
 		wellPanel( 
 			radioButtons(   
 				"dataFileFormat", 
-				label = "1. Choose data type", 
-				choices = list(
-						"Read counts data (recommended)" = 1, 
-						"Normalized expression values (RNA-seq FPKM, microarray, etc.)" = 2,
-						"Fold-changes and corrected P values from CuffDiff or any other program" = 3
+				label = TxtMsg$`1. Choose data type`,
+				choiceNames = list(
+					TxtMsg$`Read counts data (recommended)`,
+					TxtMsg$`Normalized expression values (RNA-seq FPKM, microarray, etc.)`,
+					TxtMsg$`Fold-changes and corrected P values from CuffDiff or any other program`), 
+				choiceValues = list(
+						1, 
+						2,
+						3
 					),
 				selected = 1
 			),
 
 			conditionalPanel(
 				"input.dataFileFormat == 3",
-				checkboxInput("noFDR", "Fold-changes only, no corrected P values", value = FALSE)
+				checkboxInput("noFDR", TxtMsg$`Fold-changes only, no corrected P values`, value = FALSE)
 			)
 		)
 	}
@@ -51,7 +55,7 @@ View.LoadData$set(
 		wellPanel(
 			fileInput(
 				'file1', 
-				'2. Upload expression data (CSV or text)',
+				TxtMsg$`2. Upload expression data (CSV or text)`,
 				accept = c(
 					'text/csv',
 					'text/comma-separated-values',
@@ -71,8 +75,8 @@ View.LoadData$set(
 	"sideUploadDataFromPublicSource",
 	function(){
 		wellPanel(
-			a("New! Analyze public RNA-seq data", href="http://bioinformatics.sdstate.edu/reads/"),
-			fileInput('file2', h5('Optional: Upload an experiment design file(CSV or text)'),
+			a(TxtMsg$`New! Analyze public RNA-seq data`, href="http://bioinformatics.sdstate.edu/reads/"),
+			fileInput('file2', h5(TxtMsg$`Optional: Upload an experiment design file(CSV or text)`),
 				accept = c(
 					'text/csv',
 					'text/comma-separated-values',
@@ -92,7 +96,7 @@ View.LoadData$set(
 	"sideGuessSpeciesSection",
 	function(){
 		wellPanel(
-			strong("3. Verify guessed species. Change if neccessary."),
+			strong(TxtMsg$`3. Verify guessed species. Change if neccessary.`),
 			selectInput("selectOrg", label = NULL,"Best matching species",width='100%')
 		)
 	}
@@ -104,7 +108,7 @@ View.LoadData$set(
 	"side.CondPanel.GuessSpeciesSection",
 	function(){
 		conditionalPanel("input.selectOrg == 'NEW'",
-			fileInput('gmtFile', 'Upload a geneset .GMT file for enrichment analysis (optional)',
+			fileInput('gmtFile', TxtMsg$`Upload a geneset .GMT file for enrichment analysis (optional)`,
 				accept = c(
 						'text/csv',
 						'text/comma-separated-values',
@@ -129,7 +133,7 @@ View.LoadData$set(
 
 			self$sideLoadDemoDataSection(),
 
-			p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" )),
+			p(HTML(paste0("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">", TxtMsg$Reset, "</A></div>" ))),
 
 			self$sideChooseDataTypeSection(),
 

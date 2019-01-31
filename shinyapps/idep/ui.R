@@ -9,7 +9,7 @@ library(plotly,verbose=FALSE)
 
 
 source('server.config')
-source('views/View.LoadData.R')
+source('views/UIManager.R')
 
 
 LoadDataView <- View.LoadData$new()
