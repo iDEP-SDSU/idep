@@ -127,7 +127,7 @@ View.LoadData$set(
 # Main side bar
 View.LoadData$set(  
 	"public", 
-	"sidebarLayout", 
+	"sidebarPanel", 
 	function(){
 		sidebarPanel(
 
@@ -152,6 +152,58 @@ View.LoadData$set(
 	}
 )
 
-
+View.LoadData$set(
+	"public",
+	"mainPanel",
+	function(){
+		mainPanel(
+    		tableOutput('sampleInfoTable'),
+			tableOutput('contents'),
+    		#,h3("Service will not be available starting 6:30 am (US central time) on June 21 (Friday) 
+    		#due to scheduled maintenance. It should take less than 45 minutes. ",  style = "color:red")
+    		#,h3("We will re-sbumit our grant proposal to NIH. If you didn't send us a support letter last time, 
+    		#    please consider sending us a brief email/letter before Nov. 15th, with your 
+    		#    broad area of research and how iDEP helps your work. Thanks!"
+    		#,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), style = "color:red"),
+    		
+			br(),
+			
+			img(src='flowchart.png', align = "center",width="562", height="383"),
+    		h5("v0.81 Enabled downloading of publication-ready vector graphics files"),
+    		h5("New v0.80  Updated annotation database. Comprehensive pathway 
+    		    database for human. TF binding motifs for 200+ speceis. Old version made available."
+    		),
+    		h5("New v0.70  iDEP generates R and R Markdown codes for users to run in stand-alone!"),
+    		a("R Markdown example.",align = "left", href="http://rpubs.com/ge600/R",target="_blank"),
+    		h5("New v0.68! Try the STRING-db API access on the DEG2 page that offer 
+    		    protein interaction networks and GO enrichment for thousands species, including bacteria."),
+    		h5(	"Integrated Differential Expression and Pathway analysis (iDEP) of transcriptomic data. See ",
+    		  	a(" documentation", href="https://idepsite.wordpress.com/", target="_blank"), 
+    		  	"and",
+    		  	a(" manuscript.", href="https://www.biorxiv.org/content/early/2018/04/20/148411",target="_blank"),
+    		  	"Based on annotation of",
+    		  	a( "167 animal and 53 plant genomes ",href="https://idepsite.wordpress.com/species/",target="_blank"), 
+    		  	"in Ensembl BioMart as of 12/15/2017.",
+    		  	a("STRING-db ", href="https://string-db.org/",target="_blank"),
+    		  	"offer API access to protein interaction networks and annotations 
+    		  	for 115 archaeal, 1678 bacterial, and 238 eukaryotic species.",
+    			" Additional  data from"
+    			a("KEGG, ", href="www.genome.jp/kegg/",target="_blank")
+    			a("Reactome, ", href="http://www.reactome.org/",target="_blank")
+    			a("MSigDB (human),", href="https://doi.org/10.1093/bioinformatics/btr260",target="_blank") 
+    			a("GSKB (mouse)", href="http://biorxiv.org/content/early/2016/10/24/082511",target="_blank") 
+    			"and"
+    			a("  araPath (arabidopsis).", href="https://doi.org/10.1093/bioinformatics/bts421", target="_blank")   
+    			" For feedbacks or data contributions (genes and GO mapping of any species), please"
+    			a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=iDEP" )
+    			"or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank")
+    			"Send us suggestions or any error message to help improve iDEP."
+    			a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions")
+    		), #h5
+    		h3("Loading R packages ... ..."),
+    		htmlOutput('fileFormat')
+    	)
+	}
+)
 
 
