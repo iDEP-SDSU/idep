@@ -10,12 +10,16 @@
 #` 
 #` 
 
+source('localization/zh.R')
+source('localization/en.R')
 
+if(CONFIG_SERVER_LANGUAGE == 'zh'){
+	TxtMsg <- Localization.ZH$new() 
+}else {
+	TxtMsg <- Localization.EN$new()
+}
 
-
-
-
-
+source('views/View.LoadData.R')
 
 
 
