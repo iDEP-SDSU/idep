@@ -117,6 +117,15 @@ STRING10_species = read.csv("STRING10_species.csv")
 # write.csv(species,"STRING10_species.csv")
 # Also this STRINGdb package downloads a lot of file from the website. Needs to clean the temp folder from time to time. 
 
+## this should be the new header of server file. 
+source('server.config')
+source('views/UIManager.R')
+
+
+
+
+
+
 ################################################################
 #   Utility functions
 ################################################################
