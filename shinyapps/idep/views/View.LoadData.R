@@ -187,17 +187,17 @@ View.LoadData$set(
     		  	a("STRING-db ", href="https://string-db.org/",target="_blank"),
     		  	"offer API access to protein interaction networks and annotations 
     		  	for 115 archaeal, 1678 bacterial, and 238 eukaryotic species.",
-    			" Additional  data from"
-    			a("KEGG, ", href="www.genome.jp/kegg/",target="_blank")
-    			a("Reactome, ", href="http://www.reactome.org/",target="_blank")
-    			a("MSigDB (human),", href="https://doi.org/10.1093/bioinformatics/btr260",target="_blank") 
-    			a("GSKB (mouse)", href="http://biorxiv.org/content/early/2016/10/24/082511",target="_blank") 
-    			"and"
-    			a("  araPath (arabidopsis).", href="https://doi.org/10.1093/bioinformatics/bts421", target="_blank")   
-    			" For feedbacks or data contributions (genes and GO mapping of any species), please"
-    			a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=iDEP" )
-    			"or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank")
-    			"Send us suggestions or any error message to help improve iDEP."
+    			" Additional  data from",
+    			a("KEGG, ", href="www.genome.jp/kegg/",target="_blank"),
+    			a("Reactome, ", href="http://www.reactome.org/",target="_blank"),
+    			a("MSigDB (human),", href="https://doi.org/10.1093/bioinformatics/btr260",target="_blank"),
+    			a("GSKB (mouse)", href="http://biorxiv.org/content/early/2016/10/24/082511",target="_blank"), 
+    			"and",
+    			a("  araPath (arabidopsis).", href="https://doi.org/10.1093/bioinformatics/bts421", target="_blank"),
+    			" For feedbacks or data contributions (genes and GO mapping of any species), please",
+    			a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=iDEP" ),
+    			"or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank"),
+    			"Send us suggestions or any error message to help improve iDEP.",
     			a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions")
     		), #h5
     		h3("Loading R packages ... ..."),
