@@ -2,7 +2,7 @@ library('R6')
 
 View.LoadData <- R6Class("View.LoadData")
 
-# side bar support function: sideLoadDemoDataSection
+# side bar: sideLoadDemoDataSection
 View.LoadData$set(  
 	"public",
 	"sideLoadDemoDataSection",
@@ -18,7 +18,7 @@ View.LoadData$set(
 	}
 )
 
-# side bar support function: sideChooseDataTypeSection
+# side bar: sideChooseDataTypeSection
 View.LoadData$set(  
 	"public",
 	"sideChooseDataTypeSection",
@@ -47,7 +47,7 @@ View.LoadData$set(
 	}
 )
 
-# side bar support function: sideUploadFileSection
+# side bar: sideUploadFileSection
 View.LoadData$set(  
 	"public",
 	"sideUploadFileSection",
@@ -69,7 +69,7 @@ View.LoadData$set(
 	}
 )
 
-# side bar support function: sideUploadDataFromPublicSource
+# side bar: sideUploadDataFromPublicSource
 View.LoadData$set(  
 	"public",
 	"sideUploadDataFromPublicSource",
@@ -90,7 +90,7 @@ View.LoadData$set(
 	}
 )
 
-# side bar support function: sideGuessSpeciesSection
+# side bar: sideGuessSpeciesSection
 View.LoadData$set(  
 	"public",
 	"sideGuessSpeciesSection",
@@ -102,7 +102,7 @@ View.LoadData$set(
 	}
 )
 
-# side bar support function: side.CondPanel.GuessSpeciesSection
+# side bar: side.CondPanel.GuessSpeciesSection
 View.LoadData$set(  
 	"public",
 	"side.CondPanel.GuessSpeciesSection",
@@ -123,7 +123,7 @@ View.LoadData$set(
 	}
 )
 
-# popout page
+# popout: popSearchSeqData
 View.LoadData$set(
 	"public",
 	"popSearchSeqData",

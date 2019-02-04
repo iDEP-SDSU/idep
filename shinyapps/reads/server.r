@@ -23,7 +23,7 @@ if(file.exists(sampleInfoFile)) {
     # Check if gene expression file was already downloaded, if not in current directory download file form repository
     if(!file.exists(destination_fileM)){
       print("Downloading compressed gene expression matrix.")
-      url = "https://s3.amazonaws.com/mssm-seq-matrix/human_matrix.h5"
+      url = "https://s3.amazonaws.com/mssm-seq-matrix/mouse_matrix.h5"
       download.file(url, destination_file, quiet = FALSE)
     } else{
       print("Local file already exists.")
