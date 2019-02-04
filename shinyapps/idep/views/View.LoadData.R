@@ -9,6 +9,7 @@ View.LoadData$set(
 	function(){
 		wellPanel(				   
 			actionButton("goButton", TxtMsg$`Click here to load demo data`),
+			actionButton("tabBut2", "View Search Page"),
 			tags$head(tags$style("#goButton{color: red;
 								font-size: 16px;
 								font-style: italic;
@@ -144,7 +145,7 @@ View.LoadData$set(
 					column(	9, 
 							h5("Search and click on a dataset to see more information before download.") 
 					),
-        	       column(	3, 
+        	       	column(	3, 
 							selectInput(
 								"selected.species.archs4", 
 								"", 
@@ -252,7 +253,51 @@ View.LoadData$set(
     			a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions")
     		), #h5
     		h3("Loading R packages ... ..."),
-    		htmlOutput('fileFormat')
+    		htmlOutput('fileFormat'),
+
+			bsModal(
+				"modalSearchTab", 
+				"Public RNA-Seq and ChIP-Seq data", 
+				"tabBut2", 
+				size="large",
+				fluidPage(
+					h5("Download gene-level read counts data for 7,793 human and mouse datasets from",
+						a("ARCHS4 ", href="http://amp.pharm.mssm.edu/archs4/help.html"),
+						"on Nov. 5, 2018.",
+						"HiSeq 2000 and HiSeq 2500 raw data from NCBI's SRA database are 
+						aligned with Kallisto against human GRCh38 or mouse GRCm38 cDNA reference."
+					),
+					fluidRow( 
+						column(	9, 
+								h5("Search and click on a dataset to see more information before download.") 
+						),
+            	       column(	3, 
+								selectInput(
+									"selected.species.archs4", 
+									"", 
+            	        			choices = list("Human"= "human", "Mouse" = "mouse"), 
+									selected = "human"
+								)
+						)
+					),
+					DT::dataTableOutput('SearchData'),
+					HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />'),
+					br(),
+					fluidRow( 	
+						column(4, 	textOutput('selectedDataset') ),
+	                   	column(3, 	downloadButton('downloadSearchedData', 'Download') ),
+	                   	column(5, 	h5(	"Edit and uplodad file to ", 
+										a("iDEP", href="http://bioinformatics.sdstate.edu/idep/"), 
+										"for analysis"
+									)
+						)	
+	         		),
+					br(),
+					tableOutput('samples'),
+					h4("Loading data and R packages ... ..."),
+					htmlOutput('DoneLoading') 
+				)
+			)	
     	)
 	}
 )
