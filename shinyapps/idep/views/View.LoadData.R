@@ -217,25 +217,13 @@ View.LoadData$set(
 	}
 )
 
-# Main Panel
+# main: Update Notes
 View.LoadData$set(
 	"public",
-	"mainPanel",
+	"main.UpdateNote",
 	function(){
-		mainPanel(
-    		tableOutput('sampleInfoTable'),
-			tableOutput('contents'),
-    		#,h3("Service will not be available starting 6:30 am (US central time) on June 21 (Friday) 
-    		#due to scheduled maintenance. It should take less than 45 minutes. ",  style = "color:red")
-    		#,h3("We will re-sbumit our grant proposal to NIH. If you didn't send us a support letter last time, 
-    		#    please consider sending us a brief email/letter before Nov. 15th, with your 
-    		#    broad area of research and how iDEP helps your work. Thanks!"
-    		#,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), style = "color:red"),
-    		
-			br(),
-			
-			img(src='flowchart.png', align = "center",width="562", height="383"),
-    		h5("v0.81 Enabled downloading of publication-ready vector graphics files"),
+		wellPanel(
+			h5("v0.81 Enabled downloading of publication-ready vector graphics files"),
     		h5("New v0.80  Updated annotation database. Comprehensive pathway 
     		    database for human. TF binding motifs for 200+ speceis. Old version made available."
     		),
@@ -265,10 +253,32 @@ View.LoadData$set(
     			"or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank"),
     			"Send us suggestions or any error message to help improve iDEP.",
     			a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions")
-    		), #h5
+    		)
+		)
+	}
+)
+
+# Main Panel
+View.LoadData$set(
+	"public",
+	"mainPanel",
+	function(){
+		mainPanel(
+    		tableOutput('sampleInfoTable'),
+			tableOutput('contents'),
+    		#,h3("Service will not be available starting 6:30 am (US central time) on June 21 (Friday) 
+    		#due to scheduled maintenance. It should take less than 45 minutes. ",  style = "color:red")
+    		#,h3("We will re-sbumit our grant proposal to NIH. If you didn't send us a support letter last time, 
+    		#    please consider sending us a brief email/letter before Nov. 15th, with your 
+    		#    broad area of research and how iDEP helps your work. Thanks!"
+    		#,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), style = "color:red"),
+    		
+			br(),
+			
+			img(src='flowchart.png', align = "center",width="562", height="383"),
+    		self$main.UpdateNote(), #h5
     		h3("Loading R packages ... ..."),
     		htmlOutput('fileFormat'),
-
 			self$popSearchSeqData()
     	)
 	}

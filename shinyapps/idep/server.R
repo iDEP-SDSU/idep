@@ -2449,11 +2449,7 @@ observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_sp
         dataset.info$GEO.ID = as.character(dataset.info$GEO.ID)
         return(dataset.info)
       })
-      
-	  output$selectedSampleIds <- renderText({
-		  if(is.na(ReactVars$usePublicDataSource)){return()}
-		  colnames(Search()$counts)
-	  })
+	  
       # retrieve sample info and counts data
       Search <- reactive({
         if (is.null(input$SearchData_rows_selected))   return(NULL)
