@@ -121,68 +121,6 @@ STRING10_species = read.csv("STRING10_species.csv")
 
 
 
-destination_fileH = "D:/iDep Data/data/readCounts/human_matrix.h5"
-destination_fileM = "D:/iDep Data/data/readCounts/mouse_matrix.h5"
-sampleInfoFile = "D:/iDep Data/data/readCounts/sampleInfo.txt"
-GSEInfoFile = "D:/iDep Data/data/readCounts/GSEinfo.txt"
-  
-  
-
-if(file.exists(sampleInfoFile)) {
-  sample_info =read.table(sampleInfoFile, sep="\t",header=T )
-} else {   # create sample info
-  # Check if gene expression file was already downloaded, if not in current directory download file form repository
-  if(!file.exists(destination_fileH)) {
-    print("Downloading compressed gene expression matrix.")
-    url = "https://s3.amazonaws.com/mssm-seq-matrix/human_matrix.h5"
-    download.file(url, destination_file, quiet = FALSE)
-  } else{
-    print("Local file already exists.")
-  }
-  # Check if gene expression file was already downloaded, if not in current directory download file form repository
-  if(!file.exists(destination_fileM)){
-    print("Downloading compressed gene expression matrix.")
-    url = "https://s3.amazonaws.com/mssm-seq-matrix/mouse_matrix.h5"
-    download.file(url, destination_file, quiet = FALSE)
-  } else{
-    print("Local file already exists.")
-  }
-  
-  # if(!file.exists(infoFile)){
-  destination_file = destination_fileH
-  # Retrieve information from compressed data
-  GSMs = h5read(destination_file, "meta/Sample_geo_accession")
-  tissue = h5read(destination_file, "meta/Sample_source_name_ch1")
-  #genes = h5read(destination_file, "meta/genes")
-  sample_title = h5read(destination_file, "meta/Sample_title")
-  sample_series_id = h5read(destination_file, "meta/Sample_series_id")
-  
-  species = rep("human",length(GSMs))
-  sample_info = cbind(GSMs, tissue, sample_title,sample_series_id,species)
-  H5close()
-  
-  destination_file = destination_fileM
-  # Retrieve information from compressed data
-  GSMs = h5read(destination_file, "meta/Sample_geo_accession")
-  tissue = h5read(destination_file, "meta/Sample_source_name_ch1")
-  #genes = h5read(destination_file, "meta/genes")
-  sample_title = h5read(destination_file, "meta/Sample_title")
-  sample_series_id = h5read(destination_file, "meta/Sample_series_id")
-  
-  species = rep("mouse",length(GSMs))
-  sample_infoM = cbind(GSMs, tissue, sample_title, sample_series_id,species)
-  H5close()
-  # sample info for both human and mouse
-  sample_info = as.data.frame( rbind(sample_info, sample_infoM) )
-  #write.table(sample_info, sampleInfoFile, sep="\t",row.names=F)
-}
-
-humanNDataset <<- length(unique(sample_info$sample_series_id[which(sample_info$species == "human")]) )
-mouseNDataset <<- length(unique(sample_info$sample_series_id[which(sample_info$species == "mouse")]) )
-
-
-
-
 
 
 
@@ -192,7 +130,7 @@ ReactVars <- reactiveValues()
 
 ## this should be the new header of server file. 
 source('server.config')
-source('views/UIManager.R')
+source('controllers/ControllerManager.R')
 
 
 
@@ -2444,12 +2382,8 @@ observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_sp
 		ReactVars$usePublicDataSource <- TRUE
 	})
 
-      dataset.info <- reactive({
-        dataset.info <- read.table(GSEInfoFile, sep="\t",header=T )
-        dataset.info$GEO.ID = as.character(dataset.info$GEO.ID)
-        return(dataset.info)
-      })
-	  
+      dataset.info <- LoadDataCtrl$datasetInfo()
+
       # retrieve sample info and counts data
       Search <- reactive({
         if (is.null(input$SearchData_rows_selected))   return(NULL)
