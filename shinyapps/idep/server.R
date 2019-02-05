@@ -2382,61 +2382,12 @@ observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_sp
 		ReactVars$usePublicDataSource <- TRUE
 	})
 
-      dataset.info <- LoadDataCtrl$datasetInfo()
+      dataset.info <- LoadDataCtrl$DatasetInfo()
 
       # retrieve sample info and counts data
-      Search <- reactive({
-        if (is.null(input$SearchData_rows_selected))   return(NULL)
-        
-        withProgress(message = "Searching ...", {
-          # row selected
-          iy = which( dataset.info()$Species == input$selected.species.archs4 )
-          ix = iy[input$SearchData_rows_selected]
-          
-          keyword =  dataset.info()$GEO.ID[ix]
-          
-          keyword = gsub(" ","",keyword)
-          ix = which(sample_info[,4]== keyword)
-          
-          if(length(ix) == 0)
-            return(NULL)
-          else {
-            #sample ids
-            samp = sample_info[ix,1]   # c("GSM1532588", "GSM1532592" )
-            if( names(sort(table(sample_info[ix,5]),decreasing=T))[1] == "human" )
-              destination_file = destination_fileH
-            if( names(sort(table(sample_info[ix,5]),decreasing=T))[1] == "mouse" )
-              destination_file = destination_fileM
-            
-            # Identify columns to be extracted
-            samples = h5read(destination_file, "meta/Sample_geo_accession")
-            sample_locations = which(samples %in% samp)
-            
-            # extract gene expression from compressed data
-            genes = h5read(destination_file, "meta/genes")
-            expression = h5read(destination_file, "data/expression", index=list(1:length(genes), sample_locations))
-            tissue = h5read(destination_file, "meta/Sample_source_name_ch1")
-            sample_title = h5read(destination_file, "meta/Sample_title")
-            H5close()
-            incProgress(1/2)
-            rownames(expression) <-paste(" ",genes)
-            colnames(expression) <- paste( samples[sample_locations], sample_title[sample_locations], sep=" ")
-            expression <- expression[,order(colnames(expression))]
-            tem = sample_info[ix,c(5,1:3)]
-            tem = tem[order(tem[,4]),]
-            colnames(tem) <- c("Species", "Sample ID","Tissue","Sample Title")
-            incProgress(1)
-            if(dim(tem)[1]>50) tem = tem[1:50,]
-            return( list(info=tem, counts = expression ) )
-          }
-        })
-      })
+      Search <- LoadDataCtrl$Search()
       
-      output$samples <- renderTable({
-        if (is.null(input$SearchData_rows_selected))   return(NULL)
-        if (is.null(Search() )  )   return(as.matrix("No dataset found!"))
-        Search()$info
-      },bordered = TRUE)
+      output$samples <- LoadDataCtrl$RenderSampleTable()
       
       # search GSE IDs
       output$SearchData <- DT::renderDataTable({
