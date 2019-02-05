@@ -134,7 +134,7 @@ source('controllers/ControllerManager.R')
 
 
 
-
+LoadDataCtrl <- Ctl.LoadData$new()
 
 
 ################################################################
@@ -2382,51 +2382,18 @@ observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_sp
 		ReactVars$usePublicDataSource <- TRUE
 	})
 
-      dataset.info <- LoadDataCtrl$DatasetInfo()
-
-      # retrieve sample info and counts data
-      Search <- LoadDataCtrl$Search()
-      
-      output$samples <- LoadDataCtrl$RenderSampleTable()
+      output$samples <- LoadDataCtrl$RenderSampleTable(input)
       
       # search GSE IDs
-      output$SearchData <- DT::renderDataTable({
-        if( is.null( dataset.info())) return(NULL)
-        if( is.null( input$selected.species.archs4)) return(NULL) 
-        dataset.info()[which( dataset.info()$Species == input$selected.species.archs4)    ,]
-        
-      }, selection = 'single'
-      ,options = list(  pageLength = 5 ) # only 5 rows shown
-      )
+      output$SearchData <- LoadDataCtrl$SearchGSEIDs(input)
       
-      output$humanNsamplesOutput <- renderText({
-        if (is.null(input$SearchData_rows_selected))   return(NULL)
-        return(as.character(humanNDataset))
-      })
-      output$mouseNsamplesOutput <- renderText({
-        if (is.null(input$SearchData_rows_selected))   return(NULL)
-        return(as.character(mouseNDataset))
-      })
-      selectedGSEID <- reactive({
-        if (is.null(input$SearchData_rows_selected))   return(NULL)
-        # indices for a certain species
-        iy = which( dataset.info()$Species == input$selected.species.archs4 )
-        ix = iy[input$SearchData_rows_selected]
-        return(   dataset.info()$GEO.ID[ix]  )
-        
-      })
-      output$selectedDataset <- renderText({
-        if (is.null(input$SearchData_rows_selected))   return(NULL)
-        return(  paste("Selected:",selectedGSEID() ) )
-        
-      })
+      output$humanNsamplesOutput <- LoadDataCtrl$RenderHumanNsampleOutput(input)
+
+      output$mouseNsamplesOutput <- LoadDataCtrl$RenderMouseNsampleOutput(input)
+
+      output$selectedDataset <- LoadDataCtrl$RenderSelectedDataset(input)
       
-      output$DoneLoading <- renderUI({
-        i = "<h4>Done. Ready to search.</h4>"
-        
-        
-        HTML(paste(i, collapse='<br/>') )
-      })
+      output$DoneLoading <- LoadDataCtrl$RenderInitDoneUI()
 
 
 # read data file and do filtering and transforming
