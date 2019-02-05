@@ -10,7 +10,7 @@ Ctl.LoadData$set(
         	if (is.null(input$SearchData_rows_selected))   
 			{	return(NULL)	}
         	if (is.null(Search()))   
-			{	return(as.matrix("No dataset found!")) 	}
+			{	return(as.matrix("No dataset found!")) }
         	Search()$info
       	},bordered = TRUE)
 	}

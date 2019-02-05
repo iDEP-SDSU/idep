@@ -186,7 +186,7 @@ mouseNDataset <<- length(unique(sample_info$sample_series_id[which(sample_info$s
 
 
 
-
+ReactVars <- reactiveValues()
 
 
 
@@ -2440,6 +2440,9 @@ observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_sp
 
 ## Search Public Data Section 
 #output$SPDsamples <- LoadDataCtrl$samples()
+	observeEvent(input$downloadSearchedData, {
+		ReactVars$usePublicDataSource <- TRUE
+	})
 
       dataset.info <- reactive({
         dataset.info <- read.table(GSEInfoFile, sep="\t",header=T )
@@ -2447,6 +2450,10 @@ observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_sp
         return(dataset.info)
       })
       
+	  output$selectedSampleIds <- renderText({
+		  if(is.na(ReactVars$usePublicDataSource)){return()}
+		  colnames(Search()$counts)
+	  })
       # retrieve sample info and counts data
       Search <- reactive({
         if (is.null(input$SearchData_rows_selected))   return(NULL)
@@ -2500,13 +2507,6 @@ observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_sp
         if (is.null(Search() )  )   return(as.matrix("No dataset found!"))
         Search()$info
       },bordered = TRUE)
-      
-      output$downloadSearchedData <- downloadHandler(
-        
-        filename = function() { paste(selectedGSEID(),".csv",sep="")},
-        content = function(file) {
-          write.csv( Search()$counts, file )	    }
-      )
       
       # search GSE IDs
       output$SearchData <- DT::renderDataTable({
