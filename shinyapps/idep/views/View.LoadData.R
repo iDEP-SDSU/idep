@@ -9,12 +9,16 @@ View.LoadData$set(
 	function(){
 		wellPanel(				   
 			actionButton("goButton", TxtMsg$`Click here to load demo data`),
-			actionButton("tabBut2", "View Search Page"),
+
 			tags$head(tags$style("#goButton{color: red;
 								font-size: 16px;
 								font-style: italic;
 								}")),					
-			h5(TxtMsg$` and just click the tabs for some magic!`, style = "color:red")
+			h5(TxtMsg$` and just click the tabs for some magic!`, style = "color:red"),
+			
+			actionButton("btn_LoadData_SearchDataFromPublic", "View Search Page"),
+			actionButton("btn_LoadDat_UploadFile", "Upload Your Own File")
+			
 		)
 	}
 )
@@ -31,15 +35,15 @@ View.LoadData$set(
 				choiceNames = list(
 					TxtMsg$`Read counts data (recommended)`,
 					TxtMsg$`Normalized expression values (RNA-seq FPKM, microarray, etc.)`,
-					TxtMsg$`Fold-changes and corrected P values from CuffDiff or any other program`), 
+					TxtMsg$`Fold-changes and corrected P values from CuffDiff or any other program`
+				), 
 				choiceValues = list(
-						1, 
-						2,
-						3
-					),
+					1, 
+					2,
+					3
+				),
 				selected = 1
 			),
-
 			conditionalPanel(
 				"input.dataFileFormat == 3",
 				checkboxInput("noFDR", TxtMsg$`Fold-changes only, no corrected P values`, value = FALSE)
@@ -183,41 +187,7 @@ View.LoadData$set(
 	}
 )
 
-
-
-# Main side bar
-View.LoadData$set(  
-	"public", 
-	"sidebarPanel", 
-	function(){
-		sidebarPanel(
-
-			self$sideLoadDemoDataSection(),
-
-			p(HTML(paste0("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">", TxtMsg$Reset, "</A></div>" ))),
-
-			self$sideChooseDataTypeSection(),
-
-			self$sideUploadFileSection(),
-
-			self$sideUploadDataFromPublicSource(),
-
-			self$sideGuessSpeciesSection(),
-
-			self$side.CondPanel.GuessSpeciesSection(),
-
-			tableOutput('species'),
-
-			self$side.CondPanel.PublicSampleId(),
-			
-			a( h5("?",align = "right"), href="https://idepsite.wordpress.com/data-format/",target="_blank")
-
-			
-		)
-	}
-)
-
-# main: Update Notes
+# main panel: Update Notes
 View.LoadData$set(
 	"public",
 	"main.UpdateNote",
@@ -254,6 +224,39 @@ View.LoadData$set(
     			"Send us suggestions or any error message to help improve iDEP.",
     			a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions")
     		)
+		)
+	}
+)
+
+
+# Side Bar
+View.LoadData$set(  
+	"public", 
+	"sidebarPanel", 
+	function(){
+		sidebarPanel(
+
+			self$sideLoadDemoDataSection(),
+
+			p(HTML(paste0("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">", TxtMsg$Reset, "</A></div>" ))),
+
+			self$sideChooseDataTypeSection(),
+
+			self$sideUploadFileSection(),
+
+			self$sideUploadDataFromPublicSource(),
+
+			self$sideGuessSpeciesSection(),
+
+			self$side.CondPanel.GuessSpeciesSection(),
+
+			tableOutput('species'),
+
+			self$side.CondPanel.PublicSampleId(),
+			
+			a( h5("?",align = "right"), href="https://idepsite.wordpress.com/data-format/",target="_blank")
+
+			
 		)
 	}
 )

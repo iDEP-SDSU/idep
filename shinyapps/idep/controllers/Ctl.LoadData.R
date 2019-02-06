@@ -106,7 +106,6 @@ Ctl.LoadData$set(
 	"public",
 	"UpdateSelectedSampleInfo",
 	function(input){
-		
 			if (is.null(input$SearchData_rows_selected)) { 
 				self$SelectedSampleInfo <- NULL
 				return(self$SelectedSampleInfo)
@@ -124,7 +123,7 @@ Ctl.LoadData$set(
 					ix = which(self$sample_info[,4]== keyword)
 
 					if(length(ix) == 0){
-						self$SelectedSampleInfo <- list(info=iy)
+						self$SelectedSampleInfo <- NULL
 						return(self$SelectedSampleInfo)
 					}else{
 						samp = self$sample_info[ix,1]
@@ -163,7 +162,6 @@ Ctl.LoadData$set(
 					}
 				}		
 			)
-
 	}
 )
 
