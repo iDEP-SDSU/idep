@@ -8,18 +8,33 @@ View.LoadData$set(
 	"sideLoadDemoDataSection",
 	function(){
 		wellPanel(				   
-			actionButton("goButton", TxtMsg$`Click here to load demo data`),
-
-			tags$head(tags$style("#goButton{color: red;
-								font-size: 16px;
-								font-style: italic;
-								}")),					
-			h5(TxtMsg$` and just click the tabs for some magic!`, style = "color:red"),
-			
-			actionButton("btn_LoadData_SearchDataFromPublic", "View Search Page"),
-			actionButton("btn_LoadDat_UploadFile", "Upload Your Own File")
-			
+			actionButton("goButton", TxtLibrary$btn_label_LoadDemoData),
+			actionButton("btn_LoadData_SearchDataFromPublic", TxtLibrary$btn_label_SearchPublicData),
+			actionButton("btn_LoadData_Cond_UploadFileFromClient", TxtLibrary$btn_label_UploadClientData)
 		)
+	}
+)
+
+# side bar: side.CondPanel.UploadFile
+View.LoadData$set(
+	"public",
+	"side.CondPanel.UploadFile",
+	function(){
+		conditionalPanel(
+			"input$btn_LoadData_Cond_UploadFileFromClient==1",
+			fileInput(
+				'file1', 
+				TxtLibrary$`2. Upload expression data (CSV or text)`,
+				accept = c(
+					'text/csv',
+					'text/comma-separated-values',
+					'text/tab-separated-values',
+					'text/plain',
+					'.csv',
+					'.tsv'		  
+				) 
+			)
+		)	
 	}
 )
 
@@ -31,11 +46,11 @@ View.LoadData$set(
 		wellPanel( 
 			radioButtons(   
 				"dataFileFormat", 
-				label = TxtMsg$`1. Choose data type`,
+				label = TxtLibrary$`1. Choose data type`,
 				choiceNames = list(
-					TxtMsg$`Read counts data (recommended)`,
-					TxtMsg$`Normalized expression values (RNA-seq FPKM, microarray, etc.)`,
-					TxtMsg$`Fold-changes and corrected P values from CuffDiff or any other program`
+					TxtLibrary$`Read counts data (recommended)`,
+					TxtLibrary$`Normalized expression values (RNA-seq FPKM, microarray, etc.)`,
+					TxtLibrary$`Fold-changes and corrected P values from CuffDiff or any other program`
 				), 
 				choiceValues = list(
 					1, 
@@ -46,7 +61,7 @@ View.LoadData$set(
 			),
 			conditionalPanel(
 				"input.dataFileFormat == 3",
-				checkboxInput("noFDR", TxtMsg$`Fold-changes only, no corrected P values`, value = FALSE)
+				checkboxInput("noFDR", TxtLibrary$`Fold-changes only, no corrected P values`, value = FALSE)
 			)
 		)
 	}
@@ -60,7 +75,7 @@ View.LoadData$set(
 		wellPanel(
 			fileInput(
 				'file1', 
-				TxtMsg$`2. Upload expression data (CSV or text)`,
+				TxtLibrary$`2. Upload expression data (CSV or text)`,
 				accept = c(
 					'text/csv',
 					'text/comma-separated-values',
@@ -80,8 +95,8 @@ View.LoadData$set(
 	"sideUploadDataFromPublicSource",
 	function(){
 		wellPanel(
-			a(TxtMsg$`New! Analyze public RNA-seq data`, href="http://bioinformatics.sdstate.edu/reads/"),
-			fileInput('file2', h5(TxtMsg$`Optional: Upload an experiment design file(CSV or text)`),
+			a(TxtLibrary$`New! Analyze public RNA-seq data`, href="http://bioinformatics.sdstate.edu/reads/"),
+			fileInput('file2', h5(TxtLibrary$`Optional: Upload an experiment design file(CSV or text)`),
 				accept = c(
 					'text/csv',
 					'text/comma-separated-values',
@@ -101,7 +116,7 @@ View.LoadData$set(
 	"sideGuessSpeciesSection",
 	function(){
 		wellPanel(
-			strong(TxtMsg$`3. Verify guessed species. Change if neccessary.`),
+			strong(TxtLibrary$`3. Verify guessed species. Change if neccessary.`),
 			selectInput("selectOrg", label = NULL,"Best matching species",width='100%')
 		)
 	}
@@ -113,7 +128,7 @@ View.LoadData$set(
 	"side.CondPanel.GuessSpeciesSection",
 	function(){
 		conditionalPanel("input.selectOrg == 'NEW'",
-			fileInput('gmtFile', TxtMsg$`Upload a geneset .GMT file for enrichment analysis (optional)`,
+			fileInput('gmtFile', TxtLibrary$`Upload a geneset .GMT file for enrichment analysis (optional)`,
 				accept = c(
 						'text/csv',
 						'text/comma-separated-values',
@@ -128,23 +143,15 @@ View.LoadData$set(
 	}
 )
 
+# popout: pop.SearchPublicData
 View.LoadData$set(
 	"public",
-	"side.CondPanel.PublicSampleId",
-	function(){
-		wellPanel(textOutput('selectedSampleIds'))
-	}
-)
-
-# popout: popSearchSeqData
-View.LoadData$set(
-	"public",
-	"popSearchSeqData",
+	"pop.SearchPublicData",
 	function(){
 		bsModal(
 			"modalSearchTab", 
 			"Public RNA-Seq and ChIP-Seq data", 
-			"tabBut2", 
+			"btn_LoadData_SearchDataFromPublic", 
 			size="large",
 			fluidPage(
 				h5("Download gene-level read counts data for 7,793 human and mouse datasets from",
@@ -238,11 +245,11 @@ View.LoadData$set(
 
 			self$sideLoadDemoDataSection(),
 
-			p(HTML(paste0("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">", TxtMsg$Reset, "</A></div>" ))),
+			p(HTML(paste0("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">", TxtLibrary$Reset, "</A></div>" ))),
+
+			self$side.CondPanel.UploadFile(),
 
 			self$sideChooseDataTypeSection(),
-
-			self$sideUploadFileSection(),
 
 			self$sideUploadDataFromPublicSource(),
 
@@ -251,8 +258,6 @@ View.LoadData$set(
 			self$side.CondPanel.GuessSpeciesSection(),
 
 			tableOutput('species'),
-
-			self$side.CondPanel.PublicSampleId(),
 			
 			a( h5("?",align = "right"), href="https://idepsite.wordpress.com/data-format/",target="_blank")
 
@@ -282,7 +287,7 @@ View.LoadData$set(
     		self$main.UpdateNote(), #h5
     		h3("Loading R packages ... ..."),
     		htmlOutput('fileFormat'),
-			self$popSearchSeqData()
+			self$pop.SearchPublicData()
     	)
 	}
 )

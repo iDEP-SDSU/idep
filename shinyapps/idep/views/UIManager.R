@@ -14,9 +14,9 @@ source('localization/zh.R')
 source('localization/en.R')
 
 if(CONFIG_SERVER_LANGUAGE == 'ZH'){
-	TxtMsg <- Localization.ZH 
+	TxtLibrary <- Localization.ZH 
 }else{
-	TxtMsg <- Localization.EN
+	TxtLibrary <- Localization.EN
 }
 
 source('views/View.LoadData.R')

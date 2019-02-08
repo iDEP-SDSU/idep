@@ -1,5 +1,10 @@
 Localization.EN <- list()
 
+## Button Label 
+Localization.EN$btn_label_LoadDemoData <- 'Load Demo Data'
+Localization.EN$btn_label_UploadClientData <- 'Upload Your Own Data'
+Localization.EN$btn_label_SearchPublicData <- 'Search From Public Data'
+
 Localization.EN$`Click here to load demo data` <- 'Click here to load demo data'
 Localization.EN$` and just click the tabs for some magic!` <- ' and just click the tabs for some magic!'
 
