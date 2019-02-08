@@ -96,9 +96,11 @@ iDEPversion,
       #    please consider sending us a brief email/letter before Nov. 15th, with your 
       #    broad area of research and how iDEP helps your work. Thanks!"
       #,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), style = "color:red")
-      
+      ,h3("We are working on a plan to improve iDEP. Any new functionality or feature you like to be added?Please "
+      ,a("send us",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), "your suggestions!",style = "color:red")      
       ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
-      ,h5("v0.81 Enabled downloading of publication-ready vector graphics files")
+      ,h5("Now published on", a("BMC Bioinformatics!",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank") )
+      ,h5("v0.81 Enabled downloading of publication-ready vector graphics files.")
       ,h5("New v0.80  Updated annotation database. Comprehensive pathway 
           database for human. TF binding motifs for 200+ speceis. Old version made available."
       )
@@ -1154,7 +1156,16 @@ iDEPversion,
         ,h4("Previous versions of iDEP")
         ,a("iDEP 0.73 with Ensembl BioMart version 91, archived on July 11, 2018 "
             , href="http://bioinformatics.sdstate.edu/idep73/")  
-  
+        ,br()
+        ,h4("Citation")  
+        ,h5("Please cite: Ge SX, Son EW, Yao R: iDEP: an integrated web application for differential 
+            expression and pathway analysis of RNA-Seq data. BMC Bioinformatics 2018, 19(1):534. PMID:30567491 ",
+            a(" Full text",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank"))
+        ,h4("Usage Statistics")
+        ,h5("As of Feb. 8, 2019, iDEP website has been visited 16,344 times by 4,500 users from 80 countries. 
+            Fully functional only in early 2018, iDEP has been used by researchers to analyze transcriptomic data 
+            from sun flowers to primates to human, 
+            as demonstrated by 12 papers citing iDEP.")
        ,br()  
        ,htmlOutput('RsessionInfo')
 
