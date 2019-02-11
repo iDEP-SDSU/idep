@@ -94,11 +94,6 @@ Ctl.LoadData$set(
 
 
 
-
-
-
-
-
 ## Methods
 
 #update selected sample info and counts data

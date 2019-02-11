@@ -1,12 +1,18 @@
+
+
+
+
+
+
 server <- function(input, output) {
-	observeEvent(input$btn_LoadData_SearchDataFromPublic,{
-		output$showOther <- renderText(1)
-		outputOptions(output, "showOther", suspendWhenHidden = FALSE)
-	})
 	
-  output$distPlot <- renderPlot({
-    hist(rnorm(input$obs))
-  })
+    output$ViewData_SelectFromPublic_Samples <- LoadDataCtrl$RenderSampleTable(input) 
+    output$SearchData <- LoadDataCtrl$SearchGSEIDs(input)
+    output$humanNsamplesOutput <- LoadDataCtrl$RenderHumanNsampleOutput(input)
+    output$mouseNsamplesOutput <- LoadDataCtrl$RenderMouseNsampleOutput(input)
+    output$selectedDataset <- LoadDataCtrl$RenderSelectedDataset(input)
+    output$DoneLoading <- LoadDataCtrl$RenderInitDoneUI()
+
 }
 
 

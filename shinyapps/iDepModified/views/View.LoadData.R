@@ -30,10 +30,56 @@ View.LoadData$set("puiblic", "ConPanel_DataSource",
 View.LoadData$set("puiblic", "ConPanel_ViewData",
 	function(){
 		conditionalPanel(condition = "output.DataSource!=null",
-			
+			fluidPage(
+				h5(TxtLibrary$ViewData_Help_Message)
+				actionButton("btn_Reset_Data", TxtLibrary$btn_label_ResetData)
+			)
 		)
 	}
 )
 
+View.LoadData$set("public", "Pop_DownloadPublicData",
+	function(){
+		bsModal(
+			"modalSearchTab", 
+			"Public RNA-Seq and ChIP-Seq data", 
+			"btn_LoadData_SearchDataFromPublic", 
+			size="large",
+			fluidPage(			
+				fluidRow( 
+					column(	9, 
+							h5("Search and click on a dataset to see more information before download.") 
+					),
+        	       	column(	3, 
+							selectInput(
+								"selected.species.archs4", 
+								"", 
+        	        			choices = list("Human"= "human", "Mouse" = "mouse"), 
+								selected = "human"
+							)
+					)
+				),
+				DT::dataTableOutput('SearchData'),
+				HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />'),
+				br(),
+				fluidRow( 	
+					column(4, 	textOutput('selectedDataset') ),
+	               	column(3, 	actionButton('btn_LoadData_UseSelectedPublicData', 'Use This Sample') )	
+	     		),
+				br(),
+				tableOutput('ViewData_SelectFromPublic_Samples'),
+				h4("Loading data and R packages ... ..."),
+				htmlOutput('DoneLoading') 
+			)
+		)
+	}
+)
+
+
+View.LoadData$set("public", "Pop_DownloadPublicData",
+	function(){
+
+	}
+)
 
 
