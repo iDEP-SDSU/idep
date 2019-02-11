@@ -273,6 +273,13 @@ Ctl.LoadData$set(
 )
 
 
+Ctl.LoadData$set( "public",	"EventHandler_UseSelectedPublicData",
+	function(input, output, session){
+
+
+	}
+)
+
 ####Ctl.LoadData$set(
 ####	"public",
 ####	"",
@@ -280,5 +287,4 @@ Ctl.LoadData$set(
 ####
 ####	}
 ####)
-
 

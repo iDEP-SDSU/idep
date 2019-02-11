@@ -2,7 +2,7 @@ library('R6')
 
 View.LoadData <- R6Class("View.LoadData")
 
-View.LoadData$set("puiblic", "mainPanel",
+View.LoadData$set("public", "mainPanel",
 	function(){
 		mainPanel(
 			self$ConPanel_DataSource(),
@@ -14,7 +14,7 @@ View.LoadData$set("puiblic", "mainPanel",
 	}
 )
 
-View.LoadData$set("puiblic", "ConPanel_DataSource",
+View.LoadData$set("public", "ConPanel_DataSource",
 	function(){
 		conditionalPanel(condition = "output.DataSource==null",
 			fluidPage(
@@ -27,11 +27,11 @@ View.LoadData$set("puiblic", "ConPanel_DataSource",
 	}
 )
 
-View.LoadData$set("puiblic", "ConPanel_ViewData",
+View.LoadData$set("public", "ConPanel_ViewData",
 	function(){
 		conditionalPanel(condition = "output.DataSource!=null",
 			fluidPage(
-				h5(TxtLibrary$ViewData_Help_Message)
+				h5(TxtLibrary$ViewData_Help_Message),
 				actionButton("btn_Reset_Data", TxtLibrary$btn_label_ResetData)
 			)
 		)
@@ -41,7 +41,7 @@ View.LoadData$set("puiblic", "ConPanel_ViewData",
 View.LoadData$set("public", "Pop_DownloadPublicData",
 	function(){
 		bsModal(
-			"modalSearchTab", 
+			"modalSearchPublicDataTab", 
 			"Public RNA-Seq and ChIP-Seq data", 
 			"btn_LoadData_SearchDataFromPublic", 
 			size="large",
@@ -76,9 +76,27 @@ View.LoadData$set("public", "Pop_DownloadPublicData",
 )
 
 
-View.LoadData$set("public", "Pop_DownloadPublicData",
+View.LoadData$set("public", "Pop_UploadClientData",
 	function(){
-
+        bsModal(
+			"modalUploadUserDataTab", 
+			"Upload user data", 
+			"btn_LoadData_UploadFileFromClient", 
+			size="large",
+            fuildPage(
+                a(TxtLibrary$`New! Analyze public RNA-seq data`, href="http://bioinformatics.sdstate.edu/reads/"),
+                fileInput('uploadedDataFile', h5(TxtLibrary$`Optional: Upload an experiment design file(CSV or text)`),
+                    accept = c(
+                        'text/csv',
+                        'text/comma-separated-values',
+                        'text/tab-separated-values',
+                        'text/plain',
+                        '.csv',
+                        '.tsv'		  
+                    )
+                )
+            )
+        )
 	}
 )
 

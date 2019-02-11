@@ -10,25 +10,23 @@ LoadDataView <- View.LoadData$new()
 
 
 
-ShinyUI(ui)
-
-
-
-ui <- fluidPage(
+shinyUI(
+  fluidPage(
 	
-	titlePanel("iDep"),
-	
-	navlistPanel(
-		"Prepare Data",
-		widths = c(2, 10),
-		tabPanel("Load Data",
-				 mainPanel(
-				 )),
-		tabPanel("Pre Process",
-				 mainPanel()),
-		"Analysis",
-		tabPanel("some analysis method"
-		)
-		
-	)
+  	titlePanel("iDep"),
+  	
+  	navlistPanel(
+  		"Prepare Data",
+  		widths = c(2, 10),
+  		tabPanel("Load Data",
+  				 mainPanel(
+  				 )),
+  		tabPanel("Pre Process",
+  				 mainPanel()),
+  		"Analysis",
+  		tabPanel("some analysis method"
+  		)
+  		
+  	)
+  )
 )
