@@ -10,31 +10,8 @@ View.LoadData$set(
 		wellPanel(				   
 			actionButton("goButton", TxtLibrary$btn_label_LoadDemoData),
 			actionButton("btn_LoadData_SearchDataFromPublic", TxtLibrary$btn_label_SearchPublicData),
-			actionButton("btn_LoadData_Cond_UploadFileFromClient", TxtLibrary$btn_label_UploadClientData)
+			actionButton("btn_LoadData_UploadFileFromClient", TxtLibrary$btn_label_UploadClientData)
 		)
-	}
-)
-
-# side bar: side.CondPanel.UploadFile
-View.LoadData$set(
-	"public",
-	"side.CondPanel.UploadFile",
-	function(){
-		conditionalPanel(
-			"input$btn_LoadData_Cond_UploadFileFromClient==1",
-			fileInput(
-				'file1', 
-				TxtLibrary$`2. Upload expression data (CSV or text)`,
-				accept = c(
-					'text/csv',
-					'text/comma-separated-values',
-					'text/tab-separated-values',
-					'text/plain',
-					'.csv',
-					'.tsv'		  
-				) 
-			)
-		)	
 	}
 )
 
@@ -194,6 +171,34 @@ View.LoadData$set(
 	}
 )
 
+View.LoadData$set(
+	"public",
+	"pop.UploadData",
+	function(){
+		bsModal(
+			"modalUploadData",
+			"Upload Data from user side",
+			"btn_LoadData_UploadFileFromClient",
+			size="large",
+			fluidPage(
+				fileInput(
+					'fileInputUploadedExpressionData', 
+					TxtLibrary$`2. Upload expression data (CSV or text)`,
+					accept = c(
+						'text/csv',
+						'text/comma-separated-values',
+						'text/tab-separated-values',
+						'text/plain',
+						'.csv',
+						'.tsv'		  
+					) 
+				)
+			)
+		)
+	}
+
+)
+
 # main panel: Update Notes
 View.LoadData$set(
 	"public",
@@ -245,9 +250,7 @@ View.LoadData$set(
 
 			self$sideLoadDemoDataSection(),
 
-			p(HTML(paste0("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">", TxtLibrary$Reset, "</A></div>" ))),
-
-			self$side.CondPanel.UploadFile(),
+			p(HTML(paste0("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">", TxtLibrary$Reset, "</A></div>" ))),			
 
 			self$sideChooseDataTypeSection(),
 
@@ -287,7 +290,8 @@ View.LoadData$set(
     		self$main.UpdateNote(), #h5
     		h3("Loading R packages ... ..."),
     		htmlOutput('fileFormat'),
-			self$pop.SearchPublicData()
+			self$pop.SearchPublicData(),
+			self$pop.UploadData()
     	)
 	}
 )

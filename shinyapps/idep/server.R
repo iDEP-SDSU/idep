@@ -2382,8 +2382,14 @@ observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_sp
 		ReactVars$usePublicDataSource <- TRUE
 	})
 
+	observeEvent(input$fileInputUploadedExpressionData,{
+		if(!is.na(input$fileInputUploadedExpressionData)){
+			toggleModal(session, modalId = "modalUploadData", toggle="close" )
+		}
+	})
+
       output$samples <- LoadDataCtrl$RenderSampleTable(input)
-      
+
       # search GSE IDs
       output$SearchData <- LoadDataCtrl$SearchGSEIDs(input)
       
