@@ -197,7 +197,7 @@ dynamicRange <- function( x ) {
     k <- 1
   }
   return( y[length(x)-k+1] - y[k] ) 
-}  
+`}  
 
 
  detectGroups <- function (x){  # x are col names
@@ -2388,18 +2388,13 @@ observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_sp
 		}
 	})
 
-      output$samples <- LoadDataCtrl$RenderSampleTable(input)
-
-      # search GSE IDs
-      output$SearchData <- LoadDataCtrl$SearchGSEIDs(input)
-      
-      output$humanNsamplesOutput <- LoadDataCtrl$RenderHumanNsampleOutput(input)
-
-      output$mouseNsamplesOutput <- LoadDataCtrl$RenderMouseNsampleOutput(input)
-
-      output$selectedDataset <- LoadDataCtrl$RenderSelectedDataset(input)
-      
-      output$DoneLoading <- LoadDataCtrl$RenderInitDoneUI()
+	output$samples <- LoadDataCtrl$RenderSampleTable(input)
+    # search GSE IDs  
+    output$SearchData <- LoadDataCtrl$SearchGSEIDs(input)
+    output$humanNsamplesOutput <- LoadDataCtrl$RenderHumanNsampleOutput(input)
+    output$mouseNsamplesOutput <- LoadDataCtrl$RenderMouseNsampleOutput(input)
+    output$selectedDataset <- LoadDataCtrl$RenderSelectedDataset(input)
+    output$DoneLoading <- LoadDataCtrl$RenderInitDoneUI()
 
 
 # read data file and do filtering and transforming
