@@ -35,13 +35,18 @@ shinyServer(
 
 
 
-
 		observeEvent(input$btn_LoadData_UseSelectedPublicData,{
 			LoadDataCtrl$EventHandler_UseSelectedPublicData(input, output, session, ReactVars)
+		})
+
+		observeEvent(input$btn_LoadData_DemoData,{
+			LoadDataCtrl$EventHandler_UseDemoData(input, output, session, ReactVars)
 		})
 
 		observeEvent(input$LoadData_uploadedDataFile,{
 			LoadDataCtrl$EventHandler_UploaedDataFileChanged(input, output, session)
 		})
+
+
 	}
 )

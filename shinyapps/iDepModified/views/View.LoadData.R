@@ -1,5 +1,6 @@
 library('R6')
 library(shiny)
+library(shinyBS)
 
 View.LoadData <- R6Class("View.LoadData")
 
@@ -33,7 +34,9 @@ View.LoadData$set("public", "ConPanel_ViewData",
 		conditionalPanel(condition = "output.DataSource!=null",
 			fluidPage(
 				h5(TxtLibrary$ViewData_Help_Message),
-				actionButton("btn_Reset_Data", TxtLibrary$btn_label_ResetData)
+				actionButton("btn_Reset_Data", TxtLibrary$btn_label_ResetData),
+				tableOutput('tbl_TestDesign'),
+				tableOutput('tbl_RawData')
 			)
 		)
 	}
