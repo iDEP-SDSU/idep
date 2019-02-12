@@ -1,4 +1,5 @@
 library('R6')
+library(shiny)
 
 View.LoadData <- R6Class("View.LoadData")
 
@@ -63,7 +64,7 @@ View.LoadData$set("public", "Pop_DownloadPublicData",
 				HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />'),
 				br(),
 				fluidRow( 	
-					column(4, 	textOutput('selectedDataset') ),
+					column(4, 	textOutput('selectedDataset')),
 	               	column(3, 	actionButton('btn_LoadData_UseSelectedPublicData', 'Use This Sample') )	
 	     		),
 				br(),
@@ -83,7 +84,7 @@ View.LoadData$set("public", "Pop_UploadClientData",
 			"Upload user data", 
 			"btn_LoadData_UploadFileFromClient", 
 			size="large",
-            fuildPage(
+            fluidPage(
                 a(TxtLibrary$`New! Analyze public RNA-seq data`, href="http://bioinformatics.sdstate.edu/reads/"),
                 fileInput('uploadedDataFile', h5(TxtLibrary$`Optional: Upload an experiment design file(CSV or text)`),
                     accept = c(

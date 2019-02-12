@@ -25,9 +25,7 @@ Ctl.LoadData$set("public",	"SelectedSampleInfo", NULL)
 
 
 ## Init
-Ctl.LoadData$set(  
-	"public",
-	"initialize",
+Ctl.LoadData$set("public", "initialize",
 	function(){
 		self$destination_fileH = paste0(CONFIG_DATA_READCOUNT_PATH, "human_matrix.h5")
 		self$destination_fileM = paste0(CONFIG_DATA_READCOUNT_PATH, "mouse_matrix.h5")
@@ -97,9 +95,7 @@ Ctl.LoadData$set(
 ## Methods
 
 #update selected sample info and counts data
-Ctl.LoadData$set(
-	"public",
-	"UpdateSelectedSampleInfo",
+Ctl.LoadData$set("public", "UpdateSelectedSampleInfo",
 	function(input){
 			if (is.null(input$SearchData_rows_selected)) { 
 				self$SelectedSampleInfo <- NULL
@@ -160,9 +156,7 @@ Ctl.LoadData$set(
 	}
 )
 
-Ctl.LoadData$set(
-	"public",
-	"RenderSampleTable",
+Ctl.LoadData$set("public", "RenderSampleTable",
 	function(input){
 		renderTable(
 			{
@@ -181,9 +175,7 @@ Ctl.LoadData$set(
 	}
 )
 
-Ctl.LoadData$set(
-	"public",
-	"SearchGSEIDs",
+Ctl.LoadData$set("public", "SearchGSEIDs",
 	function(input){
 		DT::renderDataTable(
 			{
@@ -204,9 +196,7 @@ Ctl.LoadData$set(
 )
 
 
-Ctl.LoadData$set(
-	"public",
-	"RenderHumanNsampleOutput",
+Ctl.LoadData$set("public", "RenderHumanNsampleOutput",
 	function(input){
 		renderText({
         	if(is.null(input$SearchData_rows_selected)){
@@ -218,9 +208,7 @@ Ctl.LoadData$set(
 )
 
 
-Ctl.LoadData$set(
-	"public",
-	"RenderMouseNsampleOutput",
+Ctl.LoadData$set("public", "RenderMouseNsampleOutput",
 	function(input){
 		renderText({
         	if(is.null(input$SearchData_rows_selected)){
@@ -231,9 +219,7 @@ Ctl.LoadData$set(
 	}
 )
 
-Ctl.LoadData$set(
-	"public",
-	"selectedGSEID",
+Ctl.LoadData$set("public", "selectedGSEID",
 	function(input){
 		if(is.null(input$SearchData_rows_selected)){
 			return(NULL)
@@ -247,9 +233,7 @@ Ctl.LoadData$set(
 
 
 
-Ctl.LoadData$set(
-	"public",
-	"RenderSelectedDataset",
+Ctl.LoadData$set("public", "RenderSelectedDataset",
 	function(input){
 		renderText({
         	if (is.null(input$SearchData_rows_selected)){
@@ -274,9 +258,12 @@ Ctl.LoadData$set(
 
 
 Ctl.LoadData$set( "public",	"EventHandler_UseSelectedPublicData",
-	function(input, output, session){
-
-
+	function(input, output, session, storeVariableList){
+		output$DataSource = renderText("Public")
+		outputOptions(output, "DataSource", suspendWhenHidden = FALSE)
+		storeVariableList$DataSource = "Public"
+		storeVariableList$GSEID = self$selectedGSEID(input)
+		toggleModal(session, "modalSearchPublicDataTab", toggle = "close")
 	}
 )
 

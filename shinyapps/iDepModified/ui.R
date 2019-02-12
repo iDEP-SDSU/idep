@@ -19,8 +19,8 @@ shinyUI(
   		"Prepare Data",
   		widths = c(2, 10),
   		tabPanel("Load Data",
-  				 mainPanel(
-  				 )),
+  				 LoadDataView$mainPanel()
+  				 ),
   		tabPanel("Pre Process",
   				 mainPanel()),
   		"Analysis",

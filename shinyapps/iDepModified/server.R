@@ -1,4 +1,5 @@
 library(shiny)
+library(shinyBS)
 
 
 source('server.config')
@@ -8,26 +9,39 @@ ReactVars <- reactiveValues()
 
 LoadDataCtrl <- Ctl.LoadData$new()
 
-shinyServer(server)
+shinyServer(
+	function(input, output, session) {
 
-server <- function(input, output, session) {
-    
-    ################################################################
-    #   Read data
-    ################################################################
+		############################################################################
+		#   					1.0  Read data Main UI
+		############################################################################
 
-    output$ViewData_SelectFromPublic_Samples <- LoadDataCtrl$RenderSampleTable(input) 
-    output$SearchData <- LoadDataCtrl$SearchGSEIDs(input)
-    output$humanNsamplesOutput <- LoadDataCtrl$RenderHumanNsampleOutput(input)
-    output$mouseNsamplesOutput <- LoadDataCtrl$RenderMouseNsampleOutput(input)
-    output$selectedDataset <- LoadDataCtrl$RenderSelectedDataset(input)
-    output$DoneLoading <- LoadDataCtrl$RenderInitDoneUI()
 
-    observeEvent(input$btn_LoadData_UseSelectedPublicData,{
-        LoadDataCtrl$EventHandler_UseSelectedPublicData(input, output, session)
-    })
 
-    observeEvent(input$LoadData_uploadedDataFile,{
-        LoadDataCtrl$EventHandler_UploaedDataFileChanged(input, output, session)
-    })
-}
+
+
+		############################################################################
+		#						1.1	Download public data UI
+		############################################################################
+		output$ViewData_SelectFromPublic_Samples <- LoadDataCtrl$RenderSampleTable(input)
+		output$SearchData <- LoadDataCtrl$SearchGSEIDs(input)
+		output$humanNsamplesOutput <- LoadDataCtrl$RenderHumanNsampleOutput(input)
+		output$mouseNsamplesOutput <- LoadDataCtrl$RenderMouseNsampleOutput(input)
+		output$selectedDataset <- LoadDataCtrl$RenderSelectedDataset(input)
+		output$DoneLoading <- LoadDataCtrl$RenderInitDoneUI()
+
+
+
+
+
+
+
+		observeEvent(input$btn_LoadData_UseSelectedPublicData,{
+			LoadDataCtrl$EventHandler_UseSelectedPublicData(input, output, session, ReactVars)
+		})
+
+		observeEvent(input$LoadData_uploadedDataFile,{
+			LoadDataCtrl$EventHandler_UploaedDataFileChanged(input, output, session)
+		})
+	}
+)
