@@ -245,9 +245,7 @@ Ctl.LoadData$set("public", "RenderSelectedDataset",
 )
 
 
-Ctl.LoadData$set(
-	"public",
-	"RenderInitDoneUI",
+Ctl.LoadData$set("public",	"RenderInitDoneUI",
 	function(){
 		renderUI({
         	i = "<h4>Done. Ready to search.</h4>"
@@ -266,6 +264,9 @@ Ctl.LoadData$set( "public",	"EventHandler_UseSelectedPublicData",
 		toggleModal(session, "modalSearchPublicDataTab", toggle = "close")
 	}
 )
+
+
+
 
 ####Ctl.LoadData$set(
 ####	"public",
