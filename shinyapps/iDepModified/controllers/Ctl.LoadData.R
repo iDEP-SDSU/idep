@@ -5,7 +5,9 @@ library(DT)
 library("rhdf5")
 
 source('server.config')
+source('businessLogic/LogicManager.R')
 
+LogicManager <- Logic.Manager$new()
 Ctl.LoadData <- R6Class("Ctl.LoadData")
 
 ## Fields 
@@ -91,68 +93,59 @@ Ctl.LoadData$set("public", "initialize",
 )
 
 
-
 ## Methods
 
 #update selected sample info and counts data
 Ctl.LoadData$set("public", "UpdateSelectedSampleInfo",
 	function(input){
-			if (is.null(input$SearchData_rows_selected)) { 
-				self$SelectedSampleInfo <- NULL
-				return(self$SelectedSampleInfo)
-			}
-
-			withProgress(
-				message = "Searching ...", 
-				{
-					
-					iy = which( self$DatasetInfo$Species == input$selected.species.archs4 )
-					ix = iy[input$SearchData_rows_selected]
-
-					keyword = self$DatasetInfo$GEO.ID[ix]
-					keyword = gsub(" ","",keyword)
-					ix = which(self$sample_info[,4]== keyword)
-
-					if(length(ix) == 0){
-						self$SelectedSampleInfo <- NULL
-						return(self$SelectedSampleInfo)
-					}else{
-						samp = self$sample_info[ix,1]
-						if( names(sort(table(self$sample_info[ix,5]),decreasing=T))[1] == "human" ){	
-							destination_file = self$destination_fileH
-						}
-
-						if( names(sort(table(self$sample_info[ix,5]),decreasing=T))[1] == "mouse" ){
-							destination_file = self$destination_fileM
-						}
-
-						samples = h5read(destination_file, "meta/Sample_geo_accession")
-						sample_locations = which(samples %in% samp)
-
-						genes = h5read(destination_file, "meta/genes")
-						expression = h5read(destination_file, "data/expression", index=list(1:length(genes), sample_locations))
-						tissue = h5read(destination_file, "meta/Sample_source_name_ch1")
-						sample_title = h5read(destination_file, "meta/Sample_title")
-						H5close()
-						incProgress(1/2)
-						
-						rownames(expression) <-paste(" ",genes)
-						colnames(expression) <- paste( samples[sample_locations], sample_title[sample_locations], sep=" ")
-						expression <- expression[,order(colnames(expression))]
-						tem = self$sample_info[ix,c(5,1:3)]
-						tem = tem[order(tem[,4]),]
-						colnames(tem) <- c("Species", "Sample ID","Tissue","Sample Title")
-						incProgress(1)
-
-						if(dim(tem)[1]>50) {
-							tem = tem[1:50,]
-						}
-						
-						self$SelectedSampleInfo <- list(info=tem, counts = expression )
-						return(self$SelectedSampleInfo)
+		if (is.null(input$SearchData_rows_selected)) { 
+			self$SelectedSampleInfo <- NULL
+			return(self$SelectedSampleInfo)
+		}
+		withProgress(
+			message = "Searching ...", 
+			{
+				iy = which( self$DatasetInfo$Species == input$selected.species.archs4 )
+				ix = iy[input$SearchData_rows_selected]
+				keyword = self$DatasetInfo$GEO.ID[ix]
+				keyword = gsub(" ","",keyword)
+				ix = which(self$sample_info[,4]== keyword)
+				if(length(ix) == 0){
+					self$SelectedSampleInfo <- NULL
+					return(self$SelectedSampleInfo)
+				}else{
+					samp = self$sample_info[ix,1]
+					if( names(sort(table(self$sample_info[ix,5]),decreasing=T))[1] == "human" ){	
+						destination_file = self$destination_fileH
 					}
-				}		
-			)
+					if( names(sort(table(self$sample_info[ix,5]),decreasing=T))[1] == "mouse" ){
+						destination_file = self$destination_fileM
+					}
+					samples = h5read(destination_file, "meta/Sample_geo_accession")
+					sample_locations = which(samples %in% samp)
+					genes = h5read(destination_file, "meta/genes")
+					expression = h5read(destination_file, "data/expression", index=list(1:length(genes), sample_locations))
+					tissue = h5read(destination_file, "meta/Sample_source_name_ch1")
+					sample_title = h5read(destination_file, "meta/Sample_title")
+					H5close()
+					incProgress(1/2)
+					
+					rownames(expression) <-paste(" ",genes)
+					colnames(expression) <- paste( samples[sample_locations], sample_title[sample_locations], sep=" ")
+					expression <- expression[,order(colnames(expression))]
+					tem = self$sample_info[ix,c(5,1:3)]
+					tem = tem[order(tem[,4]),]
+					colnames(tem) <- c("Species", "Sample ID","Tissue","Sample Title")
+					incProgress(1)
+					if(dim(tem)[1]>50) {
+						tem = tem[1:50,]
+					}
+					
+					self$SelectedSampleInfo <- list(info=tem, counts = expression )
+					return(self$SelectedSampleInfo)
+				}
+			}		
+		)
 	}
 )
 
@@ -257,16 +250,57 @@ Ctl.LoadData$set("public",	"RenderInitDoneUI",
 
 Ctl.LoadData$set( "public",	"EventHandler_UseSelectedPublicData",
 	function(input, output, session, storeVariableList){
+		
+		# Set Data Source to 'Public'
 		output$DataSource = renderText("Public")
 		outputOptions(output, "DataSource", suspendWhenHidden = FALSE)
 		storeVariableList$DataSource = "Public"
-		storeVariableList$GSEID = self$selectedGSEID(input)
+
+		# Load data set
+		storeVariableList$RawData <- self$SelectedSampleInfo$counts
+		storeVariableList$RawTestDesign <- NULL
+
+		# Close Pop out window
 		toggleModal(session, "modalSearchPublicDataTab", toggle = "close")
 	}
 )
 
+Ctl.LoadData$set( "public", "EventHandler_UseDemoData",
+	function(input, output, session, storeVariableList){
 
+		# Set Data Source to 'Demo'
+		output$DataSource = renderText("Demo")
+		outputOptions(output, "DataSource", suspendWhenHidden = FALSE)
+		storeVariableList$DataSource = "Demo"
 
+		# Load data set
+		demoData <- LogicManager$Files$LoadDemoData()
+		storeVariableList$RawData <- demoData$dat
+		storeVariableList$RawTestDesign <- demoData$design
+	}
+)
+
+Ctl.LoadData$set( "public", "EventHandler_UseUploadedFiles",
+	function(input, output, session, storeVariableList){
+
+		# Set Data Source to 'Demo'
+		output$DataSource = renderText("Client")
+		outputOptions(output, "DataSource", suspendWhenHidden = FALSE)
+		storeVariableList$DataSource = "Client"
+
+		# Load data set
+		datUrl <- input$fileUploadedData$datapath
+		if(is.null(input$fileUploadedTestDesign)){
+			designUrl <- NULL
+		} else {
+			designUrl <- input$fileUploadedTestDesign$datapath
+		}
+		
+		demoData <- LogicManager$Files$LoadUploadedData(datUrl, designUrl)
+		storeVariableList$RawData <- demoData$dat
+		storeVariableList$RawTestDesign <- demoData$design
+	}
+)
 
 
 ####Ctl.LoadData$set(

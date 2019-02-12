@@ -34,9 +34,14 @@ View.LoadData$set("public", "ConPanel_ViewData",
 		conditionalPanel(condition = "output.DataSource!=null",
 			fluidPage(
 				h5(TxtLibrary$ViewData_Help_Message),
-				actionButton("btn_Reset_Data", TxtLibrary$btn_label_ResetData),
+				actionButton("btn_LoadData_MoveToPreprocess", TxtLibrary$btn_label_MoveToPreProcess),
+				actionButton("btn_Reset_Data", TxtLibrary$btn_label_ResetData, onclick="javascript:history.go(0)"),
+				br(),
+				h3("Test Design"),
 				tableOutput('tbl_TestDesign'),
-				tableOutput('tbl_RawData')
+				br(),
+				h3("Top Rows"),
+				tableOutput('tbl_RawDataTop20')
 			)
 		)
 	}
@@ -73,7 +78,7 @@ View.LoadData$set("public", "Pop_DownloadPublicData",
 				br(),
 				tableOutput('ViewData_SelectFromPublic_Samples'),
 				h4("Loading data and R packages ... ..."),
-				htmlOutput('DoneLoading') 
+				htmlOutput('DoneLoading')
 			)
 		)
 	}
@@ -88,8 +93,21 @@ View.LoadData$set("public", "Pop_UploadClientData",
 			"btn_LoadData_UploadFileFromClient", 
 			size="large",
             fluidPage(
-                a(TxtLibrary$`New! Analyze public RNA-seq data`, href="http://bioinformatics.sdstate.edu/reads/"),
-                fileInput('uploadedDataFile', h5(TxtLibrary$`Optional: Upload an experiment design file(CSV or text)`),
+				fileInput(
+					'fileUploadedData', 
+					TxtLibrary$`Upload expression data (CSV or text)`,
+					accept = c(
+						'text/csv',
+						'text/comma-separated-values',
+						'text/tab-separated-values',
+						'text/plain',
+						'.csv',
+						'.tsv'		  
+					) 
+				),
+                fileInput(
+					'fileUploadedTestDesign', 
+					h5(TxtLibrary$`Optional: Upload an experiment design file(CSV or text)`),
                     accept = c(
                         'text/csv',
                         'text/comma-separated-values',
@@ -98,7 +116,8 @@ View.LoadData$set("public", "Pop_UploadClientData",
                         '.csv',
                         '.tsv'		  
                     )
-                )
+                ),
+				actionButton("btn_LoadData_UseUploadedData", TxtLibrary$btn_label_UseUploadedData)
             )
         )
 	}

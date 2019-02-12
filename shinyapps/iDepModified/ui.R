@@ -16,6 +16,7 @@ shinyUI(
   	titlePanel("iDep"),
   	
   	navlistPanel(
+		id = "iDepNav",
   		"Prepare Data",
   		widths = c(2, 10),
   		tabPanel("Load Data",

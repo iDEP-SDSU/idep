@@ -1,5 +1,6 @@
 library(shiny)
 library(shinyBS)
+library(shinyjs)
 
 
 source('server.config')
@@ -43,10 +44,16 @@ shinyServer(
 			LoadDataCtrl$EventHandler_UseDemoData(input, output, session, ReactVars)
 		})
 
-		observeEvent(input$LoadData_uploadedDataFile,{
-			LoadDataCtrl$EventHandler_UploaedDataFileChanged(input, output, session)
+		observeEvent(input$btn_label_UseUploadedData,{
+			LoadDataCtrl$EventHandler_UseUploadedFiles(input, output, session, ReactVars)
 		})
 
+		observeEvent(input$btn_LoadData_MoveToPreprocess,{
+			updateNavbarPage(session, "iDepNav", selected = "Pre Process")
+		})
+
+		output$tbl_TestDesign <- renderTable(ReactVars$RawTestDesign)
+		output$tbl_RawDataTop20 <- renderTable(ReactVars$RawData[1: min(20, nrow(ReactVars$RawData)) ,])
 
 	}
 )
