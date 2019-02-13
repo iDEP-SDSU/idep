@@ -31,8 +31,9 @@ View.PreProcess$set("public", "WorkPanel",
 		conditionalPanel(condition = "output.DataSource!=null",
 			fluidPage(
 				#self$InstructionPanel(),
-				bsCollapse(id = "clsp_PreProcessingSetting", multiple=TRUE, open="None",
-					bsCollapsePanel(title="Click for Pre-Process Settings",
+				bsCollapse(id = "clsp_PreProcessingSetting", open="None",
+					bsCollapsePanel(title="Click Here for Pre-Process Settings",
+						style="info",
 						self$PreprocessSettingsPanel()
 					)
 				),
