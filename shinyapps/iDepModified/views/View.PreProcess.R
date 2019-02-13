@@ -9,17 +9,38 @@ View.PreProcess$set("public", "ShowAdvanceSetting", FALSE)
 View.PreProcess$set("public", "mainPanel",
 	function(){
 		fluidPage(
-			self$InstructionPanel(),
-			bsCollapse(id = "collaspePrepareData", multiple=TRUE, open="Prepare Data",
-				bsCollapsePanel(title="Prepare Data",style="warining",
-					self$PreprocessSettingsPanel()
-				)
-			),
-			self$PreprocessPlotPanel()
+			self$ErrorMessagePanel(),
+			self$WorkPanel()
 		)
 	}
 )
 
+
+View.PreProcess$set("public", "ErrorMessagePanel",
+	function(){
+		conditionalPanel(condition = "output.DataSource==null",
+			fluidPage(
+				h3("Pre process requires load data first")
+			)
+		)
+	}
+)
+
+View.PreProcess$set("public", "WorkPanel",
+	function(){
+		conditionalPanel(condition = "output.DataSource!=null",
+			fluidPage(
+				#self$InstructionPanel(),
+				bsCollapse(id = "clsp_PreProcessingSetting", multiple=TRUE, open="None",
+					bsCollapsePanel(title="Click for Pre-Process Settings",
+						self$PreprocessSettingsPanel()
+					)
+				),
+				self$PreprocessPlotPanel()
+			)
+		)
+	}
+)
 
 View.PreProcess$set("public", "InstructionPanel",
 	function(){
@@ -33,24 +54,32 @@ View.PreProcess$set("public", "InstructionPanel",
 
 View.PreProcess$set("public", "PreprocessSettingsPanel",
 	function(){
-		
+		wellPanel(
+			h5("some setting here")
+		)
 	}
 )
 
 
 View.PreProcess$set("public", "PreprocessPlotPanel",
 	function(){
-		wellPanel(
+		wellPanel(			
 			fluidRow(
 				column(width = 5,
-      				plotlyOutput("p1", width ="400", height ="300")
+      				plotlyOutput("p1")
     			),
 				column(width = 5, offset = 1,
-					plotOutput("p2")
+					plotlyOutput("p2")
 				)
 			),
-			plotOutput("p3", width ="400", height ="300"),
-			plotOutput("p4", width ="400", height ="200")
+			fluidRow(
+				column(width = 5,
+      				plotlyOutput("p3")
+    			),
+				column(width = 5, offset = 1,
+					plotlyOutput("p4")
+			 	)
+			)
 		)
 	}
 )

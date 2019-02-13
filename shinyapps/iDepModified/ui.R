@@ -13,35 +13,22 @@ PreProcessView <- View.PreProcess$new()
 
 
 shinyUI(
-#  	fluidPage(
-#	
-#  		titlePanel("iDep"),
-#  	
-#		bsCollapse(id = "collaspeMainPanel", multiple=TRUE, open="Prepare Data",
-#			bsCollapsePanel(title="Prepare Data",style="warining",
-#				bsCollapse(id = "collaspePrePareData", multiple=TRUE, open="Load Data",
-#					bsCollapsePanel(	title="Load Data",style="warining", 
-#										LoadDataView$mainPanel() ),
-#					bsCollapsePanel(	title="Pre Process",style="warining", 
-#										PreProcessView$mainPanel() )
-#				)
-#			)
-#		)
-#	)
-
-
-	navlistPanel(
-		id = "iDepNav",
-		"Prepare Data",
-		widths = c(2, 10),
-		tabPanel("Load Data",
-			mainPanel(LoadDataView$mainPanel())
-		),
-		tabPanel("Pre Process",
-			mainPanel(PreProcessView$mainPanel())
-		),
-		"Analysis",
-		tabPanel("some analysis method")
-		
+  	fluidPage(
+  		titlePanel("iDep"),
+		navlistPanel(
+			id = "iDepNav",
+			"Prepare Data",
+			widths = c(2, 10),
+			tabPanel("Load Data",
+				width = "80%",
+				mainPanel(LoadDataView$mainPanel(), width=10)
+			),
+			tabPanel("Pre Process",
+				width = "80%",
+				mainPanel(PreProcessView$mainPanel(), width=10)
+			),
+			"Analysis",
+			tabPanel("some analysis method")
+		)
 	)
 )
