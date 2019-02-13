@@ -12,7 +12,10 @@ PreProcessing.Logic$set("public","ReadCountPreprocess",
 		tmp.data <- self$CleanGeneIDs(tmp.data)
 		tmp.data <- self$SetGeneIDtoRowname(tmp.data)
 		tmp.data <- self$CleanSampleNames(tmp.data)
-		tmp.data <- self$SortBySD(tmp.data)
+
+		# sort by SD
+		tmp.data <- tmp.data[order(- apply(tmp.data[,2:dim(tmp.data)[2]],1,sd) ),]
+		
 	}
 )
 
@@ -78,3 +81,8 @@ PreProcessing.Logic$set("public", "CleanSampleNames",
 )
 
 
+PreProcessing.Logic$set("public", "CleanSampleNames",
+	function(dat){
+
+	}
+)
