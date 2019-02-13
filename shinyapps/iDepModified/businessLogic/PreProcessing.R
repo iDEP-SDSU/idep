@@ -15,5 +15,20 @@ PreProcessing.Logic$set("public","ReadCountPreprocess",
 	}
 )
 
+PreProcessing.Logic$set("public", "RemoveNonNumericalColumns",
+	function(rawData){
+
+		isNumeric <- apply(rawData,2,is.numeric)
+		
+		if( sum(isNumeric) <= 1 ){
+			return(NULL)
+		}
+
+		isKeep <- isNumeric
+		isKeep[1] <- TRUE
+
+		return(rawData[,isKeep])
+	}
+)
 
 

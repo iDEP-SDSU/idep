@@ -2436,11 +2436,22 @@ readData <- reactive ({
 					x <- read.table(inFile, sep="\t",header=TRUE,quote = "",comment.char="")	
 				#-------Remove non-numeric columns, except the first column
 				
+				{ 
+					# this block checks keeps the first column (gene id) and all numeric columns 
+					# Problem:  1. this block used 'for loop' which can be change to apply function 
+					#			2. 'gene id' is not a numeric column, eventhough we should keep it.
+					#				isNumeric and isKeep are two different logic, This block is mixing the meaning.
+					# Reproduce: PreProcessing.Logic$RemoveNonNumericalColumns
 				for(i in 2:dim(x)[2])
 					dataType = c( dataType, is.numeric(x[,i]) )
-				if(sum(dataType) <=2) return (NULL)  # only less than 2 columns are numbers
+				if(sum(dataType) <=2) return (NULL)  # only less than 2 columns are numbers 
+					# Remeber, this two columns contains Gene id
 				x <- x[,dataType]  # only keep numeric columns
-				
+				}
+
+
+
+
 				# rows with all missing values
 				ix = which( apply(x[,-1],1, function(y) sum( is.na(y) ) ) != dim(x)[2]-1 )
 				x <- x[ix,]
