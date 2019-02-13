@@ -1,6 +1,7 @@
 library(shiny)
 library(shinyBS)
 library(shinyjs)
+library(plotly)
 
 
 source('server.config')
@@ -9,32 +10,21 @@ source('controllers/ControllerManager.R')
 ReactVars <- reactiveValues()
 
 LoadDataCtrl <- Ctl.LoadData$new()
+PreProcessCtrl <- Ctl.PreProcess$new()
 
 shinyServer(
 	function(input, output, session) {
 
 		############################################################################
-		#   					1.0  Read data Main UI
+		#   					1.1  Read data
 		############################################################################
 
-
-
-
-
-		############################################################################
-		#						1.1	Download public data UI
-		############################################################################
 		output$ViewData_SelectFromPublic_Samples <- LoadDataCtrl$RenderSampleTable(input)
 		output$SearchData <- LoadDataCtrl$SearchGSEIDs(input)
 		output$humanNsamplesOutput <- LoadDataCtrl$RenderHumanNsampleOutput(input)
 		output$mouseNsamplesOutput <- LoadDataCtrl$RenderMouseNsampleOutput(input)
 		output$selectedDataset <- LoadDataCtrl$RenderSelectedDataset(input)
 		output$DoneLoading <- LoadDataCtrl$RenderInitDoneUI()
-
-
-
-
-
 
 		observeEvent(input$btn_LoadData_UseSelectedPublicData,{
 			LoadDataCtrl$EventHandler_UseSelectedPublicData(input, output, session, ReactVars)
@@ -55,5 +45,23 @@ shinyServer(
 		output$tbl_TestDesign <- renderTable(ReactVars$RawTestDesign)
 		output$tbl_RawDataTop20 <- renderTable(ReactVars$RawData[1: min(20, nrow(ReactVars$RawData)) ,])
 
+
+
+		############################################################################
+		#   					1.2  Pre Process
+		############################################################################
+
+		output$p1 <- renderPlotly({
+			PreProcessCtrl$testPlotly()
+		})
+		output$p2 <- renderPlotly({
+			PreProcessCtrl$testPlotly()
+		})
+		output$p3 <- renderPlotly({
+			PreProcessCtrl$testPlotly()
+		})
+		output$p4 <- renderPlotly({
+			PreProcessCtrl$testPlotly()
+		})
 	}
 )
