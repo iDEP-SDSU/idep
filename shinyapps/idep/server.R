@@ -2467,15 +2467,18 @@ readData <- reactive ({
 				                        # remove one or two digits after "." at the end.
                                           #A35244.1 -> A35244  or A35244.23 -> A35244, but not more than two.  GLYMA.18G52160 stays the same.	
 				}
+				
 				x = x[order(- apply(x[,2:dim(x)[2]],1,sd) ),]  # sort by SD
+				{
 				x <- x[!duplicated(x[,1]) ,]  # remove duplicated genes
 				rownames(x) <- x[,1]
 				x <- as.matrix(x[,c(-1)])
-				
+				}
+				{
 				# remove "-" or "." from sample names
 				colnames(x) = gsub("-","",colnames(x))
 				colnames(x) = gsub("\\.","",colnames(x))
-
+				}
 				
 				#cat("\nhere",dim(x))
 				# missng value for median value

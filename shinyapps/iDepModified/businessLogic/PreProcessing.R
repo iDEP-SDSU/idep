@@ -68,6 +68,13 @@ PreProcessing.Logic$set("public", "SetGeneIDtoRowname",
 )
 
 
-
+PreProcessing.Logic$set("public", "CleanSampleNames",
+	function(dat){	
+		# remove "-" or "." from sample names
+		colnames(dat) = gsub("-","",colnames(dat))
+		colnames(dat) = gsub("\\.","",colnames(dat))
+		return(dat)
+	}
+)
 
 
