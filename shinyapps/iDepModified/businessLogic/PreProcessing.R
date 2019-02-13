@@ -6,7 +6,7 @@ PreProcessing.Logic <- R6Class("PreProcessing.Logic")
 
 
 PreProcessing.Logic$set("public","ReadCountPreprocess",
-	function(rawData){
+	function(rawData, imputateMethod){
 		tmp.data <- self$RemoveNonNumericalColumns(rawData)
 		tmp.data <- self$RemoveAllMissingRows(tmp.data)
 		tmp.data <- self$CleanGeneIDs(tmp.data)
@@ -15,7 +15,11 @@ PreProcessing.Logic$set("public","ReadCountPreprocess",
 
 		# sort by SD
 		tmp.data <- tmp.data[order(- apply(tmp.data[,2:dim(tmp.data)[2]],1,sd) ),]
-		
+				
+		if(sum(is.na(tmp.data))>0){
+			tmp.data <- self$ImputateMissingValue(tmp.data,imputateMethod)
+		}
+
 	}
 )
 
@@ -80,9 +84,93 @@ PreProcessing.Logic$set("public", "CleanSampleNames",
 	}
 )
 
+PreProcessing.Logic$set("public", "ImputateMissingValue",
+	function(dat, method){
+		avaiableMethod = c("geneMedian", "treatAsZero", "geneMedianInGroup")
+		
+		methodIdx <- which(avaiableMethod, method)
 
-PreProcessing.Logic$set("public", "CleanSampleNames",
-	function(dat){
+		if(length(methodIdx) != 1 ){
+			return(dat)
+		}
 
+		dat <- switch(	methodIdx, 
+			# case "geneMedian":
+			self$FillViaGeneMedian(dat),	
+			
+			# case "treatAsZero":
+			self$TreatAsZero(dat),
+			
+			# case "geneMedianInGroup":
+			self$FillViaGroupMedian(dat)
+		)
+		
+		return(dat)
 	}
 )
+
+
+PreProcessing.Logic$set("public", "FillViaGeneMedian",
+	function(dat){
+		rowMedians <- apply(dat,1, median,na.rm=T)
+		for( i in 1:dim(dat)[2] ) {
+			ix = which(is.na(dat[,i]) )
+			dat[ix,i] <- rowMedians[ix]						
+		}
+		return(dat)
+	}
+)
+
+PreProcessing.Logic$set("public", "TreatAsZero",
+	function(dat){
+		dat[is.na(dat)] <- 0	
+		return(dat)
+	}
+)
+
+PreProcessing.Logic$set("public", "FillViaGroupMedian",
+	function(dat){
+		sampleGroups = detectGroups( colnames(dat))
+		for (group in unique(sampleGroups) ){		
+			samples = which( sampleGroups == group )
+			rowMedians <- apply(dat[,samples, drop=F],1, median, na.rm=T)
+			for( i in samples ) { 
+				idx = which(is.na(dat[ ,i] ) )	
+				if(length(idx) >0 )
+					dat[idx, i]  <- rowMedians[idx]
+			}										
+		}
+						
+		# missing for entire sample group, use median for all samples
+		if(sum(is.na(dat))>0 ) { 
+			rowMedians <- apply(dat,1, median,na.rm=T)
+			for( i in 1:dim(dat)[2] ) {
+				idx = which(is.na(dat[,i]) )
+				dat[idx,i] <- rowMedians[idx]			
+			}						
+		}
+		return(dat)
+	}
+)
+
+
+PreProcessing.Logic$set("public", "DetectGroups",
+	function(x){
+		# x are col names
+		# Define sample groups based on column names
+		# Args:
+		#   x are vector of characters, column names in data file
+		# Returns: 
+		#   a character vector, representing sample groups.
+		tem <- gsub("[0-9]*$","",x) # Remove all numbers from end
+		#tem = gsub("_Rep|_rep|_REP","",tem)
+		tem <- gsub("_$","",tem); # remove "_" from end
+		tem <- gsub("_Rep$","",tem); # remove "_Rep" from end
+		tem <- gsub("_rep$","",tem); # remove "_rep" from end
+		tem <- gsub("_REP$","",tem)  # remove "_REP" from end
+		return( tem )
+	}
+)
+
+
+
