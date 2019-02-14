@@ -1,5 +1,4 @@
 library('R6')
-
 library(e1071,verbose=FALSE) 		# computing kurtosis
 
 source('server.config')
@@ -7,8 +6,9 @@ source('server.config')
 PreProcessing.Logic <- R6Class("PreProcessing.Logic")
 
 
-PreProcessing.Logic$set("public","ReadDataPreprocess",
+PreProcessing.Logic$set("public","RawDataPreprocess",
 	# Data file preprocessing function
+	# Convert from Server.R$readData
 	# Major steps:
 	# 	1. Remove non-numerical columns
 	#		Note: The first column won't be remove. We by default consider the first column as Gene ID
@@ -39,7 +39,7 @@ PreProcessing.Logic$set("public","ReadDataPreprocess",
 			tmp.data <- self$ImputateMissingValue(tmp.data,imputateMethod)
 		}
 
-		result <- CalcKurtosis(dat, dataType, minCounts, NminSamples, CountsTransform, 
+		result <- self$CalcKurtosis(dat, dataType, minCounts, NminSamples, CountsTransform, 
 				LogStart, LowFilter, isTransform, isNoFDR)
 
 		dataSizeAfter <- dim(result$dat)
@@ -283,5 +283,26 @@ PreProcessing.Logic$set("public", "CalcKurtosisForOtherDatatype",
 	}
 )
 
+
+PreProcessing.Logic$set("public","RawSampleInfoPreprocess", 
+	function(rawInfo, colnameOfData){
+		if(is.null(rawInfo)){
+			return(NULL)
+		}
+		
+		temp.info <- self$CleanSampleNames(rawInfo)
+
+		matchedInfo <- match(toupper(colnameOfData), toupper(colnames(temp.info)))
+		matchedInfo <- matchedInfo[which(!is.na(matchedInfo))]
+
+		#-----------Double check factor levels, change if needed
+		# remove "-" or "." from factor levels
+		for( i in 1:dim(temp.info)[1]) {
+		   temp.info[i,] = gsub("-","",temp.info[i,])
+		   temp.info[i,] = gsub("\\.","",temp.info[i,])				
+		}
+		
+	}
+)
 
 

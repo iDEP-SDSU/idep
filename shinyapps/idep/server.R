@@ -2519,7 +2519,10 @@ readData <- reactive ({
 					}
 				}
 				}
+
+				
 				# Compute kurtosis
+			{
 				mean.kurtosis = mean(apply(x,2, kurtosis),na.rm=T)
 				rawCounts = NULL
 				pvals= NULL
@@ -2624,7 +2627,7 @@ readData <- reactive ({
 						 }
 					}
 					
-					
+			}	
 				dataSize = dim(x);
 				validate( need(dim(x)[1]>5 & dim(x)[2]>=1 , 
 					"Data file not recognized. Please double check."))
