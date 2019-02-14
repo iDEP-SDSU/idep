@@ -7,13 +7,26 @@ source('server.config')
 PreProcessing.Logic <- R6Class("PreProcessing.Logic")
 
 
-
 PreProcessing.Logic$set("public","ReadDataPreprocess",
+	# Data file preprocessing function
+	# Major steps:
+	# 	1. Remove non-numerical columns
+	#		Note: The first column won't be remove. We by default consider the first column as Gene ID
+	#	2. Remove all missing rows
+	#		If a row (a Gene) does not contain any information, we don't need it shows in the dataset
+	#	3. Clean Gene ID and set it as row name
+	#		Gene Ids sometime contain invalid symbol, which should be clean.
+	#		For most bioinfo R package, Gene ID is the rowname of the dataset. 
+	#		So we need set our dataset rowname as gene id
+	#	4. Clean Sample name.
+	#		This related to some later operations.
+	#	5. Impute missing data
+	#	6. Calculate Kurtosis
 	function(rawData, imputateMethod){
 		tmp.data <- self$RemoveNonNumericalColumns(rawData)
 		tmp.data <- self$RemoveAllMissingRows(tmp.data)
-		dataSizeOriginal = dim(x); 
-		dataSizeOriginal[2] = dataSizeOriginal[2] -1
+		dataSizeOriginal = dim(tmp.data); 
+		dataSizeOriginal[2] = dataSizeOriginal[2] - 1
 		
 		tmp.data <- self$CleanGeneIDs(tmp.data)
 		tmp.data <- self$SetGeneIDtoRowname(tmp.data)
@@ -29,7 +42,13 @@ PreProcessing.Logic$set("public","ReadDataPreprocess",
 		result <- CalcKurtosis(dat, dataType, minCounts, NminSamples, CountsTransform, 
 				LogStart, LowFilter, isTransform, isNoFDR)
 
-		
+		dataSizeAfter <- dim(result$dat)
+		dataSizeAfter[2] = dataSizeAfter[2] - 1
+
+		return(list(data = result$dat, mean.kurtosis = result$mean.kurtosis,
+					rawCount = result$rawCount, dataTypeWarning = result$warning,
+					dataSizeOriginal = dataSizeOriginal, dataSizeAfter = dataSizeAfter,
+					pvals=result$pvals))
 	}
 )
 
