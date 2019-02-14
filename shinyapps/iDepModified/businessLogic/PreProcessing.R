@@ -1,14 +1,20 @@
 library('R6')
+
+library(e1071,verbose=FALSE) 		# computing kurtosis
+
 source('server.config')
 
 PreProcessing.Logic <- R6Class("PreProcessing.Logic")
 
 
 
-PreProcessing.Logic$set("public","ReadCountPreprocess",
+PreProcessing.Logic$set("public","ReadDataPreprocess",
 	function(rawData, imputateMethod){
 		tmp.data <- self$RemoveNonNumericalColumns(rawData)
 		tmp.data <- self$RemoveAllMissingRows(tmp.data)
+		dataSizeOriginal = dim(x); 
+		dataSizeOriginal[2] = dataSizeOriginal[2] -1
+		
 		tmp.data <- self$CleanGeneIDs(tmp.data)
 		tmp.data <- self$SetGeneIDtoRowname(tmp.data)
 		tmp.data <- self$CleanSampleNames(tmp.data)
@@ -20,6 +26,10 @@ PreProcessing.Logic$set("public","ReadCountPreprocess",
 			tmp.data <- self$ImputateMissingValue(tmp.data,imputateMethod)
 		}
 
+		result <- CalcKurtosis(dat, dataType, minCounts, NminSamples, CountsTransform, 
+				LogStart, LowFilter, isTransform, isNoFDR)
+
+		
 	}
 )
 
@@ -169,6 +179,88 @@ PreProcessing.Logic$set("public", "DetectGroups",
 		tem <- gsub("_rep$","",tem); # remove "_rep" from end
 		tem <- gsub("_REP$","",tem)  # remove "_REP" from end
 		return( tem )
+	}
+)
+
+PreProcessing.Logic$set("public", "CalcKurtosis",
+	function(dat, dataType, minCounts=NULL, NminSamples=NULL, CountsTransform=NULL, 
+				LogStart=NULL, LowFilter=NULL, isTransform=FALSE, isNoFDR=TRUE ){
+		mean.kurtosis = mean(apply(x,2, kurtosis),na.rm=T)
+		rawCounts = NULL
+		pvals= NULL		
+		result <- switch(dataType,
+			self$CalcKurtosisForReadCount(dat, mean.kurtosis, minCounts, NminSamples, CountsTransform, LogStart),
+			self$CalcKurtosisForFPKM(dat, mean.kurtosis, LowFilter, NminSamples, isTransform, LogStart),
+			self$CalcKurtosisForOtherDatatype(dat, isNoFDR)
+		)
+		return(result)
+	}
+
+)
+
+PreProcessing.Logic$set("public", "CalcKurtosisForReadCount",
+	function(dat, mean.kurtosis, minCounts, NminSamples, CountsTransform, CountsLogStart){
+		if(!is.integer(dat) & (mean.kurtosis < CONST_KRUTOSIS_LOG ) ) {
+			dataTypeWarning = -1
+		}
+
+		dat <- round(dat,0)
+		dat <- dat[ which( apply( cpm(DGEList(counts = dat)), 1,  
+							function(x) sum(x >=minCounts)) >= NminSamples ) , ]
+
+		# construct DESeqExpression Object
+		# colData = cbind(colnames(x), as.character(detectGroups( colnames(x) )) )
+		tem = rep("A",dim(x)[2]); tem[1] <- "B"   # making a fake design matrix to allow process, even when there is no replicates
+		colData = cbind(colnames(x), tem )
+		colnames(colData)  = c("sample", "groups")
+		dds <- DESeqDataSetFromMatrix(countData = x, colData = colData, design = ~ groups)
+		dds <- estimateSizeFactors(dds) # estimate size factor for use in normalization later for started log method
+
+		dat <- switch(CountsTransform,
+			log2( counts(dds, normalized=TRUE) + CountsLogStart ) ,
+			assay( rlog(dds, blind=TRUE) ),
+			assay( vst(dds, blind=TRUE) )
+		)
+		
+		return(list(dat=dat, warning=dataTypeWarning))
+	}
+)
+
+
+PreProcessing.Logic$set("public", "CalcKurtosisForFPKM",
+	function(dat, mean.kurtosis, LowFilter, NminSamples, isTransform, LogStart){
+		if ( is.integer(dat) ) {
+			dataTypeWarning = 1  # Data appears to be read counts
+		}
+		
+		#-------------filtering
+		#tem <- apply(x,1,max)
+		#x <- x[which(tem > input$lowFilter),]  # max by row is at least 
+		dat <- dat[ which( apply( dat, 1,  function(dat) sum(x >= LowFilter)) >= NminSamples ) , ] 
+		
+		dat <- dat[which( apply(dat,1, function(x) max(x))- min(x) ) > 0  ),]  # remove rows with all the same levels
+		#--------------Log transform
+		# Takes log if log is selected OR kurtosis is big than 100
+		if ( (isTransform) | ( mean.kurtosis > CONST_KRUTOSIS_LOG ) ) {
+			rawCount <- dat
+			dat = log( dat + abs( LogStart ),2)
+		}
+			
+		tem <- apply(dat,1,sd) 
+		dat <- dat[order(-tem),]  # sort by SD
+
+		return(list(dat=dat, warning=dataTypeWarning, rawCount=rawCount))
+	}
+)
+
+PreProcessing.Logic$set("public", "CalcKurtosisForOtherDatatype",
+	function(dat, isNoFDR){
+		n2 = ( dim(dat)[2] %/% 2) # 5 --> 2
+		if(!isNoFDR) { 	 # if we have FDR
+			pvals = dat[,2*(1:n2 ),drop=FALSE ]  # 2, 4, 6
+			dat = dat[, 2*(1:n2 )-1,drop=FALSE]   # 1, 3, 5				
+		}
+		return(list(dat = dat, pvals=pvals))
 	}
 )
 
