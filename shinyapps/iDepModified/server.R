@@ -34,8 +34,12 @@ shinyServer(
 			LoadDataCtrl$EventHandler_UseDemoData(input, output, session, ReactVars)
 		})
 
-		observeEvent(input$btn_label_UseUploadedData,{
+		observeEvent(input$btn_LoadData_UseUploadedData,{
 			LoadDataCtrl$EventHandler_UseUploadedFiles(input, output, session, ReactVars)
+		})
+
+		observeEvent(input$btn_LoadData_ConfirmDataSourceType,{
+			LoadDataCtrl$EventHandler_ConfirmDataSrouceType(input, output, session, ReactVars)
 		})
 
 		observeEvent(input$btn_LoadData_MoveToPreprocess,{
@@ -51,17 +55,19 @@ shinyServer(
 		#   					1.2  Pre Process
 		############################################################################
 
-		output$p1 <- renderPlotly({
-			PreProcessCtrl$testPlotly()
-		})
-		output$p2 <- renderPlotly({
-			PreProcessCtrl$testPlotly()
-		})
-		output$p3 <- renderPlotly({
-			PreProcessCtrl$testPlotly()
-		})
-		output$p4 <- renderPlotly({
-			PreProcessCtrl$testPlotly()
-		})
+
+
+#		output$ <- renderPlotly({
+#			PreProcessCtrl$testPlotly()
+#		})
+#		output$p2 <- renderPlotly({
+#			PreProcessCtrl$testPlotly()
+#		})
+#		output$p3 <- renderPlotly({
+#			PreProcessCtrl$testPlotly()
+#		})
+#		output$p4 <- renderPlotly({
+#			PreProcessCtrl$testPlotly()
+#		})
 	}
 )

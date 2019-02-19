@@ -14,7 +14,9 @@ Localization.EN$ViewData_Help_Message <- 'You have selected your data source. He
 Localization.EN$`Click here to load demo data` <- 'Click here to load demo data'
 Localization.EN$` and just click the tabs for some magic!` <- ' and just click the tabs for some magic!'
 
-Localization.EN$`1. Choose data type` <- '1. Choose data type'
+Localization.EN$`Choose data type` <- 'Choose data type'
+Localization.EN$btn_label_Confirm <- 'Confirm'
+
 Localization.EN$`Read counts data (recommended)` <- 'Read counts data (recommended)'
 Localization.EN$`Normalized expression values (RNA-seq FPKM, microarray, etc.)` <- 'Normalized expression values (RNA-seq FPKM, microarray, etc.)'
 Localization.EN$`Fold-changes and corrected P values from CuffDiff or any other program` <- 'Fold-changes and corrected P values from CuffDiff or any other program'

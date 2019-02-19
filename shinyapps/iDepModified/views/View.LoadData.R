@@ -4,10 +4,34 @@ library(shinyBS)
 
 View.LoadData <- R6Class("View.LoadData")
 
+
+###############################################################################
+########################		Main Layout			###########################
+###############################################################################
+
+# Main Layout of this page includes 3 conditional panels and 2 popout panel.
+
+# These 3 panels are controlled by output.DataSource and output.DataSourceType.
+# By the conditions, these 3 conditional panels will exclude each other.
+# 	1. ConPanel_DataSource shows when data source is not picked. This panel helps  
+# 		user select the data source they want use.
+# 	2. ConPanel_DataSourceType shows when data source is picked, but data type is
+#		not specified. This panel guild user to pick the data source type.
+#	3. ConPanel_ViewData shows when both data source and data type are picked. 
+#		This panel give user a preview about the uploaded data.
+
+# Pop_DownloadPublicData carries 'reads' app in legacy code. Which allows user
+# 	to search and import data from public source. 
+
+# Pop_UploadClientData is part of load data UI in legacy code. We seperate it 
+#	into a popout window to make the main UI more clear.
+
+
 View.LoadData$set("public", "mainPanel",
 	function(){
 		fluidPage(
 			self$ConPanel_DataSource(),
+			self$ConPanel_DataSourceType(),
 			self$ConPanel_ViewData(),
 
 			self$Pop_DownloadPublicData(),
@@ -15,6 +39,19 @@ View.LoadData$set("public", "mainPanel",
 		)
 	}
 )
+
+
+
+
+
+
+
+
+
+###############################################################################
+###################			Component Functions			#######################
+###############################################################################
+
 
 View.LoadData$set("public", "ConPanel_DataSource",
 	function(){
@@ -29,9 +66,39 @@ View.LoadData$set("public", "ConPanel_DataSource",
 	}
 )
 
+View.LoadData$set("public", "ConPanel_DataSourceType",
+	function(){
+		conditionalPanel(condition = "output.DataSource!=null && output.DataSourceType==null",
+			fluidPage(
+				radioButtons(   
+					"dataFileFormat", 
+					label = TxtLibrary$`Choose data type`,
+					choiceNames = list(
+						TxtLibrary$`Read counts data (recommended)`,
+						TxtLibrary$`Normalized expression values (RNA-seq FPKM, microarray, etc.)`,
+						TxtLibrary$`Fold-changes and corrected P values from CuffDiff or any other program`
+					), 
+					choiceValues = list(
+						1, 
+						2,
+						3
+					),
+					selected = 1
+				),
+				conditionalPanel(
+					"input.dataFileFormat == 3",
+					checkboxInput("noFDR", TxtLibrary$`Fold-changes only, no corrected P values`, value = FALSE)
+				),
+				actionButton("btn_LoadData_ConfirmDataSourceType", TxtLibrary$btn_label_Confirm)
+			)
+		)
+	}
+
+)
+
 View.LoadData$set("public", "ConPanel_ViewData",
 	function(){
-		conditionalPanel(condition = "output.DataSource!=null",
+		conditionalPanel(condition = "output.DataSource!=null && output.DataSourceType!=null",
 			fluidPage(
 				h3("Success!"),
 				h5(TxtLibrary$ViewData_Help_Message),

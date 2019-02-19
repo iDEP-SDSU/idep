@@ -67,18 +67,18 @@ View.PreProcess$set("public", "PreprocessPlotPanel",
 		wellPanel(			
 			fluidRow(
 				column(width = 5,
-      				plotlyOutput("p1")
+      				plotlyOutput("PreProcess_ReadCount")
     			),
 				column(width = 5, offset = 1,
-					plotlyOutput("p2")
+					plotlyOutput("PreProcess_DistTransform")
 				)
 			),
 			fluidRow(
 				column(width = 5,
-      				plotlyOutput("p3")
+      				plotlyOutput("PreProcess_DensityTransform")
     			),
 				column(width = 5, offset = 1,
-					plotlyOutput("p4")
+					plotlyOutput("PreProcess_ScatterPlot")
 			 	)
 			)
 		)
