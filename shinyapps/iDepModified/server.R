@@ -57,17 +57,17 @@ shinyServer(
 
 
 
-#		output$ <- renderPlotly({
-#			PreProcessCtrl$testPlotly()
-#		})
-#		output$p2 <- renderPlotly({
-#			PreProcessCtrl$testPlotly()
-#		})
-#		output$p3 <- renderPlotly({
-#			PreProcessCtrl$testPlotly()
-#		})
-#		output$p4 <- renderPlotly({
-#			PreProcessCtrl$testPlotly()
-#		})
+		output$PreProcess_ReadCount <- renderPlotly({
+			PreProcessCtrl$testPlotly()
+		})
+		output$PreProcess_DistTransform <- renderPlotly({
+			PreProcessCtrl$testPlotly()
+		})
+		output$PreProcess_DensityTransform <- renderPlotly({
+			PreProcessCtrl$testPlotly()
+		})
+		output$PreProcess_ScatterPlot <- renderPlotly({
+			PreProcessCtrl$testPlotly()
+		})
 	}
 )
