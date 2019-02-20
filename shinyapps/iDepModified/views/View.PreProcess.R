@@ -73,6 +73,7 @@ View.PreProcess$set("public", "PreprocessSettingsPanel",
 		wellPanel(
 			self$ConPanel_ReadCountOnlySettings(),
 			self$ConPanel_FPKMDdataOnlySettings(),
+			self$ShareSettingsPanel(),
 			
 			actionButton("btn_PreProcess_ChangeSettings", TxtLibrary$btn_label_ChangePreprocessSetting)
 		)
@@ -110,13 +111,14 @@ View.PreProcess$set("public", "ConPanel_ReadCountOnlySettings",
 			strong("Keep genes with minimal counts per million (CPM) in at least n libraries:"),
           	fluidRow(
             	column(6, numericInput("numMinCounts", label = h5("Min. CPM"), value = 0.5) ),
-            	column(6, numericInput("numNMinSamples", label = h5("n libraries"), value = 1) ),
+            	column(6, numericInput("numNMinSamplesInCountCase", label = h5("n libraries"), value = 1) ),
 	
 				radioButtons("selectCountsTransform", 
 					"Transform counts data for clustering & PCA.",  
-					c(	"VST: variance stabilizing transform" = 2, 
-						"rlog: regularized log (slow) "       = 3,
-						"EdgeR: log2(CPM+c)"                  = 1
+					c(	
+						"EdgeR: log2(CPM+c)"                  = 1,
+						"VST: variance stabilizing transform" = 2, 
+						"rlog: regularized log (slow) "       = 3
 					),                          
 					selected = 1 
 				),
@@ -140,13 +142,69 @@ View.PreProcess$set("public", "ConPanel_FPKMDdataOnlySettings",
 		conditionalPanel(condition = "output.DataSourceType == 2",
 			strong("Only keep genes above this level in at least n samples:" ),
 			fluidRow(
-            	column(6, numericInput("lowFilter", label = h5(" Min. level"), value = -1000)),
-            	column(6, numericInput("NminSamples2", label = h5("n samples"), value = 1) )
-				          
-          	)
+            	column(6, numericInput("numMinFPKM", label = h5(" Min. level"), value = -1000)),
+            	column(6, numericInput("numNMinSampleInFPKMCase", label = h5("n samples"), value = 1) ),
+				radioButtons("isTransform", "Log Transformation",c("No"=FALSE,"Yes"=TRUE) ),
+          		numericInput("numLogStart", label = h5("Constant c for started log: log(x+c)"), value = 1),
+          		textOutput("textTransform") 
+			)
 		)
 	}
 )
+
+###################			Shared  Preprocess Settings		###################
+View.PreProcess$set("public", "ShareSettingsPanel",
+	function(){
+		fluidPage(
+			selectInput("selectMissingValueImputationMethod", 
+        		label   = "Missing values imputation:",
+				choices = list(	"Gene median" = "geneMedian",
+								"Treat as zero" = "treatAsZero", 
+								"Median within sample groups" = "geneMedianInGroup"),
+        	    selected = "geneMedian"),
+        	actionButton("btn_GenePlot1", "Plot one or more genes"),
+        	br(),br(),
+        	actionButton("btn_ExamineDataB", "Search processed data"),
+        	br(),br(),
+        	checkboxInput("isNoIDConversion", "Do not convert gene IDs to Ensembl.", value = FALSE),
+        	downloadButton('downloadProcessedData', 'Processed data'),
+        	conditionalPanel("input.dataFileFormat == 1", 
+        	   downloadButton('downloadConvertedCounts', 'Converted counts data') ),
+        	downloadButton('downloadEDAplot', 'High-resolution figure'),  
+        	br(),br(),
+        	textOutput('nGenesFilter'),
+        	tags$head(tags$style("#nGenesFilter{color: blue;
+        	               font-size: 16px;
+        	               font-style: italic;
+        	               }")),                 
+        	textOutput("readCountsBias"),
+        	tags$head(tags$style("#readCountsBias{color: red;
+        	         font-size: 16px;
+        	         font-style: italic;
+        	         }" ) ),
+        	a(h5("?",align = "right"), href="https://idepsite.wordpress.com/pre-process/",target="_blank")
+		)
+	}
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
