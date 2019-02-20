@@ -100,6 +100,8 @@ iDEPversion,
       ,a("send us",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), "your suggestions!",style = "color:red")      
       ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
       ,h5("Now published on", a("BMC Bioinformatics!",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank") )
+      ,h5("Please let us know if your have trouble loading your data.")
+      ,h5("iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
       ,h5("v0.81 Enabled downloading of publication-ready vector graphics files.")
       ,h5("New v0.80  Updated annotation database. Comprehensive pathway 
           database for human. TF binding motifs for 200+ speceis. Old version made available."
