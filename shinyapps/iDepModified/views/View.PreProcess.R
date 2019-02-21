@@ -85,9 +85,11 @@ View.PreProcess$set("public", "PreprocessPlotPanel",
 	function(){
 		fluidRow(			
 			fluidRow(
-				column(width = 5,
-      				plotlyOutput("PreProcess_ReadCount")
-    			),
+				conditionalPanel(condition = "output.DataSourceType == 1",
+					column(width = 5,
+      					plotlyOutput("PreProcess_ReadCount")
+    				)
+				),
 				column(width = 5, offset = 1,
 					plotlyOutput("PreProcess_DistTransform")
 				)
@@ -168,7 +170,7 @@ View.PreProcess$set("public", "ShareSettingsPanel",
         	br(),br(),
         	checkboxInput("isNoIDConversion", "Do not convert gene IDs to Ensembl.", value = FALSE),
         	downloadButton('downloadProcessedData', 'Processed data'),
-        	conditionalPanel("input.dataFileFormat == 1", 
+        	conditionalPanel("output.DataSourceType == 1", 
         	   downloadButton('downloadConvertedCounts', 'Converted counts data') ),
         	downloadButton('downloadEDAplot', 'High-resolution figure'),  
         	br(),br(),

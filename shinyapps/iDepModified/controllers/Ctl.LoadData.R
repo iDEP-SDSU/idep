@@ -283,7 +283,7 @@ Ctl.LoadData$set( "public", "EventHandler_UseDemoData",
 Ctl.LoadData$set( "public", "EventHandler_UseUploadedFiles",
 	function(input, output, session, storeVariableList){
 
-		# Set Data Source to 'Demo'
+		# Set Data Source to 'Client'
 		output$DataSource = renderText("Client")
 		outputOptions(output, "DataSource", suspendWhenHidden = FALSE)
 		storeVariableList$DataSource = "Client"
