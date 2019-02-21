@@ -1,8 +1,8 @@
 # Based on digital ocean One click app: Docker-ce
 
-Docker build ./nginx/. -t nginx  #nginx image should be build very quick
+docker build ./nginx/. -t nginx  #nginx image should be build very quick
 
-Docker build . -t webapp #webapp image need hours to build
+docker build . -t webapp #webapp image need hours to build
 
 echo 'Docker images have been built. Start downloading data.'
 
