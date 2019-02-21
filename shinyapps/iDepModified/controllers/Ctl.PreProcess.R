@@ -41,6 +41,8 @@ Ctl.PreProcess$set("public","testPlotlyData",
 Ctl.PreProcess$set("public", "getTotalReadCountsData",
 	function(input, output, session, storeVariableList ){
 		
+		# Pre checking
+
 		if(is.null(storeVariableList$RawData)){
 			#if no raw data, then return null
 			return(NULL)
@@ -53,9 +55,15 @@ Ctl.PreProcess$set("public", "getTotalReadCountsData",
 
 		if(is.null(storeVariableList$PreProcessResult)){
 			#if preprocess is not trigger, do it.
-			storeVariableList$PreProcessResult <- LogicManager$PreProcessing$RawDataPreprocess()  ### parm not right yet. 
+			storeVariableList$PreProcessResult <- LogicManager$PreProcessing$RawDataPreprocess()  ### parm not right yet.
+			if(is.null(storeVariableList$PreProcessResult)){
+				# if we cannot get result, then exit with null
+				return(NULL)
+			} 
 		}
 
-		
+		readCount <- storeVariableList$PreProcessResult$rawCount
+		# Start process
+		return(LogicManager$PreProcessing$GetReadcountBarPlot(readCount))
 	}
 )
