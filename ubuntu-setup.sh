@@ -13,6 +13,7 @@ if ! [ -x "$(command -v docker)" ]; then
 	echo 'Docker is not installed. Installing docker.'
 	apt-get -qq update
 	apt-get -y -qq install docker.io
+	apt-get -y -qq install docker-compose
 fi
 echo ''
 echo 'Software setup done.'
