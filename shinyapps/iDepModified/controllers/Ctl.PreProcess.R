@@ -75,7 +75,7 @@ Ctl.PreProcess$set("public", "getTotalReadCountsData",
 					storeVariableList$DataSourceType,
 					minCount,
 					minSample,
-					input$selectCountsTransform,
+					as.numeric(input$selectCountsTransform),
 					logStart,
 					input$isApplyLogTransFPKM,
 					input$isNoFDR			## This parm is got in load data tab.
@@ -87,9 +87,9 @@ Ctl.PreProcess$set("public", "getTotalReadCountsData",
 			} 
 		}
 
-		readCount <- storeVariableList$PreProcessResult$rawCount
+		PreProcessedReadCount <- storeVariableList$PreProcessResult$dat
 
 		# Start process
-		return(LogicManager$PreProcessing$GetReadcountBarPlot(readCount))
+		return(LogicManager$PreProcessing$GetReadcountBarPlot(PreProcessedReadCount))
 	}
 )

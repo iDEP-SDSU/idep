@@ -1,4 +1,6 @@
 library('R6')
+library('edgeR')
+library('DESeq2')
 library(e1071,verbose=FALSE) 		# computing kurtosis
 
 source('server.config')
@@ -36,7 +38,8 @@ PreProcessing.Logic$set("public","RawDataPreprocess",
 
 		# sort by SD
 		tmp.data <- tmp.data[order(- apply(tmp.data[,2:dim(tmp.data)[2]],1,sd) ),]
-				
+		
+		
 		if(sum(is.na(tmp.data))>0){
 			tmp.data <- self$ImputateMissingValue(tmp.data,imputateMethod)
 		}
@@ -44,10 +47,11 @@ PreProcessing.Logic$set("public","RawDataPreprocess",
 		result <- self$CalcKurtosis(tmp.data, dataType, minCounts, minSamples, 
 						CountsTransform, LogStart, isTransform, isNoFDR)
 
+		
 		dataSizeAfter <- dim(result$dat)
 		dataSizeAfter[2] = dataSizeAfter[2] - 1
 
-		return(list(data = result$dat, mean.kurtosis = result$mean.kurtosis,
+		return(list(dat = result$dat, mean.kurtosis = result$mean.kurtosis,
 					rawCount = result$rawCount, dataTypeWarning = result$warning,
 					dataSizeOriginal = dataSizeOriginal, dataSizeAfter = dataSizeAfter,
 					pvals=result$pvals))
@@ -57,7 +61,13 @@ PreProcessing.Logic$set("public","RawDataPreprocess",
 PreProcessing.Logic$set("public", "RemoveNonNumericalColumns",
 	function(rawData){
 	# Remove non numeric column
-		isNumeric <- apply(rawData,2,is.numeric)
+		# isNumeric <- apply(rawData,2,is.numeric)
+		# apply does not work :
+		# if any of the columns in your dataframe is not numeric, apply will try 
+		# to coerce all of them to the least common supertype, and you'll get 
+		# FALSE for each column;  this is not the case with sapply. 
+
+		isNumeric <- sapply(rawData, is.numeric)
 
 		if( sum(isNumeric) <= 1 ){
 			return(NULL)
@@ -74,6 +84,7 @@ PreProcessing.Logic$set("public", "RemoveNonNumericalColumns",
 PreProcessing.Logic$set("public", "RemoveAllMissingRows",
 	## Remove rows with only missing value
 	function(dat){
+
 		idxKeep = which( apply(dat[,-1],1, function(y) sum( is.na(y) ) ) != dim(dat)[2]-1 )
 		
 		return(dat[idxKeep,])
@@ -186,14 +197,14 @@ PreProcessing.Logic$set("public", "FillViaGroupMedian",
 
 
 PreProcessing.Logic$set("public", "DetectGroups",
-	function(x){
+	function(dat){
 		# x are col names
 		# Define sample groups based on column names
 		# Args:
 		#   x are vector of characters, column names in data file
 		# Returns: 
 		#   a character vector, representing sample groups.
-		tem <- gsub("[0-9]*$","",x) # Remove all numbers from end
+		tem <- gsub("[0-9]*$","",dat) # Remove all numbers from end
 		#tem = gsub("_Rep|_rep|_REP","",tem)
 		tem <- gsub("_$","",tem); # remove "_" from end
 		tem <- gsub("_Rep$","",tem); # remove "_Rep" from end
@@ -206,10 +217,11 @@ PreProcessing.Logic$set("public", "DetectGroups",
 PreProcessing.Logic$set("public", "CalcKurtosis",
 	function(dat, dataType, minCounts=NULL, minSamples=NULL, CountsTransform=NULL, 
 				LogStart=NULL, isTransformFPKM=FALSE, isNoFDR=TRUE ){
-		mean.kurtosis = mean(apply(x,2, kurtosis),na.rm=T)
+		mean.kurtosis = mean(apply(dat, 2, kurtosis),na.rm=T)
 		rawCounts = NULL
-		pvals= NULL		
-		result <- switch(dataType,
+		pvals= NULL
+				
+		result <- switch(as.numeric(dataType),
 			self$CalcKurtosisForReadCount(dat, mean.kurtosis, minCounts, minSamples, CountsTransform, LogStart),
 			self$CalcKurtosisForFPKM(dat, mean.kurtosis, minCounts, minSamples, isTransformFPKM, LogStart),
 			self$CalcKurtosisForOtherDatatype(dat, isNoFDR)
@@ -223,7 +235,11 @@ PreProcessing.Logic$set("public", "CalcKurtosisForReadCount",
 	function(dat, mean.kurtosis, minCounts, NminSamples, CountsTransform, CountsLogStart){
 		if(!is.integer(dat) & (mean.kurtosis < CONST_KRUTOSIS_LOG ) ) {
 			dataTypeWarning = -1
+		}else{
+			dataTypeWarning = NULL
 		}
+		
+		rawCount = dat
 
 		dat <- round(dat,0)
 		dat <- dat[ which( apply( cpm(DGEList(counts = dat)), 1,  
@@ -231,10 +247,10 @@ PreProcessing.Logic$set("public", "CalcKurtosisForReadCount",
 
 		# construct DESeqExpression Object
 		# colData = cbind(colnames(x), as.character(detectGroups( colnames(x) )) )
-		tem = rep("A",dim(x)[2]); tem[1] <- "B"   # making a fake design matrix to allow process, even when there is no replicates
-		colData = cbind(colnames(x), tem )
+		tem = rep("A",dim(dat)[2]); tem[1] <- "B"   # making a fake design matrix to allow process, even when there is no replicates
+		colData = cbind(colnames(dat), tem )
 		colnames(colData)  = c("sample", "groups")
-		dds <- DESeqDataSetFromMatrix(countData = x, colData = colData, design = ~ groups)
+		dds <- DESeqDataSetFromMatrix(countData = dat, colData = colData, design = ~ groups)
 		dds <- estimateSizeFactors(dds) # estimate size factor for use in normalization later for started log method
 
 		dat <- switch(CountsTransform,
@@ -243,7 +259,9 @@ PreProcessing.Logic$set("public", "CalcKurtosisForReadCount",
 			assay( vst(dds, blind=TRUE) )
 		)
 		
-		return(list(dat=dat, warning=dataTypeWarning))
+		return(list(dat=dat, warning=dataTypeWarning, 
+					mean.kurtosis = mean.kurtosis, rawCount=rawCount,
+					pvals = NULL))
 	}
 )
 
@@ -257,7 +275,7 @@ PreProcessing.Logic$set("public", "CalcKurtosisForFPKM",
 		#-------------filtering
 		#tem <- apply(x,1,max)
 		#x <- x[which(tem > input$lowFilter),]  # max by row is at least 
-		dat <- dat[ which( apply( dat, 1,  function(dat) sum(x >= LowFilter)) >= NminSamples ), ] 
+		dat <- dat[ which( apply( dat, 1,  function(x) sum(x >= LowFilter)) >= NminSamples ), ] 
 		
 		dat <- dat[ which( apply( dat, 1, function(x) max(x)- min(x) ) > 0 ), ]  # remove rows with all the same levels
 		#--------------Log transform
@@ -270,7 +288,9 @@ PreProcessing.Logic$set("public", "CalcKurtosisForFPKM",
 		tem <- apply(dat,1,sd) 
 		dat <- dat[order(-tem),]  # sort by SD
 
-		return(list(dat=dat, warning=dataTypeWarning, rawCount=rawCount))
+		return(list(dat=dat, warning=dataTypeWarning, 
+					mean.kurtosis = mean.kurtosis, rawCount=rawCount,
+					pvals = NULL))
 	}
 )
 
@@ -312,13 +332,14 @@ PreProcessing.Logic$set("public", "GetReadcountBarPlot",
 	function(readCount){
 		memo = ""
 		dat <- readCount
+
 		if( ncol(dat) > CONST_EAD_PLOT_MAX_SAMPLE_COUNT ){
 			part = 1:CONST_EAD_PLOT_MAX_SAMPLE_COUNT
 			dat <- dat[,part]
 			memo = paste(" (only showing", CONST_EAD_PLOT_MAX_SAMPLE_COUNT, "samples)")
 		}
 
-		groups = as.factor( self$DetectGroups(colnames(x)) )
+		groups = as.factor( self$DetectGroups(colnames(dat)) )
 
 		if(nlevels(groups)<=1 | nlevels(groups) >20){
 			columnColor = "green"
