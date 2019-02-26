@@ -38,6 +38,8 @@ echo ''
 
 mkdir data
 cd data
+mkdir data92
+cd data92
 
 echo 'Downloading Data(1/5): pathwayDB'
 wget -q --show-progress https://sdsu.box.com/shared/static/c24f792ojoikpzu0lkpng8uuf9ychwm7.gz -O pathwayDB.tar.gz
@@ -75,6 +77,8 @@ echo ''
 
 echo 'Starting iDep.'
 
+cd ..
+cd ..
 docker-compose up -d --scale webapp=15 
 echo ''
 echo 'iDep is ready.'
