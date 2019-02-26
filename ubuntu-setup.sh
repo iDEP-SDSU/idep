@@ -2,6 +2,13 @@
 
 echo 'Checking required software.'
 
+if ! [ -x "$(command -v R)" ]; then
+	echo 'R is not installed. Installing r-base.'
+	apt-get -qq update
+	apt-get -y -qq install r-base
+fi
+
+
 if ! [ -x "$(command -v git)" ]; then
 	echo 'Git is not installed. Installing git.'
 	apt-get -qq update
@@ -10,7 +17,7 @@ fi
 
 
 if ! [ -x "$(command -v docker)" ]; then
-	echo 'Docker is not installed. Installing docker.'
+	echo 'Docker is not installed. Installing docker.io and docker-compose.'
 	apt-get -qq update
 	apt-get -y -qq install docker.io
 	apt-get -y -qq install docker-compose
