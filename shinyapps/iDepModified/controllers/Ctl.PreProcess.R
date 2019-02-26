@@ -42,7 +42,6 @@ Ctl.PreProcess$set("public", "getTotalReadCountsData",
 	function(input, output, session, storeVariableList ){
 		
 		# Pre checking
-
 		if(is.null(storeVariableList$RawData)){
 			#if no raw data, then return null
 			return(NULL)
@@ -54,8 +53,34 @@ Ctl.PreProcess$set("public", "getTotalReadCountsData",
 		}
 
 		if(is.null(storeVariableList$PreProcessResult)){
+			if(storeVariableList$DataSourceType == 1){
+				minCount = input$numMinCounts
+				minSample = input$numNMinSamplesInCountCase
+				logStart = input$numCountsLogStart
+			}else{
+				# actrually should be output.DataSourceType == 2
+				# However, when output.DataSourceType == 3, minCound and minSample won't use.
+				# So we simply it into 'if else' statement.
+
+				minCount = input$numMinFPKM
+				minSample = input$numNMinSampleInFPKMCase
+				logStart = input$numFPKMLogStart
+			}
+
 			#if preprocess is not trigger, do it.
-			storeVariableList$PreProcessResult <- LogicManager$PreProcessing$RawDataPreprocess()  ### parm not right yet.
+			storeVariableList$PreProcessResult <- 
+				LogicManager$PreProcessing$RawDataPreprocess(
+					storeVariableList$RawData, 
+					input$selectMissingValueImputationMethod,
+					storeVariableList$DataSourceType,
+					minCount,
+					minSample,
+					input$selectCountsTransform,
+					logStart,
+					input$isApplyLogTransFPKM,
+					input$isNoFDR			## This parm is got in load data tab.
+				)  ### parm not right yet.
+
 			if(is.null(storeVariableList$PreProcessResult)){
 				# if we cannot get result, then exit with null
 				return(NULL)
@@ -63,6 +88,7 @@ Ctl.PreProcess$set("public", "getTotalReadCountsData",
 		}
 
 		readCount <- storeVariableList$PreProcessResult$rawCount
+
 		# Start process
 		return(LogicManager$PreProcessing$GetReadcountBarPlot(readCount))
 	}

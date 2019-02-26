@@ -146,8 +146,8 @@ View.PreProcess$set("public", "ConPanel_FPKMDdataOnlySettings",
 			fluidRow(
             	column(6, numericInput("numMinFPKM", label = h5(" Min. level"), value = -1000)),
             	column(6, numericInput("numNMinSampleInFPKMCase", label = h5("n samples"), value = 1) ),
-				radioButtons("isTransform", "Log Transformation",c("No"=FALSE,"Yes"=TRUE) ),
-          		numericInput("numLogStart", label = h5("Constant c for started log: log(x+c)"), value = 1),
+				radioButtons("isApplyLogTransFPKM", "Log Transformation",c("No"=FALSE,"Yes"=TRUE) ),
+          		numericInput("numFPKMLogStart", label = h5("Constant c for started log: log(x+c)"), value = 1),
           		textOutput("textTransform") 
 			)
 		)
@@ -172,7 +172,7 @@ View.PreProcess$set("public", "ShareSettingsPanel",
         	downloadButton('downloadProcessedData', 'Processed data'),
         	conditionalPanel("output.DataSourceType == 1", 
         	   downloadButton('downloadConvertedCounts', 'Converted counts data') ),
-        	downloadButton('downloadEDAplot', 'High-resolution figure'),  
+        	downloadButton('downloadEDAplot', 'High-resolution figure'),  ## this need change name later
         	br(),br(),
         	textOutput('nGenesFilter'),
         	tags$head(tags$style("#nGenesFilter{color: blue;

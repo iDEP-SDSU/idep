@@ -22,7 +22,9 @@ PreProcessing.Logic$set("public","RawDataPreprocess",
 	#		This related to some later operations.
 	#	5. Impute missing data
 	#	6. Calculate Kurtosis
-	function(rawData, imputateMethod){
+	function(rawData, imputateMethod, dataType, minCounts, minSamples, 
+			CountsTransform, LogStart, isTransform, isNoFDR){
+		
 		tmp.data <- self$RemoveNonNumericalColumns(rawData)
 		tmp.data <- self$RemoveAllMissingRows(tmp.data)
 		dataSizeOriginal = dim(tmp.data); 
@@ -39,8 +41,8 @@ PreProcessing.Logic$set("public","RawDataPreprocess",
 			tmp.data <- self$ImputateMissingValue(tmp.data,imputateMethod)
 		}
 
-		result <- self$CalcKurtosis(dat, dataType, minCounts, NminSamples, CountsTransform, 
-				LogStart, LowFilter, isTransform, isNoFDR)
+		result <- self$CalcKurtosis(tmp.data, dataType, minCounts, minSamples, 
+						CountsTransform, LogStart, isTransform, isNoFDR)
 
 		dataSizeAfter <- dim(result$dat)
 		dataSizeAfter[2] = dataSizeAfter[2] - 1
@@ -202,14 +204,14 @@ PreProcessing.Logic$set("public", "DetectGroups",
 )
 
 PreProcessing.Logic$set("public", "CalcKurtosis",
-	function(dat, dataType, minCounts=NULL, NminSamples=NULL, CountsTransform=NULL, 
-				LogStart=NULL, LowFilter=NULL, isTransform=FALSE, isNoFDR=TRUE ){
+	function(dat, dataType, minCounts=NULL, minSamples=NULL, CountsTransform=NULL, 
+				LogStart=NULL, isTransformFPKM=FALSE, isNoFDR=TRUE ){
 		mean.kurtosis = mean(apply(x,2, kurtosis),na.rm=T)
 		rawCounts = NULL
 		pvals= NULL		
 		result <- switch(dataType,
-			self$CalcKurtosisForReadCount(dat, mean.kurtosis, minCounts, NminSamples, CountsTransform, LogStart),
-			self$CalcKurtosisForFPKM(dat, mean.kurtosis, LowFilter, NminSamples, isTransform, LogStart),
+			self$CalcKurtosisForReadCount(dat, mean.kurtosis, minCounts, minSamples, CountsTransform, LogStart),
+			self$CalcKurtosisForFPKM(dat, mean.kurtosis, minCounts, minSamples, isTransformFPKM, LogStart),
 			self$CalcKurtosisForOtherDatatype(dat, isNoFDR)
 		)
 		return(result)
@@ -255,9 +257,9 @@ PreProcessing.Logic$set("public", "CalcKurtosisForFPKM",
 		#-------------filtering
 		#tem <- apply(x,1,max)
 		#x <- x[which(tem > input$lowFilter),]  # max by row is at least 
-		dat <- dat[ which( apply( dat, 1,  function(dat) sum(x >= LowFilter)) >= NminSamples ) , ] 
+		dat <- dat[ which( apply( dat, 1,  function(dat) sum(x >= LowFilter)) >= NminSamples ), ] 
 		
-		dat <- dat[which( apply(dat,1, function(x) max(x))- min(x) ) > 0  ),]  # remove rows with all the same levels
+		dat <- dat[ which( apply( dat, 1, function(x) max(x)- min(x) ) > 0 ), ]  # remove rows with all the same levels
 		#--------------Log transform
 		# Takes log if log is selected OR kurtosis is big than 100
 		if ( (isTransform) | ( mean.kurtosis > CONST_KRUTOSIS_LOG ) ) {
@@ -316,7 +318,7 @@ PreProcessing.Logic$set("public", "GetReadcountBarPlot",
 			memo = paste(" (only showing", CONST_EAD_PLOT_MAX_SAMPLE_COUNT, "samples)")
 		}
 
-		groups = as.factor( self$DetectGroups(colnames(x ) ) )
+		groups = as.factor( self$DetectGroups(colnames(x)) )
 
 		if(nlevels(groups)<=1 | nlevels(groups) >20){
 			columnColor = "green"

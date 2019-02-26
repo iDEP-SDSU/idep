@@ -58,7 +58,7 @@ shinyServer(
 
 
 		output$PreProcess_ReadCount <- renderPlotly({
-			PreProcessCtrl$testPlotly()
+			PreProcessCtrl$getTotalReadCountsData(input, output, session, ReactVars)
 		})
 		output$PreProcess_DistTransform <- renderPlotly({
 			PreProcessCtrl$testPlotly()

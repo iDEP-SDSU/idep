@@ -87,7 +87,7 @@ View.LoadData$set("public", "ConPanel_DataSourceType",
 				),
 				conditionalPanel(
 					"input.dataFileFormat == 3",
-					checkboxInput("noFDR", TxtLibrary$`Fold-changes only, no corrected P values`, value = FALSE)
+					checkboxInput("isNoFDR", TxtLibrary$`Fold-changes only, no corrected P values`, value = FALSE)
 				),
 				actionButton("btn_LoadData_ConfirmDataSourceType", TxtLibrary$btn_label_Confirm)
 			)

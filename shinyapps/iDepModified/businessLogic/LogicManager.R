@@ -7,7 +7,8 @@ source('businessLogic/PreProcessing.R')		## Preprocessing logic
 Logic.Manager <- R6Class("Logic.Manager")
 
 
-Logic.Manager$set("public","Files", "")
+Logic.Manager$set("public", "Files", "")
+Logic.Manager$set("public", "PreProcessing", "")
 
 
 
