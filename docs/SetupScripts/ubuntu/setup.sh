@@ -81,13 +81,6 @@ echo ''
 echo 'Data has been downloaded and unziped'
 echo ''
 echo ''
-
-echo 'Starting iDep.'
-
-cd ..
-cd ..
-docker-compose up -d --scale webapp=15 
-echo ''
 echo 'iDep is ready.'
 echo ''
 echo ''
