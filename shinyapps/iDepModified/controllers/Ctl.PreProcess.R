@@ -66,7 +66,13 @@ Ctl.PreProcess$set("public", "getTotalReadCountsData",
 				minSample = input$numNMinSampleInFPKMCase
 				logStart = input$numFPKMLogStart
 			}
-
+			stop(paste0( "logStart: ", as.character(logStart), 
+						"  minCount: ", as.character(minCount),
+						"  minSample: ", as.character(minSample),
+						"  isApplyLogTransFPKM: ", as.character(input$isApplyLogTransFPKM),
+						"  isNoFDR: ", as.character(input$isNoFDR),
+						"  datasource: ", as.character(storeVariableList$DataSourceType) 
+				))
 			#if preprocess is not trigger, do it.
 			storeVariableList$PreProcessResult <- 
 				LogicManager$PreProcessing$RawDataPreprocess(
@@ -79,7 +85,7 @@ Ctl.PreProcess$set("public", "getTotalReadCountsData",
 					logStart,
 					input$isApplyLogTransFPKM,
 					input$isNoFDR			## This parm is got in load data tab.
-				)  ### parm not right yet.
+				)
 
 			if(is.null(storeVariableList$PreProcessResult)){
 				# if we cannot get result, then exit with null
