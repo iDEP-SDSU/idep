@@ -5,21 +5,21 @@ DEBIAN_FRONTEND=noninteractive
 
 if ! [ -x "$(command -v R)" ]; then
 	echo 'R is not installed. Installing r-base.'
-	apt-get -qq -y update && -qq -y upgrade
+	apt-get -qq -y update
 	apt-get -y -qq install r-base
 fi
 
 
 if ! [ -x "$(command -v git)" ]; then
 	echo 'Git is not installed. Installing git.'
-	apt-get -qq -y update && -qq -y upgrade
+	apt-get -qq -y update
 	apt-get -y -qq install git
 fi
 
 
 if ! [ -x "$(command -v docker)" ]; then
 	echo 'Docker is not installed. Installing docker.io and docker-compose.'
-	apt-get -qq -y update && -qq -y upgrade
+	apt-get -qq -y update
 	apt-get -y -qq install docker.io
 	apt-get -y -qq install docker-compose
 fi
