@@ -328,30 +328,5 @@ PreProcessing.Logic$set("public","RawSampleInfoPreprocess",
 )
 
 
-PreProcessing.Logic$set("public", "GetReadcountBarPlot",
-	function(readCount){
-		memo = ""
-		dat <- readCount
 
-		if( ncol(dat) > CONST_EAD_PLOT_MAX_SAMPLE_COUNT ){
-			part = 1:CONST_EAD_PLOT_MAX_SAMPLE_COUNT
-			dat <- dat[,part]
-			memo = paste(" (only showing", CONST_EAD_PLOT_MAX_SAMPLE_COUNT, "samples)")
-		}
-
-		groups = as.factor( self$DetectGroups(colnames(dat)) )
-
-		if(nlevels(groups)<=1 | nlevels(groups) >20){
-			columnColor = "green"
-		}else{
-			columnColor = rainbow(nlevels(groups))[ groups ]	
-		}
-	   	
-		p <- plot_ly(x = colSums(dat)/1e6, y = colnames(dat), type = 'bar',
-					marker = list(color = columnColor) ) %>%
-				layout(title = paste("Total read counts (millions)", memo) )
-
-		return(p)
-	}
-)
 

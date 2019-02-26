@@ -66,13 +66,7 @@ Ctl.PreProcess$set("public", "getTotalReadCountsData",
 				minSample = input$numNMinSampleInFPKMCase
 				logStart = input$numFPKMLogStart
 			}
-			stop(paste0( "logStart: ", as.character(logStart), 
-						"  minCount: ", as.character(minCount),
-						"  minSample: ", as.character(minSample),
-						"  isApplyLogTransFPKM: ", as.character(input$isApplyLogTransFPKM),
-						"  isNoFDR: ", as.character(input$isNoFDR),
-						"  datasource: ", as.character(storeVariableList$DataSourceType) 
-				))
+
 			#if preprocess is not trigger, do it.
 			storeVariableList$PreProcessResult <- 
 				LogicManager$PreProcessing$RawDataPreprocess(
@@ -93,9 +87,13 @@ Ctl.PreProcess$set("public", "getTotalReadCountsData",
 			} 
 		}
 
-		PreProcessedReadCount <- storeVariableList$PreProcessResult$dat
+		# Get Read Count
+		PreProcessedReadCount <- storeVariableList$PreProcessResult$rawCount
+
+		# calculate group
+		groups = as.factor( LogicManager$PreProcessing$DetectGroups(colnames(PreProcessedReadCount)) )
 
 		# Start process
-		return(LogicManager$PreProcessing$GetReadcountBarPlot(PreProcessedReadCount))
+		return(LogicManager$Display$GetReadcountBarPlot(PreProcessedReadCount, groups))
 	}
 )
