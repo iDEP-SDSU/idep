@@ -3,7 +3,7 @@
 # sometimes need to remove all installed packages: https://www.r-bloggers.com/how-to-remove-all-user-installed-packages-in-r/ 
 list.of.packages <- c(
   "shiny", "shinyAce", "shinyBS", "plotly",
-  "RSQLite", "gplots", 
+  "RSQLite", "gplots", "shinyjs", 
   "ggplot2", "dplyr", #"tidyverse",
   "plotly",
   "e1071", "reshape2", "DT",
