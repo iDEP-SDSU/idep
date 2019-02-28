@@ -54,7 +54,7 @@ Ctl.PreProcess$set("public", "getTotalReadCountsData",
 			return(NULL)
 		}
 
-		if(is.null(storeVariableList$PreProcessResult)){
+		if( !storeVariableList$PreProcessDone ){
 			if(storeVariableList$DataSourceType == 1){
 				minCount = input$numMinCounts
 				minSample = input$numNMinSamplesInCountCase
@@ -82,7 +82,8 @@ Ctl.PreProcess$set("public", "getTotalReadCountsData",
 					input$isApplyLogTransFPKM,
 					input$isNoFDR			## This parm is got in load data tab.
 				)
-
+			storeVariableList$PreProcessDone <- TRUE
+			
 			if(is.null(storeVariableList$PreProcessResult)){
 				# if we cannot get result, then exit with null
 				return(NULL)

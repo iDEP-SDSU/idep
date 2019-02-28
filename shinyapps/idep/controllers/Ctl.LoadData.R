@@ -259,6 +259,7 @@ Ctl.LoadData$set( "public",	"EventHandler_UseSelectedPublicData",
 		# Load data set
 		storeVariableList$RawData <- self$SelectedSampleInfo$counts
 		storeVariableList$RawTestDesign <- NULL
+		storeVariableList$PreProcessDone <- FALSE
 
 		# Close Pop out window
 		toggleModal(session, "modalSearchPublicDataTab", toggle = "close")
@@ -277,6 +278,7 @@ Ctl.LoadData$set( "public", "EventHandler_UseDemoData",
 		demoData <- LogicManager$Files$LoadDemoData()
 		storeVariableList$RawData <- demoData$dat
 		storeVariableList$RawTestDesign <- demoData$design
+		storeVariableList$PreProcessDone <- FALSE
 	}
 )
 
@@ -299,6 +301,7 @@ Ctl.LoadData$set( "public", "EventHandler_UseUploadedFiles",
 		demoData <- LogicManager$Files$LoadUploadedData(datUrl, designUrl)
 		storeVariableList$RawData <- demoData$dat
 		storeVariableList$RawTestDesign <- demoData$design
+		storeVariableList$PreProcessDone <- FALSE
 	}
 )
 

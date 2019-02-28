@@ -67,6 +67,7 @@ PreProcessing.Logic$set("public", "RemoveNonNumericalColumns",
 		# to coerce all of them to the least common supertype, and you'll get 
 		# FALSE for each column;  this is not the case with sapply. 
 
+		rawData <- as.data.frame(rawData)
 		isNumeric <- sapply(rawData, is.numeric)
 
 		if( sum(isNumeric) <= 1 ){

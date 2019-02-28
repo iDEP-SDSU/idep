@@ -11,9 +11,8 @@ Display.Manager$set("public", "GetReadcountBarPlot",
 		dat <- readCount
 
 		if( ncol(dat) > CONST_EAD_PLOT_MAX_SAMPLE_COUNT ){
-			part = 1:CONST_EAD_PLOT_MAX_SAMPLE_COUNT
-			dat <- dat[,part]
-			groups <- groups[part]
+			dat <- dat[,1:CONST_EAD_PLOT_MAX_SAMPLE_COUNT]
+			groups <- groups[1:CONST_EAD_PLOT_MAX_SAMPLE_COUNT]
 			memo = paste(" (only showing", CONST_EAD_PLOT_MAX_SAMPLE_COUNT, "samples)")
 		}
 
@@ -23,7 +22,7 @@ Display.Manager$set("public", "GetReadcountBarPlot",
 			columnColor = rainbow(nlevels(groups))[ groups ]	
 		}
 	   	
-		p <- plot_ly(y = colSums(dat)/1e6, x = colnames(dat), type = 'bar',
+		p <- plot_ly(x = colnames(dat), y = colSums(dat)/1e6, type = 'bar',
 					marker = list(color = columnColor) ) %>%
 				layout(title = paste("Total read counts (millions)", memo) )
 
@@ -86,10 +85,12 @@ Display.Manager$set("public", "GetTransedDataDensityPlot",
 		}
 
 		# 4. Build plot
-		p <- plot_ly( type = "scatter", mode = "lines" )
+		p <- plot_ly(type = "scatter")
 
 		for( i in 1:ncol(dat) ){
-			p <- p %>% add_trace(y = density(dat[,i]), name = colnames(dat)[i], color = columnColor[i])
+			dens <- density(dat[,i])
+			p <- p %>% 
+				add_trace(x = dens$x, y = dens$y, name = colnames(dat)[i], color = columnColor[i], mode = 'lines')
 		}
 
 		p <- p %>% 
