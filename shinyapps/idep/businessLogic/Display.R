@@ -55,7 +55,8 @@ Display.Manager$set("public", "GetTransedDataBoxPlot",
 		p <- plot_ly( type="box" )
 
 		for(i in 1:ncol(dat)){
-			p <- p %>% add_boxplot(y = dat[,i], marker = list(color = columnColor[i]), name = colnames(dat)[i])
+			p <- p %>% add_boxplot(y = dat[,i], line = list(color = columnColor[i]), 
+						marker = list(color = columnColor[i]), name = colnames(dat)[i])
 		}
 
 		p <- p %>% layout(title = paste("Distribution of transformed data (millions)", memo) )

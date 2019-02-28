@@ -95,7 +95,7 @@ Ctl.PreProcess$set("public", "getTotalReadCountsData",
 		# calculate group
 		groups = as.factor( LogicManager$PreProcessing$DetectGroups(colnames(PreProcessedReadCount)) )
 
-		# Start process
+		# fetch the plot
 		return(LogicManager$Display$GetReadcountBarPlot(PreProcessedReadCount, groups))
 	}
 )
@@ -119,7 +119,7 @@ Ctl.PreProcess$set("public", "getTransDataBoxPlot",
 		# calculate group
 		groups = as.factor( LogicManager$PreProcessing$DetectGroups(colnames(TransferedData)) )
 
-		# Start process
+		# fetch the plot
 		return(LogicManager$Display$GetTransedDataBoxPlot(TransferedData, groups))
 	}
 )
