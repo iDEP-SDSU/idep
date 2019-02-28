@@ -33,7 +33,6 @@ Display.Manager$set("public", "GetReadcountBarPlot",
 
 Display.Manager$set("public", "GetTransedDataBoxPlot",
 	function(transedData, groups){
-
 		# 1. Init/load vars
 		memo = ""
 		dat <- transedData
@@ -52,6 +51,7 @@ Display.Manager$set("public", "GetTransedDataBoxPlot",
 			columnColor = rainbow(nlevels(groups))[ groups ]	
 		}
 
+		# 4. Build plot
 		p <- plot_ly( type="box" )
 
 		for(i in 1:ncol(dat)){
@@ -60,6 +60,42 @@ Display.Manager$set("public", "GetTransedDataBoxPlot",
 		}
 
 		p <- p %>% layout(title = paste("Distribution of transformed data (millions)", memo) )
+
+		return(p)
+	}
+)
+
+Display.Manager$set("public", "GetTransedDataDensityPlot",
+	function(transedData, groups){
+		# 1. Init/load vars
+		memo = ""
+		dat <- transedData
+
+		# 2. Check sample count. If count is to much, then show first CONST_EAD_PLOT_MAX_SAMPLE_COUNT samples.
+		if( ncol(dat) > CONST_EAD_PLOT_MAX_SAMPLE_COUNT ){
+			dat <- dat[, 1:CONST_EAD_PLOT_MAX_SAMPLE_COUNT]
+			groups <- groups[1:CONST_EAD_PLOT_MAX_SAMPLE_COUNT]
+			memo = paste("(only showing", CONST_EAD_PLOT_MAX_SAMPLE_COUNT, "samples)")
+		}
+
+		# 3. Define colors
+		if(nlevels(groups)<=1 | nlevels(groups) >20){
+			columnColor = "green"
+		}else{
+			columnColor = rainbow(nlevels(groups))[ groups ]	
+		}
+
+		# 4. Build plot
+		p <- plot_ly( type = "scatter", mode = "lines" )
+
+		for( i in 1:ncol(dat) ){
+			p <- p %>% add_trace(y = density(dat[,i]), name = colnames(dat)[i], color = columnColor[i])
+		}
+
+		p <- p %>% 
+			layout(title = paste("Distribution of transformed data (millions)", memo),
+				xaxis = list(title = "Expression values")			
+			)
 
 		return(p)
 	}
