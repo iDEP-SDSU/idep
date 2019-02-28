@@ -147,3 +147,23 @@ Ctl.PreProcess$set("public", "getTransDataDensityPlot",
 		return(LogicManager$Display$GetTransedDataDensityPlot(TransferedData, groups))
 	}
 )
+
+# Preprocessing tab, fourth plot
+Ctl.PreProcess$set("public", "getTransDataScatterPlot",
+	function(input, output, session, storeVariableList){
+		#
+		# this function should be called after LogicManager$PreProcessing$RawDataPreprocess() function has been called. 
+		#
+
+		if(is.null(storeVariableList$PreProcessResult)){
+			# if we cannot get result, then exit with null
+			return(NULL)
+		} 
+
+		# Get transfered data
+		TransferedData <- as.data.frame(storeVariableList$PreProcessResult$dat)
+
+		# fetch the plot
+		return(LogicManager$Display$GetTransedDataScatterPlot(TransferedData))
+	}
+)

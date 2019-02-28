@@ -70,7 +70,7 @@ shinyServer(
 		})
 		
 		output$PreProcess_ScatterPlot <- renderPlotly({
-			PreProcessCtrl$testPlotly()
+			PreProcessCtrl$getTransDataScatterPlot(input, output, session, ReactVars)
 		})
 	}
 )

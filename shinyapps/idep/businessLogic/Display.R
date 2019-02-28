@@ -52,10 +52,29 @@ Display.Manager$set("public", "GetTransedDataBoxPlot",
 
 		# 4. Build plot
 		p <- plot_ly( type="box" )
+		legGroupsList <- c()			# this stores the groups that already showing in the legend
 
 		for(i in 1:ncol(dat)){
-			p <- p %>% add_boxplot(y = dat[,i], line = list(color = columnColor[i]), 
-						marker = list(color = columnColor[i]), name = colnames(dat)[i])
+			
+			groupName = as.character(groups[i])
+
+			if( groups[i] %in% legGroupsList ){
+				# if this group name already in list, then don't need show the leg
+				showLeg = FALSE
+			}else{
+				# if this group name is not in list, then show the leg as 'group leg'
+				showLeg = TRUE
+				legGroupsList <- c(legGroupsList, groupName)
+			}
+
+
+			p <- p %>% 
+					add_boxplot(y = dat[,i], line = list(color = columnColor[i]), 
+						marker = list(color = columnColor[i]), legendgroup = groupName, showlegend = showLeg, 
+						hoverinfo = colnames(dat)[i], name = groupName, x = colnames(dat)[i]
+					)  
+					# legendgroup = groupName defines which group it belongs to  
+					# name = groupName defines the name showing on the legend
 		}
 
 		p <- p %>% layout(title = paste("Distribution of transformed data (millions)", memo) )
@@ -102,4 +121,25 @@ Display.Manager$set("public", "GetTransedDataDensityPlot",
 	}
 )
 
+
+Display.Manager$set("public", "GetTransedDataScatterPlot",
+	function(transedData){
+		# 1. Init/load vars
+		memo = ""
+		dat <- transedData
+
+		# 2. Select first two columns
+		dat <- dat[,1:2]
+
+		# 3. Build Plot 
+		p <- plot_ly(x = dat[,1], y = dat[,2], mode = 'markers') %>%
+				layout(
+					title = "Scatter plot of first two samples",
+					xaxis = list(title = colnames(dat)[1] ),
+					yaxis = list(title = colnames(dat)[2] )
+				)
+
+		return(p)
+	}
+)
 
