@@ -62,7 +62,7 @@ shinyServer(
 		})
 
 		output$PreProcess_DistTransform <- renderPlotly({
-			PreProcessCtrl$testPlotly()
+			PreProcessCtrl$getTransDataBoxPlot(input, output, session, ReactVars)
 		})
 
 		output$PreProcess_DensityTransform <- renderPlotly({

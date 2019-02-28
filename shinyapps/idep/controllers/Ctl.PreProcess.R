@@ -38,8 +38,10 @@ Ctl.PreProcess$set("public","testPlotlyData",
 	}
 )
 
+
+# Preprocessing tab, first plot
 Ctl.PreProcess$set("public", "getTotalReadCountsData",
-	function(input, output, session, storeVariableList ){
+	function(input, output, session, storeVariableList){
 		
 		# Pre checking
 		if(is.null(storeVariableList$RawData)){
@@ -97,3 +99,29 @@ Ctl.PreProcess$set("public", "getTotalReadCountsData",
 		return(LogicManager$Display$GetReadcountBarPlot(PreProcessedReadCount, groups))
 	}
 )
+
+
+# Preprocessing tab, second plot
+Ctl.PreProcess$set("public", "getTransDataBoxPlot",
+	function(input, output, session, storeVariableList){
+		#
+		# this function should be called after LogicManager$PreProcessing$RawDataPreprocess() function has been called. 
+		#
+
+		if(is.null(storeVariableList$PreProcessResult)){
+			# if we cannot get result, then exit with null
+			return(NULL)
+		} 
+
+		# Get transfered data
+		TransferedData <- as.data.frame(storeVariableList$PreProcessResult$dat)
+
+		# calculate group
+		groups = as.factor( LogicManager$PreProcessing$DetectGroups(colnames(TransferedData)) )
+
+		# Start process
+		return(LogicManager$Display$GetTransedDataBoxPlot(TransferedData, groups))
+	}
+)
+
+

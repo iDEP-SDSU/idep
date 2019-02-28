@@ -13,6 +13,7 @@ Display.Manager$set("public", "GetReadcountBarPlot",
 		if( ncol(dat) > CONST_EAD_PLOT_MAX_SAMPLE_COUNT ){
 			part = 1:CONST_EAD_PLOT_MAX_SAMPLE_COUNT
 			dat <- dat[,part]
+			groups <- groups[part]
 			memo = paste(" (only showing", CONST_EAD_PLOT_MAX_SAMPLE_COUNT, "samples)")
 		}
 
@@ -29,3 +30,38 @@ Display.Manager$set("public", "GetReadcountBarPlot",
 		return(p)
 	}
 )
+
+Display.Manager$set("public", "GetTransedDataBoxPlot",
+	function(transedData, groups){
+
+		# 1. Init/load vars
+		memo = ""
+		dat <- transedData
+		saveRDS(dat, file='hello.rds')
+		# 2. Check sample count. If count is to much, then show first CONST_EAD_PLOT_MAX_SAMPLE_COUNT samples.
+		if( ncol(dat) > CONST_EAD_PLOT_MAX_SAMPLE_COUNT ){
+			dat <- dat[, 1:CONST_EAD_PLOT_MAX_SAMPLE_COUNT]
+			groups <- groups[1:CONST_EAD_PLOT_MAX_SAMPLE_COUNT]
+			memo = paste("(only showing", CONST_EAD_PLOT_MAX_SAMPLE_COUNT, "samples)")
+		}
+
+		# 3. Define colors
+		if(nlevels(groups)<=1 | nlevels(groups) >20){
+			columnColor = "green"
+		}else{
+			columnColor = rainbow(nlevels(groups))[ groups ]	
+		}
+
+		p <- plot_ly( type="box" )
+
+		for(i in 1:ncol(dat)){
+			p <- p %>% add_boxplot(y = dat[,i], marker = list(color = columnColor[i]), name = colnames(dat)[i])
+		}
+
+		p <- p %>% layout(title = paste("Distribution of transformed data (millions)", memo) )
+
+		return(p)
+	}
+)
+
+
