@@ -37,7 +37,7 @@ Display.Manager$set("public", "GetTransedDataBoxPlot",
 		# 1. Init/load vars
 		memo = ""
 		dat <- transedData
-		saveRDS(dat, file='hello.rds')
+
 		# 2. Check sample count. If count is to much, then show first CONST_EAD_PLOT_MAX_SAMPLE_COUNT samples.
 		if( ncol(dat) > CONST_EAD_PLOT_MAX_SAMPLE_COUNT ){
 			dat <- dat[, 1:CONST_EAD_PLOT_MAX_SAMPLE_COUNT]
