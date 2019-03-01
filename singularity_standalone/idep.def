@@ -45,7 +45,7 @@ install.packages("pacman")
 install.packages("BiocManager")
 
 library(pacman)
-p_load(char=union(list.of.packages, list.of.bio.packages), Ncpus=4)
+p_load(char=pkgs$name, Ncpus=4)
 p_load(WGCNA)  # for some reason this sometimes failes the first time around
 __END__
 
