@@ -23,6 +23,7 @@ To install iDEP as a server, follow the following instructions:
 
 Note: We are working on the script for other system.
 
+
 2. Run setup script in root:
    
 ```
