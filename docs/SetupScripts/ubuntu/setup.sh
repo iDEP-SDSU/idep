@@ -4,21 +4,21 @@ echo 'Checking required software.'
 
 if ! [ -x "$(command -v R)" ]; then
 	echo 'R is not installed. Installing r-base.'
-	apt-get -qq update
+	apt-get -y -qq update 
 	apt-get -y -qq install r-base
 fi
 
 
 if ! [ -x "$(command -v git)" ]; then
 	echo 'Git is not installed. Installing git.'
-	apt-get -qq update
+	apt-get -y -qq update 
 	apt-get -y -qq install git
 fi
 
 
 if ! [ -x "$(command -v docker)" ]; then
 	echo 'Docker is not installed. Installing docker.io and docker-compose.'
-	apt-get -qq update
+	apt-get -y -qq update 
 	apt-get -y -qq install docker.io
 	apt-get -y -qq install docker-compose
 fi
@@ -36,6 +36,7 @@ echo ''
 
 
 echo 'Start building docker image. This process may take hours.'
+nohup docker daemon -H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock
 cd idep
 docker build -q ./nginx/. -t nginx  #nginx image should be build very quick
 docker build -q . -t webapp #webapp image need hours to build
@@ -80,13 +81,6 @@ echo 'Download and Unzip Finished (5/5): convertIDs.db'
 echo ''
 echo 'Data has been downloaded and unziped'
 echo ''
-echo ''
-
-echo 'Starting iDep.'
-
-cd ..
-cd ..
-docker-compose up -d --scale webapp=15 
 echo ''
 echo 'iDep is ready.'
 echo ''
