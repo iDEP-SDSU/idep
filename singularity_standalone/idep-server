@@ -1,0 +1,60 @@
+#! /bin/bash
+
+################################################################################
+#                                  Functions                                   #
+################################################################################
+function fail() {
+    printf "### ERROR ### %s\n" "$@" >&2
+    exit 1
+}
+
+function info() {
+    printf "### INFO  ### %s\n" "$@" >&2
+}
+
+################################################################################
+#                                     Main                                     #
+################################################################################
+bindir="$(dirname "$0")"
+prefixdir="$(readlink -f "${bindir}/..")"
+image="${prefixdir}/libexec/idep.sif"
+datadir="${prefixdir}/share/idep/data"
+
+
+tmp="${TMPDIR:-/tmp/idep}"
+mkdir -p "${tmp}" || fail "could not create temp dir '${tmp}'"
+mkdir -p "${tmp}/varlog" || fail "could not create '${tmp}/varlog'"
+mkdir -p "${tmp}/varlib" || fail "could not create '${tmp}/varlib'"
+trap 'rm -rf "${tmp}"' EXIT
+
+# pick a random port in the 49000 - 50000 range. This can still lead to
+# conflicts so this is a bit hacky.
+port=$(( (RANDOM % 1000) + 49000 ))
+info "server will run on port ${port}. Set up a tunnel to view the shiny applications"
+
+# create a config file. Since this is singularity, the server has to run
+# as the same user inside the container as outside. This config file
+# diverges minimally from the defaults
+cat <<__END__ > "${tmp}/shiny-server.conf"
+run_as $USER;
+preserve_logs true;
+
+server {
+  listen $port 127.0.0.1;
+  location / {
+    site_dir /srv/shiny-server;
+    directory_index on;
+    app_idle_timeout 900;
+    log_dir /var/log/shiny-server;
+  }
+}
+__END__
+
+# run the server
+singularity exec \
+    -B "${tmp}/shiny-server.conf:/etc/shiny-server/shiny-server.conf" \
+    -B "${tmp}/varlog:/var/log/shiny-server" \
+    -B "${tmp}/varlib:/var/lib/shiny-server" \
+    -B "${datadir}:/srv/data/data92" \
+    -B "${tmp}:/tmp" \
+    ${image} shiny-server

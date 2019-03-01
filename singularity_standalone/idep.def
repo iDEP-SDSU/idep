@@ -1,0 +1,62 @@
+
+BootStrap: docker
+From: rocker/shiny:latest
+
+######################################################################
+%post
+######################################################################
+# the deb.debian.org redirector kept landing me on stale mirrors. set
+# the us mirror explicitly
+cat <<EOF > /etc/apt/sources.list
+deb http://ftp.us.debian.org/debian/ stable main
+deb http://ftp.us.debian.org/debian/ stable-updates main
+deb http://security.debian.org/ stable/updates main
+EOF
+
+apt-get -qq update
+apt-get -qq install \
+  vim \
+  git-core \
+  libcurl4-openssl-dev \
+  libxml2-dev \
+  libxml2  \
+  libssl-dev \
+  libudunits2-dev \
+  libmariadb-client-lgpl-dev \
+  libpng-dev \
+  wget \
+  unzip \
+  libgeos-dev
+
+apt-get clean
+
+mkdir -p /usr/local/src
+cd /usr/local/src
+git clone https://github.com/iDEP-SDSU/idep.git
+cd idep
+
+# Install required R libraries. The required libraries are kept in
+# r_packages.csv in the root
+
+cat <<__END__ >> lib_setup.R
+pkgs <- read.csv("r_packages.csv", header=T, stringsAsFactors=F)
+
+install.packages("pacman")
+install.packages("BiocManager")
+
+library(pacman)
+p_load(char=union(list.of.packages, list.of.bio.packages), Ncpus=4)
+p_load(WGCNA)  # for some reason this sometimes failes the first time around
+__END__
+
+Rscript lib_setup.R
+
+# move the apps into place
+rm -rf /srv/shiny-server
+mv shinyapps /srv/shiny-server
+
+######################################################################
+%environment
+######################################################################
+export LANG=en_US.utf8
+
