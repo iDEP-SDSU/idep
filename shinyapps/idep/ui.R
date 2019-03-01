@@ -96,7 +96,7 @@ iDEPversion,
       #    please consider sending us a brief email/letter before Nov. 15th, with your 
       #    broad area of research and how iDEP helps your work. Thanks!"
       #,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), style = "color:red")
-      ,h3("We are working on a plan to improve iDEP. Any new functionality or feature you like to be added?Please "
+      ,h3("We are working on a plan to improve iDEP. Any new functionality or feature you like to be added? Please "
       ,a("send us",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), "your suggestions!",style = "color:red")      
       ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
       ,h5("Now published on", a("BMC Bioinformatics!",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank") )
@@ -114,7 +114,7 @@ iDEPversion,
           of transcriptomic data.  See ",
         a(" documentation", href="https://idepsite.wordpress.com/", target="_blank"), 
         "and",
-        a(" manuscript.", href="https://www.biorxiv.org/content/early/2018/04/20/148411",target="_blank"),
+        a(" paper.", href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6",target="_blank"),
         "Based on annotation of",
         a( "167 animal and 53 plant genomes ",href="https://idepsite.wordpress.com/species/",target="_blank"), 
         "in Ensembl BioMart as of 12/15/2017."
@@ -1128,8 +1128,14 @@ iDEPversion,
            " for questions, suggestions, or data contributions. Stay connected via ", 
            a("user group", href="https://groups.google.com/d/forum/idep",target="_blank"),
            " or ",
-           a("Twitter", href="https://twitter.com/useIDEP", target="_blank"),"." ), 
-        h2("R as in Reproducibility"),     
+           a("Twitter", href="https://twitter.com/useIDEP", target="_blank"),"." ),
+        h2("R as in Reproducibility"),
+        
+        h5(a("Documentation.",href="https://idepsite.wordpress.com/", target="_blank")),
+        h5("Source code on ", a("GitHub,", href="https://github.com/iDEP-SDSU/idep", target="_blank"),
+           "where users can also report bugs or requet features."
+           ),
+        
 
         h5("To improve reproducibility, iDEP generates custom  R code  
             based on your data and choices of parameters. Users with some

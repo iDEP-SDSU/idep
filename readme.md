@@ -6,76 +6,41 @@
 ## iDEP is a web application hosted at http://bioinformatics.sdstate.edu/idep/ 
 Local installation of this software is possible through steps below. But it is not supported or updated freqently. 
 
+To run iDEP on your laptop you will need to download the database and follow these instructions:
+Under construction.
+
+To install iDEP as a server, follow the following instructions:
+
 ## Requirements
 + Storage should be more than 200GB
 + Memory should be more than 2GB
 
+## Setup
 
+1. Download following script based on your system:
++ For Ubuntu: [Ubuntu](https://github.com/iDEP-SDSU/idep/blob/master/ubuntu-setup.sh)
 
-## Prerequisites
+2. Run setup script in root:
+   
+```
+sudo sh setup.sh
+```
+Wait until the script shows 'iDEP is ready.' It can take several hours, as the script installs dozens of R pacakges and also copies a large database automatically.
 
-+ git [Installation Guide](https://gist.github.com/derhuerst/1b15ff4652a867391f03)
-
-+ docker community edition (win10 above and MacOS)[Installation Guide]()
-https://docs.docker.com/engine/installation/linux/docker-ce/debian/#install-using-the-repository
-
-+ + docker toolbox (win7)
-
-
-### Install `docker` and `docker-compose`
-
-More detail information
-
-+ [Installation](https://github.com/iDEP-SDSU/idep/wiki/Install-Docker-and-Docker-Compose)
-
-### Download database files for running iDEP locally can be downloaded at
-https://doi.org/10.5281/zenodo.1451847.
-## Quick Start
-
-From your local machine Make clone
+## Start system
 
 ```
-> git clone https://github.com/iDEP-SDSU/idep.git
+sudo docker-compose up -d --scale webapp=15 
 ```
 
-The following command starts containers from docker-compose.yml. The R server listening for HTTP connections on port 3838
+Note: `webapp=15` indecate the web application count. Based on your system capacity, you can increase or decrease this number.
 
-```
-> docker-compose up -d
-```
-
-Check [localhost:3838] (http://localhost:3838/idep)
-
-
-### Advanced Use (docker container base)
-
-+ [Manage Docker Compose]()
-+ [Manage Docker Image and Container]()
-
-#### Build Docker image
-
-You can build docker image of
-
-```
-docker build -t {name} .
-```
-
-#### Run Shiny Server Docker Image
-
-```
-docker run --rm -p 3838:3838 \
-    -v $(pwd)/shinyapps/:/srv/shiny-server/ \
-    -v $(pwd)/shinylog/:/var/log/ \
-    idep/early
-```
-
-docker run --rm -p 3838:3838 idep/early
-
+## Stop system
 
 You can bring everything down, removing the containers entirely, with the down command. Pass `--voluems` to also remove the data volume.
 
 ```
-> docker-compose down --volumes
+sudo docker-compose down --volumes
 ```
 
 
@@ -87,20 +52,3 @@ http://docs.rstudio.com/shiny-server/
 ## Resources
 ### Docker-Compoer documentation
 https://docs.docker.com/compose/reference/overview/
-
-### Shiny Server Log
-https://support.rstudio.com/hc/en-us/articles/115003717168-Shiny-Server-Error-Logs
-
-## Install required packages
-
-open docker terminal
-```
-> Rscript librarySetup.R
-```
-
-## Production server
-docker-compose -f docker-compose.yml -f docker-compose.do.yml up -d
-
-
-Proxy
-https://gist.github.com/netdesk/c1db2985b542f9916995139318e5a7ce
