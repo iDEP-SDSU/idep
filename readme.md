@@ -18,7 +18,7 @@ To install iDEP as a server, follow the following instructions:
 ## Setup
 
 1. Download following script based on your system:
-+ For Ubuntu: [Ubuntu](https://github.com/iDEP-SDSU/idep/blob/master/ubuntu-setup.sh)
++ For Ubuntu: [Ubuntu](https://github.com/iDEP-SDSU/idep/tree/master/docs/SetupScripts/ubuntu)
 
 2. Run setup script in root:
    
