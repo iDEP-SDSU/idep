@@ -6,6 +6,11 @@
 ## iDEP is a web application hosted at http://bioinformatics.sdstate.edu/idep/ 
 Local installation of this software is possible through steps below. But it is not supported or updated freqently. 
 
+To run iDEP on your laptop you will need to download the database and follow these instructions:
+Under construction.
+
+To install iDEP as a server, follow the following instructions:
+
 ## Requirements
 + Storage should be more than 200GB
 + Memory should be more than 2GB
@@ -13,14 +18,14 @@ Local installation of this software is possible through steps below. But it is n
 ## Setup
 
 1. Download following script based on your system:
-+ Ubuntu: [Ubuntu](https://idep-sdsu.github.io/idep/SetupScript/ubuntu/setup.sh)
++ For Ubuntu: [Ubuntu](https://github.com/iDEP-SDSU/idep/blob/master/ubuntu-setup.sh)
 
 2. Run setup script in root:
    
 ```
 sudo sh setup.sh
 ```
-Wait until the script shows 'iDep is ready.'
+Wait until the script shows 'iDEP is ready.' It can take several hours, as the script installs dozens of R pacakges and also copies a large database automatically.
 
 ## Start system
 
