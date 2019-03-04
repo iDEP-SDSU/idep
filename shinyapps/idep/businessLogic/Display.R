@@ -22,7 +22,10 @@ Display.Manager$set("public", "GetReadcountBarPlot",
 			columnColor = rainbow(nlevels(groups))[ groups ]	
 		}
 	   	
-		p <- plot_ly(x = colnames(dat), y = colSums(dat)/1e6, type = 'bar',
+		tbl <- data.frame( x=colnames(dat), y= colSums(dat)/1e6 )
+		tbl$x <- factor(tbl$x, levels = c(as.character(tbl$x))) 
+
+		p <- plot_ly(data = tbl, x = ~x, y = ~y, type = 'bar',
 					marker = list(color = columnColor) ) %>%
 				layout(title = paste("Total read counts (millions)", memo) )
 
@@ -105,11 +108,26 @@ Display.Manager$set("public", "GetTransedDataDensityPlot",
 
 		# 4. Build plot
 		p <- plot_ly(type = "scatter")
+		legGroupsList <- c()			# this stores the groups that already showing in the legend
 
 		for( i in 1:ncol(dat) ){
+			# Step 1. check this column belong to a new group or not
+			groupName = as.character(groups[i])
+
+			if( groups[i] %in% legGroupsList ){
+				# if this group name already in list, then don't need show the leg
+				showLeg = FALSE
+			}else{
+				# if this group name is not in list, then show the leg as 'group leg'
+				showLeg = TRUE
+				legGroupsList <- c(legGroupsList, groupName)
+			}
+
+			# Step 2. add this column to plot
 			dens <- density(dat[,i])
 			p <- p %>% 
-				add_trace(x = dens$x, y = dens$y, name = colnames(dat)[i], color = columnColor[i], mode = 'lines')
+				add_trace(x = dens$x, y = dens$y,  legendgroup = groupName, showlegend = showLeg,
+				hoverinfo = colnames(dat)[i], name = groupName, line = list(color = columnColor[i]), mode = 'lines')
 		}
 
 		p <- p %>% 
