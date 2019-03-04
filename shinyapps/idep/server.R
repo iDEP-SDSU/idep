@@ -56,21 +56,28 @@ shinyServer(
 		############################################################################
 
 
+		ReactVars$PreProcessResult <- reactive({
+			PreProcessCtrl$testData(input, session, ReactVars)
+			
+		})
 
 		output$PreProcess_ReadCount <- renderPlotly({
-			PreProcessCtrl$getTotalReadCountsData(input, output, session, ReactVars)
+#			PreProcessCtrl$getTotalReadCountsData(input, session, ReactVars)
+			PreProcessCtrl$testPlot(ReactVars$PreProcessResult()$rawCount)
 		})
 
-		output$PreProcess_DistTransform <- renderPlotly({
-			PreProcessCtrl$getTransDataBoxPlot(input, output, session, ReactVars)
-		})
+		#output$PreProcess_DistTransform <- renderText(isolate(ReactVars$hereCount))
+		
+#		renderPlotly({
+#			#PreProcessCtrl$getTransDataBoxPlot(input, output, session, ReactVars)
+#		})
 
 		output$PreProcess_DensityTransform <- renderPlotly({
-			PreProcessCtrl$getTransDataDensityPlot(input, output, session, ReactVars)
+			#PreProcessCtrl$getTransDataDensityPlot(input, output, session, ReactVars)
 		})
-		
+
 		output$PreProcess_ScatterPlot <- renderPlotly({
-			PreProcessCtrl$getTransDataScatterPlot(input, output, session, ReactVars)
+			#PreProcessCtrl$getTransDataScatterPlot(input, output, session, ReactVars)
 		})
 	}
 )

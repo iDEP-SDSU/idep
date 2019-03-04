@@ -18,13 +18,6 @@ Ctl.PreProcess$set("public","testPlotly",
 	}
 )
 
-Ctl.PreProcess$set("public", "testPlot",
-	function(){
-		p <- plot(rnorm(100))
-		return(p)
-	}
-)
-
 
 
 Ctl.PreProcess$set("public","testPlotlyData",
@@ -39,9 +32,61 @@ Ctl.PreProcess$set("public","testPlotlyData",
 )
 
 
+Ctl.PreProcess$set("public", "testData",
+	function(input, session, storeVariableList){
+	
+		# Pre checking
+		if(is.null(storeVariableList$RawData)){
+			#if no raw data, then return null
+			return(NULL)
+		}
+
+
+
+			if(storeVariableList$DataSourceType == 1){
+				minCount = input$numMinCounts
+				minSample = input$numNMinSamplesInCountCase
+				logStart = input$numCountsLogStart
+			}else{
+				# actrually should be output.DataSourceType == 2
+				# However, when output.DataSourceType == 3, minCound and minSample won't use.
+				# So we simply it into 'if else' statement.
+
+				minCount = input$numMinFPKM
+				minSample = input$numNMinSampleInFPKMCase
+				logStart = input$numFPKMLogStart
+			}
+	
+			#if preprocess is not trigger, do it.
+			PreProcessResult <- 
+				LogicManager$PreProcessing$RawDataPreprocess(
+					storeVariableList$RawData, 
+					input$selectMissingValueImputationMethod,
+					storeVariableList$DataSourceType,
+					minCount,
+					minSample,
+					as.numeric(input$selectCountsTransform),
+					logStart,
+					input$isApplyLogTransFPKM,
+					input$isNoFDR			## This parm is got in load data tab.
+				)
+			
+			return(PreProcessResult)
+	}
+)
+
+Ctl.PreProcess$set("public", "testPlot",
+	function(dat){
+		# calculate group
+		groups = as.factor( LogicManager$PreProcessing$DetectGroups(colnames(dat)) )
+
+		# fetch the plot
+		return(LogicManager$Display$GetReadcountBarPlot(dat, groups))
+	}
+)
 # Preprocessing tab, first plot
 Ctl.PreProcess$set("public", "getTotalReadCountsData",
-	function(input, output, session, storeVariableList){
+	function(input, session, storeVariableList){
 		
 		# Pre checking
 		if(is.null(storeVariableList$RawData)){
