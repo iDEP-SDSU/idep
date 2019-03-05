@@ -6,7 +6,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.81"
+iDEPversion = "iDEP.82"
 
 shinyUI(
 navbarPage(
@@ -99,10 +99,10 @@ iDEPversion,
       ,h3("We are working on a plan to improve iDEP. Any new functionality or feature you like to be added? Please "
       ,a("send us",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), "your suggestions!",style = "color:red")      
       ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
+      ,h3("v0.82 fixed a major bug. When using limma, the up- and down-regulation is reversed in some situations.",style = "color:red")
       ,h5("Now published on", a("BMC Bioinformatics!",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank") )
-      ,h5("Please let us know if your have trouble loading your data.")
-      ,h5("iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
-      ,h5("v0.81 Enabled downloading of publication-ready vector graphics files.")
+      ,h5("Due to lack of funding, iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
+      ,h5("v0.81 Enabled downloading of publication-ready vector graphics files using EPS.")
       ,h5("New v0.80  Updated annotation database. Comprehensive pathway 
           database for human. TF binding motifs for 200+ speceis. Old version made available."
       )
@@ -1126,13 +1126,13 @@ iDEPversion,
       column(12,
         h4( a("Email us", href= "mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP", target="_top") , 
            " for questions, suggestions, or data contributions. Stay connected via ", 
-           a("user group", href="https://groups.google.com/d/forum/idep",target="_blank"),
-           " or ",
-           a("Twitter", href="https://twitter.com/useIDEP", target="_blank"),"." ),
+           a("user group,", href="https://groups.google.com/d/forum/idep",target="_blank"),
+           " ", a("GitHub,", href="https://github.com/iDEP-SDSU/idep", target="_blank"),
+           " or ",a("Twitter.", href="https://twitter.com/useIDEP", target="_blank") ),
         h2("R as in Reproducibility"),
         
-        h5(a("Documentation.",href="https://idepsite.wordpress.com/", target="_blank")),
-        h5("Source code on ", a("GitHub,", href="https://github.com/iDEP-SDSU/idep", target="_blank"),
+        h5(a("Documentation site.",href="https://idepsite.wordpress.com/", target="_blank"),
+        " Source code on ", a("GitHub,", href="https://github.com/iDEP-SDSU/idep", target="_blank"),
            "where users can also report bugs or requet features."
            ),
         
@@ -1212,6 +1212,7 @@ iDEPversion,
             href="https://google.github.io/styleguide/Rguide.xml") )   
        ,h5("7/30/2018: V0.80 Fixed error in downloaded up- and down-regulated gene lists. We thank Juan Xie for pointing this out. ")    
        ,h5("12/2/2018: v0.81 High resolution figure download with eps format, which can be eidted with Adobe Illustrator.")
+       ,h5("3/5/2019:  v0.82 Fix a bug regarding limma for identification of D.E.Gs. Up- and down-regulation are opposite in some cases.")
        ,br(),br()
        ,h5("In loving memory of my parents.")
 

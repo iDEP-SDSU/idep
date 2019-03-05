@@ -3,7 +3,7 @@
 # hosted at http://ge-lab.org/idep/
 # manuscript: https://www.biorxiv.org/content/early/2018/04/20/148411 
 
-iDEPversion = "iDEP 0.81"
+iDEPversion = "iDEP 0.82"
 
 ################################################################
 # R packages
@@ -944,15 +944,19 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 	groups <- groups[ix]   
 	x<- x[,ix]; rawCounts <- rawCounts[,ix] 
 	
-	if(length(g) ==2 ) { 
+	if(length(g) ==2 ) {  # just two groups
 		g= unique(groups)
 		comparisons <-  paste(g[2],"-",g[1],sep="")  # "Mutant-WT"
 		
 		# no sample file, but user selected comparisons using column names
 		if( is.null(modelFactors) & length( selectedComparisons) >0  ) 	
-			comparisons = selectedComparisons
-		
-		design <- model.matrix(~0+groups)
+			comparisons <- selectedComparisons
+
+        # set reference level based on the order in which the levels appear
+        # the first appearing level is set as reference; otherwise, we get up and down-regulation reversed.
+        groups <- factor(groups, levels = g) 
+
+		design <- model.matrix( ~ 0 + groups )
 		colnames(design) <- g
 		
 		if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
@@ -967,7 +971,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 
 		# calls differential gene expression 1 for up, -1 for down
 		results <- decideTests(fit2, p.value=maxP_limma, lfc=log2(minFC_limma) )
-		#vennDiagram(results,circle.col=rainbow(5))
+
 		topGenes1 =topTable(fit2, number = 1e12,sort.by="M" )
 		if (dim(topGenes1)[1] != 0) {
 		topGenes1 = topGenes1[,c('logFC','adj.P.Val')] 
@@ -975,13 +979,22 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 		topGenes[[1]] <- topGenes1 }
 		# log fold change is actually substract of means. So if the data is natral log transformed, it shoudl be natral log.
 		Exp.type = "2 sample groups."
+
+       # Up and down regulation seems to be reversed? 3-2-2019
+       #results <- -1 * results # holds up or down regulated genes, marked as 1 or -1.
+       #for(i in 1:length(topGenes))
+         #topGenes[[i]][ ,1] <- -1 * topGenes[[i]][ ,1]
 	}
 	
 	if(length(g) > 2 ) { # more than two sample groups
-	
-		design <- model.matrix(~ 0+factor(groups))
-		colnames(design) <- gsub(".*)","",colnames(design))
-		
+	    # set reference level based on the order in which the levels appear
+        # the first appearing level is set as reference; otherwise, we get up and down-regulation reversed.
+        groups <- factor(groups, levels = g)
+
+		design <- model.matrix(~ 0 + groups)
+		#colnames(design) <- gsub(".*)","",colnames(design))  
+		colnames(design) <- gsub("^groups","",colnames(design))
+
 		if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
 			v <- voom(rawCounts, design); 
 			fit <- lmFit(v, design) 
@@ -1068,10 +1081,13 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 			sampleInfo2 = sampleInfo[,keyModelFactors,drop=F] # remove factors not used.
 			groups = apply(sampleInfo2,1, function(x) paste(x,collapse="_")  )
 			g =  unique(groups)  
-			
-			design <- model.matrix(~ 0+factor(groups))
-			colnames(design) <- gsub(".*)","",colnames(design))
-		
+
+            groups <- factor(groups, levels = g)
+
+		    design <- model.matrix(~ 0 + groups)
+		    #colnames(design) <- gsub(".*)","",colnames(design))  
+		    colnames(design) <- gsub("^groups","",colnames(design))
+            	
 			if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
 				v <- voom(rawCounts, design); 
 				fit <- lmFit(v, design) 
@@ -1244,8 +1260,9 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 	#comparisons <- comparisons3
 	# it does not make any sense! comparisons can not be changed!
 	#comparisons =comparisons3	
-	#cat("\n", comparisons)		
-		
+	#cat("\n", comparisons)	
+    #write.csv(results,"results.csv"); write.csv(topGenes,"topGenes.csv")	
+    
 	return( list(results= results, comparisons=comparisons, Exp.type=Exp.type, topGenes=topGenes)) 
 }
 
@@ -1955,6 +1972,7 @@ enrichmentNetworkPlotly <- function(enrichedTerms, layout_change = 0){
 	x = read.csv("GSE52778_All_Sample_FPKM_Matrix.csv")
 	x = read.csv("exampleData/GSE87194.csv")
 	x = read.csv("exampleData/expression_3groups.csv")
+    x = read.csv("C:/Users/Xijin.Ge/Google Drive/research/Shiny/idep/sampleData/BcellGSE71176_p53-two group.csv")
 	x = x[order(x[,1]),]
 	x = x[!duplicated(x[,1]),]
 	rownames(x)= x[,1]
@@ -2239,6 +2257,45 @@ enrichmentNetworkPlotly <- function(enrichedTerms, layout_change = 0){
 	myrange = c(15,2000)
 	converted = convertID(x[,1],selectOrg)
 	mapping = converted$conversionTable	  
+
+    ############################################
+    # Test limma  3-3-2019
+    x = read.csv("C:/Users/Xijin.Ge/Google Drive/research/Shiny/idep/sampleData/BcellGSE71176_p53-two group.csv")
+    x = read.csv("C:/Users/Xijin.Ge/Google Drive/research/Shiny/idep/sampleData/BcellGSE71176_p53_reduced_4 groups.csv")
+
+	x = x[order(x[,1]),]
+	x = x[!duplicated(x[,1]),]
+	rownames(x)= x[,1]
+	x = x[,-1]
+
+	tem = apply(x,1,max)
+	x = x[which(tem> 1),] 
+    rawCounts = x;
+
+	selectOrg = "BestMatch"; GO="GOBP"; 
+
+	converted = convertID(rownames(x),selectOrg)
+
+	head(converted$conversionTable)
+	mapping = converted$conversionTable
+
+	rownames(x) = toupper(rownames(x))
+	x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
+	tem = apply(x1[,3:(dim(x1)[2]-2)],1,sd)
+	x1 = x1[order(x1[,2],-tem),]
+	x1 = x1[!duplicated(x1[,2]) ,]
+	rownames(x1) = x1[,2]
+	x1 = as.matrix(x1[,c(-1,-2)])
+
+	convertedData = x1
+    x=convertedData;
+    maxP_limma=.1; minFC_limma=2;
+    countsDEGMethods = 2;
+    priorCounts = 3
+    dataFormat=1
+    selectedComparisons=NULL; sampleInfo = NULL;modelFactors=NULL; blockFactor = NULL
+
+
  }
  
 if(0) {  # testing
@@ -5807,15 +5864,24 @@ output$sigGeneStatsTable <- renderTable({
 		isolate({ 
 		
 		results = limma()$results
+        if(dim(results)[2] == 1) { # if only one comparison
+           Up = sum( results == 1)
+           Down = sum( results == -1 )
+           stats = c( colnames(results), Up, Down)
+           stats = t( as.data.frame( stats ) )
+           row.names( stats ) = colnames(results)
+           colnames( stats ) = c("Comparison","Up", "Down")
 
-		 Up =  apply(results, 2, function(x) sum(x == 1) )
-		 Down = apply(results, 2, function(x) sum(x == -1) ) 
-		 stats = rbind(Up, Down)
-		 stats = t(stats)
-		 stats=cbind(rownames(stats), stats)
-		 colnames(stats)[1]="Comparisons"
-		 stats <- stats[dim(stats)[1]:1,] # reverse row order, to be the same with plot
+        } else {  #More than one comparisons
 
+		   Up =  apply(results, 2, function(x) sum(x == 1) )
+		   Down = apply(results, 2, function(x) sum(x == -1) ) 
+		   stats = rbind(Up, Down)
+		   stats = t(stats)
+		   stats=cbind(rownames(stats), stats)
+		   colnames(stats)[1]="Comparisons"
+		   stats <- stats[dim(stats)[1]:1,] # reverse row order, to be the same with plot
+        }
 		 return(as.data.frame(stats))
 
 		})
