@@ -4,19 +4,22 @@
 [iDEP](http://ge-lab.org/idep/) is a Shiny app for analyzing RNA-seq or other transcriptomic data. See [documentation](https://idepsite.wordpress.com/) and [paper](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6). Based on annotation of 220 animal and plant genomes in Ensembl BioMart as of 6/4/2018. Additional data from KEGG, Reactome, MSigDB (human), GSKB (mouse) and araPath (arabidopsis). For feedbacks or data contributions (genes and GO mapping of any species), please contact us, or visit our homepage. Send us suggestions or any error message to help improve iDEP.
 
 ## iDEP is a web application hosted at http://bioinformatics.sdstate.edu/idep/ 
+
+## Local installation
 Local installation of this software is possible through steps below. But it is not supported or updated freqently. 
 
 ## To run iDEP on your laptop you will need to download the database and follow these instructions:
 
-### Upgrade to the most recent version of R and Rstudio.
-### Install all the R packages by running [this script](https://github.com/iDEP-SDSU/idep/blob/master/classes/librarySetup.R) under Rstudio. This can take hours.
-### Download iDEP source code and example data files from Github. The best is to click the Clone or download button on this [page](https://github.com/iDEP-SDSU/idep). And unzip to a folder such as C:/IDEP.
-### Download database files. This can take several hours. Unzip this files to a folder under the IDEP folder such as C:/IDEP/data/data92. 
+1. Upgrade to the most recent version of R and Rstudio.
+2. Install all the R packages by running [this script](https://github.com/iDEP-SDSU/idep/blob/master/classes/librarySetup.R) under Rstudio. This can take hours.
+3. Download iDEP source code and example data files from Github. The best is to click the Clone or download button on this [page](https://github.com/iDEP-SDSU/idep). And unzip to a folder such as C:/IDEP.
+4. Download database files. This can take several hours. Unzip this files to a folder under the IDEP folder such as C:/IDEP/data/data92. 
 [pathwayDB](https://sdsu.box.com/shared/static/c24f792ojoikpzu0lkpng8uuf9ychwm7.gz), 
 [Motif](https://sdsu.box.com/shared/static/9v1ao6mwhduvrcx793j3answph9gqnkt.gz), 
 [geneInfo](https://sdsu.box.com/shared/static/mns0k1uvwtfnsohoc89b984ih36nmnz9.gz), 
 [data_go](https://sdsu.box.com/shared/static/qwpdh36vcisgy1hcmadck8i8ezhvr2fh.gz), 
 [convertIDs](https://sdsu.box.com/shared/static/sorewt7w6iypmhg2k2xhyi8myeit156o.gz)
+5. Start Rstudio and load the ui.R and server.R script. And then click on Run app. 
 
 ## To install iDEP as a server, follow the following instructions:
 
