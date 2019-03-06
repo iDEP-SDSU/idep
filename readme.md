@@ -23,12 +23,13 @@ Local installation of this software is possible through steps below. But it is n
 
 ## To install iDEP as a server, follow the following instructions:
 
-## Requirements
+Requirements
 + Storage should be more than 200GB
 + Memory should be more than 2GB
 
-## Setup
+A user has contributed a standalone version using [Singularity](https://www.sylabs.io/). Following the instruction in this [folder.](https://github.com/iDEP-SDSU/idep/tree/master/singularity_standalone)  
 
+The following are instructions based on [Docker](https://www.docker.com/).
 1. Download following script based on your system:
 
 + For Ubuntu: [Ubuntu](https://raw.githubusercontent.com/iDEP-SDSU/idep/master/docs/SetupScripts/ubuntu/setup.sh)
@@ -43,18 +44,14 @@ sudo sh setup.sh
 ```
 Wait until the script shows 'iDEP is ready.' It can take several hours, as the script installs dozens of R pacakges and also copies a large database automatically.
 
-## Start system
+3. Start system
 
 ```
 sudo docker-compose up -d --scale webapp=15 
 ```
-
+Now the server is running. 
 Note: `webapp=15` indecate the web application count. Based on your system capacity, you can increase or decrease this number.
-
-## Stop system
-
 You can bring everything down, removing the containers entirely, with the down command. Pass `--voluems` to also remove the data volume.
-
 ```
 sudo docker-compose down --volumes
 ```
