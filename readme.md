@@ -6,10 +6,19 @@
 ## iDEP is a web application hosted at http://bioinformatics.sdstate.edu/idep/ 
 Local installation of this software is possible through steps below. But it is not supported or updated freqently. 
 
-To run iDEP on your laptop you will need to download the database and follow these instructions:
-Under construction.
+## To run iDEP on your laptop you will need to download the database and follow these instructions:
 
-To install iDEP as a server, follow the following instructions:
+### Upgrade to the most recent version of R and Rstudio.
+### Install all the R packages by running [this script](https://github.com/iDEP-SDSU/idep/blob/master/classes/librarySetup.R) under Rstudio. This can take hours.
+### Download iDEP source code and example data files from Github. The best is to click the Clone or download button on this [page](https://github.com/iDEP-SDSU/idep). And unzip to a folder such as C:/IDEP.
+### Download database files. This can take several hours. Unzip this files to a folder under the IDEP folder such as C:/IDEP/data/data92. 
+[pathwayDB](https://sdsu.box.com/shared/static/c24f792ojoikpzu0lkpng8uuf9ychwm7.gz), 
+[Motif](https://sdsu.box.com/shared/static/9v1ao6mwhduvrcx793j3answph9gqnkt.gz), 
+[geneInfo](https://sdsu.box.com/shared/static/mns0k1uvwtfnsohoc89b984ih36nmnz9.gz), 
+[data_go](https://sdsu.box.com/shared/static/qwpdh36vcisgy1hcmadck8i8ezhvr2fh.gz), 
+[convertIDs](https://sdsu.box.com/shared/static/sorewt7w6iypmhg2k2xhyi8myeit156o.gz)
+
+## To install iDEP as a server, follow the following instructions:
 
 ## Requirements
 + Storage should be more than 200GB
