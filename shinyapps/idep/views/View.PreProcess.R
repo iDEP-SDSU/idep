@@ -6,29 +6,49 @@ View.PreProcess <- R6Class("View.PreProcess")
 
 
 ###############################################################################
-########################		Main Layout			###########################
+########################		Main Panel			###########################
 ###############################################################################
 
-# Main Layout of this page includes 2 conditional panels.
+# Main Panel Layout of this page includes 2 conditional panels.
 
 # If data is not ready, the message panel will show up.
-# If data is ready, the work panel will show up.
-
-# Major UI design is in WorkPanel.
+# If data is ready, the ResultPanel panel will show up.
 
 View.PreProcess$set("public", "mainPanel",
 	function(){
 		fluidPage(
 			self$PreRequestNotFitMessagePanel(),
-			self$WorkPanel()
+			self$ResultPanel()
+		)
+	}
+)
+
+###################				sidebar Panel				###################
+# Pre process setting panel.
+# This panel have several conditional panels.
+# These panels will contains controls and settings only work for given data type
+
+View.PreProcess$set("public", "sidebarPanel",
+	function(){
+		sidebarPanel(
+			self$ConPanel_FPKMDdataOnlySettings(),
+			self$ConPanel_ReadCountOnlySettings(),
+			self$ShareSettingsPanel(),
+			
+			actionButton("btn_PreProcess_ChangeSettings", TxtLibrary$btn_label_ChangePreprocessSetting)
 		)
 	}
 )
 
 
+
+
 ###############################################################################
 ###################			Component Functions			#######################
 ###############################################################################
+
+
+###################				Warning Panel				###################
 
 View.PreProcess$set("public", "PreRequestNotFitMessagePanel",
 	function(){
@@ -42,69 +62,24 @@ View.PreProcess$set("public", "PreRequestNotFitMessagePanel",
 
 
 ###################				Work Panel					###################
-# The main UI of Preprocessing tab. 
-# This pannel contains two part: 
-#	1. A collaspe panel, which allows user to adjust values
-#	2. A result panel, which includes multiple plot
 
-View.PreProcess$set("public", "WorkPanel",
+# The main UI of Preprocessing result. 
+View.PreProcess$set("public", "ResultPanel",
 	function(){
 		conditionalPanel(condition = "output.DataSource!=null && output.DataSourceType!=null",
-			fluidPage(
-				bsCollapse(id = "clsp_PreProcessingSetting", open="None",
-					bsCollapsePanel(title="Click Here for Pre-Process Settings",
-						style="info",
-						self$PreprocessSettingsPanel()
-					)
-				),
-				self$PreprocessPlotPanel()
-			)
-		)
-	}
-)
-
-###################				Setting Panel				###################
-# Pre process setting panel.
-# This panel have several conditional panels.
-# These panels will contains controls and settings only work for given data type
-
-View.PreProcess$set("public", "PreprocessSettingsPanel",
-	function(){
-		wellPanel(
-			self$ConPanel_ReadCountOnlySettings(),
-			self$ConPanel_FPKMDdataOnlySettings(),
-			self$ShareSettingsPanel(),
-			
-			actionButton("btn_PreProcess_ChangeSettings", TxtLibrary$btn_label_ChangePreprocessSetting)
-		)
-	}
-)
-
-###################				Output Panel				###################
-View.PreProcess$set("public", "PreprocessPlotPanel",
-	function(){
-		fluidRow(			
-			fluidRow(
-				conditionalPanel(condition = "output.DataSourceType == 1",
+			conditionalPanel(condition = "output.DataSourceType == 1",
 					column(width = 5,
       					plotlyOutput("PreProcess_ReadCount")
     				)
-				),
-				column(width = 5, offset = 1,
-					plotlyOutput("PreProcess_DistTransform")
-				)
 			),
-			fluidRow(
-				column(width = 5,
-      				plotlyOutput("PreProcess_DensityTransform")
-    			),
-				column(width = 5, offset = 1,
-					plotlyOutput("PreProcess_ScatterPlot")
-			 	)
-			)
+			plotlyOutput("PreProcess_DistTransform"),
+			plotlyOutput("PreProcess_DensityTransform"),
+			plotlyOutput("PreProcess_ScatterPlot")
 		)
 	}
 )
+
+
 
 ###################			Read Count Sepcial Settings		###################
 View.PreProcess$set("public", "ConPanel_ReadCountOnlySettings",

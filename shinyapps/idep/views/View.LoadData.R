@@ -2,28 +2,110 @@ library('R6')
 
 View.LoadData <- R6Class("View.LoadData")
 
-# side bar: sideLoadDemoDataSection
-View.LoadData$set(  
-	"public",
-	"sideLoadDemoDataSection",
+
+###############################################################################
+########################		Main Structure		###########################
+###############################################################################
+
+# Side Bar
+View.LoadData$set( "public", "sidebarPanel", 
 	function(){
-		wellPanel(				   
-			actionButton("goButton", TxtLibrary$btn_label_LoadDemoData),
-			actionButton("btn_LoadData_SearchDataFromPublic", TxtLibrary$btn_label_SearchPublicData),
-			actionButton("btn_LoadData_UploadFileFromClient", TxtLibrary$btn_label_UploadClientData)
+		sidebarPanel(
+
+			actionButton("btn_LoadData_DemoData", TxtLibrary$btn_label_LoadDemoData),
+
+			actionButton("btn_Reset_Data", TxtLibrary$btn_label_ResetData, onclick="javascript:history.go(0)"),
+
+			
+			br(),
+			br(),
+			
+			# shows when data source is not 'demo'
+			self$side_ConPanel_NonDemoDataBuild(),
+
+			# shows when data source is 'demo'
+			self$side_ConPanel_ExplainOfDemoData(),
+
+#			self$sideGuessSpeciesSection(),
+#
+#			self$side.CondPanel.GuessSpeciesSection(),
+#
+#			tableOutput('species'),
+			
+			a( h5("?",align = "right"), href="https://idepsite.wordpress.com/data-format/",target="_blank")
+
+			
 		)
 	}
 )
 
-# side bar: sideChooseDataTypeSection
+# Main Panel
+View.LoadData$set("public", "mainPanel",
+	function(){
+		mainPanel(
+    		tableOutput('tbl_TestDesign'),
+			tableOutput('tbl_RawDataTop20'),
+    		
+			br(),
+			
+			img(src='flowchart.png', align = "center",width="562", height="383"),
+    		self$main_UpdateNote(),
+    		h3("Loading R packages ... ..."),
+    		htmlOutput('fileFormat'),
+
+			self$Pop_DownloadPublicData()
+    	)
+	}
+)
+
+###############################################################################
+###################				Components				#######################
+###############################################################################
+
+
+
+###################				NonDemoDataBuild			###################
+View.LoadData$set("public", "side_ConPanel_NonDemoDataBuild",
+	#	Shows when output.DataSource != Demo
+	#	This panel helps user to build up their own data:
+	#		1. User could upload data from their PC, or search and use public
+	#			dataset
+	#		2. User could upload their own experiment design
+	function(){
+		conditionalPanel( condition = "output.DataSource != 'Demo'",
+			tags$b("Build your own data set"),
+			
+			br(),
+
+			self$side_ChooseDataTypeSection(),
+
+			self$side_ChooseNonDemoData(),
+
+			self$side_UploadExperimentDesign()
+		)
+	}
+)
+
+###################				ExplainOfDemoData			###################
+View.LoadData$set("public", "side_ConPanel_ExplainOfDemoData",
+	#	Shows when output.DataSource == Demo
+	#	A brief description about the demo data.
+	function(){
+		conditionalPanel( condition = "output.DataSource == 'Demo'",
+			h5('Some description of our demo data')
+		)
+	}
+)
+
+# side bar: side_ChooseDataTypeSection
 View.LoadData$set(  
 	"public",
-	"sideChooseDataTypeSection",
+	"side_ChooseDataTypeSection",
 	function(){
-		wellPanel( 
-			radioButtons(   
+		wellPanel(
+			radioButtons( 
 				"dataFileFormat", 
-				label = TxtLibrary$`1. Choose data type`,
+				label = '1. Choose Data Type',
 				choiceNames = list(
 					TxtLibrary$`Read counts data (recommended)`,
 					TxtLibrary$`Normalized expression values (RNA-seq FPKM, microarray, etc.)`,
@@ -44,15 +126,16 @@ View.LoadData$set(
 	}
 )
 
-# side bar: sideUploadFileSection
+
+# side bar: side_ChooseNonDemoData
 View.LoadData$set(  
 	"public",
-	"sideUploadFileSection",
+	"side_ChooseNonDemoData",
 	function(){
 		wellPanel(
 			fileInput(
-				'file1', 
-				TxtLibrary$`2. Upload expression data (CSV or text)`,
+				'fileUploadedData', 
+				label = '2. Upload expression data (CSV or text)',
 				accept = c(
 					'text/csv',
 					'text/comma-separated-values',
@@ -61,19 +144,21 @@ View.LoadData$set(
 					'.csv',
 					'.tsv'		  
 				) 
-			)
+			),
+			tags$b('Or, Search public data'),
+			actionButton("btn_LoadData_SearchDataFromPublic", TxtLibrary$btn_label_SearchPublicData)
 		)	
 	}
 )
 
-# side bar: sideUploadDataFromPublicSource
+# side bar: test design
 View.LoadData$set(  
 	"public",
-	"sideUploadDataFromPublicSource",
+	"side_UploadExperimentDesign",
 	function(){
 		wellPanel(
-			a(TxtLibrary$`New! Analyze public RNA-seq data`, href="http://bioinformatics.sdstate.edu/reads/"),
-			fileInput('file2', h5(TxtLibrary$`Optional: Upload an experiment design file(CSV or text)`),
+			fileInput('fileUploadedTestDesign', 
+				label = h5(TxtLibrary$`Optional: Upload an experiment design file(CSV or text)`),
 				accept = c(
 					'text/csv',
 					'text/comma-separated-values',
@@ -99,10 +184,12 @@ View.LoadData$set(
 	}
 )
 
-# side bar: side.CondPanel.GuessSpeciesSection
+# side bar: side_CondPanel_GuessSpeciesSection
+
+######## This part may need move to pre process
 View.LoadData$set(  
 	"public",
-	"side.CondPanel.GuessSpeciesSection",
+	"side_CondPanel_GuessSpeciesSection",
 	function(){
 		conditionalPanel("input.selectOrg == 'NEW'",
 			fileInput('gmtFile', TxtLibrary$`Upload a geneset .GMT file for enrichment analysis (optional)`,
@@ -120,23 +207,15 @@ View.LoadData$set(
 	}
 )
 
-# popout: pop.SearchPublicData
-View.LoadData$set(
-	"public",
-	"pop.SearchPublicData",
+# popout: Pop_DownloadPublicData
+View.LoadData$set("public", "Pop_DownloadPublicData",
 	function(){
 		bsModal(
-			"modalSearchTab", 
+			"modalSearchPublicDataTab", 
 			"Public RNA-Seq and ChIP-Seq data", 
 			"btn_LoadData_SearchDataFromPublic", 
 			size="large",
-			fluidPage(
-				h5("Download gene-level read counts data for 7,793 human and mouse datasets from",
-					a("ARCHS4 ", href="http://amp.pharm.mssm.edu/archs4/help.html"),
-					"on Nov. 5, 2018.",
-					"HiSeq 2000 and HiSeq 2500 raw data from NCBI's SRA database are 
-					aligned with Kallisto against human GRCh38 or mouse GRCm38 cDNA reference."
-				),
+			fluidPage(			
 				fluidRow( 
 					column(	9, 
 							h5("Search and click on a dataset to see more information before download.") 
@@ -154,55 +233,22 @@ View.LoadData$set(
 				HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />'),
 				br(),
 				fluidRow( 	
-					column(4, 	textOutput('selectedDataset') ),
-	               	column(3, 	actionButton('downloadSearchedData', 'Download') ),
-	               	column(5, 	h5(	"Edit and uplodad file to ", 
-									a("iDEP", href="http://bioinformatics.sdstate.edu/idep/"), 
-									"for analysis"
-								)
-					)	
+					column(4, 	textOutput('selectedDataset')),
+	               	column(3, 	actionButton('btn_LoadData_UseSelectedPublicData', 'Use This Sample') )	
 	     		),
 				br(),
-				tableOutput('samples'),
+				tableOutput('ViewData_SelectFromPublic_Samples'),
 				h4("Loading data and R packages ... ..."),
-				htmlOutput('DoneLoading') 
-			)	
-		)
-	}
-)
-
-View.LoadData$set(
-	"public",
-	"pop.UploadData",
-	function(){
-		bsModal(
-			"modalUploadData",
-			"Upload Data from user side",
-			"btn_LoadData_UploadFileFromClient",
-			size="large",
-			fluidPage(
-				fileInput(
-					'fileInputUploadedExpressionData', 
-					TxtLibrary$`2. Upload expression data (CSV or text)`,
-					accept = c(
-						'text/csv',
-						'text/comma-separated-values',
-						'text/tab-separated-values',
-						'text/plain',
-						'.csv',
-						'.tsv'		  
-					) 
-				)
+				htmlOutput('DoneLoading')
 			)
 		)
 	}
-
 )
 
 # main panel: Update Notes
 View.LoadData$set(
 	"public",
-	"main.UpdateNote",
+	"main_UpdateNote",
 	function(){
 		wellPanel(
 			h5("v0.81 Enabled downloading of publication-ready vector graphics files"),
@@ -241,57 +287,3 @@ View.LoadData$set(
 )
 
 
-# Side Bar
-View.LoadData$set(  
-	"public", 
-	"sidebarPanel", 
-	function(){
-		sidebarPanel(
-
-			self$sideLoadDemoDataSection(),
-
-			p(HTML(paste0("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">", TxtLibrary$Reset, "</A></div>" ))),			
-
-			self$sideChooseDataTypeSection(),
-
-			self$sideUploadDataFromPublicSource(),
-
-			self$sideGuessSpeciesSection(),
-
-			self$side.CondPanel.GuessSpeciesSection(),
-
-			tableOutput('species'),
-			
-			a( h5("?",align = "right"), href="https://idepsite.wordpress.com/data-format/",target="_blank")
-
-			
-		)
-	}
-)
-
-# Main Panel
-View.LoadData$set(
-	"public",
-	"mainPanel",
-	function(){
-		mainPanel(
-    		tableOutput('sampleInfoTable'),
-			tableOutput('contents'),
-    		#,h3("Service will not be available starting 6:30 am (US central time) on June 21 (Friday) 
-    		#due to scheduled maintenance. It should take less than 45 minutes. ",  style = "color:red")
-    		#,h3("We will re-sbumit our grant proposal to NIH. If you didn't send us a support letter last time, 
-    		#    please consider sending us a brief email/letter before Nov. 15th, with your 
-    		#    broad area of research and how iDEP helps your work. Thanks!"
-    		#,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), style = "color:red"),
-    		
-			br(),
-			
-			img(src='flowchart.png', align = "center",width="562", height="383"),
-    		self$main.UpdateNote(), #h5
-    		h3("Loading R packages ... ..."),
-    		htmlOutput('fileFormat'),
-			self$pop.SearchPublicData(),
-			self$pop.UploadData()
-    	)
-	}
-)

@@ -35,6 +35,6 @@ shinyUI(
 				PreProcessView$sidebarPanel(),
 				PreProcessView$mainPanel()
 			) 
-		)	
+		)
 	)
 )
