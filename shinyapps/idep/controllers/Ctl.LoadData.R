@@ -316,6 +316,23 @@ Ctl.LoadData$set(
 	}
 )
 
+Ctl.LoadData$set("public", "GetPackageLoadedMessage",
+	function(){
+		i = "<h3>R packages have been loaded. Ready to load data files.</h3>"
+		i = c(i,"Users can upload a CSV or tab-delimited text file with the first column as gene IDs. 
+		For RNA-seq data, read count per gene is recommended.
+		Also accepted are normalized expression data based on FPKM, RPKM, or DNA microarray data. iDEP can convert most types of common gene IDs to Ensembl gene IDs, which is used 
+			internally for enrichment and pathway analyses. iDEP parses column names to define sample groups. To define 3 biological samples (Control,
+		TreatmentA, TreatmentB) with 2 replicates each, column names should be:")
+		i = c(i," <strong> Ctrl_1, Ctrl_2, TrtA_1, TrtA_2, TrtB_1, TrtB_2</strong>.") 
+		i = c(i,"For more complex experimental design, users can upload a <a href=\"https://idepsite.wordpress.com/data-format/\" target=\"_blank\">sample information file</a>  with samples in columns and factors (genotypes and conditions) in rows. 
+		       With such a file, users can define a statistic model according to study design, which enables them to control the effect for batch effects or paired samples. 
+	         or detect interactions between factors (how mutant responds differently to treatment than wild-type).") 
+		
+		HTML(paste(i, collapse='<br/>') )
+	}
+)
+
 
 ####Ctl.LoadData$set(
 ####	"public",

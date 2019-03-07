@@ -40,10 +40,13 @@ shinyServer(
 		})
 
 		observeEvent(input$btn_Reset_Data,{
-			ReactVars <- reactiveValues()
+			ReactVars$RawTestDesign <- NULL
+			ReactVars$RawData <- NULL
 			RegularVars <- list()
 		})
 
+		output$txt_PackageLoadedMessage <- renderUI(LoadDataCtrl$GetPackageLoadedMessage())
+		outputOptions(output, "txt_PackageLoadedMessage", suspendWhenHidden = FALSE)
 
 		output$tbl_TestDesign <- renderTable(ReactVars$RawTestDesign)
 		output$tbl_RawDataTop20 <- renderTable(ReactVars$RawData[1: min(20, nrow(ReactVars$RawData)) ,])

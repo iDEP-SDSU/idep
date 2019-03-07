@@ -14,9 +14,10 @@ View.LoadData$set( "public", "sidebarPanel",
 
 			actionButton("btn_LoadData_DemoData", TxtLibrary$btn_label_LoadDemoData),
 
-			actionButton("btn_Reset_Data", TxtLibrary$btn_label_ResetData, onclick="javascript:history.go(0)"),
+			div(actionButton("btn_Reset_Data", TxtLibrary$btn_label_ResetData, onclick="javascript:history.go(0)"),
+				style="float:right"),
 
-			
+						
 			br(),
 			br(),
 			
@@ -50,8 +51,11 @@ View.LoadData$set("public", "mainPanel",
 			
 			img(src='flowchart.png', align = "center",width="562", height="383"),
     		self$main_UpdateNote(),
-    		h3("Loading R packages ... ..."),
-    		htmlOutput('fileFormat'),
+			conditionalPanel( condition = "!output.txt_PackageLoadedMessage",
+    			h3("Loading R packages ... ...")
+			),
+			
+    		htmlOutput('txt_PackageLoadedMessage'),
 
 			self$Pop_DownloadPublicData()
     	)
