@@ -7,62 +7,41 @@ source('businessLogic/LogicManager.R')
 Ctl.PreProcess <- R6Class("Ctl.PreProcess")
 LogicManager <- Logic.Manager$new()
 
-Ctl.PreProcess$set("public","testPlotly",
-	function(){
-		x <- c(1:100)
-		random_y <- rnorm(100, mean = 0)
-		data <- data.frame(x, random_y)
-		
-		p <- plot_ly(data, x = ~x, y = ~random_y, type = 'scatter', mode = 'lines')
-		return(p)
-	}
-)
-
-
-
-Ctl.PreProcess$set("public","testPlotlyData",
-	function(){
-		x <- c(1:100)
-		random_y <- rnorm(100, mean = 0)
-		data <- data.frame(x, random_y)
-		
-		
-		return(data)
-	}
-)
-
-
-Ctl.PreProcess$set("public", "testData",
+Ctl.PreProcess$set("public", "PreProcessResult",
 	function(input, session, storeVariableList){
-	
-		# Pre checking
-		if(is.null(storeVariableList$RawData)){
-			#if no raw data, then return null
-			return(NULL)
-		}
+		
+		withProgress(message="Reading and pre-processing", {
+
+			# Pre checking
+			if(is.null(storeVariableList$RawData)){
+				#if no raw data, then return null
+				return(NULL)
+			}
 
 
 
-			if(storeVariableList$DataSourceType == 1){
+			if(input$dataFileFormat == 1){
+				incProgress(1/3, "Pre-processing counts data")
 				minCount = input$numMinCounts
 				minSample = input$numNMinSamplesInCountCase
 				logStart = input$numCountsLogStart
+				incProgress(1/2,"transforming raw counts")
 			}else{
-				# actrually should be output.DataSourceType == 2
-				# However, when output.DataSourceType == 3, minCound and minSample won't use.
+				# actrually should be input.dataFileFormat == 2
+				# However, when input.dataFileFormat == 3, minCound and minSample won't use.
 				# So we simply it into 'if else' statement.
-
+				incProgress(1/3,"Pre-processing data")
 				minCount = input$numMinFPKM
 				minSample = input$numNMinSampleInFPKMCase
 				logStart = input$numFPKMLogStart
 			}
-	
+
 			#if preprocess is not trigger, do it.
 			PreProcessResult <- 
 				LogicManager$PreProcessing$RawDataPreprocess(
 					storeVariableList$RawData, 
 					input$selectMissingValueImputationMethod,
-					storeVariableList$DataSourceType,
+					input$dataFileFormat,
 					minCount,
 					minSample,
 					as.numeric(input$selectCountsTransform),
@@ -71,26 +50,15 @@ Ctl.PreProcess$set("public", "testData",
 					input$isNoFDR			## This parm is got in load data tab.
 				)
 			
-			return(PreProcessResult)
+			incProgress(1, "Done.")
+		})
+		
+		return(PreProcessResult)
 	}
 )
 
-Ctl.PreProcess$set("public", "testPlot",
-	function(rawCount){
-		# check data 
-		if(is.null(rawCount)){
-			return(NULL)
-		}
-
-		# calculate group
-		groups = as.factor( LogicManager$PreProcessing$DetectGroups(colnames(rawCount)) )
-
-		# fetch the plot
-		return(LogicManager$Display$GetReadcountBarPlot(rawCount, groups))
-	}
-)
 # Preprocessing tab, first plot
-Ctl.PreProcess$set("public", "getTotalReadCountsData",
+Ctl.PreProcess$set("public", "GetTotalReadCountsPlot",
 	function(rawCount){
 		# check data 
 		if(is.null(rawCount)){
@@ -107,7 +75,7 @@ Ctl.PreProcess$set("public", "getTotalReadCountsData",
 
 
 # Preprocessing tab, second plot
-Ctl.PreProcess$set("public", "getTransformedDataBoxPlot",
+Ctl.PreProcess$set("public", "GetTransformedDataBoxPlot",
 	function(transformedData){
 		#
 		# this function should be called after LogicManager$PreProcessing$RawDataPreprocess() function has been called. 
@@ -130,7 +98,7 @@ Ctl.PreProcess$set("public", "getTransformedDataBoxPlot",
 )
 
 # Preprocessing tab, third plot
-Ctl.PreProcess$set("public", "getTransformedDataDensityPlot",
+Ctl.PreProcess$set("public", "GetTransformedDataDensityPlot",
 	function(transformedData){
 		#
 		# this function should be called after LogicManager$PreProcessing$RawDataPreprocess() function has been called. 
@@ -153,7 +121,7 @@ Ctl.PreProcess$set("public", "getTransformedDataDensityPlot",
 )
 
 # Preprocessing tab, fourth plot
-Ctl.PreProcess$set("public", "getTransformedDataScatterPlot",
+Ctl.PreProcess$set("public", "GetTransformedDataScatterPlot",
 	function(transformedData){
 		#
 		# this function should be called after LogicManager$PreProcessing$RawDataPreprocess() function has been called. 

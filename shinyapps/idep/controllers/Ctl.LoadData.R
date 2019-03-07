@@ -305,16 +305,16 @@ Ctl.LoadData$set( "public", "EventHandler_UseUploadedFiles",
 	}
 )
 
-Ctl.LoadData$set(
-	"public",
-	"EventHandler_ConfirmDataSrouceType",
-	function(input, output, session, storeVariableList){
-		storeVariableList$DataSourceType = as.numeric(input$dataFileFormat)
-		storeVariableList$DataSource_noFDR = input$noFDR
-		output$DataSourceType = renderText(storeVariableList$DataSourceType)
-		outputOptions(output, "DataSourceType", suspendWhenHidden = FALSE)
-	}
-)
+#Ctl.LoadData$set(
+#	"public",
+#	"EventHandler_ConfirmDataSrouceType",
+#	function(input, output, session, storeVariableList){
+#		storeVariableList$DataSourceType = as.numeric(input$dataFileFormat)
+#		storeVariableList$DataSource_noFDR = input$noFDR
+#		output$DataSourceType = renderText(storeVariableList$DataSourceType)
+#		outputOptions(output, "DataSourceType", suspendWhenHidden = FALSE)
+#	}
+#)
 
 Ctl.LoadData$set("public", "GetPackageLoadedMessage",
 	function(){
