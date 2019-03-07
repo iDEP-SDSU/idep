@@ -240,11 +240,11 @@ PreProcessing.Logic$set("public", "CalcKurtosisForReadCount",
 			dataTypeWarning = NULL
 		}
 		
-		rawCount = dat
-
 		dat <- round(dat,0)
 		dat <- dat[ which( apply( cpm(DGEList(counts = dat)), 1,  
 							function(x) sum(x >=minCounts)) >= NminSamples ) , ]
+		
+		rawCount = dat
 
 		# construct DESeqExpression Object
 		# colData = cbind(colnames(x), as.character(detectGroups( colnames(x) )) )

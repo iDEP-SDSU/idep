@@ -27,13 +27,15 @@ Display.Manager$set("public", "GetReadcountBarPlot",
 
 		p <- plot_ly(data = tbl, x = ~x, y = ~y, type = 'bar',
 					marker = list(color = columnColor) ) %>%
-				layout(title = paste("Total read counts (millions)", memo) )
+				layout(	title = paste("Total read counts (millions) of each sample", memo),
+						xaxis = list(title="Sample"),
+						yaxis = list(title="Total read couns (millions)") )
 
 		return(p)
 	}
 )
 
-Display.Manager$set("public", "GetTransedDataBoxPlot",
+Display.Manager$set("public", "GetTransformedDataBoxPlot",
 	function(transedData, groups){
 		# 1. Init/load vars
 		memo = ""
@@ -80,13 +82,13 @@ Display.Manager$set("public", "GetTransedDataBoxPlot",
 					# name = groupName defines the name showing on the legend
 		}
 
-		p <- p %>% layout(title = paste("Distribution of transformed data (millions)", memo) )
+		p <- p %>% layout(title = paste("Distribution of transformed data", memo) )
 
 		return(p)
 	}
 )
 
-Display.Manager$set("public", "GetTransedDataDensityPlot",
+Display.Manager$set("public", "GetTransformedDataDensityPlot",
 	function(transedData, groups){
 		# 1. Init/load vars
 		memo = ""
@@ -131,7 +133,7 @@ Display.Manager$set("public", "GetTransedDataDensityPlot",
 		}
 
 		p <- p %>% 
-			layout(title = paste("Distribution of transformed data (millions)", memo),
+			layout(title = paste("Density plot of transformed data", memo),
 				xaxis = list(title = "Expression values")			
 			)
 
@@ -140,7 +142,7 @@ Display.Manager$set("public", "GetTransedDataDensityPlot",
 )
 
 
-Display.Manager$set("public", "GetTransedDataScatterPlot",
+Display.Manager$set("public", "GetTransformedDataScatterPlot",
 	function(transedData){
 		# 1. Init/load vars
 		memo = ""

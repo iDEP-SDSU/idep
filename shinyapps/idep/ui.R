@@ -13,22 +13,28 @@ PreProcessView <- View.PreProcess$new()
 
 
 shinyUI(
-  	fluidPage(
-  		titlePanel("iDep"),
-		navlistPanel(
-			id = "iDepNav",
-			"Prepare Data",
-			widths = c(2, 10),
-			tabPanel("Load Data",
-				width = "80%",
-				mainPanel(LoadDataView$mainPanel(), width=10)
-			),
-			tabPanel("Pre Process",
-				width = "80%",
-				mainPanel(PreProcessView$mainPanel(), width=10)
-			),
-			"Analysis",
-			tabPanel("some analysis method")
+	navbarPage(
+  		CONFIG_SERVER_VERSION,
+		id='navBar',
+
+		#==========================================
+		#				Load Data Tab
+		#==========================================
+		tabPanel("Load Data",
+			sidebarLayout(
+				LoadDataView$sidebarPanel(),
+				LoadDataView$mainPanel()
+			) 
+		),
+
+		#==========================================
+		#				Pre-process
+		#==========================================
+		tabPanel("Pre-Process", 
+			sidebarLayout(
+				PreProcessView$sidebarPanel(),
+				PreProcessView$mainPanel()
+			) 
 		)
 	)
 )

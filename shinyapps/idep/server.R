@@ -8,6 +8,7 @@ source('server.config')
 source('controllers/ControllerManager.R')
 
 ReactVars <- reactiveValues()
+RegularVars <- list()
 
 LoadDataCtrl <- Ctl.LoadData$new()
 PreProcessCtrl <- Ctl.PreProcess$new()
@@ -34,17 +35,18 @@ shinyServer(
 			LoadDataCtrl$EventHandler_UseDemoData(input, output, session, ReactVars)
 		})
 
-		observeEvent(input$btn_LoadData_UseUploadedData,{
+		observeEvent(input$fileUploadedData$datapath,{
 			LoadDataCtrl$EventHandler_UseUploadedFiles(input, output, session, ReactVars)
 		})
 
-		observeEvent(input$btn_LoadData_ConfirmDataSourceType,{
-			LoadDataCtrl$EventHandler_ConfirmDataSrouceType(input, output, session, ReactVars)
+		observeEvent(input$btn_Reset_Data,{
+			ReactVars$RawTestDesign <- NULL
+			ReactVars$RawData <- NULL
+			RegularVars <- list()
 		})
 
-		observeEvent(input$btn_LoadData_MoveToPreprocess,{
-			updateNavbarPage(session, "iDepNav", selected = "Pre Process")
-		})
+		output$txt_PackageLoadedMessage <- renderUI(LoadDataCtrl$GetPackageLoadedMessage())
+		outputOptions(output, "txt_PackageLoadedMessage", suspendWhenHidden = FALSE)
 
 		output$tbl_TestDesign <- renderTable(ReactVars$RawTestDesign)
 		output$tbl_RawDataTop20 <- renderTable(ReactVars$RawData[1: min(20, nrow(ReactVars$RawData)) ,])
@@ -56,21 +58,33 @@ shinyServer(
 		############################################################################
 
 
+		ReactVars$PreProcessResult <- reactive({
+			PreProcessCtrl$PreProcessResult(input, session, ReactVars)
+		})
 
 		output$PreProcess_ReadCount <- renderPlotly({
-			PreProcessCtrl$getTotalReadCountsData(input, output, session, ReactVars)
+			PreProcessCtrl$GetTotalReadCountsPlot(ReactVars$PreProcessResult()$rawCount)
 		})
 
 		output$PreProcess_DistTransform <- renderPlotly({
-			PreProcessCtrl$getTransDataBoxPlot(input, output, session, ReactVars)
-		})
-
-		output$PreProcess_DensityTransform <- renderPlotly({
-			PreProcessCtrl$getTransDataDensityPlot(input, output, session, ReactVars)
+			PreProcessCtrl$GetTransformedDataBoxPlot(ReactVars$PreProcessResult()$dat)
 		})
 		
-		output$PreProcess_ScatterPlot <- renderPlotly({
-			PreProcessCtrl$getTransDataScatterPlot(input, output, session, ReactVars)
+
+		output$PreProcess_DensityTransform <- renderPlotly({
+			PreProcessCtrl$GetTransformedDataDensityPlot(ReactVars$PreProcessResult()$dat)
 		})
+
+		output$PreProcess_ScatterPlot <- renderPlotly({
+			PreProcessCtrl$GetTransformedDataScatterPlot(ReactVars$PreProcessResult()$dat)
+		})
+
+
+		############################################################################
+		#						0.0		Test R Markdown Report
+		############################################################################
+
+
+
 	}
 )

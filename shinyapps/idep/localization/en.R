@@ -25,7 +25,7 @@ Localization.EN$`Fold-changes only, no corrected P values` <- 'Fold-changes only
 Localization.EN$`Upload expression data (CSV or text)` <- 'Upload expression data (CSV or text)'
 
 Localization.EN$`New! Analyze public RNA-seq data` <- 'New! Analyze public RNA-seq data'
-Localization.EN$`Optional: Upload an experiment design file(CSV or text)` <- 'Optional: Upload an experiment design file(CSV or text)'
+Localization.EN$`Optional: Upload an experiment design file(CSV or text)` <- '* Optional: Upload an experiment design file(CSV or text)'
 
 Localization.EN$`3. Verify guessed species. Change if neccessary.` <- '3. Verify guessed species. Change if neccessary.'
 
