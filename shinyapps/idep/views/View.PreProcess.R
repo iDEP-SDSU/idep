@@ -30,6 +30,7 @@ View.PreProcess$set("public", "mainPanel",
 View.PreProcess$set("public", "sidebarPanel",
 	function(){
 		sidebarPanel(
+			self$GuessSpeciesPanel(),
 			self$ConPanel_FPKMDdataOnlySettings(),
 			self$ConPanel_ReadCountOnlySettings(),
 			self$ShareSettingsPanel()
@@ -139,7 +140,7 @@ View.PreProcess$set("public", "ConPanel_FPKMDdataOnlySettings",
 ###################			Shared  Preprocess Settings		###################
 View.PreProcess$set("public", "ShareSettingsPanel",
 	function(){
-		fluidPage(
+		wellPanel(
 			selectInput("selectMissingValueImputationMethod", 
         		label   = "Missing values imputation:",
 				choices = list(	"Gene median" = "geneMedian",
@@ -171,7 +172,29 @@ View.PreProcess$set("public", "ShareSettingsPanel",
 	}
 )
 
-
+###################			Guess Species Panel				###################
+View.PreProcess$set("public", "GuessSpeciesPanel",
+	function(){
+		wellPanel(
+			strong("Verify guessed species. Change if neccessary."),
+			selectInput("selectOrg", label = NULL,"Best matching species",width='100%'),
+			conditionalPanel("input.selectOrg == 'NEW'",
+				fileInput('gmtFile', 'Upload a geneset .GMT file for enrichment analysis (optional)',
+						accept = c(
+							'text/csv',
+							'text/comma-separated-values',
+							'text/tab-separated-values',
+							'text/plain',
+							'.csv',
+							'.tsv',
+							'.gmt'          
+						)
+				)
+			),
+			tableOutput('tblSpecies')
+		)
+	}
+)
 
 
 

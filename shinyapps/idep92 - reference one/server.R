@@ -2978,17 +2978,22 @@ output$contents <- renderTable({
 
 
 output$species <-renderTable({   
-      if (is.null(input$file1) && input$goButton == 0)    return()
-      isolate( {  #tem <- convertID(input$input_text,input$selectOrg );
-	  	  withProgress(message=sample(quotes,1), detail="Converting gene IDs", {
-                  tem <- converted()
-			incProgress(1, detail = paste("Done"))	  })
+    if (is.null(input$file1))    return()
+    isolate( {  #tem <- convertID(input$input_text,input$selectOrg );
+	  	withProgress(message=sample(quotes,1), 
+		  	detail="Converting gene IDs", 
+			{
+                tem <- converted()
+				incProgress(1, detail = paste("Done"))	  
+			}
+		)
 		  
-				  if( is.null(tem)) {as.data.frame("ID not recognized.")} else {
-	              tem$speciesMatched }
+		if( is.null(tem)) 
+		{	as.data.frame("ID not recognized.")	} 
+		else { tem$speciesMatched }
 
-      }) # avoid showing things initially         
-    }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+    }) # avoid showing things initially         
+}, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
 # show first 20 rows of processed data; not used
 output$debug <- renderTable({

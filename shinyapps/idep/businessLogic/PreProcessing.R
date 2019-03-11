@@ -58,6 +58,7 @@ PreProcessing.Logic$set("public","RawDataPreprocess",
 	}
 )
 
+#	support function for RawDataPreprocess	
 PreProcessing.Logic$set("public", "RemoveNonNumericalColumns",
 	function(rawData){
 	# Remove non numeric column
@@ -81,7 +82,7 @@ PreProcessing.Logic$set("public", "RemoveNonNumericalColumns",
 	}
 )
 
-
+#	support function for RawDataPreprocess
 PreProcessing.Logic$set("public", "RemoveAllMissingRows",
 	## Remove rows with only missing value
 	function(dat){
@@ -92,7 +93,7 @@ PreProcessing.Logic$set("public", "RemoveAllMissingRows",
 	}
 )
 
-
+#	support function for RawDataPreprocess
 PreProcessing.Logic$set("public", "CleanGeneIDs",
 	function(dat){
 		# remove spaces in gene ids
@@ -110,6 +111,7 @@ PreProcessing.Logic$set("public", "CleanGeneIDs",
 	}
 )
 
+#	support function for RawDataPreprocess
 PreProcessing.Logic$set("public", "SetGeneIDtoRowname",
 	function(dat){	
 		rownames(dat) <- dat[,1]
@@ -117,7 +119,7 @@ PreProcessing.Logic$set("public", "SetGeneIDtoRowname",
 	}
 )
 
-
+#	support function for RawDataPreprocess
 PreProcessing.Logic$set("public", "CleanSampleNames",
 	function(dat){	
 		# remove "-" or "." from sample names
@@ -127,6 +129,7 @@ PreProcessing.Logic$set("public", "CleanSampleNames",
 	}
 )
 
+#	support function for RawDataPreprocess
 PreProcessing.Logic$set("public", "ImputateMissingValue",
 	function(dat, method){
 		avaiableMethod = c("geneMedian", "treatAsZero", "geneMedianInGroup")
@@ -152,7 +155,7 @@ PreProcessing.Logic$set("public", "ImputateMissingValue",
 	}
 )
 
-
+#	support function for ImputateMissingValue
 PreProcessing.Logic$set("public", "FillViaGeneMedian",
 	function(dat){
 		rowMedians <- apply(dat,1, median,na.rm=T)
@@ -164,6 +167,7 @@ PreProcessing.Logic$set("public", "FillViaGeneMedian",
 	}
 )
 
+#	support function for ImputateMissingValue
 PreProcessing.Logic$set("public", "TreatAsZero",
 	function(dat){
 		dat[is.na(dat)] <- 0	
@@ -171,6 +175,7 @@ PreProcessing.Logic$set("public", "TreatAsZero",
 	}
 )
 
+#	support function for ImputateMissingValue
 PreProcessing.Logic$set("public", "FillViaGroupMedian",
 	function(dat){
 		sampleGroups = self$DetectGroups(colnames(dat))
@@ -196,7 +201,6 @@ PreProcessing.Logic$set("public", "FillViaGroupMedian",
 	}
 )
 
-
 PreProcessing.Logic$set("public", "DetectGroups",
 	function(dat){
 		# x are col names
@@ -215,6 +219,7 @@ PreProcessing.Logic$set("public", "DetectGroups",
 	}
 )
 
+#	support function for RawDataPreprocess	
 PreProcessing.Logic$set("public", "CalcKurtosis",
 	function(dat, dataType, minCounts=NULL, minSamples=NULL, CountsTransform=NULL, 
 				LogStart=NULL, isTransformFPKM=FALSE, isNoFDR=TRUE ){
@@ -231,7 +236,7 @@ PreProcessing.Logic$set("public", "CalcKurtosis",
 	}
 
 )
-
+#	support function for CalcKurtosis	
 PreProcessing.Logic$set("public", "CalcKurtosisForReadCount",
 	function(dat, mean.kurtosis, minCounts, NminSamples, CountsTransform, CountsLogStart){
 		if(!is.integer(dat) & (mean.kurtosis < CONST_KRUTOSIS_LOG ) ) {
@@ -266,7 +271,7 @@ PreProcessing.Logic$set("public", "CalcKurtosisForReadCount",
 	}
 )
 
-
+#	support function for CalcKurtosis	
 PreProcessing.Logic$set("public", "CalcKurtosisForFPKM",
 	function(dat, mean.kurtosis, LowFilter, NminSamples, isTransform, LogStart){
 		if ( is.integer(dat) ) {
@@ -295,6 +300,7 @@ PreProcessing.Logic$set("public", "CalcKurtosisForFPKM",
 	}
 )
 
+#	support function for CalcKurtosis	
 PreProcessing.Logic$set("public", "CalcKurtosisForOtherDatatype",
 	function(dat, isNoFDR){
 		n2 = ( dim(dat)[2] %/% 2) # 5 --> 2
@@ -306,28 +312,114 @@ PreProcessing.Logic$set("public", "CalcKurtosisForOtherDatatype",
 	}
 )
 
+# not finished function: readSampleInfo <- reactive
+#PreProcessing.Logic$set("public","RawSampleInfoPreprocess", 
+#	function(rawInfo, colnameOfData){
+#		if(is.null(rawInfo)){
+#			return(NULL)
+#		}
+#		
+#		temp.info <- self$CleanSampleNames(rawInfo)
+#
+#		matchedInfo <- match(toupper(colnameOfData), toupper(colnames(temp.info)))
+#		matchedInfo <- matchedInfo[which(!is.na(matchedInfo))]
+#
+#		validate(
+#				  need(length(unique(ix) ) == dim(readData()$data)[2] 
+#				       & dim(x)[1]>=1 & dim(x)[1] <500 # at least one row, it can not be more than 500 rows
+#					 ,"Error!!! Sample information file not recognized. Sample names must be exactly the same. Each row is a factor. Each column represent a sample.  Please see documentation on format.")
+#		)
+#
+#		#-----------Double check factor levels, change if needed
+#		# remove "-" or "." from factor levels
+#		for( i in 1:dim(temp.info)[1]) {
+#		   temp.info[i,] = gsub("-","",temp.info[i,])
+#		   temp.info[i,] = gsub("\\.","",temp.info[i,])				
+#		}
+#		
+#	}
+#)
+#
 
-PreProcessing.Logic$set("public","RawSampleInfoPreprocess", 
-	function(rawInfo, colnameOfData){
-		if(is.null(rawInfo)){
-			return(NULL)
+# convert gene IDs to ensembl gene ids and find species
+# steps:
+#	1. clean gene name
+#	2. query from convertID.db/mapping table
+#		
+#	
+convertID <- function(geneNames, selectOrg) {
+	querySet <- self$cleanGeneSet( unlist( strsplit( toupper(geneNames),'\t| |\n|\\,')))
+	# querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
+
+	result <- DB$QuerySpeciesInfoFromConvertDBMapping(querySet)
+	# this will return a table with id,ens,species
+
+
+	if( dim(result)[1] == 0  ){
+		return(NULL)
+	} 
+	
+	if(selectOrg == speciesChoice[[1]]) {
+		comb = paste( result$species,result$idType)
+		sortedCounts = sort(table(comb),decreasing=T)
+		recognized =names(sortedCounts[1])
+		result <- result[which(comb == recognized),]
+		speciesMatched=sortedCounts
+		names(speciesMatched )= sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  ) 
+		speciesMatched <- as.data.frame( speciesMatched )
+		if(length(sortedCounts) == 1) { # if only  one species matched
+		speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
+		} else {# if more than one species matched
+			speciesMatched[,1] <- as.character(speciesMatched[,1])
+			speciesMatched[,1] <- paste( speciesMatched[,1]," (",speciesMatched[,2], ")", sep="") 
+			speciesMatched[1,1] <- paste( speciesMatched[1,1],"   ***Used in mapping***  To change, select from above and resubmit query.") 	
+			speciesMatched <- as.data.frame(speciesMatched[,1])
 		}
-		
-		temp.info <- self$CleanSampleNames(rawInfo)
-
-		matchedInfo <- match(toupper(colnameOfData), toupper(colnames(temp.info)))
-		matchedInfo <- matchedInfo[which(!is.na(matchedInfo))]
-
-		#-----------Double check factor levels, change if needed
-		# remove "-" or "." from factor levels
-		for( i in 1:dim(temp.info)[1]) {
-		   temp.info[i,] = gsub("-","",temp.info[i,])
-		   temp.info[i,] = gsub("\\.","",temp.info[i,])				
-		}
-		
+	} else { # if species is selected
+		result <- result[which(result$species == selectOrg ) ,]
+		if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
+		speciesMatched <- as.data.frame(paste("Using selected species ", findSpeciesByIdName(selectOrg) )  )
 	}
-)
+	result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id
+	result <- result[which(!duplicated(result[,1]) ),] # remove duplicates in user ID
+	colnames(speciesMatched) = c("Matched Species (genes)" ) 
+	conversionTable <- result[,1:2]; colnames(conversionTable) = c("User_input","ensembl_gene_id")
+	conversionTable$Species = sapply(result[,3], findSpeciesByIdName )
+	if(0){
+		# generate a list of gene set categories
+		ix = grep(findSpeciesById(result$species[1])[1,1],gmtFiles)
+		if (length(ix) == 0 ) {categoryChoices = NULL}
+		# If selected species is not the default "bestMatch", use that species directly
+		if(selectOrg != speciesChoice[[1]]) {  
+			ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
+			if (length(ix) == 0 ) {categoryChoices = NULL}
+			totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
+		}
+		pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
+		# Generate a list of geneset categories such as "GOBP", "KEGG" from file
+		geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
+		geneSetCategory  <- geneSetCategory[,1]
+		categoryChoices <- setNames(as.list( geneSetCategory ), geneSetCategory )
+		categoryChoices <- append( setNames( "All","All available gene sets"), categoryChoices  )
+		#change GOBO to the full description for display
+		names(categoryChoices)[ match("GOBP",categoryChoices)  ] <- "GO Biological Process"
+		names(categoryChoices)[ match("GOCC",categoryChoices)  ] <- "GO Cellular Component"
+		names(categoryChoices)[ match("GOMF",categoryChoices)  ] <- "GO Molecular Function"
+		dbDisconnect(pathway)
+	} #if (0)
 
+	return(list(originalIDs = querySet,IDs=unique( result[,2]), 
+				species = findSpeciesById(result$species[1]), 
+				#idType = findIDtypeById(result$idType[1] ),
+				speciesMatched = speciesMatched,
+				conversionTable = conversionTable
+				) )
+}
 
-
-
+# Clean up gene sets. Remove spaces and other control characters from gene names  
+cleanGeneSet <- function (x){
+  # remove duplicate; upper case; remove special characters
+  x <- unique( toupper( gsub("\n| ","",x) ) )
+  x <- x[which( nchar(x)>1) ]  # genes should have at least two characters
+  return(x)
+}

@@ -49,7 +49,6 @@ Ctl.PreProcess$set("public", "PreProcessResult",
 					input$isApplyLogTransFPKM,
 					input$isNoFDR			## This parm is got in load data tab.
 				)
-			
 			incProgress(1, "Done.")
 		})
 		
@@ -138,4 +137,30 @@ Ctl.PreProcess$set("public", "GetTransformedDataScatterPlot",
 		# fetch the plot
 		return(LogicManager$Display$GetTransformedDataScatterPlot(transformedData))
 	}
+)
+
+Ctl.PreProcess$set("public", "GetGuessSpeciesResult",
+	function(convertedIDResult){
+		if(is.null(convertedIDResult)){
+			return(as.data.frame("ID not recognized."))
+		} 
+		else { 
+			return(convertedIDResult$speciesMatched)
+		}
+	}
+)
+
+
+Ctl.PreProcess$set("public", "ConvertedIDResult",
+	function(transformedData, selectedOrg){
+		withProgress(
+			message = something we didnt finished(), 
+			detail="Converting gene IDs", 
+			{
+				Converted code here
+				incProgress(1, detail = paste("Done"))
+			}
+		)
+	}
+
 )

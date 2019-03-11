@@ -40,3 +40,6 @@ docs/~$me style.docx
 *.tmp
 docs/~$Input Variable List.xlsx
 shinyapps/idep/hello.rds
+docs/Output workflow/tblSpecies(species)/~$$new.~vsdx
+docs/Output workflow/tblSpecies(species)/~$$reference.~vsdx
+docs/~$$reactive vars UML.~vsdx

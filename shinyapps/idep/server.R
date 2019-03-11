@@ -57,9 +57,14 @@ shinyServer(
 		#   					1.2  Pre Process
 		############################################################################
 
+		observe({  updateSelectInput(session, "selectOrg", choices = QuerySpeciesListFromConvertDBOrgInfo() ) })
 
 		ReactVars$PreProcessResult <- reactive({
 			PreProcessCtrl$PreProcessResult(input, session, ReactVars)
+		})
+
+		ReactVars$ConvertedIDResult <- reactive({
+			PreProcessCtrl$ConvertedIDResult(ReactVars$PreProcessResult()$dat, input$selectOrg )
 		})
 
 		output$PreProcess_ReadCount <- renderPlotly({
@@ -79,6 +84,11 @@ shinyServer(
 			PreProcessCtrl$GetTransformedDataScatterPlot(ReactVars$PreProcessResult()$dat)
 		})
 
+		output$tblSpecies <- renderTable({
+			PreProcessCtrl$GetGuessSpeciesResult(ReactVars$ConvertedIDResult())
+		}, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T) )
+
+		
 
 		############################################################################
 		#						0.0		Test R Markdown Report
