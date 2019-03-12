@@ -8,8 +8,7 @@ library(plotly)
 
 LoadDataView <- View.LoadData$new()
 PreProcessView <- View.PreProcess$new()
-
-
+HeatmapView <- View.Heatmap$new()
 
 
 shinyUI(
@@ -35,6 +34,19 @@ shinyUI(
 				PreProcessView$sidebarPanel(),
 				PreProcessView$mainPanel()
 			) 
+		),
+
+		#==========================================
+		#				Heatmap
+		#==========================================
+		tabPanel("Heatmap", 
+			sidebarLayout(
+				HeatmapView$sidebarPanel(),
+				HeatmapView$mainPanel()
+			) 
 		)
 	)
 )
+
+
+

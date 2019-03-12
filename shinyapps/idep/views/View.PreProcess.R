@@ -191,7 +191,7 @@ View.PreProcess$set("public", "GuessSpeciesPanel",
 					)
 				)
 			),
-			tableOutput('tblSpecies')
+			tableOutput('PreProcess_tblSpecies')
 		)
 	}
 )

@@ -85,7 +85,7 @@ shinyServer(
 			PreProcessCtrl$GetTransformedDataScatterPlot(ReactVars$PreProcessResult()$dat)
 		})
 
-		output$tblSpecies <- renderTable({
+		output$PreProcess_tblSpecies <- renderTable({
 			PreProcessCtrl$GetGuessSpeciesResult(ConvertedIDResult())
 		}, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
