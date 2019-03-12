@@ -5,7 +5,9 @@ library(DT)
 library("rhdf5")
 
 source('server.config')
+source('businessLogic/LogicManager.R')
 
+LogicManager <- Logic.Manager$new()
 Ctl.LoadData <- R6Class("Ctl.LoadData")
 
 ## Fields 
@@ -25,9 +27,7 @@ Ctl.LoadData$set("public",	"SelectedSampleInfo", NULL)
 
 
 ## Init
-Ctl.LoadData$set(  
-	"public",
-	"initialize",
+Ctl.LoadData$set("public", "initialize",
 	function(){
 		self$destination_fileH = paste0(CONFIG_DATA_READCOUNT_PATH, "human_matrix.h5")
 		self$destination_fileM = paste0(CONFIG_DATA_READCOUNT_PATH, "mouse_matrix.h5")
@@ -93,81 +93,63 @@ Ctl.LoadData$set(
 )
 
 
-
-
-
-
-
-
 ## Methods
 
 #update selected sample info and counts data
-Ctl.LoadData$set(
-	"public",
-	"UpdateSelectedSampleInfo",
+Ctl.LoadData$set("public", "UpdateSelectedSampleInfo",
 	function(input){
-			if (is.null(input$SearchData_rows_selected)) { 
-				self$SelectedSampleInfo <- NULL
-				return(self$SelectedSampleInfo)
-			}
-
-			withProgress(
-				message = "Searching ...", 
-				{
-					
-					iy = which( self$DatasetInfo$Species == input$selected.species.archs4 )
-					ix = iy[input$SearchData_rows_selected]
-
-					keyword = self$DatasetInfo$GEO.ID[ix]
-					keyword = gsub(" ","",keyword)
-					ix = which(self$sample_info[,4]== keyword)
-
-					if(length(ix) == 0){
-						self$SelectedSampleInfo <- NULL
-						return(self$SelectedSampleInfo)
-					}else{
-						samp = self$sample_info[ix,1]
-						if( names(sort(table(self$sample_info[ix,5]),decreasing=T))[1] == "human" ){	
-							destination_file = self$destination_fileH
-						}
-
-						if( names(sort(table(self$sample_info[ix,5]),decreasing=T))[1] == "mouse" ){
-							destination_file = self$destination_fileM
-						}
-
-						samples = h5read(destination_file, "meta/Sample_geo_accession")
-						sample_locations = which(samples %in% samp)
-
-						genes = h5read(destination_file, "meta/genes")
-						expression = h5read(destination_file, "data/expression", index=list(1:length(genes), sample_locations))
-						tissue = h5read(destination_file, "meta/Sample_source_name_ch1")
-						sample_title = h5read(destination_file, "meta/Sample_title")
-						H5close()
-						incProgress(1/2)
-						
-						rownames(expression) <-paste(" ",genes)
-						colnames(expression) <- paste( samples[sample_locations], sample_title[sample_locations], sep=" ")
-						expression <- expression[,order(colnames(expression))]
-						tem = self$sample_info[ix,c(5,1:3)]
-						tem = tem[order(tem[,4]),]
-						colnames(tem) <- c("Species", "Sample ID","Tissue","Sample Title")
-						incProgress(1)
-
-						if(dim(tem)[1]>50) {
-							tem = tem[1:50,]
-						}
-						
-						self$SelectedSampleInfo <- list(info=tem, counts = expression )
-						return(self$SelectedSampleInfo)
+		if (is.null(input$SearchData_rows_selected)) { 
+			self$SelectedSampleInfo <- NULL
+			return(self$SelectedSampleInfo)
+		}
+		withProgress(
+			message = "Searching ...", 
+			{
+				iy = which( self$DatasetInfo$Species == input$selected.species.archs4 )
+				ix = iy[input$SearchData_rows_selected]
+				keyword = self$DatasetInfo$GEO.ID[ix]
+				keyword = gsub(" ","",keyword)
+				ix = which(self$sample_info[,4]== keyword)
+				if(length(ix) == 0){
+					self$SelectedSampleInfo <- NULL
+					return(self$SelectedSampleInfo)
+				}else{
+					samp = self$sample_info[ix,1]
+					if( names(sort(table(self$sample_info[ix,5]),decreasing=T))[1] == "human" ){	
+						destination_file = self$destination_fileH
 					}
-				}		
-			)
+					if( names(sort(table(self$sample_info[ix,5]),decreasing=T))[1] == "mouse" ){
+						destination_file = self$destination_fileM
+					}
+					samples = h5read(destination_file, "meta/Sample_geo_accession")
+					sample_locations = which(samples %in% samp)
+					genes = h5read(destination_file, "meta/genes")
+					expression = h5read(destination_file, "data/expression", index=list(1:length(genes), sample_locations))
+					tissue = h5read(destination_file, "meta/Sample_source_name_ch1")
+					sample_title = h5read(destination_file, "meta/Sample_title")
+					H5close()
+					incProgress(1/2)
+					
+					rownames(expression) <-paste(" ",genes)
+					colnames(expression) <- paste( samples[sample_locations], sample_title[sample_locations], sep=" ")
+					expression <- expression[,order(colnames(expression))]
+					tem = self$sample_info[ix,c(5,1:3)]
+					tem = tem[order(tem[,4]),]
+					colnames(tem) <- c("Species", "Sample ID","Tissue","Sample Title")
+					incProgress(1)
+					if(dim(tem)[1]>50) {
+						tem = tem[1:50,]
+					}
+					
+					self$SelectedSampleInfo <- list(info=tem, counts = expression )
+					return(self$SelectedSampleInfo)
+				}
+			}		
+		)
 	}
 )
 
-Ctl.LoadData$set(
-	"public",
-	"RenderSampleTable",
+Ctl.LoadData$set("public", "RenderSampleTable",
 	function(input){
 		renderTable(
 			{
@@ -186,9 +168,7 @@ Ctl.LoadData$set(
 	}
 )
 
-Ctl.LoadData$set(
-	"public",
-	"SearchGSEIDs",
+Ctl.LoadData$set("public", "SearchGSEIDs",
 	function(input){
 		DT::renderDataTable(
 			{
@@ -209,9 +189,7 @@ Ctl.LoadData$set(
 )
 
 
-Ctl.LoadData$set(
-	"public",
-	"RenderHumanNsampleOutput",
+Ctl.LoadData$set("public", "RenderHumanNsampleOutput",
 	function(input){
 		renderText({
         	if(is.null(input$SearchData_rows_selected)){
@@ -223,9 +201,7 @@ Ctl.LoadData$set(
 )
 
 
-Ctl.LoadData$set(
-	"public",
-	"RenderMouseNsampleOutput",
+Ctl.LoadData$set("public", "RenderMouseNsampleOutput",
 	function(input){
 		renderText({
         	if(is.null(input$SearchData_rows_selected)){
@@ -236,9 +212,7 @@ Ctl.LoadData$set(
 	}
 )
 
-Ctl.LoadData$set(
-	"public",
-	"selectedGSEID",
+Ctl.LoadData$set("public", "selectedGSEID",
 	function(input){
 		if(is.null(input$SearchData_rows_selected)){
 			return(NULL)
@@ -252,9 +226,7 @@ Ctl.LoadData$set(
 
 
 
-Ctl.LoadData$set(
-	"public",
-	"RenderSelectedDataset",
+Ctl.LoadData$set("public", "RenderSelectedDataset",
 	function(input){
 		renderText({
         	if (is.null(input$SearchData_rows_selected)){
@@ -266,14 +238,98 @@ Ctl.LoadData$set(
 )
 
 
-Ctl.LoadData$set(
-	"public",
-	"RenderInitDoneUI",
+Ctl.LoadData$set("public",	"RenderInitDoneUI",
 	function(){
 		renderUI({
         	i = "<h4>Done. Ready to search.</h4>"
             HTML(paste(i, collapse='<br/>') )
       	})
+	}
+)
+
+
+Ctl.LoadData$set( "public",	"EventHandler_UseSelectedPublicData",
+	function(input, output, session, storeVariableList){
+		
+		# Set Data Source to 'Public'
+		output$DataSource = renderText("Public")
+		outputOptions(output, "DataSource", suspendWhenHidden = FALSE)
+		storeVariableList$DataSource = "Public"
+
+		# Load data set
+		storeVariableList$RawData <- self$SelectedSampleInfo$counts
+		storeVariableList$RawTestDesign <- NULL
+		storeVariableList$PreProcessDone <- FALSE
+
+		# Close Pop out window
+		toggleModal(session, "modalSearchPublicDataTab", toggle = "close")
+	}
+)
+
+Ctl.LoadData$set( "public", "EventHandler_UseDemoData",
+	function(input, output, session, storeVariableList){
+
+		# Set Data Source to 'Demo'
+		output$DataSource = renderText("Demo")
+		outputOptions(output, "DataSource", suspendWhenHidden = FALSE)
+		storeVariableList$DataSource = "Demo"
+
+		# Load data set
+		demoData <- LogicManager$Files$LoadDemoData()
+		storeVariableList$RawData <- demoData$dat
+		storeVariableList$RawTestDesign <- demoData$design
+		storeVariableList$PreProcessDone <- FALSE
+	}
+)
+
+Ctl.LoadData$set( "public", "EventHandler_UseUploadedFiles",
+	function(input, output, session, storeVariableList){
+
+		# Set Data Source to 'Client'
+		output$DataSource = renderText("Client")
+		outputOptions(output, "DataSource", suspendWhenHidden = FALSE)
+		storeVariableList$DataSource = "Client"
+
+		# Load data set
+		datUrl <- input$fileUploadedData$datapath
+		if(is.null(input$fileUploadedTestDesign)){
+			designUrl <- NULL
+		} else {
+			designUrl <- input$fileUploadedTestDesign$datapath
+		}
+		
+		demoData <- LogicManager$Files$LoadUploadedData(datUrl, designUrl)
+		storeVariableList$RawData <- demoData$dat
+		storeVariableList$RawTestDesign <- demoData$design
+		storeVariableList$PreProcessDone <- FALSE
+	}
+)
+
+#Ctl.LoadData$set(
+#	"public",
+#	"EventHandler_ConfirmDataSrouceType",
+#	function(input, output, session, storeVariableList){
+#		storeVariableList$DataSourceType = as.numeric(input$dataFileFormat)
+#		storeVariableList$DataSource_noFDR = input$noFDR
+#		output$DataSourceType = renderText(storeVariableList$DataSourceType)
+#		outputOptions(output, "DataSourceType", suspendWhenHidden = FALSE)
+#	}
+#)
+
+Ctl.LoadData$set("public", "GetPackageLoadedMessage",
+	function(){
+		i = "<h3>R packages have been loaded. Ready to load data files.</h3>"
+		i = c(i,"Users can upload a CSV or tab-delimited text file with the first column as gene IDs. 
+		For RNA-seq data, read count per gene is recommended.
+		Also accepted are normalized expression data based on FPKM, RPKM, or DNA microarray data. iDEP can convert most types of common gene IDs to Ensembl gene IDs, which is used 
+			internally for enrichment and pathway analyses. iDEP parses column names to define sample groups. To define 3 biological samples (Control,
+		TreatmentA, TreatmentB) with 2 replicates each, column names should be:")
+		i = c(i," <strong> Ctrl_1, Ctrl_2, TrtA_1, TrtA_2, TrtB_1, TrtB_2</strong>.") 
+		i = c(i,"For more complex experimental design, users can upload a <a href=\"https://idepsite.wordpress.com/data-format/\" target=\"_blank\">sample information file</a>  with samples in columns and factors (genotypes and conditions) in rows. 
+		       With such a file, users can define a statistic model according to study design, which enables them to control the effect for batch effects or paired samples. 
+	         or detect interactions between factors (how mutant responds differently to treatment than wild-type).") 
+		
+		HTML(paste(i, collapse='<br/>') )
 	}
 )
 
@@ -285,5 +341,4 @@ Ctl.LoadData$set(
 ####
 ####	}
 ####)
-
 
