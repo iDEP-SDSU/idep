@@ -1,23 +1,38 @@
+library('R6')
+library(RSQLite,verbose=FALSE)	# for database connection
 
-sqlite  <- dbDriver("SQLite")
-convert <- dbConnect( sqlite, paste0(CONFIG_DATA_DATAPATH, "convertIDs.db"), flags=SQLITE_RO) 
+source('server.config')
+
+DB.Manager <- R6Class("DB.Manager")
+
+DB.Manager$set("public","sqlite", NULL)
+DB.Manager$set("public","dbConvert", NULL)
+DB.Manager$set("public","OrgInfo", NULL)	# this field does not allow direct access, use 'QueryOrgInfo' to get org info
 
 
-QuerySpeciesInfoFromConvertDBMapping(querySet){
-	querySTMT <- paste( "select distinct id,ens,species from mapping where id IN ('", paste(querySet,collapse="', '"),"')",sep="")
-	result <- dbGetQuery(convert, querySTMT)
-	return(result)
-}
+## Init function
+DB.Manager$set("public","initialize",
+	function(){
+		self$sqlite <- dbDriver("SQLite")
+		
+		self$dbConvert <- dbConnect( self$sqlite, paste0(CONFIG_DATA_DATAPATH, "convertIDs.db"), flags=SQLITE_RO) 
+		
+		dbQueryResult <- dbGetQuery(self$dbConvert, paste("select distinct * from orgInfo " ))
+		self$OrgInfo <- dbQueryResult[order(dbQueryResult$name),]
+	}
+)
 
-# Prepare species list
-QuerySpeciesListFromConvertDBOrgInfo(){
 
-	# Create a list for Select Input options
-	orgInfo <- dbGetQuery(convert, paste("select distinct * from orgInfo " ))
-	orgInfo <- orgInfo[order(orgInfo$name),]
-	speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
-	# add a defult element to list    # new element name       value
-	speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
-	speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
+# get id, ens, species from convertID mapping table
+DB.Manager$set("public", "QuerySpeciesInfoFromConvertDBMapping",
+	function(querySet){
+		querySTMT <- paste( "select distinct id,ens,species from mapping where id IN ('", paste(querySet,collapse="', '"),"')",sep="")
+		result <- dbGetQuery(self$dbConvert, querySTMT)
+		return(result)
+	}
+)
 
-}
+
+
+
+

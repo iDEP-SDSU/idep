@@ -345,81 +345,115 @@ PreProcessing.Logic$set("public", "CalcKurtosisForOtherDatatype",
 # steps:
 #	1. clean gene name
 #	2. query from convertID.db/mapping table
-#		
-#	
-convertID <- function(geneNames, selectOrg) {
-	querySet <- self$cleanGeneSet( unlist( strsplit( toupper(geneNames),'\t| |\n|\\,')))
-	# querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
+#	3. get matched species
+#	4. clean result table by removing duplicates and changing colnames
+#
+PreProcessing.Logic$set("public", "GetConvertID",
+	function(geneNames, selectOrg) {
+		querySet <- self$cleanGeneSet( unlist( strsplit( toupper(geneNames),'\t| |\n|\\,')))
+		# querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
 
-	result <- DB$QuerySpeciesInfoFromConvertDBMapping(querySet)
-	# this will return a table with id,ens,species
+		result <- LogicManager$DB$QuerySpeciesInfoFromConvertDBMapping(querySet)
+		# this will return a table with id,ens,species
 
 
-	if( dim(result)[1] == 0  ){
-		return(NULL)
-	} 
-	
-	if(selectOrg == speciesChoice[[1]]) {
-		comb = paste( result$species,result$idType)
+		if( dim(result)[1] == 0  ){
+		# if we didn't have a table return null
+			return(NULL)
+		} 
+
+		# get matched species
+		if(selectOrg == 'BestMatch') {
+			speciesMatched <- self$ConvertIDAutoMatch(result)
+		} else { # if species is selected
+			result <- result[which(result$species == selectOrg ) ,]
+			if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
+			speciesMatched <- as.data.frame(paste("Using selected species ", self$findSpeciesNameById(selectOrg) )  )
+		}
+
+
+		result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id
+		result <- result[which(!duplicated(result[,1]) ),] # remove duplicates in user ID
+		colnames(speciesMatched) = c("Matched Species (genes)") 
+		conversionTable <- result[,1:2]
+		colnames(conversionTable) = c("User_input","ensembl_gene_id")
+		conversionTable$Species = sapply(result[,3], self$findSpeciesNameById )
+
+
+		return(	
+			list(
+				originalIDs = querySet,
+				ensemblIDs=unique( result[,2]),			
+				species = self$findSpeciesById(result$species[1]), 
+				speciesMatched = speciesMatched,
+				conversionTable = conversionTable
+			)
+		)
+	}
+)
+
+#		sub function for convertID
+PreProcessing.Logic$set("public", "ConvertIDAutoMatch",
+	function(result){
+		comb = paste(result$species,result$idType)
 		sortedCounts = sort(table(comb),decreasing=T)
 		recognized =names(sortedCounts[1])
 		result <- result[which(comb == recognized),]
 		speciesMatched=sortedCounts
-		names(speciesMatched )= sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  ) 
+		names(speciesMatched )= sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), self$findSpeciesNameById  ) 
 		speciesMatched <- as.data.frame( speciesMatched )
+
 		if(length(sortedCounts) == 1) { # if only  one species matched
-		speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
+			speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
 		} else {# if more than one species matched
 			speciesMatched[,1] <- as.character(speciesMatched[,1])
 			speciesMatched[,1] <- paste( speciesMatched[,1]," (",speciesMatched[,2], ")", sep="") 
 			speciesMatched[1,1] <- paste( speciesMatched[1,1],"   ***Used in mapping***  To change, select from above and resubmit query.") 	
 			speciesMatched <- as.data.frame(speciesMatched[,1])
 		}
-	} else { # if species is selected
-		result <- result[which(result$species == selectOrg ) ,]
-		if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
-		speciesMatched <- as.data.frame(paste("Using selected species ", findSpeciesByIdName(selectOrg) )  )
-	}
-	result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id
-	result <- result[which(!duplicated(result[,1]) ),] # remove duplicates in user ID
-	colnames(speciesMatched) = c("Matched Species (genes)" ) 
-	conversionTable <- result[,1:2]; colnames(conversionTable) = c("User_input","ensembl_gene_id")
-	conversionTable$Species = sapply(result[,3], findSpeciesByIdName )
-	if(0){
-		# generate a list of gene set categories
-		ix = grep(findSpeciesById(result$species[1])[1,1],gmtFiles)
-		if (length(ix) == 0 ) {categoryChoices = NULL}
-		# If selected species is not the default "bestMatch", use that species directly
-		if(selectOrg != speciesChoice[[1]]) {  
-			ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
-			if (length(ix) == 0 ) {categoryChoices = NULL}
-			totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
-		}
-		pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
-		# Generate a list of geneset categories such as "GOBP", "KEGG" from file
-		geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
-		geneSetCategory  <- geneSetCategory[,1]
-		categoryChoices <- setNames(as.list( geneSetCategory ), geneSetCategory )
-		categoryChoices <- append( setNames( "All","All available gene sets"), categoryChoices  )
-		#change GOBO to the full description for display
-		names(categoryChoices)[ match("GOBP",categoryChoices)  ] <- "GO Biological Process"
-		names(categoryChoices)[ match("GOCC",categoryChoices)  ] <- "GO Cellular Component"
-		names(categoryChoices)[ match("GOMF",categoryChoices)  ] <- "GO Molecular Function"
-		dbDisconnect(pathway)
-	} #if (0)
 
-	return(list(originalIDs = querySet,IDs=unique( result[,2]), 
-				species = findSpeciesById(result$species[1]), 
-				#idType = findIDtypeById(result$idType[1] ),
-				speciesMatched = speciesMatched,
-				conversionTable = conversionTable
-				) )
-}
+		return(speciesMatched)
+	}	
+)
+
+# find species name use id
+PreProcessing.Logic$set("public", "findSpeciesNameById",
+	function(speciesID){ 
+		orgInfo <- LogicManager$DB$OrgInfo
+  		return( orgInfo[which(orgInfo$id == speciesID),3]  )
+	}
+)
+# find species information use id
+PreProcessing.Logic$set("public", "findSpeciesById",
+	function (speciesID){ 
+		orgInfo <- LogicManager$DB$OrgInfo
+  		return( orgInfo[which(orgInfo$id == speciesID),]  )
+	}
+)
+
+# convert sorted species:idType combs into a list for repopulate species choice
+PreProcessing.Logic$set("public", "matchedSpeciesInfo",
+	function (x) {
+  		a<- c()
+  		for( i in 1:length(x)) {
+  		  	a = c(a,paste( gsub("genes.*","",findSpeciesNameById( as.numeric(gsub(" .*","",names(x[i])) ))), " (",
+  		  	               x[i]," mapped from ",findIDtypeById( gsub(".* ","",names(x[i]) ) ),")",sep="") 
+  		  	) 
+		}      
+  		return(a)
+	}
+)
+
 
 # Clean up gene sets. Remove spaces and other control characters from gene names  
-cleanGeneSet <- function (x){
-  # remove duplicate; upper case; remove special characters
-  x <- unique( toupper( gsub("\n| ","",x) ) )
-  x <- x[which( nchar(x)>1) ]  # genes should have at least two characters
-  return(x)
-}
+PreProcessing.Logic$set("public", "cleanGeneSet",
+	function (x){
+  		# remove duplicate; upper case; remove special characters
+  		x <- unique( toupper( gsub("\n| ","",x) ) )
+  		x <- x[which( nchar(x)>1) ]  # genes should have at least two characters
+  		return(x)
+	}
+)
+
+
+

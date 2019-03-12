@@ -180,15 +180,15 @@ View.PreProcess$set("public", "GuessSpeciesPanel",
 			selectInput("selectOrg", label = NULL,"Best matching species",width='100%'),
 			conditionalPanel("input.selectOrg == 'NEW'",
 				fileInput('gmtFile', 'Upload a geneset .GMT file for enrichment analysis (optional)',
-						accept = c(
-							'text/csv',
-							'text/comma-separated-values',
-							'text/tab-separated-values',
-							'text/plain',
-							'.csv',
-							'.tsv',
-							'.gmt'          
-						)
+					accept = c(
+						'text/csv',
+						'text/comma-separated-values',
+						'text/tab-separated-values',
+						'text/plain',
+						'.csv',
+						'.tsv',
+						'.gmt'          
+					)
 				)
 			),
 			tableOutput('tblSpecies')
