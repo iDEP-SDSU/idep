@@ -27,11 +27,12 @@ View.Heatmap$set( "public", "sidebarPanel",
 View.Heatmap$set("public", "mainPanel",
 	function(){
 		mainPanel(
-			#plotOutput("Heatmap_MainPlot"),
-			#self$PopShowCorrelation(),
-			#self$PopShowSampleTree(),
-			#self$PopShowStaticHeatmap(),
-			#self$PopShowGeneSDHeatmap()
+			plotOutput("Heatmap_MainPlot"),
+			self$PopShowGeneSDHeatmap(),
+			self$PopShowStaticHeatmap(),
+			self$PopShowCorrelation(),
+			self$PopShowSampleTree()
+			
 		)
 	}
 )
@@ -62,16 +63,16 @@ View.Heatmap$set("public", "ActionButtons",
 		wellPanel(
 			strong("More plots:"),
 			br(),
-			actionButton("btn_ShowGeneSDHeatmap", "Gene SD distribution"),
-			actionButton("btn_ShowStaticHeatmap", "Interactive heatmap"),
+			actionButton("btn_Heatmap_ShowGeneSDHeatmap", "Gene SD distribution"),
+			actionButton("btn_Heatmap_ShowStaticHeatmap", "Interactive heatmap"),
 			br(),
-			actionButton("btn_ShowCorrelation", "Correlation matrix"),
-			actionButton("btn_ShowSampleTree", "Sample Tree")
+			actionButton("btn_Heatmap_ShowCorrelationMatrix", "Correlation matrix"),
+			actionButton("btn_Heatmap_ShowSampleTree", "Sample Tree")
 		)
 	}
 )
 
-
+# main heatmap settings
 View.Heatmap$set("public", "HeatmapSettingAndDownload",
 	function(){
 		wellPanel(
@@ -105,6 +106,78 @@ View.Heatmap$set("public", "HeatmapSettingAndDownload",
 		)
 	}
 )
+
+# PopShowGeneSDHeatmap
+View.Heatmap$set("public", "PopShowGeneSDHeatmap",
+	function(){
+		bsModal(
+			"modal_Heatmap_ShowGeneSDHeatmap",
+			"Distribution of variations among genes",
+			"btn_Heatmap_ShowGeneSDHeatmap",
+			size="large",
+			downloadButton("download_Heatmap_PopShowGeneSDHeatmap", "Figure"),
+			plotOutput("Heatmap_PopShowGeneSDHeatmap")
+		)
+	}
+)
+
+# PopShowStaticHeatmap
+View.Heatmap$set("public", "PopShowGeneSDHeatmap",
+	function(){
+		bsModal(
+			"modal_Heatmap_ShowStaticHeatmap",
+			"Heatmap with hierarchical clustering tree",
+			"btn_Heatmap_ShowStaticHeatmap",
+			size = "large",
+			sliderInput("nGenesPlotly", 
+               label = h4("Most variable genes to include:"),
+               min   = 0, 
+               max   = 12000, 
+               value = 50,
+               step  = 100
+			),
+           	h5("Mouse over to see gene names. To zoom, click and drag up or downward and release."),
+           	plotlyOutput("Heatmap_HeatmapPlotly", width = "100%", height = "800px")
+		)
+	}
+)
+
+# PopShowCorrelation
+View.Heatmap$set("public", "PopShowCorrelation",
+	function(){
+		bsModal(
+			"modal_Heatmap_ShowCorrelation",
+			"Correlation matrix using top 75% genes",
+			"btn_Heatmap_ShowCorrelationMatrix",
+			size = "large",
+			downloadButton("download_Heatmap_CorrelationMatrixData","Data"),
+          	downloadButton('download_Heatmap_CorrelationMatrixPlot', 'Figure'),
+			checkboxInput("isLabelWithPCC", "Label w/ Pearson's correlation coefficients", value = TRUE),
+			plotOutput("Heatmap_CorrelationMatrix")
+		)
+	}
+)
+
+
+# PopShowSampleTree
+View.Heatmap$set("public", "PopShowSampleTree",
+	function(){
+		bsModal(
+			"modal_Heatmap_ShowSampleTree",
+			"Hierarchical clustering tree.",
+			"btn_Heatmap_ShowSampleTree",
+			size = "large",
+			h4("Using genes with maximum expression level at the top 75%. Data is transformed 
+           		and clustered as specified in the main page. "),
+          	plotOutput("Heatmap_SampleTree"),
+          	downloadButton('download_Heatmap_SampleTree', 'Figure')
+		)
+	}
+)
+
+
+
+
 
 
 
