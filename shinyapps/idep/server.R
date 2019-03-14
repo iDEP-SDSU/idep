@@ -12,12 +12,13 @@ RegularVars <- list()
 
 LoadDataCtrl <- Ctl.LoadData$new()
 PreProcessCtrl <- Ctl.PreProcess$new()
+HeatmapCtrl <- Ctl.Heatmap$new()
 
 shinyServer(
 	function(input, output, session) {
 
 		############################################################################
-		#   					1.1  Read data
+		#   					1.1  		Read data
 		############################################################################
 
 		output$ViewData_SelectFromPublic_Samples <- LoadDataCtrl$RenderSampleTable(input)
@@ -54,13 +55,18 @@ shinyServer(
 
 
 		############################################################################
-		#   					1.2  Pre Process
+		#   					1.2  		Pre Process
 		############################################################################
 
 		observe({  updateSelectInput(session, "selectOrg", choices = PreProcessCtrl$InitSelectOrgUI() ) })
 
 		ReactVars$PreProcessResult <- reactive({
 			PreProcessCtrl$PreProcessResult(input, session, ReactVars)
+		})
+
+		PreprocessSampleInfoResult <- reactive({
+			geneNames <- rownames(ReactVars$PreProcessResult()$dat)
+			PreProcessCtrl$RawSampleInfoPreprocess(ReactVars$RawTestDesign, geneNames)
 		})
 
 		ConvertedIDResult <- reactive({
@@ -90,6 +96,33 @@ shinyServer(
 		}, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
 		
+		############################################################################
+		#   					1.3  		Heatmap
+		############################################################################
+		observe({
+			HeatmapCtrl$RefreshUI_Select_Heatmap_FactorsHeatmap(session, output, PreprocessSampleInfoResult())  
+		})
+		
+		observe({
+			updateSelectInput(
+				session, 
+				"distFunctions", 
+				choices = HeatmapCtrl$InitSelectDistFunctionChoices()
+			)
+		})
+
+		observe({
+			updateSelectInput(
+				session, 
+				"heatColors1", 
+				choices = HeatmapCtrl$InitSelectHeatColorChoices()
+			)
+		})
+
+		Heatmap_MainPlot <- renderPlot({
+			HeatmapCtrl$GetMainPlot(ReactVars$PreProcessResult())
+		})
+
 
 		############################################################################
 		#						0.0		Test R Markdown Report

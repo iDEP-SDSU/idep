@@ -12,7 +12,7 @@ View.Heatmap <- R6Class("View.Heatmap")
 #	1. allow user select how many samples are included in the heat map
 #	2. contains buttons for pop up panels
 #	3. heatmap setting and downloading function
-View.Heatmap$set( "public", "sidebarPanel", 
+View.Heatmap$set("public", "sidebarPanel", 
 	function(){
 		sidebarPanel(
 			self$SampleSelection(),
@@ -31,8 +31,7 @@ View.Heatmap$set("public", "mainPanel",
 			self$PopShowGeneSDHeatmap(),
 			self$PopShowStaticHeatmap(),
 			self$PopShowCorrelation(),
-			self$PopShowSampleTree()
-			
+			self$PopShowSampleTree()	
 		)
 	}
 )
@@ -46,7 +45,7 @@ View.Heatmap$set("public", "mainPanel",
 View.Heatmap$set("public", "SampleSelection",
 	function(){
 		wellPanel(
-			sliderInput("nGenes", 
+			sliderInput("num_Heatmap_IncludeGeneCount", 
                 label = h4("Most variable genes to include:"), 
                 min   = 0, 
                 max   = 12000, 
@@ -91,14 +90,16 @@ View.Heatmap$set("public", "HeatmapSettingAndDownload",
 			),
 			fluidRow(
 			  	column(8, h5("Cut-off Z score")  ),
-			  	column(4, numericInput("heatmapCutoff", label = NULL, value = 4,min=2,step=1) )
+			  	column(4, numericInput("num_Heatmap_HeatmapCutoff", label = NULL, value = 4,min=2,step=1) )
 			),
-			checkboxInput("geneCentering", "Center genes (substract mean)", value = TRUE),
-			checkboxInput("geneNormalize", "Normalize genes (divide by SD)", value = FALSE),
-			checkboxInput("sampleCentering", "Center samples (substract mean)", value = FALSE),
-			checkboxInput("sampleNormalize", "Normalize samples(divide by SD)", value = FALSE),
-			checkboxInput("noSampleClustering", "Do not re-order or cluster samples", value = FALSE),
-			htmlOutput('listFactorsHeatmap'),
+			checkboxInput("is_Heatmap_GeneCentering", "Center genes (substract mean)", value = TRUE),
+			checkboxInput("is_Heatmap_GeneNormalize", "Normalize genes (divide by SD)", value = FALSE),
+			checkboxInput("is_Heatmap_SampleCentering", "Center samples (substract mean)", value = FALSE),
+			checkboxInput("is_Heatmap_SampleNormalize", "Normalize samples(divide by SD)", value = FALSE),
+			checkboxInput("is_Heatmap_NoSampleClustering", "Do not re-order or cluster samples", value = FALSE),
+			conditionalPanel(condition = "output.showSelect_Heatmap_FactorsHeatmap",
+				selectInput("select_Heatmap_FactorsHeatmap", label="Sample color bar:",choices= c("Sample_Name"), selected = "Sample_Name")
+			),
 			downloadButton('downloadData', 'Heatmap data'),
 			downloadButton('downloadHeatmap1', 'High-resolution figure'),
 			br(),
@@ -122,7 +123,7 @@ View.Heatmap$set("public", "PopShowGeneSDHeatmap",
 )
 
 # PopShowStaticHeatmap
-View.Heatmap$set("public", "PopShowGeneSDHeatmap",
+View.Heatmap$set("public", "PopShowStaticHeatmap",
 	function(){
 		bsModal(
 			"modal_Heatmap_ShowStaticHeatmap",

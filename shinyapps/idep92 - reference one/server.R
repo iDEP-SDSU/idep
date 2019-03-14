@@ -15,7 +15,7 @@ iDEPversion = "iDEP 0.81"
 # if(length(notInstalled)>0)
 # 	install.packages(notInstalled)
 
-library(RSQLite,verbose=FALSE)	# for database connection
+
 library(gplots,verbose=FALSE)		# for hierarchical clustering
 library(ggplot2,verbose=FALSE)	# graphics
 library(e1071,verbose=FALSE) 		# computing kurtosis
@@ -77,12 +77,7 @@ maxSamplesDefault = 30   # change default from DESeq2 to limma
 maxComparisons = 20 # max number of pair wise comparisons in DESeq2
 hmcols <- colorRampPalette(rev(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF",
 "#E0F3F8", "#91BFDB", "#4575B4")))(75)
-heatColors = rbind(  greenred(75),     bluered(75),     
-                     colorpanel(75,"green", "black","magenta"),
-                     colorpanel(75,"blue", "yellow","red"),hmcols )
-rownames(heatColors) = c("Green-Black-Red", "Blue-White-Red", "Green-Black-Magenta",
-                         "Blue-Yellow-Red", "Blue-white-brown")
-colorChoices = setNames(1:dim(heatColors)[1], rownames(heatColors)) # for pull down menu
+
 maxSamplesEDAplot = 100  # max number of samples for EDA plots
 
 ################################################################
@@ -92,8 +87,7 @@ maxSamplesEDAplot = 100  # max number of samples for EDA plots
 # relative path to data files
 datapath = CONFIG_DATA_DATAPATH   # production server
 
-sqlite  <- dbDriver("SQLite")
-convert <- dbConnect( sqlite, paste0(datapath, "convertIDs.db"), flags=SQLITE_RO)  #read only mode
+ #read only mode
 keggSpeciesID = read.csv(paste0(datapath, "data_go/KEGG_Species_ID.csv"))
 # List of GMT files in /gmt sub folder
 gmtFiles = list.files(path = paste0(datapath,"pathwayDB"), pattern=".*\\.db")
@@ -165,16 +159,6 @@ hclustFuns <- list( averge   = hclust2,
                     mcquitty = hclust.mcquitty)
 
 hclustChoices = setNames(1:length(hclustFuns),names(hclustFuns)) # for pull down menu
-
-dist2 <- function(x, ...)   # distance function = 1-PCC (Pearson's correlation coefficient)
-  as.dist(1-cor(t(x), method="pearson"))
-  
-dist3 <- function(x, ...)   # distance function = 1-abs(PCC) (Pearson's correlation coefficient)
-  as.dist(1-abs(cor(t(x), method="pearson")))   
-  
-# List of distance functions 
-distFuns <- list(Correlation=dist2, Euclidean=dist,AbsolutePCC=dist3)
-distChoices = setNames(1:length(distFuns),names(distFuns)) # for pull down menu
 
 
 geneChange <- function(x){
@@ -282,13 +266,7 @@ add_legend <- function(...) {
   legend(...)
 }
 
-# Clean up gene sets. Remove spaces and other control characters from gene names  
-cleanGeneSet <- function (x){
-  # remove duplicate; upper case; remove special characters
-  x <- unique( toupper( gsub("\n| ","",x) ) )
-  x <- x[which( nchar(x)>1) ]  # genes should have at least two characters
-  return(x)
-}
+
 
 # read gene set files in the GMT format, does NO cleaning. Assumes the GMT files are created with cleanGeneSet()
 # See http://software.broadinstitute.org/cancer/software/gsea/wiki/index.php/Data_formats#Gene_Set_Database_Formats
@@ -461,35 +439,15 @@ myPGSEA  <- function (exprs, cl, range = c(25, 500), ref = NULL, center = TRUE,
     return(list(results = results, p.results = p.results, means = mean.results, size=Setsize, mean2=mean2, meanSD=meanSD))
 }
 
-# prepare species list
 
-# Create a list for Select Input options
-orgInfo <- dbGetQuery(convert, paste("select distinct * from orgInfo " ))
-orgInfo <- orgInfo[order(orgInfo$name),]
-speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
-# add a defult element to list    # new element name       value
-speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
-speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
 
-# move one element to the 2nd place
-move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
-i= which( names(speciesChoice) == "Glycine max"); speciesChoice <- move2(i)
-i= which( names(speciesChoice) =="Zea mays"); speciesChoice <- move2(i)
-i= which(names(speciesChoice) =="Arabidopsis thaliana"); speciesChoice <- move2(i)
-i= which(names(speciesChoice) == "Saccharomyces cerevisiae"); speciesChoice <- move2(i)
-i= which(names(speciesChoice)  == "Caenorhabditis elegans"); speciesChoice <- move2(i)
-i= which(names(speciesChoice) =="Zebrafish" ); speciesChoice <- move2(i)
-i= which(names(speciesChoice) == "Cow" ); speciesChoice <- move2(i)
-i= which(names(speciesChoice) == "Rat" ); speciesChoice <- move2(i)
-i= which(names(speciesChoice) == "Mouse"); speciesChoice <- move2(i)
-i= which(names(speciesChoice) == "Human"); speciesChoice <- move2(i)
+
 
 GO_levels = dbGetQuery(convert, "select distinct id,level from GO  
                                 WHERE GO = 'biological_process'"  )
 level2Terms = GO_levels[which(GO_levels$level %in% c(2,3))  ,1]  # level 2 and 3
 idIndex <- dbGetQuery(convert, paste("select distinct * from idIndex " ))
-quotes <- dbGetQuery(convert, " select * from quotes")
-quotes = paste0("\"",quotes$quotes,"\"", " -- ",quotes$author,".       ")
+quotes <- LogicManager -> DB -> Quotes
 # [ConvertDB Class END]
 
 # This function convert gene set names
@@ -508,91 +466,15 @@ extract1 <- function (x) {
 findIDtypeById <- function(x){ # find 
   return( idIndex$idType[ as.numeric(x)] )
 }
-findSpeciesById <- function (speciesID){ # find species name use id
-  return( orgInfo[which(orgInfo$id == speciesID),]  )
-}
-# just return name
-findSpeciesByIdName <- function (speciesID){ # find species name use id
-  return( orgInfo[which(orgInfo$id == speciesID),3]  )
-}
+
+
 #Homo sapies --> hsapiens
 shortSpeciesNames <- function(tem){
 	 tem2 = strsplit(as.character(tem)," " ) 	   
 	 return( tolower( paste0(substr(tem2[[1]][1],1,1), tem2[[1]][2]  ) ) )
 }
-# convert sorted species:idType combs into a list for repopulate species choice
-matchedSpeciesInfo <- function (x) {
-  a<- c()
-  for( i in 1:length(x)) {
-    a = c(a,paste( gsub("genes.*","",findSpeciesByIdName( as.numeric(gsub(" .*","",names(x[i])) ))), " (",
-                   x[i]," mapped from ",findIDtypeById( gsub(".* ","",names(x[i]) ) ),")",sep="") 
-    ) }      
-  return(a )
-}
 
-# convert gene IDs to ensembl gene ids and find species
-convertID <- function (query,selectOrg, selectGO) {
-	querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,')))
-	# querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
-	querySTMT <- paste( "select distinct id,ens,species from mapping where id IN ('", paste(querySet,collapse="', '"),"')",sep="")
-	result <- dbGetQuery(convert, querySTMT)
-	if( dim(result)[1] == 0  ) return(NULL)
-	if(selectOrg == speciesChoice[[1]]) {
-		comb = paste( result$species,result$idType)
-		sortedCounts = sort(table(comb),decreasing=T)
-		recognized =names(sortedCounts[1])
-		result <- result[which(comb == recognized),]
-		speciesMatched=sortedCounts
-		names(speciesMatched )= sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  ) 
-		speciesMatched <- as.data.frame( speciesMatched )
-		if(length(sortedCounts) == 1) { # if only  one species matched
-		speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
-		} else {# if more than one species matched
-			speciesMatched[,1] <- as.character(speciesMatched[,1])
-			speciesMatched[,1] <- paste( speciesMatched[,1]," (",speciesMatched[,2], ")", sep="") 
-			speciesMatched[1,1] <- paste( speciesMatched[1,1],"   ***Used in mapping***  To change, select from above and resubmit query.") 	
-			speciesMatched <- as.data.frame(speciesMatched[,1])
-		}
-	} else { # if species is selected
-		result <- result[which(result$species == selectOrg ) ,]
-		if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
-		speciesMatched <- as.data.frame(paste("Using selected species ", findSpeciesByIdName(selectOrg) )  )
-	}
-	result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id
-	result <- result[which(!duplicated(result[,1]) ),] # remove duplicates in user ID
-	colnames(speciesMatched) = c("Matched Species (genes)" ) 
-	conversionTable <- result[,1:2]; colnames(conversionTable) = c("User_input","ensembl_gene_id")
-	conversionTable$Species = sapply(result[,3], findSpeciesByIdName )
-	if(0){
-		# generate a list of gene set categories
-		ix = grep(findSpeciesById(result$species[1])[1,1],gmtFiles)
-		if (length(ix) == 0 ) {categoryChoices = NULL}
-		# If selected species is not the default "bestMatch", use that species directly
-		if(selectOrg != speciesChoice[[1]]) {  
-			ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
-			if (length(ix) == 0 ) {categoryChoices = NULL}
-			totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
-		}
-		pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
-		# Generate a list of geneset categories such as "GOBP", "KEGG" from file
-		geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
-		geneSetCategory  <- geneSetCategory[,1]
-		categoryChoices <- setNames(as.list( geneSetCategory ), geneSetCategory )
-		categoryChoices <- append( setNames( "All","All available gene sets"), categoryChoices  )
-		#change GOBO to the full description for display
-		names(categoryChoices)[ match("GOBP",categoryChoices)  ] <- "GO Biological Process"
-		names(categoryChoices)[ match("GOCC",categoryChoices)  ] <- "GO Cellular Component"
-		names(categoryChoices)[ match("GOMF",categoryChoices)  ] <- "GO Molecular Function"
-		dbDisconnect(pathway)
-	} #if (0)
 
-	return(list(originalIDs = querySet,IDs=unique( result[,2]), 
-				species = findSpeciesById(result$species[1]), 
-				#idType = findIDtypeById(result$idType[1] ),
-				speciesMatched = speciesMatched,
-				conversionTable = conversionTable
-				) )
-}
 
 # finds id index corresponding to entrez gene and KEGG for id conversion
 idType_Entrez <- dbGetQuery(convert, paste("select distinct * from idIndex where idType = 'entrezgene'" ))
@@ -2366,8 +2248,8 @@ function(input, output,session) {
   
 options(shiny.maxRequestSize = 200*1024^2) # 200MB file max for upload
 observe({  updateSelectInput(session, "selectOrg", choices = speciesChoice )      })
-observe({  updateSelectInput(session, "heatColors1", choices = colorChoices )      })
-observe({  updateSelectInput(session, "distFunctions", choices = distChoices )      })
+
+
 observe({  updateSelectInput(session, "hclustFunctions", choices = hclustChoices )      })
 # update species for STRING-db related API access
 observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_species$official_name) ) 	})
@@ -2399,306 +2281,8 @@ observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_sp
 
 
 # read data file and do filtering and transforming
-readData <- reactive ({
-		inFile <- input$file1
-		inFile <- inFile$datapath
-
-		if(is.null(input$file1) && input$goButton == 0)   return(NULL)
-		if(is.null(input$file1) && input$goButton > 0 )   inFile = demoDataFile
-		tem = input$dataFileFormat; tem=input$missingValue
-		if(!is.null(input$dataFileFormat)) # these are needed to make it responsive to changes
-			if(input$dataFileFormat== 1){  
-				tem = input$minCounts 
-				tem= input$NminSamples
-				tem = input$countsLogStart
-				tem = input$CountsTransform 
-			}
-		if(!is.null(input$dataFileFormat))
-			if(input$dataFileFormat== 2){ 
-				tem = input$transform; 
-				tem = input$logStart; 
-				tem= input$lowFilter 
-				tem = input$NminSamples2
-		}
-
-		isolate({
-			withProgress(message="Reading and pre-processing ", {
-				# these packages moved here to reduce loading time
-				library(edgeR,verbose=FALSE) # count data D.E.
-				library(DESeq2,verbose=FALSE) # count data analysis
-
-				if (is.null( input$dataFileFormat )) return(NULL)
-				dataTypeWarning =0
-				dataType =c(TRUE)
-
-				#---------------Read file
-				x <- read.csv(inFile,quote = "",comment.char="")	# try CSV
-				if(dim(x)[2] <= 2 )   # if less than 3 columns, try tab-deliminated
-					x <- read.table(inFile, sep="\t",header=TRUE,quote = "",comment.char="")	
-				#-------Remove non-numeric columns, except the first column
-				
-				{ 
-					# this block checks keeps the first column (gene id) and all numeric columns 
-					# Problem:  1. this block used 'for loop' which can be change to apply function 
-					#			2. 'gene id' is not a numeric column, eventhough we should keep it.
-					#				isNumeric and isKeep are two different logic, This block is mixing the meaning.
-					# Reproduce: PreProcessing.Logic$RemoveNonNumericalColumns
-				for(i in 2:dim(x)[2])
-					dataType = c( dataType, is.numeric(x[,i]) )
-				if(sum(dataType) <=2) return (NULL)  # only less than 2 columns are numbers 
-					# Remeber, this two columns contains Gene id
-				x <- x[,dataType]  # only keep numeric columns
-				}
-
-
-
-				{
-				# rows with all missing values
-				ix = which( apply(x[,-1],1, function(y) sum( is.na(y) ) ) != dim(x)[2]-1 )
-				x <- x[ix,]
-				}
-
-				dataSizeOriginal = dim(x); dataSizeOriginal[2] = dataSizeOriginal[2] -1
-
-				{
-				x[,1] <- toupper(x[,1])
-				x[,1] <- gsub(" |\"|\'|\\.[0-9]{1,2}$", "", x[ , 1]) 
-				             # remove spaces in gene ids
-				                 # remove " in gene ids, mess up SQL query				
-				                      # remove ' in gene ids		
-				                        # remove one or two digits after "." at the end.
-                                          #A35244.1 -> A35244  or A35244.23 -> A35244, but not more than two.  GLYMA.18G52160 stays the same.	
-				}
-				{
-				x = x[order(- apply(x[,2:dim(x)[2]],1,sd) ),]  # sort by SD
-				}
-				{
-				x <- x[!duplicated(x[,1]) ,]  # remove duplicated genes
-				rownames(x) <- x[,1]
-				x <- as.matrix(x[,c(-1)])
-				}
-				{
-				# remove "-" or "." from sample names
-				colnames(x) = gsub("-","",colnames(x))
-				colnames(x) = gsub("\\.","",colnames(x))
-				}
-				
-				{
-				#cat("\nhere",dim(x))
-				# missng value for median value
-				if(sum(is.na(x))>0) {# if there is missing values
-					if(input$missingValue =="geneMedian") { 
-						rowMedians <- apply(x,1, function (y)  median(y,na.rm=T))
-						for( i in 1:dim(x)[2] ) {
-							ix = which(is.na(x[,i]) )
-							x[ix,i] <- rowMedians[ix]						
-						}
-							
-					} else if(input$missingValue =="treatAsZero") {
-						x[is.na(x) ] <- 0					
-					} else if (input$missingValue =="geneMedianInGroup") {
-						sampleGroups = detectGroups( colnames(x))
-						for (group in unique( sampleGroups) ){		
-							samples = which( sampleGroups == group )
-							rowMedians <- apply(x[,samples, drop=F],1, function (y)  median(y,na.rm=T))
-							for( i in  samples ) { 
-								ix = which(is.na(x[ ,i] ) )	
-								if(length(ix) >0 )
-									x[ix, i  ]  <- rowMedians[ix]
-							}										
-						}
-						
-						# missing for entire sample group, use median for all samples
-						if(sum(is.na(x) )>0 ) { 
-							rowMedians <- apply(x,1, function (y)  median(y,na.rm=T))
-							for( i in 1:dim(x)[2] ) {
-								ix = which(is.na(x[,i]) )
-								x[ix,i] <- rowMedians[ix]						
-							}						
-						}
-					}
-				}
-				}
-
-				
-				# Compute kurtosis
-			{
-				mean.kurtosis = mean(apply(x,2, kurtosis),na.rm=T)
-				rawCounts = NULL
-				pvals= NULL
-				if (input$dataFileFormat == 2 ) {  # if FPKM, microarray
-					incProgress(1/3,"Pre-processing data")
-
-					if ( is.integer(x) ) dataTypeWarning = 1;  # Data appears to be read counts
-
-					#-------------filtering
-					#tem <- apply(x,1,max)
-					#x <- x[which(tem > input$lowFilter),]  # max by row is at least 
-					x <- x[ which( apply( x, 1,  function(y) sum(y >= input$lowFilter)) >= input$NminSamples2 ) , ] 
-
-					
-					x <- x[which(apply(x,1, function(y) max(y)- min(y) ) > 0  ),]  # remove rows with all the same levels
-
-					#--------------Log transform
-					# Takes log if log is selected OR kurtosis is big than 100
-					if ( (input$transform == TRUE) | (mean.kurtosis > kurtosis.log ) ) 
-						x = log(x+abs( input$logStart),2)
-
-					tem <- apply(x,1,sd) 
-					x <- x[order(-tem),]  # sort by SD
-
-				} else 
-					if( input$dataFileFormat == 1) {  # counts data
-					incProgress(1/3, "Pre-processing counts data")
-					tem = input$CountsDEGMethod; tem = input$countsTransform
-					# data not seems to be read counts
-					if(!is.integer(x) & mean.kurtosis < kurtosis.log ) {
-						dataTypeWarning = -1
-					}
-					# not used as some counts data like those from CRISPR screen
-					#validate(   # if Kurtosis is less than a threshold, it is not read-count
-					#	need(mean.kurtosis > kurtosis.log, "Data does not seem to be read count based on distribution. Please double check.")
-					# )
-					x <- round(x,0) # enforce the read counts to be integers. Sailfish outputs has decimal points.
-					#x <- x[ which( apply(x,1,max) >= input$minCounts ) , ] # remove all zero counts
-					
-
-					# remove genes if it does not at least have minCounts in at least NminSamples
-					#x <- x[ which( apply(x,1,function(y) sum(y>=input$minCounts)) >= input$NminSamples ) , ]  # filtering on raw counts
-					# using counts per million (CPM) for filtering out genes.
-                                             # CPM matrix                  #N samples > minCounts
-					x <- x[ which( apply( cpm(DGEList(counts = x)), 1,  
-							function(y) sum(y>=input$minCounts)) >= input$NminSamples ) , ] 
-					
-
-					if(0){  # disabled
-						# remove genes with low expression by counts per million (CPM)
-						dge <- DGEList(counts=x); dge <- calcNormFactors(dge)
-						myCPM <- cpm(dge, prior.counts = 3 )
-						x <- x[which(rowSums(  myCPM > input$minCounts)  > 1 ),]  # at least two samples above this level
-						rm(dge); rm(myCPM)
-					}
-					rawCounts = x; # ??? 
-					# construct DESeqExpression Object
-					# colData = cbind(colnames(x), as.character(detectGroups( colnames(x) )) )
-					tem = rep("A",dim(x)[2]); tem[1] <- "B"   # making a fake design matrix to allow process, even when there is no replicates
-					colData = cbind(colnames(x), tem )
-					colnames(colData)  = c("sample", "groups")
-					dds <- DESeqDataSetFromMatrix(countData = x, colData = colData, design = ~ groups)
-					dds <- estimateSizeFactors(dds) # estimate size factor for use in normalization later for started log method
-
-					incProgress(1/2,"transforming raw counts")
-					# regularized log  or VST transformation
-					if( input$CountsTransform == 3 ) { # rlog is slow
-						#if(dim(x)[2]<=50 )   # disable the menu when large sample size	?				 
-						{ x <- rlog(dds, blind=TRUE); x <- assay(x)  } # else 
-						# x <- log2( counts(dds, normalized=TRUE) + input$countsLogStart ) 
-						 }  
-
-						else {
-						if ( input$CountsTransform == 2 ) {    # vst is fast but aggressive
-							x <- vst(dds, blind=TRUE)
-							x <- assay(x)  
-						} else{  # normalized by library sizes and add a constant.
-							x <- log2( counts(dds, normalized=TRUE) + input$countsLogStart )   # log(x+c) 
-							# This is equivalent to below. But the prior counts is more important
-							#x <- cpm(DGEList(counts = x),log=TRUE, prior.count=input$countsLogStart )  #log CPM from edgeR
-							#x <- x-min(x)  # shift values to avoid negative numbers
-						}
-					}
-				} else 
-					if( input$dataFileFormat == 3)	{  # other data type
-
-						#neg_lfc neg_fdr pos_lfc pos_fdr 
-						#11       1      11       1 
-						
-						n2 = ( dim(x)[2] %/% 2) # 5 --> 2
-
-						if(!input$noFDR) { 	 # if we have FDR
-							pvals = x [,2*(1:n2 ),drop=FALSE ]  # 2, 4, 6
-							x = x[, 2*(1:n2 )-1,drop=FALSE]   # 1, 3, 5				
-						}	
-						
-						if(0) {  
-						ix =  which(apply(x,1, function(y) max(y)- min(y) ) > 0  )
-						x <- x[ix,]  # remove rows with all the same levels
-						if(!is.null(pvals) )
-							pvals = pvals[ix,]
-						 }
-					}
-					
-			}	
-				dataSize = dim(x);
-				validate( need(dim(x)[1]>5 & dim(x)[2]>=1 , 
-					"Data file not recognized. Please double check."))
-
-				incProgress(1, "Done.")
-				
-				sampleInfoDemo=NULL
-				if( input$goButton >0)
-					sampleInfoDemo <- t( read.csv(demoDataFile2,row.names=1,header=T,colClasses="character") )
-
-					finalResult <- list(data = as.matrix(x), mean.kurtosis = mean.kurtosis, rawCounts = rawCounts, dataTypeWarning=dataTypeWarning, dataSize=c(dataSizeOriginal,dataSize),sampleInfoDemo=sampleInfoDemo, pvals =pvals )
-				return(finalResult)
-			})
-		})
-	})
-
-readSampleInfo <- reactive ({
-		if( is.null(input$file2) && !is.null( readData()$sampleInfoDemo ) ) return( readData()$sampleInfoDemo   )
-		inFile <- input$file2
-		inFile <- inFile$datapath
-
-		if(is.null(input$file2) && input$goButton == 0)   return(NULL)
-		if(is.null(readData() ) ) return(NULL)
-		#if(input$goButton2 > 0 )   inFile = demoDataFile2
-		
-		isolate({
-				if (is.null( input$dataFileFormat )) return(NULL)
-				dataTypeWarning =0
-				dataType =c(TRUE)
-
-				#---------------Read file
-				x <- read.csv(inFile,row.names=1,header=T,colClasses="character")	# try CSV
-				if(dim(x)[2] <= 2 )   # if less than 3 columns, try tab-deliminated
-					x <- read.table(inFile, row.names=1,sep="\t",header=TRUE,colClasses="character")
-				
-				
-				# remove "-" or "." from sample names
-				colnames(x) = gsub("-","",colnames(x))
-				colnames(x) = gsub("\\.","",colnames(x))	
-
-				#----------------Matching with column names of expression file
-				ix = match(toupper(colnames(readData()$data)), toupper(colnames(x)) ) 
-				ix = ix[which(!is.na(ix))] # remove NA
-
-				validate(
-				  need(length(unique(ix) ) == dim(readData()$data)[2] 
-				       & dim(x)[1]>=1 & dim(x)[1] <500 # at least one row, it can not be more than 500 rows
-					 ,"Error!!! Sample information file not recognized. Sample names must be exactly the same. Each row is a factor. Each column represent a sample.  Please see documentation on format.")
-				)
-				
-				#-----------Double check factor levels, change if needed
-				# remove "-" or "." from factor levels
-				for( i in 1:dim(x)[1]) {
-				   x[i,] = gsub("-","",x[i,])
-				   x[i,] = gsub("\\.","",x[i,])				
-				}
-				# if levels from different factors match
-				if( length(unique(ix) ) == dim(readData()$data)[2]) { # matches exactly
-					x = x[,ix]
-					# if the levels of different factors are the same, it may cause problems
-					if( sum( apply(x, 1, function(y) length(unique(y)))) > length(unique(unlist(x) ) ) ) {
-						tem2 =apply(x,2, function(y) paste0( names(y),y)) # factor names are added to levels
-						rownames(tem2) = rownames(x)
-						x <- tem2				
-					}
-					return(t( x ) )			
-				} else retrun(NULL)
-							
-				
-		})
-	})
+readData <- new code: ReactVars$PreProcessResult()
+readSampleInfo <- new code: PreprocessSampleInfoResult()
 	
 output$sampleInfoTable <- renderTable({
 
@@ -2747,38 +2331,7 @@ output$nGenesFilter <- renderText({
 			  
 	})	
 
-	# Show info on file format	
-output$fileFormat <- renderUI({
-		i = "<h3>Done. Ready to load data files.</h3>"
-		i = c(i,"Users can upload a CSV or tab-delimited text file with the first column as gene IDs. 
-		For RNA-seq data, read count per gene is recommended.
-		Also accepted are normalized expression data based on FPKM, RPKM, or DNA microarray data. iDEP can convert most types of common gene IDs to Ensembl gene IDs, which is used 
-			internally for enrichment and pathway analyses. iDEP parses column names to define sample groups. To define 3 biological samples (Control,
-		TreatmentA, TreatmentB) with 2 replicates each, column names should be:")
-		i = c(i," <strong> Ctrl_1, Ctrl_2, TrtA_1, TrtA_2, TrtB_1, TrtB_2</strong>.") 
-		i = c(i,"For more complex experimental design, users can upload a <a href=\"https://idepsite.wordpress.com/data-format/\" target=\"_blank\">sample information file</a>  with samples in columns and factors (genotypes and conditions) in rows. 
-		       With such a file, users can define a statistic model according to study design, which enables them to control the effect for batch effects or paired samples. 
-	         or detect interactions between factors (how mutant responds differently to treatment than wild-type).") 
-		
-		HTML(paste(i, collapse='<br/>') )
-	})
-
-converted <- reactive({
-		if (is.null(input$file1) && input$goButton == 0)    return(NULL)
-		tem = input$selectOrg;
-		isolate( {
-		
-		convertID(rownames(readData()$data ),input$selectOrg, input$selectGO );
-
-		# converted()$conversionTable: Not matched is skipped
-		#User_input	ensembl_gene_id	Species
-		#MTURN	ENSMUSG00000038065	Mouse
-		#MTUS1	ENSMUSG00000045636	Mouse
-
-
-		}) 
-	})
-
+converted <- new code: ConvertedIDResult
 
 allGeneInfo <- reactive({
 		if (is.null(input$file1) && input$goButton == 0)    return(NULL)
@@ -3558,60 +3111,9 @@ output$readCountsBias <- renderText({
 #   Heatmaps
 ################################################################
 
-output$listFactorsHeatmap <- renderUI({
-	tem = input$selectOrg; 
-	tem=input$limmaPval; tem=input$limmaFC
-	
-    if (is.null(readSampleInfo() ) ) # if sample info is uploaded and correctly parsed.
-       { return(NULL) }	 else { 
-	  selectInput("selectFactorsHeatmap", label="Sample color bar:",choices= c(colnames(readSampleInfo()), "Sample_Name")
-	     , selected = "Sample_Name")   } 
-	})  
-
 	# conventional heatmap.2 plot
 output$heatmap1 <- renderPlot({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  {  
-			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
-		}
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) { 
-			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
-		}
-	####################################
-		
-    x <- readData()$data   # x = read.csv("expression1.csv")
-	withProgress(message=sample(quotes,1), detail ="Runing hierarchical clustering ", {
-	n=input$nGenes
-	#if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	if(n<10) n = 10 # min
-	# this will cutoff very large values, which could skew the color 
-	if(input$geneCentering)
-		x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	
-	# standardize by gene
-	if(input$geneNormalize) 
-		x <- x / apply(x,1,sd)
-		
-	# row centering and normalize
-	x <- scale(x, center = input$sampleCentering, scale = input$sampleNormalize) 
-
-	if(ncol(x) < 20 )  
-	   cexFactor = 2 else
-	if(ncol(x) < 31 ) 
-	   cexFactor = 1.5 else
-	cexFactor =1	
-	
-	cutoff = median(unlist(x)) + input$heatmapCutoff * sd (unlist(x)) 
-	x[x>cutoff] <- cutoff
-	cutoff = median(unlist(x)) - input$heatmapCutoff *sd (unlist(x)) 
-	x[x< cutoff] <- cutoff
-	
+  
     groups = detectGroups(colnames(x) )
 	# if sample info file is uploaded us that info:
 
@@ -3641,14 +3143,16 @@ output$heatmap1 <- renderPlot({
 
 	par(mar = c(5, 4, 1.4, 0.2))
 	
+	if(ncol(x) < 20 )  
+	   cexFactor = 2 else
+	if(ncol(x) < 31 ) 
+	   cexFactor = 1.5 else
+	cexFactor =1	
 
 	if( n>110) # no labels when too many genes
 	heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
 		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
-		,Colv=!input$noSampleClustering
-		#col=colorpanel(75,"green","black","magenta")  ,
-		#col=bluered(75),
-		#col=greenred(75), 
+		,Colv=!input$noSampleClustering 
 		,col= heatColors[as.integer(input$heatColors1),]
 		,density.info="none", trace="none", scale="none", keysize=.5
 		,key=T, symkey=F
@@ -3664,9 +3168,9 @@ output$heatmap1 <- renderPlot({
 	heatmap.2(x, distfun =  distFuns[[as.integer(input$distFunctions)]]
 		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
 		,Colv=!input$noSampleClustering		
-		,col= heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.5
-		,key=T, symkey=F,
-		#,labRow=labRow
+		,col= heatColors[as.integer(input$heatColors1),]
+		,density.info="none", trace="none", scale="none", keysize=.5
+		,key=T, symkey=F,		
 		,ColSideColors=groups.colors[ as.factor(groups)]
 		,margins=c(18,12)
 		,cexRow=1

@@ -9,7 +9,6 @@ LogicManager <- Logic.Manager$new()
 
 Ctl.PreProcess$set("public", "PreProcessResult",
 	function(input, session, storeVariableList){
-		
 		withProgress(message="Reading and pre-processing", {
 
 			# Pre checking
@@ -50,11 +49,20 @@ Ctl.PreProcess$set("public", "PreProcessResult",
 					input$isNoFDR			## This parm is got in load data tab.
 				)
 			incProgress(1, "Done.")
+			return(PreProcessResult)
 		})
-		
-		return(PreProcessResult)
 	}
 )
+
+ 
+Ctl.PreProcess$set("public", "RawSampleInfoPreprocess",
+	function(rawDesign, geneNames){
+		return(
+			LogicManager$PreProcessing$RawSampleInfoPreprocess(rawDesign, geneNames)
+		)
+	}
+)
+
 
 # Preprocessing tab, first plot
 Ctl.PreProcess$set("public", "GetTotalReadCountsPlot",

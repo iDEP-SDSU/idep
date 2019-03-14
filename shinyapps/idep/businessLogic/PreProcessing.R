@@ -26,7 +26,7 @@ PreProcessing.Logic$set("public","RawDataPreprocess",
 	#	6. Calculate Kurtosis
 	function(rawData, imputateMethod, dataType, minCounts, minSamples, 
 			CountsTransform, LogStart, isTransform, isNoFDR){
-		
+
 		tmp.data <- self$RemoveNonNumericalColumns(rawData)
 		tmp.data <- self$RemoveAllMissingRows(tmp.data)
 		dataSizeOriginal = dim(tmp.data); 
@@ -312,34 +312,47 @@ PreProcessing.Logic$set("public", "CalcKurtosisForOtherDatatype",
 	}
 )
 
-# not finished function: readSampleInfo <- reactive
-#PreProcessing.Logic$set("public","RawSampleInfoPreprocess", 
-#	function(rawInfo, colnameOfData){
-#		if(is.null(rawInfo)){
-#			return(NULL)
-#		}
-#		
-#		temp.info <- self$CleanSampleNames(rawInfo)
-#
-#		matchedInfo <- match(toupper(colnameOfData), toupper(colnames(temp.info)))
-#		matchedInfo <- matchedInfo[which(!is.na(matchedInfo))]
-#
-#		validate(
-#				  need(length(unique(ix) ) == dim(readData()$data)[2] 
-#				       & dim(x)[1]>=1 & dim(x)[1] <500 # at least one row, it can not be more than 500 rows
-#					 ,"Error!!! Sample information file not recognized. Sample names must be exactly the same. Each row is a factor. Each column represent a sample.  Please see documentation on format.")
-#		)
-#
-#		#-----------Double check factor levels, change if needed
-#		# remove "-" or "." from factor levels
-#		for( i in 1:dim(temp.info)[1]) {
-#		   temp.info[i,] = gsub("-","",temp.info[i,])
-#		   temp.info[i,] = gsub("\\.","",temp.info[i,])				
-#		}
-#		
-#	}
-#)
-#
+
+PreProcessing.Logic$set("public","RawSampleInfoPreprocess", 
+	function(rawInfo, colnameOfData){
+		if(is.null(rawInfo)){
+			return(NULL)
+		}
+		
+		temp.info <- self$CleanSampleNames(rawInfo)
+
+		matchedInfo <- match(toupper(colnameOfData), toupper(colnames(temp.info)))
+		matchedInfo <- matchedInfo[which(!is.na(matchedInfo))]
+
+		validate(
+				  need(	
+					length(unique(ix) ) == dim(readData()$data)[2] 
+				       	& dim(x)[1]>=1 & dim(x)[1] <500, # at least one row, it can not be more than 500 rows
+					"Error!!! Sample information file not recognized. Sample names must be exactly the same. Each row is a factor. Each column represent a sample.  Please see documentation on format.")
+		)
+
+		#-----------Double check factor levels, change if needed
+		# remove "-" or "." from factor levels
+		for( i in 1:dim(temp.info)[1]) {
+		   temp.info[i,] = gsub("-","",temp.info[i,])
+		   temp.info[i,] = gsub("\\.","",temp.info[i,])				
+		}
+		
+		if( length(unique(matchedInfo) ) == dim(readData()$data)[2]) { # matches exactly
+			temp.info = temp.info[,matchedInfo]
+			# if the levels of different factors are the same, it may cause problems
+			if( sum( apply(temp.info, 1, function(x) length(unique(x)))) > length(unique(unlist(temp.info) ) ) ) {
+				tem2 =apply(temp.info,2, function(x) paste0( names(x),x)) # factor names are added to levels
+				rownames(tem2) = rownames(temp.info)
+				temp.info <- tem2				
+			}
+			return(t(temp.info))			
+		}else{
+			retrun(NULL)
+		}
+	}
+)
+
 
 # convert gene IDs to ensembl gene ids and find species
 # steps:

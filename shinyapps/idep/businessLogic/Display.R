@@ -1,8 +1,28 @@
 library('R6')
+library(gplots,verbose=FALSE)		# for hierarchical clustering
+library(ggplot2,verbose=FALSE)	# graphics
 
 source('server.config')
 
 Display.Manager <- R6Class("Display.Manager")
+Display.Manager$set("public", "heatColors" , NULL)
+Display.Manager$set("public", "hmcols" , NULL)
+
+Display.Manager$set("public", "initialize",
+	function(){
+
+		self$hmcols <- colorRampPalette(rev(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF",
+			"#E0F3F8", "#91BFDB", "#4575B4")))(75)
+
+		heatColors = rbind(  greenred(75),     bluered(75),     
+	                     colorpanel(75,"green", "black","magenta"),
+	                     colorpanel(75,"blue", "yellow","red"), self$hmcols )
+		rownames(heatColors) = c("Green-Black-Red", "Blue-White-Red", "Green-Black-Magenta",
+	                         "Blue-Yellow-Red", "Blue-white-brown")
+
+		self$heatColors <- heatColors
+	}
+)
 
 
 Display.Manager$set("public", "GetReadcountBarPlot",
@@ -140,7 +160,6 @@ Display.Manager$set("public", "GetTransformedDataDensityPlot",
 		return(p)
 	}
 )
-
 
 Display.Manager$set("public", "GetTransformedDataScatterPlot",
 	function(transedData){
