@@ -4,12 +4,14 @@ Ctl.Heatmap <- R6Class("Ctl.Heatmap")
 
 
 Ctl.Heatmap$set("public", "RefreshUI_Select_Heatmap_FactorsHeatmap",
-	function(session, output, sampleInfo){
+	function(session, output, internalVarList, sampleInfo){
 		if(is.null(sampleInfo)){
 			output$showSelect_Heatmap_FactorsHeatmap = renderText('FALSE')
+			internalVarList$showSelect_Heatmap_FactorsHeatmap = FALSE
 			outputOptions(output, "showSelect_Heatmap_FactorsHeatmap", suspendWhenHidden = FALSE)
 		}else{
 			output$showSelect_Heatmap_FactorsHeatmap = renderText('TRUE')
+			internalVarList$showSelect_Heatmap_FactorsHeatmap = TRUE
 			outputOptions(output, "showSelect_Heatmap_FactorsHeatmap", suspendWhenHidden = FALSE)
 
 			updateSelectInput(
@@ -38,7 +40,7 @@ Ctl.Heatmap$set("public", "InitSelectHeatColorChoices",
 )
 
 Ctl.Heatmap$set("public", "GetMainPlot",
-	function(input, output, preprocessedResult, preprocessedSampleInfo){
+	function(input, internalVarList, preprocessedResult, preprocessedSampleInfo){
 		if(is.null(preprocessedResult)){
 			return(NULL)
 		}
@@ -56,8 +58,8 @@ Ctl.Heatmap$set("public", "GetMainPlot",
 		isSampleNormalize <- input$is_Heatmap_SampleNormalize
 		
 		sampInfo <- preprocessedSampleInfo
-		isHaveSelectFactorHeatmap <- output$showSelect_Heatmap_FactorsHeatmap
-		isNoSampleClustering <- input$noSampleClustering
+		isHaveSelectFactorHeatmap <- internalVarList$showSelect_Heatmap_FactorsHeatmap
+		isSampleClustering <- input$is_Heatmap_NoSampleClustering
 		selectFactorsHeatmap <- input$select_Heatmap_FactorsHeatmap
 		selectedDistFunction <- input$distFunctions
 		selectedhclustFunction <- input$hclustFunctions		
@@ -72,9 +74,9 @@ Ctl.Heatmap$set("public", "GetMainPlot",
 
 				incProgress(1/2, "Generate Plot")
 
-				LogicManager$Display$GenerateHeatmap(dat, sampInfo,isHaveSelectFactorHeatmap,
-					isNoSampleClustering, selectFactorsHeatmap, selectedDistFunction, 
-					selectedhclustFunction, selectedHeatColor)
+				LogicManager$Heatmap$GenerateHeatmap(dat, sampInfo, geneCount, 
+					isHaveSelectFactorHeatmap, isSampleClustering, selectFactorsHeatmap, 
+					selectedDistFunction, selectedhclustFunction, selectedHeatColor)
 
 				incProgress(1, "Done")
 			}

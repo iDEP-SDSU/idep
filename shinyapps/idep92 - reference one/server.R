@@ -75,8 +75,7 @@ mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,1
 maxSamples = 100   # DESeq2 gets really slow when more than 50 samples
 maxSamplesDefault = 30   # change default from DESeq2 to limma
 maxComparisons = 20 # max number of pair wise comparisons in DESeq2
-hmcols <- colorRampPalette(rev(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF",
-"#E0F3F8", "#91BFDB", "#4575B4")))(75)
+
 
 maxSamplesEDAplot = 100  # max number of samples for EDA plots
 
@@ -134,22 +133,6 @@ LoadDataCtrl <- Ctl.LoadData$new()
 ################################################################
 #   Utility functions
 ################################################################
-
-# Functions for hierarchical clustering
-hclust2 <- function(x, method="average", ...)  # average linkage
-  hclust(x, method=method, ...)
-hclust.ward.D <- function(x, method="ward.D", ...)  # ward.D linkage
-  hclust(x, method=method, ...)
-hclust.ward.D2 <- function(x, method="ward.D2", ...)  # ward.D2 linkage
-  hclust(x, method=method, ...)
-hclust.single <- function(x, method="single", ...)  # single linkage
-  hclust(x, method=method, ...)
-hclust.mcquitty <- function(x, method="mcquitty", ...)  # mcquitty linkage
-  hclust(x, method=method, ...)
-hclust.median <- function(x, method="median", ...)  # median linkage
-  hclust(x, method=method, ...)
-hclust.centroid <- function(x, method="centroid", ...)  # centroid linkage
-  hclust(x, method=method, ...)
   
 hclustFuns <- list( averge   = hclust2, 
                     complete = hclust, 
@@ -256,15 +239,6 @@ changeNames <- function (comp) {
 	 return( paste0( paste0( levels4[-c(ix, ix-2)] ,collapse ="-"), "_for_",levels4[ix] ) )
  }
 
-# adding sample legends to heatmap; this is for the main heatmap
-# https://stackoverflow.com/questions/3932038/plot-a-legend-outside-of-the-plotting-area-in-base-graphics
-add_legend <- function(...) {
-  opar <- par(fig=c(0, 1, 0, 1), oma=c(0, 0, 0, 0), 
-    mar=c(0, 0, 0, 6), new=TRUE)
-  on.exit(par(opar))
-  plot(0, 0, type='n', bty='n', xaxt='n', yaxt='n')
-  legend(...)
-}
 
 
 

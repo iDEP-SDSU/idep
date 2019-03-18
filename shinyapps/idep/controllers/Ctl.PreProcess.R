@@ -161,6 +161,10 @@ Ctl.PreProcess$set("public", "GetGuessSpeciesResult",
 
 Ctl.PreProcess$set("public", "ConvertedIDResult",
 	function(GeneIDs, selectedOrg){
+		if(is.null(GeneIDs)){
+			return(null)
+		}
+
 		withProgress(
 			message = "Convert Gene IDs", 
 			detail="Converting gene IDs", 

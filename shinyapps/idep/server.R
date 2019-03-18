@@ -100,7 +100,7 @@ shinyServer(
 		#   					1.3  		Heatmap
 		############################################################################
 		observe({
-			HeatmapCtrl$RefreshUI_Select_Heatmap_FactorsHeatmap(session, output, PreprocessSampleInfoResult())  
+			HeatmapCtrl$RefreshUI_Select_Heatmap_FactorsHeatmap(session, output, ReactVars, PreprocessSampleInfoResult())  
 		})
 		
 		observe({
@@ -119,9 +119,9 @@ shinyServer(
 			)
 		})
 
-		Heatmap_MainPlot <- renderPlot({
-			HeatmapCtrl$GetMainPlot(ReactVars$PreProcessResult())
-		})
+		output$Heatmap_MainPlot <- renderPlot({
+			HeatmapCtrl$GetMainPlot(input, ReactVars, ReactVars$PreProcessResult(), PreprocessSampleInfoResult())
+		}, height = 900)
 
 
 		############################################################################
