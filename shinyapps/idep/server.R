@@ -118,6 +118,14 @@ shinyServer(
 			)
 		})
 
+		observe({
+			updateSelectInput(
+				session,
+				"hclustFunctions",
+				choices = HeatmapCtrl$InitSelectClusterFunctionChoices()
+			)
+		})
+
 		output$Heatmap_MainPlot <- renderPlot({
 			HeatmapCtrl$GetMainPlot(input, ReactVars, ReactVars$PreProcessResult(), PreprocessSampleInfoResult())
 		}, height = 900)

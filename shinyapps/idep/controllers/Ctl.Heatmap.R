@@ -41,6 +41,14 @@ Ctl.Heatmap$set("public", "InitSelectHeatColorChoices",
 	}
 )
 
+Ctl.Heatmap$set("public", "InitSelectClusterFunctionChoices",
+	function(){
+		clusterFuns <- LogicManager$UtilFuns$HierarchicalClusteringFuns
+		clusterFunsNames <- names(clusterFuns)
+		return(setNames(clusterFunsNames,clusterFunsNames))
+	}
+)
+
 Ctl.Heatmap$set("public", "GetMainPlot",
 	function(input, internalVarList, preprocessedResult, preprocessedSampleInfo){
 		if(is.null(preprocessedResult)){
