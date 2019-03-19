@@ -5,22 +5,23 @@ library(ggplot2,verbose=FALSE)	# graphics
 source('server.config')
 
 Display.Manager <- R6Class("Display.Manager")
-Display.Manager$set("public", "heatColors" , NULL)
-Display.Manager$set("public", "hmcols" , NULL)
+Display.Manager$set("public", "HeatColors" , NULL)
 
 Display.Manager$set("public", "initialize",
 	function(){
 
-		self$hmcols <- colorRampPalette(rev(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF",
+		hmcols <- colorRampPalette(rev(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF",
 			"#E0F3F8", "#91BFDB", "#4575B4")))(75)
 
-		heatColors = rbind(  greenred(75),     bluered(75),     
-	                     colorpanel(75,"green", "black","magenta"),
-	                     colorpanel(75,"blue", "yellow","red"), self$hmcols )
-		rownames(heatColors) = c("Green-Black-Red", "Blue-White-Red", "Green-Black-Magenta",
-	                         "Blue-Yellow-Red", "Blue-white-brown")
+		heatColors = list(  
+			"Green-Black-Red" = greenred(75),     
+			"Blue-White-Red" = bluered(75),     
+	        "Green-Black-Magenta" = colorpanel(75,"green", "black","magenta"),
+	        "Blue-Yellow-Red" = colorpanel(75,"blue", "yellow","red"), 
+			"Blue-white-brown" = hmcols 
+		)
 
-		self$heatColors <- heatColors
+		self$HeatColors <- heatColors
 	}
 )
 
@@ -56,10 +57,10 @@ Display.Manager$set("public", "GetReadcountBarPlot",
 )
 
 Display.Manager$set("public", "GetTransformedDataBoxPlot",
-	function(transedData, groups){
+	function(transformData, groups){
 		# 1. Init/load vars
 		memo = ""
-		dat <- transedData
+		dat <- transformData
 
 		# 2. Check sample count. If count is to much, then show first CONST_EAD_PLOT_MAX_SAMPLE_COUNT samples.
 		if( ncol(dat) > CONST_EAD_PLOT_MAX_SAMPLE_COUNT ){
@@ -109,10 +110,10 @@ Display.Manager$set("public", "GetTransformedDataBoxPlot",
 )
 
 Display.Manager$set("public", "GetTransformedDataDensityPlot",
-	function(transedData, groups){
+	function(transformData, groups){
 		# 1. Init/load vars
 		memo = ""
-		dat <- transedData
+		dat <- transformData
 
 		# 2. Check sample count. If count is to much, then show first CONST_EAD_PLOT_MAX_SAMPLE_COUNT samples.
 		if( ncol(dat) > CONST_EAD_PLOT_MAX_SAMPLE_COUNT ){
@@ -162,10 +163,10 @@ Display.Manager$set("public", "GetTransformedDataDensityPlot",
 )
 
 Display.Manager$set("public", "GetTransformedDataScatterPlot",
-	function(transedData){
+	function(transformData){
 		# 1. Init/load vars
 		memo = ""
-		dat <- transedData
+		dat <- transformData
 
 		# 2. Select first two columns
 		dat <- dat[,1:2]
@@ -181,4 +182,102 @@ Display.Manager$set("public", "GetTransformedDataScatterPlot",
 		return(p)
 	}
 )
+
+
+Display.Manager$set("public", "GetHeatmap2Plot",
+	function(dat, geneCount, groups, isSampleClustering,
+		distfunName, hclustfunName, heatColorName){
+		#http://stackoverflow.com/questions/15351575/moving-color-key-in-r-heatmap-2-function-of-gplots-package
+		groups.colors = rainbow(length(unique(groups)))
+
+		lmat = rbind(c(0, 4), c(0, 1), c(3, 2), c(5, 0))
+		lwid = c(2, 6)
+		lhei = c(1.5, .2, 8, 1.1)
+	
+		if(ncol(dat) < 20){
+			cexFactor = 2 
+		}else if(ncol(dat) < 31){
+			cexFactor = 1.5
+		}else{
+			cexFactor = 1
+		}
+
+		par(mar = c(5, 4, 1.4, 0.2))
+
+		if( geneCount>110 ){
+			heatmap.2(dat, 
+				distfun = LogicManager$UtilFuns$DistanceFuns[[distfunName]],
+				hclustfun = LogicManager$UtilFuns$HierarchicalClusteringFuns[[hclustfunName]],
+				Colv = isSampleClustering,
+				col = self$HeatColors[[heatColorName]],
+				density.info="none", 
+				trace="none", 
+				scale="none", 
+				keysize=.5,
+				key=TRUE, 
+				symkey=FALSE,
+				ColSideColors=groups.colors[ as.factor(groups)],
+				labRow="",
+				margins=c(10,0),
+				srtCol=45,
+				cexCol=cexFactor,  # size of font for sample names
+				lmat = lmat, 
+				lwid = lwid, 
+				lhei = lhei
+			)
+		}else{
+			heatmap.2(dat, 
+				distfun = LogicManager$UtilFuns$DistanceFuns[[distfunName]],
+				hclustfun = LogicManager$UtilFuns$HierarchicalClusteringFuns[[hclustfunName]],
+				Colv = isSampleClustering,
+				col = self$HeatColors[[heatColorName]],
+				density.info="none", 
+				trace="none", 
+				scale="none", 
+				keysize=.5,
+				key=TRUE, 
+				symkey=FALSE,
+				ColSideColors=groups.colors[ as.factor(groups)],
+				margins=c(18,12),
+				cexRow=1,
+				srtCol=45,
+				cexCol=cexFactor,  # size of font for sample names
+				lmat = lmat, 
+				lwid = lwid, 
+				lhei = lhei
+			)
+		}
+
+		if(length(unique(groups) ) <= 30 ) {  # only add legend when there is less categories
+			par(lend = 1)           # square line ends for the color legend
+			self$add_legend(
+				"topleft",
+				legend = unique(groups), # category labels
+				col = groups.colors[unique(as.factor(groups))],  # color key
+				lty= 1,             # line style
+				lwd = 10            # line width
+			)
+		}
+	}
+)
+
+# This is a support function for GetHeatmap2Plot
+# adding sample legends to heatmap; this is for the main heatmap
+# https://stackoverflow.com/questions/3932038/plot-a-legend-outside-of-the-plotting-area-in-base-graphics
+Display.Manager$set("public", "add_legend",
+	function(...) {
+		opar <- par(
+			fig=c(0, 1, 0, 1), 
+			oma=c(0, 0, 0, 0), 
+		 	mar=c(0, 0, 0, 6), 
+			new=TRUE
+		)
+		on.exit(par(opar))
+		plot(0, 0, type='n', bty='n', xaxt='n', yaxt='n')
+		legend(...)
+	}
+)
+
+
+
 

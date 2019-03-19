@@ -65,8 +65,7 @@ shinyServer(
 		})
 
 		PreprocessSampleInfoResult <- reactive({
-			geneNames <- rownames(ReactVars$PreProcessResult()$dat)
-			PreProcessCtrl$RawSampleInfoPreprocess(ReactVars$RawTestDesign, geneNames)
+			PreProcessCtrl$RawSampleInfoPreprocess(ReactVars$RawTestDesign, ReactVars$PreProcessResult()$dat)
 		})
 
 		ConvertedIDResult <- reactive({

@@ -26,6 +26,11 @@ PreProcessing.Logic$set("public","RawDataPreprocess",
 	#	6. Calculate Kurtosis
 	function(rawData, imputateMethod, dataType, minCounts, minSamples, 
 			CountsTransform, LogStart, isTransform, isNoFDR){
+		
+		usedParms <- list(dataType=dataType, imputateMethod=imputateMethod, minCounts=minCounts,
+						minSamples=minSamples, CountsTransform=CountsTransform, LogStart=LogStart,
+						isTransform=isTransform, isNoFDR=isNoFDR)
+		saveRDS(file="usedParms", usedParms)
 
 		tmp.data <- self$RemoveNonNumericalColumns(rawData)
 		tmp.data <- self$RemoveAllMissingRows(tmp.data)
@@ -261,8 +266,8 @@ PreProcessing.Logic$set("public", "CalcKurtosisForReadCount",
 
 		dat <- switch(CountsTransform,
 			log2( counts(dds, normalized=TRUE) + CountsLogStart ) ,
-			assay( rlog(dds, blind=TRUE) ),
-			assay( vst(dds, blind=TRUE) )
+			assay( vst(dds, blind=TRUE) ),
+			assay( rlog(dds, blind=TRUE) )
 		)
 		
 		return(list(dat=dat, warning=dataTypeWarning, 
@@ -314,11 +319,12 @@ PreProcessing.Logic$set("public", "CalcKurtosisForOtherDatatype",
 
 
 PreProcessing.Logic$set("public","RawSampleInfoPreprocess", 
-	function(rawInfo, colnameOfData){
+	function(rawInfo, rawData){
 		if(is.null(rawInfo)){
 			return(NULL)
 		}
 		
+		colnameOfData <- colnames(rawData)
 		temp.info <- self$CleanSampleNames(rawInfo)
 
 		matchedInfo <- match(toupper(colnameOfData), toupper(colnames(temp.info)))
@@ -326,8 +332,8 @@ PreProcessing.Logic$set("public","RawSampleInfoPreprocess",
 
 		validate(
 				  need(	
-					length(unique(ix) ) == dim(readData()$data)[2] 
-				       	& dim(x)[1]>=1 & dim(x)[1] <500, # at least one row, it can not be more than 500 rows
+					length(unique(matchedInfo) ) == dim(rawData)[2] 
+				       	& dim(rawInfo)[1]>=1 & dim(rawInfo)[1] <500, # at least one row, it can not be more than 500 rows
 					"Error!!! Sample information file not recognized. Sample names must be exactly the same. Each row is a factor. Each column represent a sample.  Please see documentation on format.")
 		)
 
@@ -338,7 +344,7 @@ PreProcessing.Logic$set("public","RawSampleInfoPreprocess",
 		   temp.info[i,] = gsub("\\.","",temp.info[i,])				
 		}
 		
-		if( length(unique(matchedInfo) ) == dim(readData()$data)[2]) { # matches exactly
+		if( length(unique(matchedInfo) ) == dim(rawData)[2]) { # matches exactly
 			temp.info = temp.info[,matchedInfo]
 			# if the levels of different factors are the same, it may cause problems
 			if( sum( apply(temp.info, 1, function(x) length(unique(x)))) > length(unique(unlist(temp.info) ) ) ) {

@@ -27,15 +27,17 @@ Ctl.Heatmap$set("public", "RefreshUI_Select_Heatmap_FactorsHeatmap",
 
 Ctl.Heatmap$set("public", "InitSelectDistFunctionChoices", 
 	function(){
-		distFuns <- LogicManager$Heatmap$distFuns
-		return(setNames(1:length(distFuns),names(distFuns)))
+		distFuns <- LogicManager$UtilFuns$DistanceFuns
+		distFunNames <- names(distFuns)
+		return(setNames(distFunNames, distFunNames))
 	}
 )
 
 Ctl.Heatmap$set("public", "InitSelectHeatColorChoices",
 	function(){
-		heatColors <- LogicManager$Display$heatColors
-		return(setNames(1:dim(heatColors)[1], rownames(heatColors)))
+		heatColors <- LogicManager$Display$HeatColors
+		colorNames <- names(heatColors)
+		return(setNames(colorNames, colorNames))
 	}
 )
 
@@ -59,7 +61,7 @@ Ctl.Heatmap$set("public", "GetMainPlot",
 		
 		sampInfo <- preprocessedSampleInfo
 		isHaveSelectFactorHeatmap <- internalVarList$showSelect_Heatmap_FactorsHeatmap
-		isSampleClustering <- input$is_Heatmap_NoSampleClustering
+		isSampleClustering <- !input$is_Heatmap_NoSampleClustering
 		selectFactorsHeatmap <- input$select_Heatmap_FactorsHeatmap
 		selectedDistFunction <- input$distFunctions
 		selectedhclustFunction <- input$hclustFunctions		
@@ -74,7 +76,7 @@ Ctl.Heatmap$set("public", "GetMainPlot",
 
 				incProgress(1/2, "Generate Plot")
 
-				LogicManager$Heatmap$GenerateHeatmap(dat, sampInfo, geneCount, 
+				LogicManager$Heatmap$GenerateHeatmap(cuttedData, sampInfo, geneCount, 
 					isHaveSelectFactorHeatmap, isSampleClustering, selectFactorsHeatmap, 
 					selectedDistFunction, selectedhclustFunction, selectedHeatColor)
 

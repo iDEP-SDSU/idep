@@ -277,7 +277,7 @@ Ctl.LoadData$set( "public", "EventHandler_UseDemoData",
 		# Load data set
 		demoData <- LogicManager$Files$LoadDemoData()
 		storeVariableList$RawData <- demoData$dat
-		storeVariableList$RawTestDesign <- demoData$design
+		storeVariableList$RawTestDesign <- demoData$sampleInfo
 		storeVariableList$PreProcessDone <- FALSE
 	}
 )
