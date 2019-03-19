@@ -78,15 +78,15 @@ View.Heatmap$set("public", "HeatmapSettingAndDownload",
 			strong("Customize hierarchical clustering (Default values work well):"),
 			fluidRow(
 				column(3, h5("Color")  ),
-				column(9, selectInput("heatColors1", label = NULL,"green-black-red",width='100%') )
+				column(9, selectInput("select_Heatmap_MainPlot_HeatColor", label = NULL,"green-black-red",width='100%') )
 			),
 			fluidRow(
 			 	column(4, h5("Distance")  ),
-			 	column(8, selectInput("distFunctions", label = NULL,"Correlation",width='100%') )
+			 	column(8, selectInput("select_Heatmap_MainPlot_DistanceFun", label = NULL,"Correlation",width='100%') )
 			),
 			fluidRow(
 			  	column(4, h5("Linkage")  ),
-			  	column(8, selectInput("hclustFunctions", label = NULL,"average",width='100%') )
+			  	column(8, selectInput("select_Heatmap_MainPlot_HClustFun", label = NULL,"average",width='100%') )
 			),
 			fluidRow(
 			  	column(8, h5("Cut-off Z score")  ),
@@ -100,8 +100,8 @@ View.Heatmap$set("public", "HeatmapSettingAndDownload",
 			conditionalPanel(condition = "output.showSelect_Heatmap_FactorsHeatmap",
 				selectInput("select_Heatmap_FactorsHeatmap", label="Sample color bar:",choices= c("Sample_Name"), selected = "Sample_Name")
 			),
-			downloadButton('downloadData', 'Heatmap data'),
-			downloadButton('downloadHeatmap1', 'High-resolution figure'),
+			downloadButton('btn_Heatmap_DownloadHeatmapData', 'Heatmap data'),
+			downloadButton('btn_Heatmap_DownloadEpsFormatPlot', 'High-resolution figure'),
 			br(),
 			a(h5("?",align = "right"), href="https://idepsite.wordpress.com/heatmap/",target="_blank")
 		)

@@ -71,9 +71,9 @@ Ctl.Heatmap$set("public", "GetMainPlot",
 		isHaveSelectFactorHeatmap <- internalVarList$showSelect_Heatmap_FactorsHeatmap
 		isSampleClustering <- !input$is_Heatmap_NoSampleClustering
 		selectFactorsHeatmap <- input$select_Heatmap_FactorsHeatmap
-		selectedDistFunction <- input$distFunctions
-		selectedhclustFunction <- input$hclustFunctions		
-		selectedHeatColor <- input$heatColors1
+		selectedDistFunction <- input$select_Heatmap_MainPlot_DistanceFun
+		selectedhclustFunction <- input$select_Heatmap_MainPlot_HClustFun		
+		selectedHeatColor <- input$select_Heatmap_MainPlot_HeatColor
 
 		withProgress(
 			message=sample(LogicManager$DB$Quotes,1), 
@@ -91,5 +91,19 @@ Ctl.Heatmap$set("public", "GetMainPlot",
 				incProgress(1, "Done")
 			}
 		)
+	}
+)
+
+Ctl.Heatmap$set("public", "SaveHeatmapDataInTempFile",
+	function(){
+		#
+	}
+)
+
+Ctl.Heatmap$set("public", "SaveEpsPlotInTempFile",
+	function(file, input, internalVarList, preprocessedResult, preprocessedSampleInfo){
+		cairo_ps(file, width = 10, height = 15)
+		self$GetMainPlot(input, internalVarList, preprocessedResult, preprocessedSampleInfo)
+		dev.off()
 	}
 )

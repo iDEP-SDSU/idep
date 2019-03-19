@@ -47,19 +47,20 @@ Heatmap.Logic$set("public", "GenerateHeatmap",
 		selectedDistFunction, selectedhclustFunction,
 		selectedHeatColor)
 	{
-		groups = LogicManager$PreProcessing$DetectGroups(colnames(dat))
+		groups = LogicManager$PreProcessing$DetectGroups( colnames(dat) )
 		mylist <- list(
 			selectedDistFunction = selectedDistFunction, 
 			selectedhclustFunction = selectedhclustFunction,
-			selectedHeatColor = selectedHeatColor)
+			selectedHeatColor = selectedHeatColor
+		)
 
 		saveRDS(file='mylist', mylist)
 
 		if(!is.null(sampleInfo) && isHaveSelectFactorHeatmap ) {
 			if(selectFactorsHeatmap == "Sample_Name" ){
-				groups = LogicManager$PreProcessing$DetectGroups(colnames(dat) ) 
+				groups = LogicManager$PreProcessing$DetectGroups( colnames(dat) ) 
 			}else{ 	
-				ix = match(selectFactorsHeatmap, colnames(dat) ) 
+				ix = match( selectFactorsHeatmap, colnames(dat) ) 
 				groups = dat[,ix]
 			}
 		}

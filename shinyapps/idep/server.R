@@ -105,7 +105,7 @@ shinyServer(
 		observe({
 			updateSelectInput(
 				session, 
-				"distFunctions", 
+				"select_Heatmap_MainPlot_DistanceFun", 
 				choices = HeatmapCtrl$InitSelectDistFunctionChoices()
 			)
 		})
@@ -113,7 +113,7 @@ shinyServer(
 		observe({
 			updateSelectInput(
 				session, 
-				"heatColors1", 
+				"select_Heatmap_MainPlot_HeatColor", 
 				choices = HeatmapCtrl$InitSelectHeatColorChoices()
 			)
 		})
@@ -121,15 +121,37 @@ shinyServer(
 		observe({
 			updateSelectInput(
 				session,
-				"hclustFunctions",
+				"select_Heatmap_MainPlot_HClustFun",
 				choices = HeatmapCtrl$InitSelectClusterFunctionChoices()
 			)
 		})
 
-		output$Heatmap_MainPlot <- renderPlot({
-			HeatmapCtrl$GetMainPlot(input, ReactVars, ReactVars$PreProcessResult(), PreprocessSampleInfoResult())
-		}, height = 900)
+		output$Heatmap_MainPlot <- renderPlot(
+			{
+				HeatmapCtrl$GetMainPlot(
+					input, 
+					ReactVars, 
+					ReactVars$PreProcessResult(), 
+					PreprocessSampleInfoResult()
+				)
+			}, 
+			height = 900
+		)
 
+#		output$btn_Heatmap_DownloadHeatmapData <- downloadHandler(
+#			filename = "heatmap.csv",
+#			content = function(file) {	
+#				HeatmapCtrl$SaveHeatmapDataInTempFile(file, input, ReactVars$PreProcessResult(), ),				
+#			}
+#		) 
+		output$btn_Heatmap_DownloadEpsFormatPlot <- downloadHandler(
+			filename = "heatmap.eps",
+			content = function(file) {	
+				HeatmapCtrl$SaveEpsPlotInTempFile(file, input, ReactVars, 
+					ReactVars$PreProcessResult(), PreprocessSampleInfoResult()
+				)				
+			}
+		)
 
 		############################################################################
 		#						0.0		Test R Markdown Report
