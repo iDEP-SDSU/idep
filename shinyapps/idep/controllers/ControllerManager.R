@@ -7,5 +7,5 @@ source('controllers/Ctl.Heatmap.R')
 
 
 LoadDataCtrl <- Ctl.LoadData$new()
-PreProcessCtrl <- Ctl.PreProcess$new(LogicManager)
+PreProcessCtrl <- Ctl.PreProcess$new()
 HeatmapCtrl <- Ctl.Heatmap$new()

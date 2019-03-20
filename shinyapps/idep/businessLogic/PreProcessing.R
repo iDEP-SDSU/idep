@@ -7,15 +7,6 @@ source('server.config')
 
 PreProcessing.Logic <- R6Class("PreProcessing.Logic")
 
-PreProcessing.Logic$set("public","DB", NULL)
-
-
-PreProcessing.Logic$set("public","initialize",
-	function(DatabaseManager){
-		self$DB <- DatabaseManager
-	}
-)
-
 PreProcessing.Logic$set("public","RawDataPreprocess",
 	# Data file preprocessing function
 	# Convert from Server.R$readData
@@ -485,7 +476,7 @@ PreProcessing.Logic$set("public", "GetGenesInfomationByEnsemblIDs",
 			return(as.data.frame("No matching gene info file found") ) 
 		}
 
-		if(selectOrg != self$GetAllPossibleSpecies()[[1]]){
+		if(selectOrg != 'BestMatch'){
 			idxGeneInfoFile = grep(findSpeciesById(selectOrg)[1,1], geneInfoFiles )
 		}
 
@@ -506,31 +497,4 @@ PreProcessing.Logic$set("public", "GetGenesInfomationByEnsemblIDs",
 	}
 )
 
-#	Get all avaiable species
-PreProcessing.Logic$set("public", "GetAllPossibleSpecies",
-	function(){
-		# Create a list for Select Input options
-		orgInfo <- self$DB$OrgInfo
-
-		speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
-		# add a defult element to list    # new element name       value
-		speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
-		speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
-
-		# move one element to the 2nd place
-		move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
-		i= which( names(speciesChoice) == "Glycine max"); speciesChoice <- move2(i)
-		i= which( names(speciesChoice) =="Zea mays"); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) =="Arabidopsis thaliana"); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) == "Saccharomyces cerevisiae"); speciesChoice <- move2(i)
-		i= which(names(speciesChoice)  == "Caenorhabditis elegans"); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) =="Zebrafish" ); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) == "Cow" ); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) == "Rat" ); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) == "Mouse"); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) == "Human"); speciesChoice <- move2(i)
-
-		return(speciesChoice)
-	}
-)
 
