@@ -25,9 +25,9 @@ Logic.Manager$set("public", "initialize",
 	function(){
 		self$UtilFuns <- UtilFuns$new()
 		self$Files <- File.Manager$new()
-		self$PreProcessing <- PreProcessing.Logic$new()
 		self$Display <- Display.Manager$new()
-		self$DB <- DB.Manager$new()		
+		self$DB <- DB.Manager$new()
+		self$PreProcessing <- PreProcessing.Logic$new(self$DB)
 		self$Heatmap <- Heatmap.Logic$new()
 	}
 )

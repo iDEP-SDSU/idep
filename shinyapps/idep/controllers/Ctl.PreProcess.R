@@ -2,10 +2,16 @@ library('R6')
 library(shiny)
 library(shinyBS)
 library(plotly)
-source('businessLogic/LogicManager.R')
+
 
 Ctl.PreProcess <- R6Class("Ctl.PreProcess")
-LogicManager <- Logic.Manager$new()
+Ctl.PreProcess$set("public", "LogicManager", NULL)
+
+Ctl.PreProcess$set("public", "initialize", 
+	function(LogicManager){
+		self$LogicManager <- LogicManager
+	}
+)
 
 Ctl.PreProcess$set("public", "PreProcessResult",
 	function(input, session, storeVariableList){
@@ -198,9 +204,12 @@ Ctl.PreProcess$set("public", "GetAllGeneInfomation",
 )
 
 
-Ctl.PreProcess$set("public", "InitChoice_SelectOrgUI",
+Ctl.PreProcess$set("public", "InitChoiceSelectOrgUI",
 	function(){
-		speciesChoice <- LogicManager$Preprocessing$GetAllPossibleSpecies()
+		speciesChoice <- self$LogicManager$Preprocessing$GetAllPossibleSpecies()
 		return(speciesChoice)
 	}
 )
+
+
+

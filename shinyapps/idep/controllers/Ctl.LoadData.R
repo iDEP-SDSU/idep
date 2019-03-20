@@ -5,9 +5,7 @@ library(DT)
 library("rhdf5")
 
 source('server.config')
-source('businessLogic/LogicManager.R')
 
-LogicManager <- Logic.Manager$new()
 Ctl.LoadData <- R6Class("Ctl.LoadData")
 
 ## Fields 

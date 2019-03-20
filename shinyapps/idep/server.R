@@ -7,12 +7,9 @@ library(plotly)
 source('server.config')
 source('controllers/ControllerManager.R')
 
+
 ReactVars <- reactiveValues()
 RegularVars <- list()
-
-LoadDataCtrl <- Ctl.LoadData$new()
-PreProcessCtrl <- Ctl.PreProcess$new()
-HeatmapCtrl <- Ctl.Heatmap$new()
 
 shinyServer(
 	function(input, output, session) {
@@ -59,7 +56,7 @@ shinyServer(
 		#   					1.2  		Pre Process
 		############################################################################
 
-		observe({  updateSelectInput(session, "selectOrg", choices = PreProcessCtrl$InitChoice_SelectOrgUI() ) })
+		observe({  updateSelectInput(session, "selectOrg", choices = PreProcessCtrl$InitChoiceSelectOrgUI() ) })
 
 		ReactVars$PreProcessResult <- reactive({
 			PreProcessCtrl$PreProcessResult(input, session, ReactVars)
@@ -74,8 +71,12 @@ shinyServer(
 			PreProcessCtrl$ConvertedIDResult(geneNames, input$selectOrg )
 		})
 
-		AllGeneInfo() <- reactive({
-			PreProcessCtrl$GeAllGeneInfomation(ConvertedIDResult(), input)
+		AllGeneInfo <- reactive({
+			p <- PreProcessCtrl$GetAllGeneInfomation(ConvertedIDResult(), input)
+			if(!is.null(p)){
+				saveRDS(file='AllGeneInfo', p)
+			}
+			p
 		})
 
 		output$PreProcess_ReadCount <- renderPlotly({
@@ -85,7 +86,7 @@ shinyServer(
 		output$PreProcess_DistTransform <- renderPlotly({
 			PreProcessCtrl$GetTransformedDataBoxPlot(ReactVars$PreProcessResult()$dat)
 		})
-		
+
 
 		output$PreProcess_DensityTransform <- renderPlotly({
 			PreProcessCtrl$GetTransformedDataDensityPlot(ReactVars$PreProcessResult()$dat)
@@ -99,26 +100,26 @@ shinyServer(
 			PreProcessCtrl$GetGuessSpeciesResult(ConvertedIDResult())
 		}, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
-		
+
 		############################################################################
 		#   					1.3  		Heatmap
 		############################################################################
 		observe({
-			HeatmapCtrl$RefreshUI_Select_Heatmap_FactorsHeatmap(session, output, ReactVars, PreprocessSampleInfoResult())  
+			HeatmapCtrl$RefreshUI_Select_Heatmap_FactorsHeatmap(session, output, ReactVars, PreprocessSampleInfoResult())
 		})
-		
+
 		observe({
 			updateSelectInput(
-				session, 
-				"select_Heatmap_MainPlot_DistanceFun", 
+				session,
+				"select_Heatmap_MainPlot_DistanceFun",
 				choices = HeatmapCtrl$InitSelectDistFunctionChoices()
 			)
 		})
 
 		observe({
 			updateSelectInput(
-				session, 
-				"select_Heatmap_MainPlot_HeatColor", 
+				session,
+				"select_Heatmap_MainPlot_HeatColor",
 				choices = HeatmapCtrl$InitSelectHeatColorChoices()
 			)
 		})
@@ -134,36 +135,36 @@ shinyServer(
 		output$Heatmap_MainPlot <- renderPlot(
 			{
 				HeatmapCtrl$GetMainHeatmap(
-					input, 
-					ReactVars, 
-					ReactVars$PreProcessResult(), 
+					input,
+					ReactVars,
+					ReactVars$PreProcessResult(),
 					PreprocessSampleInfoResult()
 				)
-			}, 
+			},
 			height = 900
 		)
 
 #		output$btn_Heatmap_DownloadHeatmapData <- downloadHandler(
 #			filename = "heatmap.csv",
-#			content = function(file) {	
-#				HeatmapCtrl$SaveHeatmapDataInTempFile(file, input, ReactVars$PreProcessResult(), ),				
+#			content = function(file) {
+#				HeatmapCtrl$SaveHeatmapDataInTempFile(file, input, ReactVars$PreProcessResult(), ),
 #			}
-#		) 
+#		)
 		output$btn_Heatmap_DownloadEpsFormatPlot <- downloadHandler(
 			filename = "heatmap.eps",
-			content = function(file) {	
+			content = function(file) {
 				HeatmapCtrl$SaveEpsPlotInTempFile(
-					file, input, ReactVars, 
+					file, input, ReactVars,
 					ReactVars$PreProcessResult(), PreprocessSampleInfoResult()
-				)				
+				)
 			}
 		)
 
 		output$Heatmap_HeatmapPlotly <- renderPlotly({
 			HeatmapCtrl$GetMainHeatmapPlotly(
-				input, 
-				ReactVars, 
-				ReactVars$PreProcessResult(), 
+				input,
+				ReactVars,
+				ReactVars$PreProcessResult(),
 				PreprocessSampleInfoResult()
 			)
 		})

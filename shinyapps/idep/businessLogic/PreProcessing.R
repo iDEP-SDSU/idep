@@ -7,6 +7,14 @@ source('server.config')
 
 PreProcessing.Logic <- R6Class("PreProcessing.Logic")
 
+PreProcessing.Logic$set("public","DB", NULL)
+
+
+PreProcessing.Logic$set("public","initialize",
+	function(DatabaseManager){
+		self$DB <- DatabaseManager
+	}
+)
 
 PreProcessing.Logic$set("public","RawDataPreprocess",
 	# Data file preprocessing function
@@ -439,7 +447,7 @@ PreProcessing.Logic$set("public", "findSpeciesNameById",
 )
 # find species information use id
 PreProcessing.Logic$set("public", "findSpeciesById",
-	function (speciesID){ 
+	function(speciesID){ 
 		orgInfo <- LogicManager$DB$OrgInfo
   		return( orgInfo[which(orgInfo$id == speciesID),]  )
 	}
@@ -447,7 +455,7 @@ PreProcessing.Logic$set("public", "findSpeciesById",
 
 # convert sorted species:idType combs into a list for repopulate species choice
 PreProcessing.Logic$set("public", "matchedSpeciesInfo",
-	function (x) {
+	function(x) {
   		a<- c()
   		for( i in 1:length(x)) {
   		  	a = c(a,paste( gsub("genes.*","",findSpeciesNameById( as.numeric(gsub(" .*","",names(x[i])) ))), " (",
@@ -461,45 +469,13 @@ PreProcessing.Logic$set("public", "matchedSpeciesInfo",
 
 # Clean up gene sets. Remove spaces and other control characters from gene names  
 PreProcessing.Logic$set("public", "cleanGeneSet",
-	function (x){
+	function(x){
   		# remove duplicate; upper case; remove special characters
   		x <- unique( toupper( gsub("\n| ","",x) ) )
   		x <- x[which( nchar(x)>1) ]  # genes should have at least two characters
   		return(x)
 	}
 )
-
-
-#	Get all avaiable species
-PreProcessing.Logic$set("public", "GetAllPossibleSpecies",
-	function (){
-		# Create a list for Select Input options
-		orgInfo <- LogicManager$DB$OrgInfo
-
-		speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
-		# add a defult element to list    # new element name       value
-		speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
-		speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
-
-		# move one element to the 2nd place
-		move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
-		i= which( names(speciesChoice) == "Glycine max"); speciesChoice <- move2(i)
-		i= which( names(speciesChoice) =="Zea mays"); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) =="Arabidopsis thaliana"); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) == "Saccharomyces cerevisiae"); speciesChoice <- move2(i)
-		i= which(names(speciesChoice)  == "Caenorhabditis elegans"); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) =="Zebrafish" ); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) == "Cow" ); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) == "Rat" ); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) == "Mouse"); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) == "Human"); speciesChoice <- move2(i)
-
-		return(speciesChoice)
-	}
-)
-
-
-
 
 # allGeneInfo()
 PreProcessing.Logic$set("public", "GetGenesInfomationByEnsemblIDs",
@@ -526,7 +502,35 @@ PreProcessing.Logic$set("public", "GetGenesInfomationByEnsemblIDs",
 		Set[which(is.na(Set))]="Genome"
 		Set[which(Set!="Genome")] ="List"
 
-		return( cbind(geneInfo,Set) )}
+		return( cbind(geneInfo,Set) )
+	}
+)
+
+#	Get all avaiable species
+PreProcessing.Logic$set("public", "GetAllPossibleSpecies",
+	function(){
+		# Create a list for Select Input options
+		orgInfo <- self$DB$OrgInfo
+
+		speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
+		# add a defult element to list    # new element name       value
+		speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
+		speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
+
+		# move one element to the 2nd place
+		move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
+		i= which( names(speciesChoice) == "Glycine max"); speciesChoice <- move2(i)
+		i= which( names(speciesChoice) =="Zea mays"); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) =="Arabidopsis thaliana"); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) == "Saccharomyces cerevisiae"); speciesChoice <- move2(i)
+		i= which(names(speciesChoice)  == "Caenorhabditis elegans"); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) =="Zebrafish" ); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) == "Cow" ); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) == "Rat" ); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) == "Mouse"); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) == "Human"); speciesChoice <- move2(i)
+
+		return(speciesChoice)
 	}
 )
 
