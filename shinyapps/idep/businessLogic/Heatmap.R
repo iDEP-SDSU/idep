@@ -48,13 +48,6 @@ Heatmap.Logic$set("public", "GenerateHeatmap",
 		selectedHeatColor)
 	{
 		groups = LogicManager$PreProcessing$DetectGroups( colnames(dat) )
-		mylist <- list(
-			selectedDistFunction = selectedDistFunction, 
-			selectedhclustFunction = selectedhclustFunction,
-			selectedHeatColor = selectedHeatColor
-		)
-
-		saveRDS(file='mylist', mylist)
 
 		if(!is.null(sampleInfo) && isHaveSelectFactorHeatmap ) {
 			if(selectFactorsHeatmap == "Sample_Name" ){
@@ -69,5 +62,47 @@ Heatmap.Logic$set("public", "GenerateHeatmap",
 			LogicManager$Display$GetHeatmap2Plot(dat, geneCount, groups, isSampleClustering,
 				selectedDistFunction, selectedhclustFunction, selectedHeatColor)
 		)
+	}
+)
+
+
+Heatmap.Logic$set("public", "ClusterGeneAndSample",
+	function(dat, isSampleClustering){
+
+		# clustering genes------
+		clust <- dat %>% 
+		 	LogicManager$UtilFuns$dist2() %>% 
+		  	LogicManager$UtilFuns$hclust2()
+		# Get order
+		ord_row <- clust$order
+
+		# clustering samples --------
+		if( isSampleClustering ){
+			ord_column = 1:ncol(dat)
+		} else { 
+			clust <- t(dat) %>% 
+			  	LogicManager$UtilFuns$dist2() %>% 
+			  	LogicManager$UtilFuns$hclust2()
+			# Get order
+			ord_column <- clust$order
+		}
+
+		return(list(ord_row=ord_row, ord_column=ord_column))
+	}
+)
+
+Heatmap.Logic$set("public", "GenerateHeatmapPlotly",
+	function(dat, clusteredOrder, selectedHeatColor){
+		ord_row=clusteredOrder$ord_row
+		ord_column=clusteredOrder$ord_column
+
+		# Re-arrange based on order
+		df <- t( dat[ord_row,ord_column] )%>%
+	   		melt()
+		colnames(df)[1:2] <- c("X","Y")
+
+		saveRDS(file="df", df)
+		# Call Display manager
+		return(LogicManager$Display$GetHeatmapPlotly(df, selectedHeatColor))
 	}
 )

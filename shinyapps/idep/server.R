@@ -128,7 +128,7 @@ shinyServer(
 
 		output$Heatmap_MainPlot <- renderPlot(
 			{
-				HeatmapCtrl$GetMainPlot(
+				HeatmapCtrl$GetMainHeatmap(
 					input, 
 					ReactVars, 
 					ReactVars$PreProcessResult(), 
@@ -147,11 +147,21 @@ shinyServer(
 		output$btn_Heatmap_DownloadEpsFormatPlot <- downloadHandler(
 			filename = "heatmap.eps",
 			content = function(file) {	
-				HeatmapCtrl$SaveEpsPlotInTempFile(file, input, ReactVars, 
+				HeatmapCtrl$SaveEpsPlotInTempFile(
+					file, input, ReactVars, 
 					ReactVars$PreProcessResult(), PreprocessSampleInfoResult()
 				)				
 			}
 		)
+
+		output$Heatmap_HeatmapPlotly <- renderPlotly({
+			HeatmapCtrl$GetMainHeatmapPlotly(
+				input, 
+				ReactVars, 
+				ReactVars$PreProcessResult(), 
+				PreprocessSampleInfoResult()
+			)
+		})
 
 		############################################################################
 		#						0.0		Test R Markdown Report

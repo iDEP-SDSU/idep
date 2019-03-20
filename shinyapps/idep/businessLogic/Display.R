@@ -278,6 +278,30 @@ Display.Manager$set("public", "add_legend",
 	}
 )
 
+Display.Manager$set("public", "GetHeatmapPlotly",
+	function(dat, selectedHeatColor){
 
+		# Generate Color names
+		colorNames = unlist(strsplit(tolower(selectedHeatColor),"-" ) )
+
+		# Build ggplot
+		p <- dat %>%
+	  		ggplot(aes(X, Y, fill = value)) + 
+			  	geom_tile() + 
+			  	scale_fill_gradient2(low = colorNames[1], mid = colorNames[2],high = colorNames[3]) + 
+			  	theme(
+					axis.title.y=element_blank(),   # remove y labels
+				   	#axis.text.y=element_blank(),  # keep gene names for zooming
+					axis.ticks.y=element_blank(),
+					axis.title.x=element_blank()
+				) + 
+				theme(axis.text.x = element_text(size=10,angle = 45, hjust = 1))
+		
+		p <- ggplotly(p) %>% 
+			layout(margin = list(b = 150,l=200))
+
+		return(p)
+	}
+)
 
 

@@ -3206,13 +3206,6 @@ plotHeatmap1 <- reactive ({
 }  ) 
 	# conventional heatmap.2 plot
 
-output$downloadHeatmap1 <- downloadHandler(
-      filename = "heatmap.eps",
-      content = function(file) {
-	cairo_ps(file, width = 10, height = 15)
-        plotHeatmap1()
-        dev.off()
-      })  
 
 # interactive heatmap with plotly
 output$heatmapPlotly <- renderPlotly({

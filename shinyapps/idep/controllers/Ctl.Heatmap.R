@@ -2,28 +2,9 @@ library('R6')
 
 Ctl.Heatmap <- R6Class("Ctl.Heatmap")
 
-
-Ctl.Heatmap$set("public", "RefreshUI_Select_Heatmap_FactorsHeatmap",
-	function(session, output, internalVarList, sampleInfo){
-		if(is.null(sampleInfo)){
-			output$showSelect_Heatmap_FactorsHeatmap = renderText('FALSE')
-			internalVarList$showSelect_Heatmap_FactorsHeatmap = FALSE
-			outputOptions(output, "showSelect_Heatmap_FactorsHeatmap", suspendWhenHidden = FALSE)
-		}else{
-			output$showSelect_Heatmap_FactorsHeatmap = renderText('TRUE')
-			internalVarList$showSelect_Heatmap_FactorsHeatmap = TRUE
-			outputOptions(output, "showSelect_Heatmap_FactorsHeatmap", suspendWhenHidden = FALSE)
-
-			updateSelectInput(
-				session, 
-				"select_Heatmap_FactorsHeatmap", 
-				choices = c(colnames(sampleInfo), "Sample_Name"),
-				selected = "Sample_Name"
-			)
-		}
-	}
-)
-
+###############################################################################
+###################			Load/Reload UI Functions		###################
+###############################################################################
 
 Ctl.Heatmap$set("public", "InitSelectDistFunctionChoices", 
 	function(){
@@ -49,7 +30,38 @@ Ctl.Heatmap$set("public", "InitSelectClusterFunctionChoices",
 	}
 )
 
-Ctl.Heatmap$set("public", "GetMainPlot",
+Ctl.Heatmap$set("public", "RefreshUI_Select_Heatmap_FactorsHeatmap",
+	function(session, output, internalVarList, sampleInfo){
+		if(is.null(sampleInfo)){
+			output$showSelect_Heatmap_FactorsHeatmap = renderText('FALSE')
+			internalVarList$showSelect_Heatmap_FactorsHeatmap = FALSE
+			outputOptions(output, "showSelect_Heatmap_FactorsHeatmap", suspendWhenHidden = FALSE)
+		}else{
+			output$showSelect_Heatmap_FactorsHeatmap = renderText('TRUE')
+			internalVarList$showSelect_Heatmap_FactorsHeatmap = TRUE
+			outputOptions(output, "showSelect_Heatmap_FactorsHeatmap", suspendWhenHidden = FALSE)
+
+			updateSelectInput(
+				session, 
+				"select_Heatmap_FactorsHeatmap", 
+				choices = c(colnames(sampleInfo), "Sample_Name"),
+				selected = "Sample_Name"
+			)
+		}
+	}
+)
+
+
+###############################################################################
+###################			Result Ouput Functions			###################
+###############################################################################
+
+###################			GetMainHeatmap Function			###################
+#	Generate the heatmap we can see in heat map tab
+#	There're two steps:
+#		1. Cut data based on user setting
+#		2. Generate heatmap
+Ctl.Heatmap$set("public", "GetMainHeatmap",
 	function(input, internalVarList, preprocessedResult, preprocessedSampleInfo){
 		if(is.null(preprocessedResult)){
 			return(NULL)
@@ -94,6 +106,62 @@ Ctl.Heatmap$set("public", "GetMainPlot",
 	}
 )
 
+
+###################		GetMainHeatmapPlotly Function			###################
+#	Generate an plotly heatmap that can be interactived with
+#	There're two steps:
+#		1. Cut data based on user setting
+#		2. Cluster Gene (and sample)
+#		2. Generate heatmap
+
+Ctl.Heatmap$set("public", "GetMainHeatmapPlotly",
+	function(input, internalVarList, preprocessedResult, preprocessedSampleInfo){
+		if(is.null(preprocessedResult)){
+			return(NULL)
+		}
+
+		if(is.null(preprocessedResult$dat)){
+			return(NULL)
+		}
+
+		dat <- preprocessedResult$dat
+		geneCount <- input$num_Heatmap_PlotlyIncludeGeneCount
+		numHeatmapCutoff <- input$num_Heatmap_HeatmapCutoff
+		isGeneCentering <- input$is_Heatmap_GeneCentering
+		isGeneNormalize <- input$is_Heatmap_GeneNormalize
+		isSampleCentering <- input$is_Heatmap_SampleCentering
+		isSampleNormalize <- input$is_Heatmap_SampleNormalize
+		
+		sampInfo <- preprocessedSampleInfo
+		isHaveSelectFactorHeatmap <- internalVarList$showSelect_Heatmap_FactorsHeatmap
+		isSampleClustering <- !input$is_Heatmap_NoSampleClustering
+		selectFactorsHeatmap <- input$select_Heatmap_FactorsHeatmap
+		selectedDistFunction <- input$select_Heatmap_MainPlot_DistanceFun
+		selectedhclustFunction <- input$select_Heatmap_MainPlot_HClustFun		
+		selectedHeatColor <- input$select_Heatmap_MainPlot_HeatColor
+
+		withProgress(
+			message=sample(LogicManager$DB$Quotes,1), 
+			detail ="Runing hierarchical clustering ", 
+			{
+				incProgress(1/5, "Prepare Data...")
+				cuttedData <- LogicManager$Heatmap$CutData(dat, geneCount, numHeatmapCutoff,
+					isGeneCentering, isGeneNormalize, isSampleCentering, isSampleNormalize)
+
+				incProgress(1/2, "Clustering...")	
+				clusteredOrder <- LogicManager$Heatmap$ClusterGeneAndSample(cuttedData, isSampleClustering)
+
+				incProgress(3/5, "Generate Plot...")
+				p <- LogicManager$Heatmap$GenerateHeatmapPlotly(cuttedData, clusteredOrder, selectedHeatColor)
+
+				incProgress(1, "Done")
+				return(p)
+			}
+		)
+	}
+)
+
+
 Ctl.Heatmap$set("public", "SaveHeatmapDataInTempFile",
 	function(){
 		#
@@ -107,3 +175,4 @@ Ctl.Heatmap$set("public", "SaveEpsPlotInTempFile",
 		dev.off()
 	}
 )
+
