@@ -470,26 +470,28 @@ PreProcessing.Logic$set("public", "cleanGeneSet",
 
 # allGeneInfo()
 PreProcessing.Logic$set("public", "GetGenesInfomationByEnsemblIDs",
-	function(ensenmblIDs, species, selectOrg){
-		idxGeneInfoFile = grep(species[1,1],CONFIG_DATA_LIST_GENEINFOFILES)
+	function(ensemblIDs, species, selectOrg){
+		if(selectOrg != 'BestMatch'){
+			idxGeneInfoFile = grep(findSpeciesById(selectOrg)[1,1], geneInfoFiles )
+		}else{
+			idxGeneInfoFile = grep(species[1,1],CONFIG_DATA_LIST_GENEINFOFILES)
+		}
+		
 		if(length(idxGeneInfoFile) == 0 ) {
 			return(as.data.frame("No matching gene info file found") ) 
 		}
 
-		if(selectOrg != 'BestMatch'){
-			idxGeneInfoFile = grep(findSpeciesById(selectOrg)[1,1], geneInfoFiles )
-		}
 
 		if(length(idxGeneInfoFile) == 1){ 
 			# if only one file           
 			# read in the chosen file 
-			geneInfo = read.csv(as.character(geneInfoFiles[ix]) )
+			geneInfo = read.csv(as.character(CONFIG_DATA_LIST_GENEINFOFILES[idxGeneInfoFile]) )
 			geneInfo[,1]= toupper(geneInfo[,1]) #WBGene0000001 some ensembl gene ids in lower case
 		} else { 
 			return(as.data.frame("Multiple geneInfo file found!") )   
 		}
 
-		Set = match(geneInfo$ensembl_gene_id, ensenmblIDs)
+		Set = match(geneInfo$ensembl_gene_id, ensemblIDs)
 		Set[which(is.na(Set))]="Genome"
 		Set[which(Set!="Genome")] ="List"
 

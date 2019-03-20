@@ -161,6 +161,7 @@ shinyServer(
 		)
 
 		output$Heatmap_HeatmapPlotly <- renderPlotly({
+			x <- AllGeneInfo()
 			HeatmapCtrl$GetMainHeatmapPlotly(
 				input,
 				ReactVars,

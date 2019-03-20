@@ -183,7 +183,7 @@ Ctl.PreProcess$set("public", "GetAllGeneInfomation",
 				return(NULL)
 			}
 
-			ensenmblIDs <- Reactive_ConvertedIDResult$ensemblIDs
+			ensemblIDs <- Reactive_ConvertedIDResult$ensemblIDs
 			species <- Reactive_ConvertedIDResult$species
 			selectOrg <- input$selectOrg
 
@@ -191,7 +191,7 @@ Ctl.PreProcess$set("public", "GetAllGeneInfomation",
 				return(NULL)
 			}
 
-			return( LogicManager$PreProcessing$GetGenesInfomationByEnsemblIDs(ensenmblIDs, species, selectOrg) )
+			return( LogicManager$PreProcessing$GetGenesInfomationByEnsemblIDs(ensemblIDs, species, selectOrg) )
 		})
 	}
 )
