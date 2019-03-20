@@ -177,29 +177,30 @@ Ctl.PreProcess$set("public", "ConvertedIDResult",
 	}
 )
 
-Ctl.PreProcess$set("public", "InitSelectOrgUI",
+Ctl.PreProcess$set("public", "GetAllGeneInfomation",
+	function(Reactive_ConvertedIDResult, input){
+		withProgress(message="Looking up gene annotation", {
+			if(is.null(Reactive_ConvertedIDResult)){
+				return(NULL)
+			}
+
+			ensenmblIDs <- Reactive_ConvertedIDResult$ensemblIDs
+			species <- Reactive_ConvertedIDResult$species
+			selectOrg <- input$selectOrg
+
+			if(is.null(ensemblIDs) || is.null(species) || is.null(selectOrg)){
+				return(NULL)
+			}
+
+			return( LogicManager$PreProcessing$GetGenesInfomationByEnsemblIDs(ensenmblIDs, species, selectOrg) )
+		})
+	}
+)
+
+
+Ctl.PreProcess$set("public", "InitChoice_SelectOrgUI",
 	function(){
-		# Create a list for Select Input options
-		orgInfo <- LogicManager$DB$OrgInfo
-
-		speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
-		# add a defult element to list    # new element name       value
-		speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
-		speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
-
-		# move one element to the 2nd place
-		move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
-		i= which( names(speciesChoice) == "Glycine max"); speciesChoice <- move2(i)
-		i= which( names(speciesChoice) =="Zea mays"); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) =="Arabidopsis thaliana"); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) == "Saccharomyces cerevisiae"); speciesChoice <- move2(i)
-		i= which(names(speciesChoice)  == "Caenorhabditis elegans"); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) =="Zebrafish" ); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) == "Cow" ); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) == "Rat" ); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) == "Mouse"); speciesChoice <- move2(i)
-		i= which(names(speciesChoice) == "Human"); speciesChoice <- move2(i)
-
+		speciesChoice <- LogicManager$Preprocessing$GetAllPossibleSpecies()
 		return(speciesChoice)
 	}
 )

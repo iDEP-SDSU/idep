@@ -26,11 +26,6 @@ PreProcessing.Logic$set("public","RawDataPreprocess",
 	#	6. Calculate Kurtosis
 	function(rawData, imputateMethod, dataType, minCounts, minSamples, 
 			CountsTransform, LogStart, isTransform, isNoFDR){
-		
-		usedParms <- list(dataType=dataType, imputateMethod=imputateMethod, minCounts=minCounts,
-						minSamples=minSamples, CountsTransform=CountsTransform, LogStart=LogStart,
-						isTransform=isTransform, isNoFDR=isNoFDR)
-		saveRDS(file="usedParms", usedParms)
 
 		tmp.data <- self$RemoveNonNumericalColumns(rawData)
 		tmp.data <- self$RemoveAllMissingRows(tmp.data)
@@ -475,4 +470,63 @@ PreProcessing.Logic$set("public", "cleanGeneSet",
 )
 
 
+#	Get all avaiable species
+PreProcessing.Logic$set("public", "GetAllPossibleSpecies",
+	function (){
+		# Create a list for Select Input options
+		orgInfo <- LogicManager$DB$OrgInfo
+
+		speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
+		# add a defult element to list    # new element name       value
+		speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
+		speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
+
+		# move one element to the 2nd place
+		move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
+		i= which( names(speciesChoice) == "Glycine max"); speciesChoice <- move2(i)
+		i= which( names(speciesChoice) =="Zea mays"); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) =="Arabidopsis thaliana"); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) == "Saccharomyces cerevisiae"); speciesChoice <- move2(i)
+		i= which(names(speciesChoice)  == "Caenorhabditis elegans"); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) =="Zebrafish" ); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) == "Cow" ); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) == "Rat" ); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) == "Mouse"); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) == "Human"); speciesChoice <- move2(i)
+
+		return(speciesChoice)
+	}
+)
+
+
+
+
+# allGeneInfo()
+PreProcessing.Logic$set("public", "GetGenesInfomationByEnsemblIDs",
+	function(ensenmblIDs, species, selectOrg){
+		idxGeneInfoFile = grep(species[1,1],CONFIG_DATA_LIST_GENEINFOFILES)
+		if(length(idxGeneInfoFile) == 0 ) {
+			return(as.data.frame("No matching gene info file found") ) 
+		}
+
+		if(selectOrg != self$GetAllPossibleSpecies()[[1]]){
+			idxGeneInfoFile = grep(findSpeciesById(selectOrg)[1,1], geneInfoFiles )
+		}
+
+		if(length(idxGeneInfoFile) == 1){ 
+			# if only one file           
+			# read in the chosen file 
+			geneInfo = read.csv(as.character(geneInfoFiles[ix]) )
+			geneInfo[,1]= toupper(geneInfo[,1]) #WBGene0000001 some ensembl gene ids in lower case
+		} else { 
+			return(as.data.frame("Multiple geneInfo file found!") )   
+		}
+
+		Set = match(geneInfo$ensembl_gene_id, ensenmblIDs)
+		Set[which(is.na(Set))]="Genome"
+		Set[which(Set!="Genome")] ="List"
+
+		return( cbind(geneInfo,Set) )}
+	}
+)
 

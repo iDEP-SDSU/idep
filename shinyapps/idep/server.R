@@ -28,6 +28,7 @@ shinyServer(
 		output$selectedDataset <- LoadDataCtrl$RenderSelectedDataset(input)
 		output$DoneLoading <- LoadDataCtrl$RenderInitDoneUI()
 
+
 		observeEvent(input$btn_LoadData_UseSelectedPublicData,{
 			LoadDataCtrl$EventHandler_UseSelectedPublicData(input, output, session, ReactVars)
 		})
@@ -58,7 +59,7 @@ shinyServer(
 		#   					1.2  		Pre Process
 		############################################################################
 
-		observe({  updateSelectInput(session, "selectOrg", choices = PreProcessCtrl$InitSelectOrgUI() ) })
+		observe({  updateSelectInput(session, "selectOrg", choices = PreProcessCtrl$InitChoice_SelectOrgUI() ) })
 
 		ReactVars$PreProcessResult <- reactive({
 			PreProcessCtrl$PreProcessResult(input, session, ReactVars)
@@ -71,6 +72,10 @@ shinyServer(
 		ConvertedIDResult <- reactive({
 			geneNames <- rownames(ReactVars$PreProcessResult()$dat)
 			PreProcessCtrl$ConvertedIDResult(geneNames, input$selectOrg )
+		})
+
+		AllGeneInfo() <- reactive({
+			PreProcessCtrl$GeAllGeneInfomation(ConvertedIDResult(), input)
 		})
 
 		output$PreProcess_ReadCount <- renderPlotly({

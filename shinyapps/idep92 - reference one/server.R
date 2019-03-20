@@ -493,33 +493,6 @@ convertEnsembl2KEGG <- function (query,Species) {  # not working
 	return(tem)  
 }
 
-# retrieve detailed info on genes
-geneInfo <- function (converted,selectOrg){
-	# query = scan("query_temp.txt",what=""); selectOrg ="BestMatch";
-	# query = scan("zebrafish_test.gmt", what="" ); selectOrg ="BestMatch";
-	# query = scan("Celegans_test.gmt", what="" ); selectOrg ="BestMatch";
-	# query = scan("test_query_mouse_symbol.txt", what="" ); selectOrg ="BestMatch";
-	#  query = scan("soy_test.txt", what="" );selectOrg ="BestMatch";
-	# querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,')))
-	# converted = convertID( querySet,selectOrg)
-	if(is.null(converted) ) return(as.data.frame("ID not recognized!") ) # no ID 
-	querySet <- converted$IDs
-	if(length(querySet) == 0) return(as.data.frame("ID not recognized!") )
-	ix = grep(converted$species[1,1],geneInfoFiles)
-	if (length(ix) == 0 ) {return(as.data.frame("No matching gene info file found") )} else {
-	# If selected species is not the default "bestMatch", use that species directly
-	if(selectOrg != speciesChoice[[1]]) {  
-		ix = grep(findSpeciesById(selectOrg)[1,1], geneInfoFiles )
-	}
-	if(length(ix) == 1)  # if only one file           #WBGene0000001 some ensembl gene ids in lower case
-	{ x = read.csv(as.character(geneInfoFiles[ix]) ); x[,1]= toupper(x[,1]) } else # read in the chosen file 
-	{ return(as.data.frame("Multiple geneInfo file found!") )   }
-	Set = match(x$ensembl_gene_id, querySet)
-	Set[which(is.na(Set))]="Genome"
-	Set[which(Set!="Genome")] ="List"
-	# x = cbind(x,Set) } # just for debuging
-	return( cbind(x,Set) )}
- }
 
 # Main function. Find a query set of genes enriched with functional category
 FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE) {
@@ -2118,93 +2091,6 @@ enrichmentNetworkPlotly <- function(enrichedTerms, layout_change = 0){
 	mapping = converted$conversionTable	  
  }
  
-if(0) {  # testing
-
-	inFile = "C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/expression1_no_duplicate.csv"
-	# inFile = "C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/GSE52778_All_Sample_FPKM_Matrix.csv"
-	lowFilter = 1; logStart = 1
-	x = read.csv(inFile)
-	x[,1] = toupper(x[,1])
-	x = x[order(x[,1]),]
-	x = x[!duplicated(x[,1]),]
-	rownames(x)= x[,1]
-	x = x[,-1]
-
-	tem = apply(x,1,max)
-	x = x[which(tem> lowFilter),] 
-
-	tem = apply(x,1,function(y) sum(y>2) )
-	
-	
-	x = log(x+abs( logStart),2)
-	tem = apply(x,1,sd)
-	x = x[order(-tem),]
-
-	###########Converted data
-	convertedID = convertID(rownames(x ),selectOrg="BestMatch", selectGO = "GOBP" );#"gmax_eg_gene"
-
-	mapping <- convertedID$conversionTable
-
-		rownames(x) = toupper(rownames(x))
-		x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
-		tem = apply(x1[,3:(dim(x1)[2]-2)],1,sd)
-		x1 = x1[order(x1[,2],-tem),]
-		x1 = x1[!duplicated(x1[,2]) ,]
-		rownames(x1) = x1[,2]
-		x1 = as.matrix(x1[,c(-1,-2)])
-
-		
-		tem = apply(x1,1,sd)
-	x1 = x1[order(-tem),]
-	x=x1
-		head(x)
-		
-	#################################
-	#testing Kmeans
-
-	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	#x = 100* x / apply(x,1,sum)  # this is causing problem??????
-	#x = x - apply(x,1,mean)  # this is causing problem??????
-	#colnames(x) = gsub("_.*","",colnames(x))
-	set.seed(2)
-	# determining number of clusters
-	k=6
-
-	cl = kmeans(x,k,iter.max = 50)
-	#myheatmap(cl$centers)	
-
-	hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
-	tem = match(cl$cluster,hc$order) #  new order 
-
-	x = x[order(tem),]
-
-	bar = sort(tem)
-	#myheatmap2(x, bar)
-	# GO
-	pp=0
-	for( i in 1:k) {
-		#incProgress(1/k, , detail = paste("Cluster",toupper(letters)[i]) )
-		query = rownames(x)[which(bar == i)]
-		convertedID = convertID(query,"BestMatch", selectGO = "GOBP" );#"gmax_eg_gene"
-		tem = geneInfo(convertedID,"BestMatch") #input$selectOrg ) ;
-		tem <- tem[which( tem$Set == "List"),] 
-
-
-		#selectOrg = input$selectOrg
-		selectOrg ="BestMatch"
-
-		result = FindOverlap (convertedID,tem, "GOBP",selectOrg,1) 
-		if( dim(result)[2] ==1) next;   # result could be NULL
-		result$Genes = toupper(letters)[i] 
-		if (pp==0 ) { results = result; pp = 1;} else  results = rbind(results,result)
-	}
-	results= results[,c(5,1,2,4)]
-	colnames(results)= c("Cluster","FDR","Genes","GO BP Terms")
-	minFDR = 0.05
-	if(min(results$FDR) > minFDR ) results = as.matrix("No signficant enrichment found.") else
-	results = results[which(results$FDR < minFDR),]
-}
-
 ################################################################
 #   Server function
 ################################################################
@@ -2307,16 +2193,8 @@ output$nGenesFilter <- renderText({
 
 converted <- new code: ConvertedIDResult
 
-allGeneInfo <- reactive({
-		if (is.null(input$file1) && input$goButton == 0)    return(NULL)
-		tem = input$selectOrg; 
-		isolate( {
-		withProgress(message="Looking up gene annotation", {
-		geneInfo(converted(),input$selectOrg); 
-				})
-		})
-	})
-	
+allGeneInfo <- new code: AllGeneInfo
+
 convertedData <- reactive({
 		if (is.null(input$file1) && input$goButton == 0) return()  
 		##################################  
