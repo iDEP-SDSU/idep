@@ -72,11 +72,7 @@ shinyServer(
 		})
 
 		AllGeneInfo <- reactive({
-			p <- PreProcessCtrl$GetAllGeneInfomation(ConvertedIDResult(), input)
-			if(!is.null(p)){
-				saveRDS(file='AllGeneInfo', p)
-			}
-			p
+			PreProcessCtrl$GetAllGeneInfomation(ConvertedIDResult(), input)
 		})
 
 		output$PreProcess_ReadCount <- renderPlotly({
@@ -162,11 +158,13 @@ shinyServer(
 
 		output$Heatmap_HeatmapPlotly <- renderPlotly({
 			x <- AllGeneInfo()
+			saveRDS(x, file='allgene')
 			HeatmapCtrl$GetMainHeatmapPlotly(
 				input,
 				ReactVars,
 				ReactVars$PreProcessResult(),
-				PreprocessSampleInfoResult()
+				PreprocessSampleInfoResult(),
+				AllGeneInfo()
 			)
 		})
 

@@ -1,6 +1,7 @@
 library('R6')
 library('edgeR')
 library('DESeq2')
+library('dplyr')
 library(e1071,verbose=FALSE) 		# computing kurtosis
 
 source('server.config')
@@ -498,5 +499,31 @@ PreProcessing.Logic$set("public", "GetGenesInfomationByEnsemblIDs",
 		return( cbind(geneInfo,Set) )
 	}
 )
+
+# GetGeneSymbolUsingEnsembl 
+PreProcessing.Logic$set("public", "GetGenesSymbolByEnsemblIDs",
+	function(allGeneInfo, EnsemblIDs, isUseEnsemblIfNoSymbol){
+		if(length(EnsemblIDs) == 0){
+			return(NULL)
+		}
+
+		tb.QueryData <- as.data.frame(EnsemblIDs) 
+		colnames(tb.QueryData) <- c('ensembl_gene_id')
+		tb.result <- tb.QueryData %>% 
+			left_join(allGeneInfo, by='ensembl_gene_id') %>%
+			select('ensembl_gene_id', 'symbol')	
+		
+		if(isUseEnsemblIfNoSymbol){
+			# if we want use ensembl id for the symbol missed gene
+			symbol <- ifelse(is.na(tb.result$symbol), tb.result$ensembl_gene_id, tb.result$symbol)
+		}else{
+			# if not, just pull the symbol out
+			symbol <- tb.result$symbol
+		}
+
+		return(symbol)
+	}
+)
+
 
 

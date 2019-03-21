@@ -92,16 +92,18 @@ Heatmap.Logic$set("public", "ClusterGeneAndSample",
 )
 
 Heatmap.Logic$set("public", "GenerateHeatmapPlotly",
-	function(dat, clusteredOrder, selectedHeatColor){
+	function(dat, clusteredOrder, selectedHeatColor, allGeneInfo){
 		ord_row=clusteredOrder$ord_row
 		ord_column=clusteredOrder$ord_column
+
+		# rename data use symbol
+		rownames(dat) <- LogicManager$PreProcessing$GetGenesSymbolByEnsemblIDs(allGeneInfo, rownames(dat), TRUE)
 
 		# Re-arrange based on order
 		df <- t( dat[ord_row,ord_column] )%>%
 	   		melt()
 		colnames(df)[1:2] <- c("X","Y")
 
-		saveRDS(file="df", df)
 		# Call Display manager
 		return(LogicManager$Display$GetHeatmapPlotly(df, selectedHeatColor))
 	}

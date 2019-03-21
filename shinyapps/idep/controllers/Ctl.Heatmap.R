@@ -115,7 +115,7 @@ Ctl.Heatmap$set("public", "GetMainHeatmap",
 #		2. Generate heatmap
 
 Ctl.Heatmap$set("public", "GetMainHeatmapPlotly",
-	function(input, internalVarList, preprocessedResult, preprocessedSampleInfo){
+	function(input, internalVarList, preprocessedResult, preprocessedSampleInfo, allGeneInfo){
 		if(is.null(preprocessedResult)){
 			return(NULL)
 		}
@@ -152,7 +152,7 @@ Ctl.Heatmap$set("public", "GetMainHeatmapPlotly",
 				clusteredOrder <- LogicManager$Heatmap$ClusterGeneAndSample(cuttedData, isSampleClustering)
 
 				incProgress(3/5, "Generate Plot...")
-				p <- LogicManager$Heatmap$GenerateHeatmapPlotly(cuttedData, clusteredOrder, selectedHeatColor)
+				p <- LogicManager$Heatmap$GenerateHeatmapPlotly(cuttedData, clusteredOrder, selectedHeatColor, allGeneInfo)
 
 				incProgress(1, "Done")
 				return(p)
