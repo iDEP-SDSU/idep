@@ -140,12 +140,14 @@ shinyServer(
 			height = 900
 		)
 
-#		output$btn_Heatmap_DownloadHeatmapData <- downloadHandler(
-#			filename = "heatmap.csv",
-#			content = function(file) {
-#				HeatmapCtrl$SaveHeatmapDataInTempFile(file, input, ReactVars$PreProcessResult(), ),
-#			}
-#		)
+		output$btn_Heatmap_DownloadHeatmapData <- downloadHandler(
+			filename = "heatmap.csv",
+			content = function(file) {
+				HeatmapCtrl$SaveHeatmapDataInFile(file, input,
+					ReactVars$PreProcessResult(), PreprocessSampleInfoResult() ),
+			}
+		)
+		
 		output$btn_Heatmap_DownloadEpsFormatPlot <- downloadHandler(
 			filename = "heatmap.eps",
 			content = function(file) {

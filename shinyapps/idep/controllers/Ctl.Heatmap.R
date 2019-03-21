@@ -162,9 +162,34 @@ Ctl.Heatmap$set("public", "GetMainHeatmapPlotly",
 )
 
 
-Ctl.Heatmap$set("public", "SaveHeatmapDataInTempFile",
-	function(){
-		#
+Ctl.Heatmap$set("public", "SaveHeatmapDataInFile",
+	function(input, internalVarList, preprocessedResult, preprocessedSampleInfo, allGeneInfo){
+		if(is.null(preprocessedResult)){
+			return(NULL)
+		}
+
+		if(is.null(preprocessedResult$dat)){
+			return(NULL)
+		}
+
+		dat <- preprocessedResult$dat
+		geneCount <- input$num_Heatmap_PlotlyIncludeGeneCount
+		numHeatmapCutoff <- input$num_Heatmap_HeatmapCutoff
+		isGeneCentering <- input$is_Heatmap_GeneCentering
+		isGeneNormalize <- input$is_Heatmap_GeneNormalize
+		isSampleCentering <- input$is_Heatmap_SampleCentering
+		isSampleNormalize <- input$is_Heatmap_SampleNormalize
+		withProgress(
+			message=sample(LogicManager$DB$Quotes,1), 
+			{
+				incProgress(1/5, "Prepare Data...")
+				cuttedData <- LogicManager$Heatmap$CutData(dat, geneCount, numHeatmapCutoff,
+					isGeneCentering, isGeneNormalize, isSampleCentering, isSampleNormalize)
+				incProgress(4/5, "Prepare File...")
+				wrtie.csv(cuttedData, file)
+				incProgress(1, "Done")
+			}
+		)
 	}
 )
 
