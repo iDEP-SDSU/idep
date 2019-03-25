@@ -129,3 +129,23 @@ Heatmap.Logic$set("public", "GenerateSDHeatmapPlot",
 	}
 )
 
+
+# remove bottom 25% lowly expressed genes, which inflate the PPC
+Heatmap.Logic$set("public", "RemoveLowExpressedGenes",
+	function(transformedData){
+		maxGene <- apply(transformedData,1,max)
+		dat <- transformedData[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
+		melted_cormat <- melt(round(cor(dat),2), na.rm = TRUE)
+		return(melted_cormat)
+	}
+)
+
+Heatmap.Logic$set("public", "GenerateCorrelationPlot",
+	function(dat, isLabelWithPCC){
+		return(LogicManager$Display$GetHeatmapOfCorrelationMatrix(dat, isLabelWithPCC))
+	}
+)
+
+
+
+

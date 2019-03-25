@@ -156,7 +156,7 @@ shinyServer(
 		)
 
 		# Heatmap: Side Bar
-		output$btn_Heatmap_DownloadHeatmapData <- downloadHandler(
+		output$download_Heatmap_DownloadHeatmapData <- downloadHandler(
 			filename = "heatmap.csv",
 			content = function(file) {
 				HeatmapCtrl$SaveHeatmapDataInFile(
@@ -166,10 +166,10 @@ shinyServer(
 			}
 		)
 
-		output$btn_Heatmap_DownloadEpsFormatPlot <- downloadHandler(
+		output$download_Heatmap_DownloadEpsFormatPlot <- downloadHandler(
 			filename = "heatmap.eps",
 			content = function(file) {
-				HeatmapCtrl$SaveEpsPlotInTempFile(
+				HeatmapCtrl$SaveMainPlotEpsInTempFile(
 					file, input, ReactVars,
 					ReactVars$PreProcessResult(), PreprocessSampleInfoResult()
 				)
@@ -178,8 +178,6 @@ shinyServer(
 
 		# Heatmap PopShowStaticHeatmap
 		output$Heatmap_HeatmapPlotly <- renderPlotly({
-			x <- AllGeneInfo()
-			saveRDS(x, file='allgene')
 			HeatmapCtrl$GetMainHeatmapPlotly(
 				input,
 				ReactVars,
@@ -194,7 +192,43 @@ shinyServer(
 			HeatmapCtrl$GetGeneSDHeatmap(input, ConvertedTransformedData())		
 		}, height = 600, width = 800, res=120 )
 
+		output$download_Heatmap_PopShowGeneSDHeatmap <- downloadHandler(
+			filename = "gene_SD_distribution.eps",
+			content = function(file){
+				HeatmapCtrl$SaveGeneSDPlotEpsInTempFile(
+					file,
+					input,
+					ConvertedTransformedData()
+				)
+			}
+		)
+
+
 		# Heatmap PopShowCorrelation
+		output$Heatmap_CorrelationMatrix <- renderPlot({
+			HeatmapCtrl$GetCorrelationMatrixPlot(input, ReactVars$PreProcessResult())
+		})
+
+		output$download_Heatmap_CorrelationMatrixPlot <- downloadHandler(
+			filename = "correlation_matrix.eps",
+			content = function(file){
+				HeatmapCtrl$SaveCorrelationMatrixPlotEpsInTempFile(
+					file,
+					input,
+					ReactVars$PreProcessResult()
+				)
+			}
+		)
+
+		output$download_Heatmap_CorrelationMatrixData <- downloadHandler(
+			filename = "correlationMatrix.csv",
+			content = function(file){
+				HeatmapCtrl$SaveCorrelationMatrixPlotDataInFile(
+					file,					
+					ReactVars$PreProcessResult()
+				)
+			}
+		)
 #download_Heatmap_CorrelationMatrixData
 #download_Heatmap_CorrelationMatrixPlot
 #Heatmap_CorrelationMatrix

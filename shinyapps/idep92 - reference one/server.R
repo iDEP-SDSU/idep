@@ -3033,50 +3033,9 @@ output$heatmapPlotly <- renderPlotly({
 	})
   })  
   
-heatmapData <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-    x <- readData()$data
-
-	
-	n=input$nGenes
-	#if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	# this will cutoff very large values, which could skew the color 
-	x1 = x[1:n,] 
-	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	cutoff = median(unlist(x)) + 4*sd (unlist(x)) 
-	x[x>cutoff] <- cutoff
-	cutoff = median(unlist(x)) - 4*sd (unlist(x)) 
-	x[x< cutoff] <- cutoff
-	
-	groups = detectGroups(colnames(x) )
-	groups.colors = rainbow(length(unique(groups) ) )
-
-	#pdf(file=NULL,width =700, height =700)
-	hy <- heatmap.2(x, distfun = distFuns[[as.integer(input$distFunctions)]]
-		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
-		,density.info="none", trace="none", scale="none")
-    #dev.off()
-	
-	# if not new species, add gene symbol
-	if( input$selectOrg == "NEW") return(NULL) else { 
-		x1 <- x1[ rev( hy$rowInd),hy$colInd]
-		# add gene symbol
-		ix = match( rownames(x1), allGeneInfo()[,1])
-		x1 <- cbind(as.character( allGeneInfo()$symbol)[ix],x1)
-		return( x1 )
-	}
-	
-
-	
-  })  
+heatmapData <-  # don't need anymore. Check Heatmap$CutData
   
-output$downloadData <- downloadHandler(
-		filename = function() {"heatmap.csv"},
-		content = function(file) {
-			write.csv(heatmapData(), file)
-	    }
-	)
+output$downloadData <- # done
 
 correlationMatrixData <- reactive({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -3093,93 +3052,11 @@ output$downloadCorrelationMatrix <- downloadHandler(
 			write.csv(correlationMatrixData(), file)
 	    }
 	)
-output$correlationMatrix <- renderPlot({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		# heatmap of correlation matrix
-		x <- readData()$data
-		maxGene <- apply(x,1,max)
-		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
-		
-	   melted_cormat <- melt(round(cor(x),2), na.rm = TRUE)
-		# melted_cormat <- melted_cormat[which(melted_cormat[,1] != melted_cormat[,2] ) , ]
-		# Create a ggheatmap
-		ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
-			geom_tile(color = "white")+
-			scale_fill_gradient2(low = "green", high = "red",  mid = "white", 
-			space = "Lab",  limit = c(min(melted_cormat[,3]) ,max(melted_cormat[,3])), midpoint = median(melted_cormat[,3]),
-			name="Pearson's \nCorrelation") +
-			theme_minimal()+ # minimal theme
-			theme(axis.text.x = element_text(angle = 45, vjust = 1, size=14,hjust = 1))+
-			theme(axis.text.y = element_text( size = 14 ))+
-			coord_fixed()
-		# print(ggheatmap)
-		 if(input$labelPCC && ncol(x)<20)
-				ggheatmap <- ggheatmap +  geom_text(aes(Var2, Var1, label = value), color = "black", size = 4)
-				
-		ggheatmap + 
-		  theme(axis.title.x = element_blank(),
-				axis.title.y = element_blank(),
-				panel.grid.major = element_blank(),
-				panel.border = element_blank(),
-				panel.background = element_blank(),
-				axis.ticks = element_blank(),
-				legend.justification = c(1, 0),
-				legend.position = c(0.6, 0.7),
-				legend.direction = "horizontal")+
-				guides(fill = FALSE) # + ggtitle("Pearson's Correlation Coefficient (all genes)")
+output$correlationMatrix <- Done
 
-			# why legend does not show up??????	
-		 
+correlationMatrix4Download <- #Don't use anymore
+output$downloadCorrelationMatrixPlot <- done
 
- 
-  }, height = 600, width = 700  )#)
-
-correlationMatrix4Download <- reactive({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		# heatmap of correlation matrix
-		x <- readData()$data
-		maxGene <- apply(x,1,max)
-		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
-		
-	   melted_cormat <- melt(round(cor(x),2), na.rm = TRUE)
-		# melted_cormat <- melted_cormat[which(melted_cormat[,1] != melted_cormat[,2] ) , ]
-		# Create a ggheatmap
-		ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
-			geom_tile(color = "white")+
-			scale_fill_gradient2(low = "green", high = "red",  mid = "white", 
-			space = "Lab",  limit = c(min(melted_cormat[,3]) ,max(melted_cormat[,3])), midpoint = median(melted_cormat[,3]),
-			name="Pearson's \nCorrelation") +
-			theme_minimal()+ # minimal theme
-			theme(axis.text.x = element_text(angle = 45, vjust = 1, size=14,hjust = 1))+
-			theme(axis.text.y = element_text( size = 14 ))+
-			coord_fixed()
-		# print(ggheatmap)
-		 if(input$labelPCC && ncol(x)<20)
-				ggheatmap <- ggheatmap +  geom_text(aes(Var2, Var1, label = value), color = "black", size = 4)
-				
-		ggheatmap <- ggheatmap + 
-		  theme(axis.title.x = element_blank(),
-				axis.title.y = element_blank(),
-				panel.grid.major = element_blank(),
-				panel.border = element_blank(),
-				panel.background = element_blank(),
-				axis.ticks = element_blank(),
-				legend.justification = c(1, 0),
-				legend.position = c(0.6, 0.7),
-				legend.direction = "horizontal")+
-				guides(fill = FALSE) # + ggtitle("Pearson's Correlation Coefficient (all genes)")
-        print(ggheatmap)
-			# why legend does not show up??????	
- 
-  })#)
-output$downloadCorrelationMatrixPlot <- downloadHandler(
-      filename = "correlation_matrix.eps",
-      content = function(file) {
-	  cairo_ps(file, width = 8, height = 8, points = 7)
-        correlationMatrix4Download()
-        dev.off()
-      }) 
-  
 output$sampleTree <- renderPlot({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		# heatmap of correlation matrix
@@ -3240,7 +3117,7 @@ output$downloadSampleTree <- downloadHandler(
         dev.off()
       }) 
 output$distributionSD_heatmap <- renderPlot({
-	#progress 
+
   }, height = 600, width = 800,res=120 )
 
 ################################################################

@@ -106,6 +106,48 @@ Ctl.Heatmap$set("public", "GetMainHeatmap",
 	}
 )
 
+# This function allow user to download the data set used for generate main heat map
+# It simply saved get cutted data into given file
+Ctl.Heatmap$set("public", "SaveHeatmapDataInFile",
+	function(input, internalVarList, preprocessedResult, preprocessedSampleInfo, allGeneInfo){
+		if(is.null(preprocessedResult)){
+			return(NULL)
+		}
+
+		if(is.null(preprocessedResult$dat)){
+			return(NULL)
+		}
+
+		dat <- preprocessedResult$dat
+		geneCount <- input$num_Heatmap_PlotlyIncludeGeneCount
+		numHeatmapCutoff <- input$num_Heatmap_HeatmapCutoff
+		isGeneCentering <- input$is_Heatmap_GeneCentering
+		isGeneNormalize <- input$is_Heatmap_GeneNormalize
+		isSampleCentering <- input$is_Heatmap_SampleCentering
+		isSampleNormalize <- input$is_Heatmap_SampleNormalize
+		withProgress(
+			message=sample(LogicManager$DB$Quotes,1), 
+			{
+				incProgress(1/5, "Prepare Data...")
+				cuttedData <- LogicManager$Heatmap$CutData(dat, geneCount, numHeatmapCutoff,
+					isGeneCentering, isGeneNormalize, isSampleCentering, isSampleNormalize)
+				incProgress(4/5, "Prepare File...")
+				wrtie.csv(cuttedData, file)
+				incProgress(1, "Done")
+			}
+		)
+	}
+)
+
+# This function allow user to download a high resolution main heat map use eps format
+Ctl.Heatmap$set("public", "SaveMainPlotEpsInTempFile",
+	function(file, input, internalVarList, preprocessedResult, preprocessedSampleInfo){
+		cairo_ps(file, width = 10, height = 15)
+		self$GetMainPlot(input, internalVarList, preprocessedResult, preprocessedSampleInfo)
+		dev.off()
+	}
+)
+
 
 ###################		GetMainHeatmapPlotly Function			###################
 #	Generate an plotly heatmap that can be interactived with
@@ -113,7 +155,6 @@ Ctl.Heatmap$set("public", "GetMainHeatmap",
 #		1. Cut data based on user setting
 #		2. Cluster Gene (and sample)
 #		2. Generate heatmap
-
 Ctl.Heatmap$set("public", "GetMainHeatmapPlotly",
 	function(input, internalVarList, preprocessedResult, preprocessedSampleInfo, allGeneInfo){
 		if(is.null(preprocessedResult)){
@@ -162,45 +203,9 @@ Ctl.Heatmap$set("public", "GetMainHeatmapPlotly",
 )
 
 
-Ctl.Heatmap$set("public", "SaveHeatmapDataInFile",
-	function(input, internalVarList, preprocessedResult, preprocessedSampleInfo, allGeneInfo){
-		if(is.null(preprocessedResult)){
-			return(NULL)
-		}
 
-		if(is.null(preprocessedResult$dat)){
-			return(NULL)
-		}
-
-		dat <- preprocessedResult$dat
-		geneCount <- input$num_Heatmap_PlotlyIncludeGeneCount
-		numHeatmapCutoff <- input$num_Heatmap_HeatmapCutoff
-		isGeneCentering <- input$is_Heatmap_GeneCentering
-		isGeneNormalize <- input$is_Heatmap_GeneNormalize
-		isSampleCentering <- input$is_Heatmap_SampleCentering
-		isSampleNormalize <- input$is_Heatmap_SampleNormalize
-		withProgress(
-			message=sample(LogicManager$DB$Quotes,1), 
-			{
-				incProgress(1/5, "Prepare Data...")
-				cuttedData <- LogicManager$Heatmap$CutData(dat, geneCount, numHeatmapCutoff,
-					isGeneCentering, isGeneNormalize, isSampleCentering, isSampleNormalize)
-				incProgress(4/5, "Prepare File...")
-				wrtie.csv(cuttedData, file)
-				incProgress(1, "Done")
-			}
-		)
-	}
-)
-
-Ctl.Heatmap$set("public", "SaveEpsPlotInTempFile",
-	function(file, input, internalVarList, preprocessedResult, preprocessedSampleInfo){
-		cairo_ps(file, width = 10, height = 15)
-		self$GetMainPlot(input, internalVarList, preprocessedResult, preprocessedSampleInfo)
-		dev.off()
-	}
-)
-
+###################		GetGeneSDHeatmap Function				###################
+#	Generate the plot shows in popup tab: GeneSDHeatmap
 Ctl.Heatmap$set("public", "GetGeneSDHeatmap",
 	function(input, ConvertedTransformedData){
 		withProgress(message="Calculating SD distribution", {
@@ -218,4 +223,62 @@ Ctl.Heatmap$set("public", "GetGeneSDHeatmap",
 		return(p)
 	}
 )
+#	Download high resolution plot for GeneSDHeatmap
+Ctl.Heatmap$set("public", "SaveGeneSDPlotEpsInTempFile",
+	function(file, input, ConvertedTransformedData){
+		cairo_ps(file, width = 6, height = 4)
+		self$GetGeneSDHeatmap(input, ConvertedTransformedData)
+		dev.off()
+	}
+)
 
+
+###################		GetCorrelationMatrixPlot Function			###################
+Ctl.Heatmap$set("public", "GetCorrelationMatrixPlot",
+	function(input, Reactive_PreProcessResult){
+		if(is.null(Reactive_PreProcessResult)){
+			return(NULL)
+		}
+
+		transformedData <- Reactive_PreProcessResult$dat
+
+		if(is.null(transformedData)){
+			return(NULL)
+		}
+
+		dat <- LogicManager$Heatmap$RemoveLowExpressedGenes(transformedData)
+
+		p <- LogicManager$Heatmap$GenerateCorrelationPlot(dat, input$isLabelWithPCC)
+
+		return(p)
+	}
+)
+
+
+#	Download high resolution plot for CorrelationMatrixPlot
+Ctl.Heatmap$set("public", "SaveCorrelationMatrixPlotEpsInTempFile",
+	function(file, input, Reactive_PreProcessResult){
+		cairo_ps(file, width = 6, height = 4)
+		self$GetCorrelationMatrixPlot(input, Reactive_PreProcessResult)
+		dev.off()
+	}
+)
+
+# 	Download CorrelationMatrixPlot data 
+Ctl.Heatmap$set("public", "SaveCorrelationMatrixPlotDataInFile",
+	function(file, Reactive_PreProcessResult){
+				if(is.null(Reactive_PreProcessResult)){
+			return(NULL)
+		}
+
+		transformedData <- Reactive_PreProcessResult$dat
+
+		if(is.null(transformedData)){
+			return(NULL)
+		}
+
+		dat <- LogicManager$Heatmap$RemoveLowExpressedGenes(transformedData)
+
+		write.csv(dat, file)
+	}
+)

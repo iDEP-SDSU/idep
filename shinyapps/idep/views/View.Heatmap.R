@@ -100,8 +100,8 @@ View.Heatmap$set("public", "HeatmapSettingAndDownload",
 			conditionalPanel(condition = "output.showSelect_Heatmap_FactorsHeatmap",
 				selectInput("select_Heatmap_FactorsHeatmap", label="Sample color bar:",choices= c("Sample_Name"), selected = "Sample_Name")
 			),
-			downloadButton('btn_Heatmap_DownloadHeatmapData', 'Heatmap data'),
-			downloadButton('btn_Heatmap_DownloadEpsFormatPlot', 'High-resolution figure'),
+			downloadButton('download_Heatmap_DownloadHeatmapData', 'Heatmap data'),
+			downloadButton('download_Heatmap_DownloadEpsFormatPlot', 'High-resolution figure'),
 			br(),
 			a(h5("?",align = "right"), href="https://idepsite.wordpress.com/heatmap/",target="_blank")
 		)
