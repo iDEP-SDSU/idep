@@ -77,7 +77,7 @@ Heatmap.Logic$set("public", "ClusterGeneAndSample",
 		ord_row <- clust$order
 
 		# clustering samples --------
-		if( isSampleClustering ){
+		if( !isSampleClustering ){
 			ord_column = 1:ncol(dat)
 		} else { 
 			clust <- t(dat) %>% 

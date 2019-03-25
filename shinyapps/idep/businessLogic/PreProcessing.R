@@ -509,10 +509,13 @@ PreProcessing.Logic$set("public", "GetGenesSymbolByEnsemblIDs",
 
 		tb.QueryData <- as.data.frame(EnsemblIDs) 
 		colnames(tb.QueryData) <- c('ensembl_gene_id')
+
 		tb.result <- tb.QueryData %>% 
 			left_join(allGeneInfo, by='ensembl_gene_id') %>%
 			select('ensembl_gene_id', 'symbol')	
 		
+		tb.result$symbol <- as.character(tb.result$symbol)
+		tb.result$ensembl_gene_id <- as.character(tb.result$ensembl_gene_id)
 		if(isUseEnsemblIfNoSymbol){
 			# if we want use ensembl id for the symbol missed gene
 			symbol <- ifelse(is.na(tb.result$symbol), tb.result$ensembl_gene_id, tb.result$symbol)
@@ -520,7 +523,7 @@ PreProcessing.Logic$set("public", "GetGenesSymbolByEnsemblIDs",
 			# if not, just pull the symbol out
 			symbol <- tb.result$symbol
 		}
-
+		
 		return(symbol)
 	}
 )

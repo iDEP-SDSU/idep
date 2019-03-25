@@ -100,6 +100,8 @@ shinyServer(
 		############################################################################
 		#   					1.3  		Heatmap
 		############################################################################
+
+		# Heatmap: UI init
 		observe({
 			HeatmapCtrl$RefreshUI_Select_Heatmap_FactorsHeatmap(session, output, ReactVars, PreprocessSampleInfoResult())
 		})
@@ -128,6 +130,7 @@ shinyServer(
 			)
 		})
 
+		# Heatmap: Main Panel
 		output$Heatmap_MainPlot <- renderPlot(
 			{
 				HeatmapCtrl$GetMainHeatmap(
@@ -140,14 +143,17 @@ shinyServer(
 			height = 900
 		)
 
+		# Heatmap: Side Bar
 		output$btn_Heatmap_DownloadHeatmapData <- downloadHandler(
 			filename = "heatmap.csv",
 			content = function(file) {
-				HeatmapCtrl$SaveHeatmapDataInFile(file, input,
-					ReactVars$PreProcessResult(), PreprocessSampleInfoResult() ),
+				HeatmapCtrl$SaveHeatmapDataInFile(
+					file, input,
+					ReactVars$PreProcessResult(), PreprocessSampleInfoResult() 
+				)
 			}
 		)
-		
+
 		output$btn_Heatmap_DownloadEpsFormatPlot <- downloadHandler(
 			filename = "heatmap.eps",
 			content = function(file) {
@@ -158,6 +164,7 @@ shinyServer(
 			}
 		)
 
+		# Heatmap PopShowStaticHeatmap
 		output$Heatmap_HeatmapPlotly <- renderPlotly({
 			x <- AllGeneInfo()
 			saveRDS(x, file='allgene')
@@ -170,6 +177,11 @@ shinyServer(
 			)
 		})
 
+
+		# Heatmap PopShowCorrelation
+#download_Heatmap_CorrelationMatrixData
+#download_Heatmap_CorrelationMatrixPlot
+#Heatmap_CorrelationMatrix
 		############################################################################
 		#						0.0		Test R Markdown Report
 		############################################################################
