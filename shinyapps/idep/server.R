@@ -72,15 +72,15 @@ shinyServer(
 		})
 
 		ConvertedTransformedData <- reactive({
-			GetConvertedTransformedData(input, ConvertedIDResult(), PreProcessResult())
+			PreProcessCtrl$GetConvertedTransformedData(input, ConvertedIDResult(), ReactVars$PreProcessResult())
 		})
 
 		ConvertedRawReadcountData <- reactive({
-			GetConvertedRawReadcountData(input, ConvertedIDResult(), PreProcessResult())
+			PreProcessCtrl$GetConvertedRawReadcountData(input, ConvertedIDResult(), ReactVars$PreProcessResult())
 		})
 
 		GetConvertedPvals <- reactive({
-			GetConvertedPvals(input, ConvertedIDResult(), PreProcessResult())
+			PreProcessCtrl$GetConvertedPvals(input, ConvertedIDResult(), ReactVars$PreProcessResult())
 		})
 
 		AllGeneInfo <- reactive({
@@ -190,7 +190,7 @@ shinyServer(
 		})
 
 		# Heatmap PopShowGeneSDHeatmap
-		output$Heatmap_PopShowGeneSDHeatmap <- rennderPlot({
+		output$Heatmap_PopShowGeneSDHeatmap <- renderPlot({
 			HeatmapCtrl$GetGeneSDHeatmap(input, ConvertedTransformedData())		
 		}, height = 600, width = 800, res=120 )
 

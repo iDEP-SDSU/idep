@@ -117,9 +117,9 @@ Heatmap.Logic$set("public", "CutData_SD",
 		if(geneCount > length(SDs)){
 				geneCount = length(SDs)
 		}
-
+		Cutoff=sort(SDs,decreasing=TRUE)[geneCount]
 		SDs = as.data.frame(SDs)
-		return(SDs)
+		return(list(SDs=SDs, Cutoff=Cutoff))
 	}
 )
 

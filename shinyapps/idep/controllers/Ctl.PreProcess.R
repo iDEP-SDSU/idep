@@ -248,7 +248,7 @@ Ctl.PreProcess$set("public", "GetConvertedTransformedData",
 			transformedData <- Reactive_PreProcessResult$dat
 			conversionTable <- Reactive_ConvertedIDResult$conversionTable
 			incProgress(1, "Done.")
-		}
+		})
 		return(LogicManager$PreProcessing$ApplyConvertIDToGivenData(transformedData, conversionTable))
 	}
 )
@@ -278,7 +278,7 @@ Ctl.PreProcess$set("public", "GetConvertedRawReadcountData",
 			rawReadCount <- Reactive_PreProcessResult$rawCount
 			conversionTable <- Reactive_ConvertedIDResult$conversionTable
 			incProgress(1, "Done.")
-		}
+		})
 		return(LogicManager$PreProcessing$ApplyConvertIDToGivenData(rawReadCount, conversionTable))
 	}
 )
@@ -308,7 +308,7 @@ Ctl.PreProcess$set("public", "GetConvertedPvals",
 			pvals <- Reactive_PreProcessResult$pvals
 			conversionTable <- Reactive_ConvertedIDResult$conversionTable
 			incProgress(1, "Done.")
-		}
+		})
 		return(LogicManager$PreProcessing$ApplyConvertIDToGivenData(pvals, conversionTable))
 	}
 )

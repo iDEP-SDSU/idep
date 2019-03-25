@@ -206,13 +206,13 @@ Ctl.Heatmap$set("public", "GetGeneSDHeatmap",
 		withProgress(message="Calculating SD distribution", {
 			
 			geneCount = input$num_Heatmap_PlotlyIncludeGeneCount
-
 			incProgress(1/5, "Prepare Data...")
-			SDs <- CutData_SD(geneCount, ConvertedTransformedData)
-			Cutoff=sort(SDs,decreasing=TRUE)[geneCount]
-
+			CutResult <- LogicManager$Heatmap$CutData_SD(geneCount, ConvertedTransformedData)
+			
+			
 			incProgress(3/5, "Generate Plot...")
-			p <- GetGeneSDHeatmap(input, ConvertedTransformedData)
+			p <- LogicManager$Heatmap$GenerateSDHeatmapPlot(CutResult$SDs, CutResult$Cutoff)
+			
 			incProgress(1)
 		})
 		return(p)
