@@ -223,5 +223,93 @@ Ctl.PreProcess$set("public", "InitChoiceSelectOrgUI",
 	}
 )
 
+# refer to convertedData() in 0.81 code
+# Convert Transformed data based on Convert ID result. 
+# If no conversion applied on ID, then use transformed data directly
+Ctl.PreProcess$set("public", "GetConvertedTransformedData",
+	function(input, Reactive_ConvertedIDResult, Reactive_PreProcessResult){
+		withProgress(message="Converting data ... ", {
+			# if no preprocess result, return null
+			if(is.null(Reactive_PreProcessResult)){
+				return(NULL)
+			}
 
+			# if no converted id result
+			# or 'no id conversion' is selected
+			# then use transformed data directly
+			if(is.null(Reactive_ConvertedIDResult)){
+				return(Reactive_PreProcessResult$dat)
+			}
+
+			if(input$isNoIDConversion){
+				return(Reactive_PreProcessResult$dat)
+			}
+
+			transformedData <- Reactive_PreProcessResult$dat
+			conversionTable <- Reactive_ConvertedIDResult$conversionTable
+			incProgress(1, "Done.")
+		}
+		return(LogicManager$PreProcessing$ApplyConvertIDToGivenData(transformedData, conversionTable))
+	}
+)
+
+# refer to convertedCounts() in 0.81 code
+# Convert raw readcount data based on Convert ID result. 
+# If no conversion applied on ID, then use raw readcount data directly
+Ctl.PreProcess$set("public", "GetConvertedRawReadcountData",
+	function(input, Reactive_ConvertedIDResult, Reactive_PreProcessResult){
+		withProgress(message="Converting data ... ", {
+			# if no preprocess result, return null
+			if(is.null(Reactive_PreProcessResult)){
+				return(NULL)
+			}
+
+			# if no converted id result
+			# or 'no id conversion' is selected
+			# then use raw read count data directly
+			if(is.null(Reactive_ConvertedIDResult)){
+				return(Reactive_PreProcessResult$rawCount)
+			}
+
+			if(input$isNoIDConversion){
+				return(Reactive_PreProcessResult$rawCount)
+			}
+
+			rawReadCount <- Reactive_PreProcessResult$rawCount
+			conversionTable <- Reactive_ConvertedIDResult$conversionTable
+			incProgress(1, "Done.")
+		}
+		return(LogicManager$PreProcessing$ApplyConvertIDToGivenData(rawReadCount, conversionTable))
+	}
+)
+
+# refer to ConvertedPvals() in 0.81 code
+# Convert pvals data based on Convert ID result. 
+# If no conversion applied on ID, then use raw pvals directly
+Ctl.PreProcess$set("public", "GetConvertedPvals",
+	function(input, Reactive_ConvertedIDResult, Reactive_PreProcessResult){
+		withProgress(message="Converting data ... ", {
+			# if no preprocess result, return null
+			if(is.null(Reactive_PreProcessResult)){
+				return(NULL)
+			}
+
+			# if no converted id result
+			# or 'no id conversion' is selected
+			# then use pvals data directly
+			if(is.null(Reactive_ConvertedIDResult)){
+				return(Reactive_PreProcessResult$pvals)
+			}
+
+			if(input$isNoIDConversion){
+				return(Reactive_PreProcessResult$pvals)
+			}
+
+			pvals <- Reactive_PreProcessResult$pvals
+			conversionTable <- Reactive_ConvertedIDResult$conversionTable
+			incProgress(1, "Done.")
+		}
+		return(LogicManager$PreProcessing$ApplyConvertIDToGivenData(pvals, conversionTable))
+	}
+)
 

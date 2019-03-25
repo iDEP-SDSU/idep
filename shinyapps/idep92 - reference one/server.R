@@ -2195,52 +2195,7 @@ converted <- new code: ConvertedIDResult
 
 allGeneInfo <- new code: AllGeneInfo
 
-convertedData <- reactive({
-		if (is.null(input$file1) && input$goButton == 0) return()  
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-		####################################
-		if( is.null(converted() ) ) return( readData()$data) # if id or species is not recognized use original data.
-		isolate( {  
-			withProgress(message="Converting data ... ", {
-			
-				if(input$noIDConversion) return( readData()$data )
-				
-				mapping <- converted()$conversionTable
-				# cat (paste( "\nData:",input$selectOrg) )
-				x =readData()$data
-
-				rownames(x) = toupper(rownames(x))
-				# any gene not recognized by the database is disregarded
-				# x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
-				# the 3 lines keeps the unrecogized genes using original IDs
-				x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
-
-				# original IDs used if ID is not matched in database
-				ix = which(is.na(x1[,2]) )
-				x1[ix,2] = x1[ix,1] 
-				
-				#multiple matched IDs, use the one with highest SD
-				tem = apply(x1[,3:(dim(x1)[2])],1,sd)
-				x1 = x1[order(x1[,2],-tem),]
-				x1 = x1[!duplicated(x1[,2]) ,]
-				rownames(x1) = x1[,2]
-				x1 = as.matrix(x1[,c(-1,-2)])
-				tem = apply(x1,1,sd)
-				x1 = x1[order(-tem),]  # sort again by SD
-				incProgress(1, "Done.")
-			
-				return(x1)
-		})
-		})
-	})
+convertedData <-  ConvertedTransformedData()
 	
 convertedCounts <- reactive({
 		if (is.null(input$file1) && input$goButton == 0) return()  

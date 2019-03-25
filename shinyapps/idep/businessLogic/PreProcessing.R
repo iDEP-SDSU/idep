@@ -430,6 +430,50 @@ PreProcessing.Logic$set("public", "ConvertIDAutoMatch",
 	}	
 )
 
+
+# Apply convert ID result to given data
+# this data can be raw read count or transformed read count data
+
+#	When given data is raw read count:
+	# refer to convertedCounts() in 0.81 code
+	# Convert Raw read count data based on Convert ID result.
+	# If no conversion applied on ID, then use raw read count directly
+
+#	When given data is transformed data:
+	# refer to convertedData() in 0.81 code
+	# Convert Transformed data based on Convert ID result. 
+	# If no conversion applied on ID, then use transformed data directly
+
+#	When given data is Pval:
+	# refer to convertedPvals() in 0.81 code
+
+PreProcessing.Logic$set("public", "ApplyConvertIDToGivenData",
+	function(GivenData, ConversionTable){
+		
+		rownames(GivenData) = toupper(rownames(GivenData))
+
+		# any gene not recognized by the database is disregarded
+		# the 3 lines keeps the unrecogized genes using original IDs
+		dat = merge(ConversionTable[,1:2], GivenData,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
+
+		# original IDs used if ID is not matched in database
+		ix = which(is.na(dat[,2]) )
+		dat[ix,2] = dat[ix,1] 	
+
+		#multiple matched IDs, use the one with highest SD
+		tem = apply(dat[,3:(dim(dat)[2])],1,sd)
+		dat = dat[order(dat[,2],-tem),]
+		dat = dat[!duplicated(dat[,2]) ,]
+		rownames(dat) = dat[,2]
+		dat = as.matrix(dat[,c(-1,-2)])
+		tem = apply(dat,1,sd)
+		dat = dat[order(-tem),]  # sort again by SD
+
+		return(dat)
+	}
+)
+
+
 # find species name use id
 PreProcessing.Logic$set("public", "findSpeciesNameById",
 	function(speciesID){ 
