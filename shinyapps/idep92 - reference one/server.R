@@ -2197,100 +2197,9 @@ allGeneInfo <- new code: AllGeneInfo
 
 convertedData <-  ConvertedTransformedData()
 	
-convertedCounts <- reactive({
-		if (is.null(input$file1) && input$goButton == 0) return()  
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2 }
-		####################################
-		if( is.null(converted() ) ) return( readData()$rawCounts) # if id or species is not recognized use original data.
-		isolate( {  
-			if(input$noIDConversion) return( readData()$rawCounts )
-			withProgress(message="Converting data ... ", {
+convertedCounts <- ConvertedRawReadcountData()
 
-				
-				mapping <- converted()$conversionTable
-				# cat (paste( "\nData:",input$selectOrg) )
-				x =readData()$rawCounts
-				if(is.null(x)) return(NULL) else 
-				{ 
-					rownames(x) = toupper(rownames(x))
-					# any gene not recognized by the database is disregarded
-					# x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
-					# the 3 lines keeps the unrecogized genes using original IDs
-					x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
-					ix = which(is.na(x1[,2]) )
-					x1[ix,2] = x1[ix,1] # original IDs used
-					
-					#multiple matched IDs, use the one with highest SD
-					tem = apply(x1[,3:(dim(x1)[2])],1,sd)
-					x1 = x1[order(x1[,2],-tem),]
-					x1 = x1[!duplicated(x1[,2]) ,]
-					rownames(x1) = x1[,2]
-					x1 = as.matrix(x1[,c(-1,-2)])
-					tem = apply(x1,1,sd)
-					x1 = x1[order(-tem),]  # sort again by SD
-					incProgress(1, "Done.")
-					return(x1)
-				} # here
-			})
-		
-		})
-	})
-
-convertedPvals <- reactive({
-		if (is.null(input$file1) && input$goButton == 0) return()  
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-		####################################
-		if( is.null(converted() ) ) return( readData()$pvals) # if id or species is not recognized use original data.
-		if( is.null(readData()$pvals) ) return(NULL)
-		isolate( {  
-			withProgress(message="Converting data ... ", {
-			
-				if(input$noIDConversion) return( readData()$pvals )
-				
-				mapping <- converted()$conversionTable
-				# cat (paste( "\nData:",input$selectOrg) )
-				x =readData()$pvals
-
-				rownames(x) = toupper(rownames(x))
-				# any gene not recognized by the database is disregarded
-				# x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
-				# the 3 lines keeps the unrecogized genes using original IDs
-				x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
-
-				# original IDs used if ID is not matched in database
-				ix = which(is.na(x1[,2]) )
-				x1[ix,2] = x1[ix,1] 
-				
-				#multiple matched IDs, use the one with highest SD
-				tem = apply(x1[,3:(dim(x1)[2])],1,sd)
-				x1 = x1[order(x1[,2],-tem),]
-				x1 = x1[!duplicated(x1[,2]) ,]
-				rownames(x1) = x1[,2]
-				x1 = as.matrix(x1[,c(-1,-2)])
-				tem = apply(x1,1,sd)
-				x1 = x1[order(-tem),]  # sort again by SD
-				incProgress(1, "Done.")
-			
-				return(x1)
-		})
-		})
-	})
+convertedPvals <- ConvertedPvals() 
 
 GeneSetsPCA <- reactive({
 		if (is.null(input$file1) && input$goButton == 0)	return()
@@ -3331,52 +3240,7 @@ output$downloadSampleTree <- downloadHandler(
         dev.off()
       }) 
 output$distributionSD_heatmap <- renderPlot({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if( is.null(Kmeans()) ) return(NULL)
-
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-				
-		tem = input$nGenes
-		####################################
-		withProgress(message="Calculating SD distribution", {
-		isolate({ 
-
-		
-		SDs=apply(convertedData(),1,sd)
-		maxSD = mean(SDs)+ 4*sd(SDs)
-		SDs[ SDs > maxSD] = maxSD
-		
-		top = input$nGenes
-		if(top > length(SDs)) top = length(SDs)
-		Cutoff=sort(SDs,decreasing=TRUE)[top] 
-
-		SDs = as.data.frame(SDs)
-
-		p <- ggplot(SDs, aes(x=SDs)) + 
-		  geom_density(color="darkblue", fill="lightblue") +
-		  labs(x = "Standard deviations of all genes", y="Density")+
-		  geom_vline(aes(xintercept=Cutoff),
-					color="red", linetype="dashed", size=1) +
-					annotate("text", x = Cutoff + 0.4*sd(SDs[,1]), 
-						y = 1,colour = "red", label = paste0("Top ", top)) +
-					theme(axis.text=element_text(size=14),
-					axis.title=element_text(size=16,face="bold"))
-			incProgress(1)
-		p
-		})
-	
-	})
-	
-	
-	 #progress 
+	#progress 
   }, height = 600, width = 800,res=120 )
 
 ################################################################

@@ -304,4 +304,27 @@ Display.Manager$set("public", "GetHeatmapPlotly",
 	}
 )
 
+Display.Manager$set("public", "GetSDHeatmapPlot",
+	function(SDs, Cutoff){
+		p <- ggplot(SDs, aes(x=SDs)) + 
+		  	geom_density(color="darkblue", fill="lightblue") +
+		  	labs(x = "Standard deviations of all genes", y="Density")+
+		  	geom_vline(
+				aes(xintercept=Cutoff),
+				color="red", linetype="dashed", size=1
+			) +
+			annotate(
+				"text", 
+				x = Cutoff + 0.4*sd(SDs[,1]), 
+				y = 1,
+				color = "red", 
+				label = paste0("Top ", top)
+			) +
+			theme(
+				axis.text=element_text(size=14),
+				axis.title=element_text(size=16,face="bold")
+			)
+		return(p)
+	}
+)
 

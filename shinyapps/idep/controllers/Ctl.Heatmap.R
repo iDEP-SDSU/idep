@@ -201,3 +201,21 @@ Ctl.Heatmap$set("public", "SaveEpsPlotInTempFile",
 	}
 )
 
+Ctl.Heatmap$set("public", "GetGeneSDHeatmap",
+	function(input, ConvertedTransformedData){
+		withProgress(message="Calculating SD distribution", {
+			
+			geneCount = input$num_Heatmap_PlotlyIncludeGeneCount
+
+			incProgress(1/5, "Prepare Data...")
+			SDs <- CutData_SD(geneCount, ConvertedTransformedData)
+			Cutoff=sort(SDs,decreasing=TRUE)[geneCount]
+
+			incProgress(3/5, "Generate Plot...")
+			p <- GetGeneSDHeatmap(input, ConvertedTransformedData)
+			incProgress(1)
+		})
+		return(p)
+	}
+)
+

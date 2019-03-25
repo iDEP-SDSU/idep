@@ -190,9 +190,9 @@ shinyServer(
 		})
 
 		# Heatmap PopShowGeneSDHeatmap
-#		output$Heatmap_PopShowGeneSDHeatmap <- rennderPlot({
-#			
-#		})
+		output$Heatmap_PopShowGeneSDHeatmap <- rennderPlot({
+			HeatmapCtrl$GetGeneSDHeatmap(input, ConvertedTransformedData())		
+		}, height = 600, width = 800, res=120 )
 
 		# Heatmap PopShowCorrelation
 #download_Heatmap_CorrelationMatrixData

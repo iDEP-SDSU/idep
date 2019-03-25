@@ -108,3 +108,24 @@ Heatmap.Logic$set("public", "GenerateHeatmapPlotly",
 		return(LogicManager$Display$GetHeatmapPlotly(df, selectedHeatColor))
 	}
 )
+
+Heatmap.Logic$set("public", "CutData_SD",
+	function(geneCount, ConvertedTransformedData){
+		SDs=apply(ConvertedTransformedData,1,sd)
+		maxSD = mean(SDs)+ 4*sd(SDs)
+		SDs[ SDs > maxSD] = maxSD
+		if(geneCount > length(SDs)){
+				geneCount = length(SDs)
+		}
+
+		SDs = as.data.frame(SDs)
+		return(SDs)
+	}
+)
+
+Heatmap.Logic$set("public", "GenerateSDHeatmapPlot",
+	function(SDs, Cutoff){
+		return(LogicManager$Display$GetSDHeatmapPlot(SDs, Cutoff))
+	}
+)
+
