@@ -79,7 +79,7 @@ shinyServer(
 			PreProcessCtrl$GetConvertedRawReadcountData(input, ConvertedIDResult(), ReactVars$PreProcessResult())
 		})
 
-		GetConvertedPvals <- reactive({
+		ConvertedPvals <- reactive({
 			PreProcessCtrl$GetConvertedPvals(input, ConvertedIDResult(), ReactVars$PreProcessResult())
 		})
 
@@ -161,7 +161,9 @@ shinyServer(
 			content = function(file) {
 				HeatmapCtrl$SaveHeatmapDataInFile(
 					file, input,
-					ReactVars$PreProcessResult()
+					ReactVars$PreProcessResult(),
+					PreprocessSampleInfoResult(),
+
 				)
 			}
 		)
@@ -245,11 +247,27 @@ shinyServer(
 				)
 			}
 		)
+
 		############################################################################
 		#						0.0		Test R Markdown Report
 		############################################################################
 
-
+		output$download_Main_Report <- downloadHandler(
+			filename = "iDep_Report.html",
+			content = function(file){
+				ReportCtrl$SaveReportInTempFile(
+					file,
+					input,
+					ReactVars$PreProcessResult(),
+					PreprocessSampleInfoResult(),
+					ConvertedIDResult(),
+					AllGeneInfo(),
+					ConvertedTransformedData(),
+					NULL, # ConvertedRawReadcountData()
+					NULL  # ConvertedPvals()
+				)
+			}
+		)
 
 	}
 )

@@ -1,0 +1,12 @@
+## PreProcessing Result
+
+```{r}
+PreProcessCtrl$GetTotalReadCountsPlot(PreProcessResult$rawCount)
+```
+
+
+
+
+
+
+
