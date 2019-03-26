@@ -33,13 +33,28 @@ Ctl.Report$set("public", "SaveReportInTempFile",
 
 		rmarkdown::render(
 			"reports/main.Rmd", 
-			output_file=file,
-			output_format = 'html_document',
+			output_file = file,
+			output_format = input$selectReportOutputFormat,
 			params = params
 		)
 	}
 )
 
+Ctl.Report$set("public", "GetReportFileName",
+	function(input){
+		fileType = gsub( "_document", "", input$selectReportOutputFormat )
+		
+		if(fileType == 'html'){
+			return("iDepReport.html")
+		}
+
+		if(fileType == 'pdf'){
+			return("iDepReport.pdf")
+		}
+
+		return("iDepReport.docx")
+	}
+)
 
 
 

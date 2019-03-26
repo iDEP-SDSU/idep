@@ -33,9 +33,7 @@ View.LoadData$set( "public", "sidebarPanel",
 #
 #			tableOutput('species'),
 			
-			a( h5("?",align = "right"), href="https://idepsite.wordpress.com/data-format/",target="_blank"),
-
-			downloadButton('download_Main_Report', "Report")
+			a( h5("?",align = "right"), href="https://idepsite.wordpress.com/data-format/",target="_blank")
 		)
 	}
 )
