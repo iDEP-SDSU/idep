@@ -1,6 +1,18 @@
-# Heatmap MainPlot
+## Heatmap 
 
-```{r}
 
+### MainPlot
+```{r, eval=(input$selectReportOutputFormat == 'html_document'), echo = FALSE}
+HeatmapCtrl$GetMainHeatmapPlotly(
+	input,
+	ReactVars,
+	PreProcessResult,
+	PreprocessSampleInfoResult,
+	AllGeneInfo
+)
+
+```
+
+```{r, eval=(input$selectReportOutputFormat != 'html_document'), echo = FALSE}
 
 ```

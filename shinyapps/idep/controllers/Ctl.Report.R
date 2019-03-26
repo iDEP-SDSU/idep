@@ -12,6 +12,7 @@ Ctl.Report$set("public", "SaveReportInTempFile",
 	function(
 		file,
 		input,
+		ReactVars,
 		PreProcessResult,
 		PreprocessSampleInfoResult,
 		ConvertedIDResult,
@@ -22,6 +23,7 @@ Ctl.Report$set("public", "SaveReportInTempFile",
 	){
 		params <- list(
 			htmlInput = input,
+			ReactVars = ReactVars,
 			PreProcessResult = PreProcessResult,
 			PreprocessSampleInfoResult = PreprocessSampleInfoResult,
 			ConvertedIDResult = ConvertedIDResult,

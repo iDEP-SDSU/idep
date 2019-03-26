@@ -279,6 +279,7 @@ shinyServer(
 				ReportCtrl$SaveReportInTempFile(
 					file,
 					input,
+					ReactVars,
 					ReactVars$PreProcessResult(),
 					PreprocessSampleInfoResult(),
 					ConvertedIDResult(),
