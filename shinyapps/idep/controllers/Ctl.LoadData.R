@@ -5,9 +5,7 @@ library(DT)
 library("rhdf5")
 
 source('server.config')
-source('businessLogic/LogicManager.R')
 
-LogicManager <- Logic.Manager$new()
 Ctl.LoadData <- R6Class("Ctl.LoadData")
 
 ## Fields 
@@ -277,7 +275,7 @@ Ctl.LoadData$set( "public", "EventHandler_UseDemoData",
 		# Load data set
 		demoData <- LogicManager$Files$LoadDemoData()
 		storeVariableList$RawData <- demoData$dat
-		storeVariableList$RawTestDesign <- demoData$design
+		storeVariableList$RawTestDesign <- demoData$sampleInfo
 		storeVariableList$PreProcessDone <- FALSE
 	}
 )

@@ -9,6 +9,7 @@ if(CONFIG_SERVER_LANGUAGE == 'ZH'){
 
 source('views/View.LoadData.R')
 source('views/View.PreProcess.R')
+source('views/View.Heatmap.R')
 
 
 

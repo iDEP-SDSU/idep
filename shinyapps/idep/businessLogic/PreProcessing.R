@@ -1,12 +1,12 @@
 library('R6')
 library('edgeR')
 library('DESeq2')
+library('dplyr')
 library(e1071,verbose=FALSE) 		# computing kurtosis
 
 source('server.config')
 
 PreProcessing.Logic <- R6Class("PreProcessing.Logic")
-
 
 PreProcessing.Logic$set("public","RawDataPreprocess",
 	# Data file preprocessing function
@@ -26,7 +26,7 @@ PreProcessing.Logic$set("public","RawDataPreprocess",
 	#	6. Calculate Kurtosis
 	function(rawData, imputateMethod, dataType, minCounts, minSamples, 
 			CountsTransform, LogStart, isTransform, isNoFDR){
-		
+
 		tmp.data <- self$RemoveNonNumericalColumns(rawData)
 		tmp.data <- self$RemoveAllMissingRows(tmp.data)
 		dataSizeOriginal = dim(tmp.data); 
@@ -261,8 +261,8 @@ PreProcessing.Logic$set("public", "CalcKurtosisForReadCount",
 
 		dat <- switch(CountsTransform,
 			log2( counts(dds, normalized=TRUE) + CountsLogStart ) ,
-			assay( rlog(dds, blind=TRUE) ),
-			assay( vst(dds, blind=TRUE) )
+			assay( vst(dds, blind=TRUE) ),
+			assay( rlog(dds, blind=TRUE) )
 		)
 		
 		return(list(dat=dat, warning=dataTypeWarning, 
@@ -312,34 +312,48 @@ PreProcessing.Logic$set("public", "CalcKurtosisForOtherDatatype",
 	}
 )
 
-# not finished function: readSampleInfo <- reactive
-#PreProcessing.Logic$set("public","RawSampleInfoPreprocess", 
-#	function(rawInfo, colnameOfData){
-#		if(is.null(rawInfo)){
-#			return(NULL)
-#		}
-#		
-#		temp.info <- self$CleanSampleNames(rawInfo)
-#
-#		matchedInfo <- match(toupper(colnameOfData), toupper(colnames(temp.info)))
-#		matchedInfo <- matchedInfo[which(!is.na(matchedInfo))]
-#
-#		validate(
-#				  need(length(unique(ix) ) == dim(readData()$data)[2] 
-#				       & dim(x)[1]>=1 & dim(x)[1] <500 # at least one row, it can not be more than 500 rows
-#					 ,"Error!!! Sample information file not recognized. Sample names must be exactly the same. Each row is a factor. Each column represent a sample.  Please see documentation on format.")
-#		)
-#
-#		#-----------Double check factor levels, change if needed
-#		# remove "-" or "." from factor levels
-#		for( i in 1:dim(temp.info)[1]) {
-#		   temp.info[i,] = gsub("-","",temp.info[i,])
-#		   temp.info[i,] = gsub("\\.","",temp.info[i,])				
-#		}
-#		
-#	}
-#)
-#
+
+PreProcessing.Logic$set("public","RawSampleInfoPreprocess", 
+	function(rawInfo, rawData){
+		if(is.null(rawInfo)){
+			return(NULL)
+		}
+		
+		colnameOfData <- colnames(rawData)
+		temp.info <- self$CleanSampleNames(rawInfo)
+
+		matchedInfo <- match(toupper(colnameOfData), toupper(colnames(temp.info)))
+		matchedInfo <- matchedInfo[which(!is.na(matchedInfo))]
+
+		validate(
+				  need(	
+					length(unique(matchedInfo) ) == dim(rawData)[2] 
+				       	& dim(rawInfo)[1]>=1 & dim(rawInfo)[1] <500, # at least one row, it can not be more than 500 rows
+					"Error!!! Sample information file not recognized. Sample names must be exactly the same. Each row is a factor. Each column represent a sample.  Please see documentation on format.")
+		)
+
+		#-----------Double check factor levels, change if needed
+		# remove "-" or "." from factor levels
+		for( i in 1:dim(temp.info)[1]) {
+		   temp.info[i,] = gsub("-","",temp.info[i,])
+		   temp.info[i,] = gsub("\\.","",temp.info[i,])				
+		}
+		
+		if( length(unique(matchedInfo) ) == dim(rawData)[2]) { # matches exactly
+			temp.info = temp.info[,matchedInfo]
+			# if the levels of different factors are the same, it may cause problems
+			if( sum( apply(temp.info, 1, function(x) length(unique(x)))) > length(unique(unlist(temp.info) ) ) ) {
+				tem2 =apply(temp.info,2, function(x) paste0( names(x),x)) # factor names are added to levels
+				rownames(tem2) = rownames(temp.info)
+				temp.info <- tem2				
+			}
+			return(t(temp.info))			
+		}else{
+			retrun(NULL)
+		}
+	}
+)
+
 
 # convert gene IDs to ensembl gene ids and find species
 # steps:
@@ -416,6 +430,50 @@ PreProcessing.Logic$set("public", "ConvertIDAutoMatch",
 	}	
 )
 
+
+# Apply convert ID result to given data
+# this data can be raw read count or transformed read count data
+
+#	When given data is raw read count:
+	# refer to convertedCounts() in 0.81 code
+	# Convert Raw read count data based on Convert ID result.
+	# If no conversion applied on ID, then use raw read count directly
+
+#	When given data is transformed data:
+	# refer to convertedData() in 0.81 code
+	# Convert Transformed data based on Convert ID result. 
+	# If no conversion applied on ID, then use transformed data directly
+
+#	When given data is Pval:
+	# refer to convertedPvals() in 0.81 code
+
+PreProcessing.Logic$set("public", "ApplyConvertIDToGivenData",
+	function(GivenData, ConversionTable){
+		
+		rownames(GivenData) = toupper(rownames(GivenData))
+
+		# any gene not recognized by the database is disregarded
+		# the 3 lines keeps the unrecogized genes using original IDs
+		dat = merge(ConversionTable[,1:2], GivenData,  by.y = 'row.names', by.x = 'User_input', all.y=TRUE)
+
+		# original IDs used if ID is not matched in database
+		ix = which(is.na(dat[,2]) )
+		dat[ix,2] = dat[ix,1] 	
+
+		#multiple matched IDs, use the one with highest SD
+		tem = apply(dat[,3:(dim(dat)[2])],1,sd)
+		dat = dat[order(dat[,2],-tem),]
+		dat = dat[!duplicated(dat[,2]) ,]
+		rownames(dat) = dat[,2]
+		dat = as.matrix(dat[,c(-1,-2)])
+		tem = apply(dat,1,sd)
+		dat = dat[order(-tem),]  # sort again by SD
+
+		return(dat)
+	}
+)
+
+
 # find species name use id
 PreProcessing.Logic$set("public", "findSpeciesNameById",
 	function(speciesID){ 
@@ -425,7 +483,7 @@ PreProcessing.Logic$set("public", "findSpeciesNameById",
 )
 # find species information use id
 PreProcessing.Logic$set("public", "findSpeciesById",
-	function (speciesID){ 
+	function(speciesID){ 
 		orgInfo <- LogicManager$DB$OrgInfo
   		return( orgInfo[which(orgInfo$id == speciesID),]  )
 	}
@@ -433,7 +491,7 @@ PreProcessing.Logic$set("public", "findSpeciesById",
 
 # convert sorted species:idType combs into a list for repopulate species choice
 PreProcessing.Logic$set("public", "matchedSpeciesInfo",
-	function (x) {
+	function(x) {
   		a<- c()
   		for( i in 1:length(x)) {
   		  	a = c(a,paste( gsub("genes.*","",findSpeciesNameById( as.numeric(gsub(" .*","",names(x[i])) ))), " (",
@@ -447,11 +505,70 @@ PreProcessing.Logic$set("public", "matchedSpeciesInfo",
 
 # Clean up gene sets. Remove spaces and other control characters from gene names  
 PreProcessing.Logic$set("public", "cleanGeneSet",
-	function (x){
+	function(x){
   		# remove duplicate; upper case; remove special characters
   		x <- unique( toupper( gsub("\n| ","",x) ) )
   		x <- x[which( nchar(x)>1) ]  # genes should have at least two characters
   		return(x)
+	}
+)
+
+# allGeneInfo()
+PreProcessing.Logic$set("public", "GetGenesInfomationByEnsemblIDs",
+	function(ensemblIDs, species, selectOrg){
+		if(selectOrg != 'BestMatch'){
+			idxGeneInfoFile = grep(findSpeciesById(selectOrg)[1,1], geneInfoFiles )
+		}else{
+			idxGeneInfoFile = grep(species[1,1],CONFIG_DATA_LIST_GENEINFOFILES)
+		}
+		
+		if(length(idxGeneInfoFile) == 0 ) {
+			return(as.data.frame("No matching gene info file found") ) 
+		}
+
+
+		if(length(idxGeneInfoFile) == 1){ 
+			# if only one file           
+			# read in the chosen file 
+			geneInfo = read.csv(as.character(CONFIG_DATA_LIST_GENEINFOFILES[idxGeneInfoFile]) )
+			geneInfo[,1]= toupper(geneInfo[,1]) #WBGene0000001 some ensembl gene ids in lower case
+		} else { 
+			return(as.data.frame("Multiple geneInfo file found!") )   
+		}
+
+		Set = match(geneInfo$ensembl_gene_id, ensemblIDs)
+		Set[which(is.na(Set))]="Genome"
+		Set[which(Set!="Genome")] ="List"
+
+		return( cbind(geneInfo,Set) )
+	}
+)
+
+# GetGeneSymbolUsingEnsembl 
+PreProcessing.Logic$set("public", "GetGenesSymbolByEnsemblIDs",
+	function(allGeneInfo, EnsemblIDs, isUseEnsemblIfNoSymbol){
+		if(length(EnsemblIDs) == 0){
+			return(NULL)
+		}
+
+		tb.QueryData <- as.data.frame(EnsemblIDs) 
+		colnames(tb.QueryData) <- c('ensembl_gene_id')
+
+		tb.result <- tb.QueryData %>% 
+			left_join(allGeneInfo, by='ensembl_gene_id') %>%
+			select('ensembl_gene_id', 'symbol')	
+		
+		tb.result$symbol <- as.character(tb.result$symbol)
+		tb.result$ensembl_gene_id <- as.character(tb.result$ensembl_gene_id)
+		if(isUseEnsemblIfNoSymbol){
+			# if we want use ensembl id for the symbol missed gene
+			symbol <- ifelse(is.na(tb.result$symbol), tb.result$ensembl_gene_id, tb.result$symbol)
+		}else{
+			# if not, just pull the symbol out
+			symbol <- tb.result$symbol
+		}
+		
+		return(symbol)
 	}
 )
 

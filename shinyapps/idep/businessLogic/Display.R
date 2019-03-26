@@ -1,8 +1,29 @@
 library('R6')
+library(gplots,verbose=FALSE)		# for hierarchical clustering
+library(ggplot2,verbose=FALSE)	# graphics
 
 source('server.config')
 
 Display.Manager <- R6Class("Display.Manager")
+Display.Manager$set("public", "HeatColors" , NULL)
+
+Display.Manager$set("public", "initialize",
+	function(){
+
+		hmcols <- colorRampPalette(rev(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF",
+			"#E0F3F8", "#91BFDB", "#4575B4")))(75)
+
+		heatColors = list(  
+			"Green-Black-Red" = greenred(75),     
+			"Blue-White-Red" = bluered(75),     
+	        "Green-Black-Magenta" = colorpanel(75,"green", "black","magenta"),
+	        "Blue-Yellow-Red" = colorpanel(75,"blue", "yellow","red"), 
+			"Blue-white-brown" = hmcols 
+		)
+
+		self$HeatColors <- heatColors
+	}
+)
 
 
 Display.Manager$set("public", "GetReadcountBarPlot",
@@ -36,10 +57,10 @@ Display.Manager$set("public", "GetReadcountBarPlot",
 )
 
 Display.Manager$set("public", "GetTransformedDataBoxPlot",
-	function(transedData, groups){
+	function(transformData, groups){
 		# 1. Init/load vars
 		memo = ""
-		dat <- transedData
+		dat <- transformData
 
 		# 2. Check sample count. If count is to much, then show first CONST_EAD_PLOT_MAX_SAMPLE_COUNT samples.
 		if( ncol(dat) > CONST_EAD_PLOT_MAX_SAMPLE_COUNT ){
@@ -89,10 +110,10 @@ Display.Manager$set("public", "GetTransformedDataBoxPlot",
 )
 
 Display.Manager$set("public", "GetTransformedDataDensityPlot",
-	function(transedData, groups){
+	function(transformData, groups){
 		# 1. Init/load vars
 		memo = ""
-		dat <- transedData
+		dat <- transformData
 
 		# 2. Check sample count. If count is to much, then show first CONST_EAD_PLOT_MAX_SAMPLE_COUNT samples.
 		if( ncol(dat) > CONST_EAD_PLOT_MAX_SAMPLE_COUNT ){
@@ -141,12 +162,11 @@ Display.Manager$set("public", "GetTransformedDataDensityPlot",
 	}
 )
 
-
 Display.Manager$set("public", "GetTransformedDataScatterPlot",
-	function(transedData){
+	function(transformData){
 		# 1. Init/load vars
 		memo = ""
-		dat <- transedData
+		dat <- transformData
 
 		# 2. Select first two columns
 		dat <- dat[,1:2]
@@ -162,4 +182,210 @@ Display.Manager$set("public", "GetTransformedDataScatterPlot",
 		return(p)
 	}
 )
+
+
+Display.Manager$set("public", "GetHeatmap2Plot",
+	function(dat, geneCount, groups, isSampleClustering,
+		distfunName, hclustfunName, heatColorName){
+		#http://stackoverflow.com/questions/15351575/moving-color-key-in-r-heatmap-2-function-of-gplots-package
+		groups.colors = rainbow(length(unique(groups)))
+
+		lmat = rbind(c(0, 4), c(0, 1), c(3, 2), c(5, 0))
+		lwid = c(2, 6)
+		lhei = c(1.5, .2, 8, 1.1)
+	
+		if(ncol(dat) < 20){
+			cexFactor = 2 
+		}else if(ncol(dat) < 31){
+			cexFactor = 1.5
+		}else{
+			cexFactor = 1
+		}
+
+		par(mar = c(5, 4, 1.4, 0.2))
+
+		if( geneCount>110 ){
+			heatmap.2(dat, 
+				distfun = LogicManager$UtilFuns$DistanceFuns[[distfunName]],
+				hclustfun = LogicManager$UtilFuns$HierarchicalClusteringFuns[[hclustfunName]],
+				Colv = isSampleClustering,
+				col = self$HeatColors[[heatColorName]],
+				density.info="none", 
+				trace="none", 
+				scale="none", 
+				keysize=.5,
+				key=TRUE, 
+				symkey=FALSE,
+				ColSideColors=groups.colors[ as.factor(groups)],
+				labRow="",
+				margins=c(10,0),
+				srtCol=45,
+				cexCol=cexFactor,  # size of font for sample names
+				lmat = lmat, 
+				lwid = lwid, 
+				lhei = lhei
+			)
+		}else{
+			heatmap.2(dat, 
+				distfun = LogicManager$UtilFuns$DistanceFuns[[distfunName]],
+				hclustfun = LogicManager$UtilFuns$HierarchicalClusteringFuns[[hclustfunName]],
+				Colv = isSampleClustering,
+				col = self$HeatColors[[heatColorName]],
+				density.info="none", 
+				trace="none", 
+				scale="none", 
+				keysize=.5,
+				key=TRUE, 
+				symkey=FALSE,
+				ColSideColors=groups.colors[ as.factor(groups)],
+				margins=c(18,12),
+				cexRow=1,
+				srtCol=45,
+				cexCol=cexFactor,  # size of font for sample names
+				lmat = lmat, 
+				lwid = lwid, 
+				lhei = lhei
+			)
+		}
+
+		if(length(unique(groups) ) <= 30 ) {  # only add legend when there is less categories
+			par(lend = 1)           # square line ends for the color legend
+			self$add_legend(
+				"topleft",
+				legend = unique(groups), # category labels
+				col = groups.colors[unique(as.factor(groups))],  # color key
+				lty= 1,             # line style
+				lwd = 10            # line width
+			)
+		}
+	}
+)
+
+# This is a support function for GetHeatmap2Plot
+# adding sample legends to heatmap; this is for the main heatmap
+# https://stackoverflow.com/questions/3932038/plot-a-legend-outside-of-the-plotting-area-in-base-graphics
+Display.Manager$set("public", "add_legend",
+	function(...) {
+		opar <- par(
+			fig=c(0, 1, 0, 1), 
+			oma=c(0, 0, 0, 0), 
+		 	mar=c(0, 0, 0, 6), 
+			new=TRUE
+		)
+		on.exit(par(opar))
+		plot(0, 0, type='n', bty='n', xaxt='n', yaxt='n')
+		legend(...)
+	}
+)
+
+Display.Manager$set("public", "GetHeatmapPlotly",
+	function(dat, selectedHeatColor){
+
+		# Generate Color names
+		colorNames = unlist(strsplit(tolower(selectedHeatColor),"-" ) )
+
+		# Build ggplot
+		p <- dat %>%
+	  		ggplot(aes(X, Y, fill = value)) + 
+			  	geom_tile() + 
+			  	scale_fill_gradient2(low = colorNames[1], mid = colorNames[2],high = colorNames[3]) + 
+			  	theme(
+					axis.title.y=element_blank(),   # remove y labels
+				   	#axis.text.y=element_blank(),  # keep gene names for zooming
+					axis.ticks.y=element_blank(),
+					axis.title.x=element_blank()
+				) + 
+				theme(axis.text.x = element_text(size=10,angle = 45, hjust = 1))
+		
+		p <- ggplotly(p) %>% 
+			layout(margin = list(b = 150,l=200))
+
+		return(p)
+	}
+)
+
+Display.Manager$set("public", "GetSDHeatmapPlot",
+	function(dat, Cutoff){
+		p <- ggplot(dat, aes(x=SDs)) + 
+			geom_density(color="darkblue", fill="lightblue") +
+		  	labs(x = "Standard deviations of all genes", y="Density")+
+		  	geom_vline(
+				aes(xintercept=Cutoff),
+				color="red", linetype="dashed", size=1
+			) + 
+			annotate(
+				"text", 
+				x = Cutoff + 0.4*sd(dat[,1]), 
+				y = 1,
+				color = "red", 
+				label = paste0("Top ", Cutoff)
+			) +
+			theme(
+				axis.text=element_text(size=14),
+				axis.title=element_text(size=16,face="bold")
+			)
+		return(p)
+	}
+)
+
+# heatmap of correlation matrix
+Display.Manager$set("public", "GetHeatmapOfCorrelationMatrix",
+	function(dat,isLabelWithPCC){
+		# Create a ggheatmap
+		ggheatmap <- ggplot(dat, aes(Var2, Var1, fill = value))+
+			geom_tile(color = "white")+
+			scale_fill_gradient2(low = "green", high = "red",  mid = "white", 
+			space = "Lab",  limit = c(min(dat[,3]) ,max(dat[,3])), midpoint = median(dat[,3]),
+			name="Pearson's \nCorrelation") +
+			theme_minimal()+ # minimal theme
+			theme(axis.text.x = element_text(angle = 45, vjust = 1, size=14,hjust = 1))+
+			theme(axis.text.y = element_text( size = 14 ))+
+			coord_fixed()
+
+		if(isLabelWithPCC && ncol(dat)<20){
+			ggheatmap <- ggheatmap +  geom_text(aes(Var2, Var1, label = value), color = "black", size = 4)
+		}
+		
+		ggheatmap <- ggheatmap + 
+		  	theme(
+				axis.title.x = element_blank(),
+				axis.title.y = element_blank(),
+				panel.grid.major = element_blank(),
+				panel.border = element_blank(),
+				panel.background = element_blank(),
+				axis.ticks = element_blank(),
+				legend.justification = c(1, 0),
+				legend.position = c(0.6, 0.7),
+				legend.direction = "horizontal"
+			) +
+			guides(fill = FALSE)
+		
+		return(ggheatmap)
+	}
+)
+
+# Sample Tree plot for heatmap tab
+Display.Manager$set("public", "GetSampLeTreePlot",
+	function(dat, hclustfunName, distfunName){
+		hclustfun <- LogicManager$UtilFuns$HierarchicalClusteringFuns[[hclustfunName]]
+		distfun <- LogicManager$UtilFuns$DistanceFuns[[distfunName]]
+
+		p <- plot(
+			as.dendrogram(
+				hclustfun(
+					distfun( t(dat) )
+				)
+			),
+			xlab = "",
+			ylab = paste(distfunName, "(", hclustfunName, "linkage", ")" ),
+			type = "rectangle"
+		)
+
+		return(p)
+	}
+)
+
+
+
+
 

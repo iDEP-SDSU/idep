@@ -83,28 +83,30 @@ View.PreProcess$set("public", "ResultPanel",
 View.PreProcess$set("public", "ConPanel_ReadCountOnlySettings",
 	function(){
 		conditionalPanel(condition = "input.dataFileFormat == 1",
-			strong("Keep genes with minimal counts per million (CPM) in at least n libraries:"),
-          	fluidRow(
-            	column(6, numericInput("numMinCounts", label = h5("Min. CPM"), value = 0.5) ),
-            	column(6, numericInput("numNMinSamplesInCountCase", label = h5("n libraries"), value = 1) )
-			),
-			tags$style(type='text/css', "#numMinCounts { width:100%;   margin-top:-12px}"),
-			tags$style(type='text/css', "#numNMinSamplesInCountCase { width:100%;   margin-top:-12px}"),
+		wellPanel(
+				strong("Keep genes with minimal counts per million (CPM) in at least n libraries:"),
+        	  	fluidRow(
+        	    	column(6, numericInput("numMinCounts", label = h5("Min. CPM"), value = 0.5) ),
+        	    	column(6, numericInput("numNMinSamplesInCountCase", label = h5("n libraries"), value = 1) )
+				),
+				tags$style(type='text/css', "#numMinCounts { width:100%;   margin-top:-12px}"),
+				tags$style(type='text/css', "#numNMinSamplesInCountCase { width:100%;   margin-top:-12px}"),
 
-			radioButtons("selectCountsTransform", 
-				"Transform counts data for clustering & PCA.",  
-				c(	
-					"EdgeR: log2(CPM+c)"                  = 1,
-					"VST: variance stabilizing transform" = 2, 
-					"rlog: regularized log (slow) "       = 3
-				),                          
-				selected = 1 
-			),
-			conditionalPanel("input.selectCountsTransform == 1",
-				fluidRow(
-					column(5, h5("Pseudo count c:")  ),
-					column(7, numericInput("numCountsLogStart", label = NULL, value = 4) )
-				)                
+				radioButtons("selectCountsTransform", 
+					"Transform counts data for clustering & PCA.",  
+					c(	
+						"VST: variance stabilizing transform" = 2, 
+						"rlog: regularized log (slow) "       = 3,
+						"EdgeR: log2(CPM+c)"                  = 1
+					),                          
+					selected = 1 
+				),
+				conditionalPanel("input.selectCountsTransform == 1",
+					fluidRow(
+						column(5, h5("Pseudo count c:")  ),
+						column(7, numericInput("numCountsLogStart", label = NULL, value = 4) )
+					)                
+				)
 			)
 		)
 	}
@@ -191,7 +193,7 @@ View.PreProcess$set("public", "GuessSpeciesPanel",
 					)
 				)
 			),
-			tableOutput('tblSpecies')
+			tableOutput('PreProcess_tblSpecies')
 		)
 	}
 )

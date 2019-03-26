@@ -43,3 +43,9 @@ shinyapps/idep/hello.rds
 docs/Output workflow/tblSpecies(species)/~$$new.~vsdx
 docs/Output workflow/tblSpecies(species)/~$$reference.~vsdx
 docs/~$$reactive vars UML.~vsdx
+shinyapps/idep/usedParms
+shinyapps/idep/nowData
+shinyapps/idep/currentData
+shinyapps/idep/isSampleClustering
+shinyapps/idep/allgene
+shinyapps/idep/df

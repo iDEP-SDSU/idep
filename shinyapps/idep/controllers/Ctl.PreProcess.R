@@ -2,14 +2,12 @@ library('R6')
 library(shiny)
 library(shinyBS)
 library(plotly)
-source('businessLogic/LogicManager.R')
+
 
 Ctl.PreProcess <- R6Class("Ctl.PreProcess")
-LogicManager <- Logic.Manager$new()
 
 Ctl.PreProcess$set("public", "PreProcessResult",
 	function(input, session, storeVariableList){
-		
 		withProgress(message="Reading and pre-processing", {
 
 			# Pre checking
@@ -50,11 +48,20 @@ Ctl.PreProcess$set("public", "PreProcessResult",
 					input$isNoFDR			## This parm is got in load data tab.
 				)
 			incProgress(1, "Done.")
+			return(PreProcessResult)
 		})
-		
-		return(PreProcessResult)
 	}
 )
+
+ 
+Ctl.PreProcess$set("public", "RawSampleInfoPreprocess",
+	function(rawDesign, geneNames){
+		return(
+			LogicManager$PreProcessing$RawSampleInfoPreprocess(rawDesign, geneNames)
+		)
+	}
+)
+
 
 # Preprocessing tab, first plot
 Ctl.PreProcess$set("public", "GetTotalReadCountsPlot",
@@ -153,6 +160,10 @@ Ctl.PreProcess$set("public", "GetGuessSpeciesResult",
 
 Ctl.PreProcess$set("public", "ConvertedIDResult",
 	function(GeneIDs, selectedOrg){
+		if(is.null(GeneIDs)){
+			return(null)
+		}
+
 		withProgress(
 			message = "Convert Gene IDs", 
 			detail="Converting gene IDs", 
@@ -165,9 +176,29 @@ Ctl.PreProcess$set("public", "ConvertedIDResult",
 	}
 )
 
-Ctl.PreProcess$set("public", "InitSelectOrgUI",
+Ctl.PreProcess$set("public", "GetAllGeneInfomation",
+	function(Reactive_ConvertedIDResult, input){
+		withProgress(message="Looking up gene annotation", {
+			if(is.null(Reactive_ConvertedIDResult)){
+				return(NULL)
+			}
+
+			ensemblIDs <- Reactive_ConvertedIDResult$ensemblIDs
+			species <- Reactive_ConvertedIDResult$species
+			selectOrg <- input$selectOrg
+
+			if(is.null(ensemblIDs) || is.null(species) || is.null(selectOrg)){
+				return(NULL)
+			}
+
+			return( LogicManager$PreProcessing$GetGenesInfomationByEnsemblIDs(ensemblIDs, species, selectOrg) )
+		})
+	}
+)
+
+
+Ctl.PreProcess$set("public", "InitChoiceSelectOrgUI",
 	function(){
-		# Create a list for Select Input options
 		orgInfo <- LogicManager$DB$OrgInfo
 
 		speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
@@ -191,3 +222,94 @@ Ctl.PreProcess$set("public", "InitSelectOrgUI",
 		return(speciesChoice)
 	}
 )
+
+# refer to convertedData() in 0.81 code
+# Convert Transformed data based on Convert ID result. 
+# If no conversion applied on ID, then use transformed data directly
+Ctl.PreProcess$set("public", "GetConvertedTransformedData",
+	function(input, Reactive_ConvertedIDResult, Reactive_PreProcessResult){
+		withProgress(message="Converting data ... ", {
+			# if no preprocess result, return null
+			if(is.null(Reactive_PreProcessResult)){
+				return(NULL)
+			}
+
+			# if no converted id result
+			# or 'no id conversion' is selected
+			# then use transformed data directly
+			if(is.null(Reactive_ConvertedIDResult)){
+				return(Reactive_PreProcessResult$dat)
+			}
+
+			if(input$isNoIDConversion){
+				return(Reactive_PreProcessResult$dat)
+			}
+
+			transformedData <- Reactive_PreProcessResult$dat
+			conversionTable <- Reactive_ConvertedIDResult$conversionTable
+			incProgress(1, "Done.")
+		})
+		return(LogicManager$PreProcessing$ApplyConvertIDToGivenData(transformedData, conversionTable))
+	}
+)
+
+# refer to convertedCounts() in 0.81 code
+# Convert raw readcount data based on Convert ID result. 
+# If no conversion applied on ID, then use raw readcount data directly
+Ctl.PreProcess$set("public", "GetConvertedRawReadcountData",
+	function(input, Reactive_ConvertedIDResult, Reactive_PreProcessResult){
+		withProgress(message="Converting data ... ", {
+			# if no preprocess result, return null
+			if(is.null(Reactive_PreProcessResult)){
+				return(NULL)
+			}
+
+			# if no converted id result
+			# or 'no id conversion' is selected
+			# then use raw read count data directly
+			if(is.null(Reactive_ConvertedIDResult)){
+				return(Reactive_PreProcessResult$rawCount)
+			}
+
+			if(input$isNoIDConversion){
+				return(Reactive_PreProcessResult$rawCount)
+			}
+
+			rawReadCount <- Reactive_PreProcessResult$rawCount
+			conversionTable <- Reactive_ConvertedIDResult$conversionTable
+			incProgress(1, "Done.")
+		})
+		return(LogicManager$PreProcessing$ApplyConvertIDToGivenData(rawReadCount, conversionTable))
+	}
+)
+
+# refer to ConvertedPvals() in 0.81 code
+# Convert pvals data based on Convert ID result. 
+# If no conversion applied on ID, then use raw pvals directly
+Ctl.PreProcess$set("public", "GetConvertedPvals",
+	function(input, Reactive_ConvertedIDResult, Reactive_PreProcessResult){
+		withProgress(message="Converting data ... ", {
+			# if no preprocess result, return null
+			if(is.null(Reactive_PreProcessResult)){
+				return(NULL)
+			}
+
+			# if no converted id result
+			# or 'no id conversion' is selected
+			# then use pvals data directly
+			if(is.null(Reactive_ConvertedIDResult)){
+				return(Reactive_PreProcessResult$pvals)
+			}
+
+			if(input$isNoIDConversion){
+				return(Reactive_PreProcessResult$pvals)
+			}
+
+			pvals <- Reactive_PreProcessResult$pvals
+			conversionTable <- Reactive_ConvertedIDResult$conversionTable
+			incProgress(1, "Done.")
+		})
+		return(LogicManager$PreProcessing$ApplyConvertIDToGivenData(pvals, conversionTable))
+	}
+)
+
