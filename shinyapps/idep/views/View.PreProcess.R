@@ -17,7 +17,8 @@ View.PreProcess$set("public", "mainPanel",
 	function(){
 		mainPanel(
 			self$PreRequestNotFitMessagePanel(),
-			self$ResultPanel()
+			self$ResultPanel(),
+			self$PopSearchForGenes()
 		)
 	}
 )
@@ -149,15 +150,17 @@ View.PreProcess$set("public", "ShareSettingsPanel",
 								"Treat as zero" = "treatAsZero", 
 								"Median within sample groups" = "geneMedianInGroup"),
         	    selected = "geneMedian"),
-        	actionButton("btn_GenePlot1", "Plot one or more genes"),
+        	actionButton("btn_PopGeneSearchPanel", "Plot one or more genes"),
         	br(),br(),
         	actionButton("btn_ExamineDataB", "Search processed data"),
         	br(),br(),
         	checkboxInput("isNoIDConversion", "Do not convert gene IDs to Ensembl.", value = FALSE),
-        	downloadButton('downloadProcessedData', 'Processed data'),
-        	conditionalPanel("input.dataFileFormat == 1", 
-        	   downloadButton('downloadConvertedCounts', 'Converted counts data') ),
-        	downloadButton('downloadEDAplot', 'High-resolution figure'),  ## this need change name later
+        	downloadButton('download_PreProcess_ProcessedData', 'Processed data'),
+        	conditionalPanel(
+				"input.dataFileFormat == 1", 
+        	   	downloadButton('download_PreProcess_ConvertedCounts', 'Converted counts data') 
+			),
+        	downloadButton('download_PreProcess_EDAplot', 'High-resolution figure'),  ## this need change name later
         	br(),br(),
         	textOutput('nGenesFilter'),
         	tags$head(tags$style("#nGenesFilter{color: blue;
@@ -198,8 +201,25 @@ View.PreProcess$set("public", "GuessSpeciesPanel",
 	}
 )
 
-
-
+###################			PopSearchForGenes				###################
+View.PreProcess$set("public", "PopSearchForGenes", 
+	function(){
+		bsModal(
+			"modal_PreProcess_SearchForGene",
+			"Search for genes",
+			"btn_PopGeneSearchPanel",
+			size = "large",
+			textInput("geneSearch", "Enter full or partial gene ID:", "HOXA"),
+          	checkboxInput("genePlotBox", label = "Show individual samples", value = FALSE),
+          	plotOutput("genePlot"),
+          	conditionalPanel(
+				"input.genePlotBox == 0", 
+          		checkboxInput("useSD", label = "Use standard deviation instead of standard error", value = FALSE)
+			),
+          	downloadButton('downloadGenePlot', 'Figure')
+		)
+	}
+)
 
 
 
