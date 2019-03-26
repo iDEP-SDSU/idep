@@ -1,0 +1,41 @@
+---
+title: "iDep Report"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+allow_html_dependencies: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r grab data from params, include=FALSE}
+InternalVarList <- params$InternalVarList
+PreProcessResult <- params$PreProcessResult
+PreprocessSampleInfoResult <- params$PreprocessSampleInfoResult
+ConvertedIDResult <- params$ConvertedIDResult
+AllGeneInfo <- params$AllGeneInfo
+ConvertedPvals <- params$ConvertedPvals
+ConvertedRawReadcountData <- params$ConvertedRawReadcountData
+ConvertedTransformedData <- params$ConvertedTransformedData
+input <- params$htmlInput
+
+```
+
+
+```{r Load Data, child = 'LoadData.Rmd', eval = input$isReportIncludeDataDescription}
+
+```
+
+```{r Preprocess, child = 'PreProcess.Rmd', eval = input$isReportIncludePreProcess}
+
+```
+
+```{r Heatmap, child = 'Heatmap.Rmd'}
+
+```
+
+
+
+
+
+

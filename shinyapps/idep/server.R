@@ -79,7 +79,7 @@ shinyServer(
 			PreProcessCtrl$GetConvertedRawReadcountData(input, ConvertedIDResult(), ReactVars$PreProcessResult())
 		})
 
-		GetConvertedPvals <- reactive({
+		ConvertedPvals <- reactive({
 			PreProcessCtrl$GetConvertedPvals(input, ConvertedIDResult(), ReactVars$PreProcessResult())
 		})
 
@@ -161,7 +161,9 @@ shinyServer(
 			content = function(file) {
 				HeatmapCtrl$SaveHeatmapDataInFile(
 					file, input,
-					ReactVars$PreProcessResult()
+					ReactVars$PreProcessResult(),
+					PreprocessSampleInfoResult(),
+
 				)
 			}
 		)
@@ -245,11 +247,48 @@ shinyServer(
 				)
 			}
 		)
+
 		############################################################################
 		#						0.0		Test R Markdown Report
 		############################################################################
 
+		# Since the file name is changing (file format is also changing) for different 
+		# user selection. We have to use a dynamic filename.
+		# For some reason, we cannot put this dynamic filename function into controller. 
+		# Putting it into controller will make the function lost activation. 
+		# Therefore, we have to put all naming function in the 'downloadHandler' directly. 
+		# 
+		# Another possible solution is to pack whole downloadHandler into controller. 
+		# This haven't being tested.
 
+		output$download_Report_MainReport <- downloadHandler(
+			filename = function(){
+					fileType = gsub( "_document", "", input$selectReportOutputFormat )
+
+					if(fileType == 'html'){
+						return("iDepReport.html")
+					}
+
+					if(fileType == 'pdf'){
+						return("iDepReport.pdf")
+					}
+
+					return("iDepReport.docx")
+				},
+			content = function(file){
+				ReportCtrl$SaveReportInTempFile(
+					file,
+					input,
+					ReactVars$PreProcessResult(),
+					PreprocessSampleInfoResult(),
+					ConvertedIDResult(),
+					AllGeneInfo(),
+					ConvertedTransformedData(),
+					NULL, # ConvertedRawReadcountData()
+					NULL  # ConvertedPvals()
+				)
+			}
+		)
 
 	}
 )

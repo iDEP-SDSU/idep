@@ -1,0 +1,16 @@
+## PreProcessing Result
+
+```{r, eval=(input$selectReportOutputFormat == 'html_document')}
+PreProcessCtrl$GetTotalReadCountsPlot(PreProcessResult$rawCount)
+```
+
+
+```{r, eval=(input$selectReportOutputFormat != 'html_document')}
+
+```
+
+
+
+
+
+
