@@ -130,8 +130,11 @@ Heatmap.Logic$set("public", "GenerateSDHeatmapPlot",
 )
 
 
+# Data cut function for CorrelationMatrixPlot
 # remove bottom 25% lowly expressed genes, which inflate the PPC
-Heatmap.Logic$set("public", "RemoveLowExpressedGenes",
+# round the result by 2 digit
+# melt and return the data
+Heatmap.Logic$set("public", "CutDataForCorrelationMatrixPlot",
 	function(transformedData){
 		maxGene <- apply(transformedData,1,max)
 		dat <- transformedData[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
@@ -146,6 +149,38 @@ Heatmap.Logic$set("public", "GenerateCorrelationPlot",
 	}
 )
 
+
+# Data cut function for Sample Tree
+# 1. remove bottom 25% lowly expressed genes, which inflate the PPC
+# 2. center and standardize by gene
+# 3. row centering and normalize
+Heatmap.Logic$set("public", "CutDataForSampleTreePlot",
+	function(transformedData, isGeneCentering, isGeneNormalize, isSampleCentering, isSampleNormalize){
+		maxGene <- apply(transformedData,1,max)
+		dat <- transformedData[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
+
+		# center by gene
+		if(isGeneCentering){
+			dat <- as.matrix(dat)-apply(dat,1,mean)	
+		}
+		
+		# standardize by gene
+		if(isGeneNormalize){
+			dat <- dat / apply(dat,1,sd)
+		}
+
+		# row centering and normalize
+		dat <- scale(dat, center = isSampleCentering, scale = isSampleNormalize) 
+		
+		return(dat)
+	}
+)
+
+Heatmap.Logic$set("public", "GenerateSampLeTreePlot",
+	function(dat, hclustfunName, distfunName){
+		return(LogicManager$Display$GetSampLeTreePlot(dat, hclustfunName, distfunName))
+	}
+)
 
 
 

@@ -204,7 +204,7 @@ Ctl.Heatmap$set("public", "GetMainHeatmapPlotly",
 
 
 
-###################		GetGeneSDHeatmap Function				###################
+###################		GetGeneSDHeatmap Functions				###################
 #	Generate the plot shows in popup tab: GeneSDHeatmap
 Ctl.Heatmap$set("public", "GetGeneSDHeatmap",
 	function(input, ConvertedTransformedData){
@@ -233,7 +233,8 @@ Ctl.Heatmap$set("public", "SaveGeneSDPlotEpsInTempFile",
 )
 
 
-###################		GetCorrelationMatrixPlot Function			###################
+###################		GetCorrelationMatrixPlot Functions			###################
+#	Generate the matrix plot
 Ctl.Heatmap$set("public", "GetCorrelationMatrixPlot",
 	function(input, Reactive_PreProcessResult){
 		if(is.null(Reactive_PreProcessResult)){
@@ -246,7 +247,7 @@ Ctl.Heatmap$set("public", "GetCorrelationMatrixPlot",
 			return(NULL)
 		}
 
-		dat <- LogicManager$Heatmap$RemoveLowExpressedGenes(transformedData)
+		dat <- LogicManager$Heatmap$CutDataForCorrelationMatrixPlot(transformedData)
 
 		p <- LogicManager$Heatmap$GenerateCorrelationPlot(dat, input$isLabelWithPCC)
 
@@ -277,8 +278,38 @@ Ctl.Heatmap$set("public", "SaveCorrelationMatrixPlotDataInFile",
 			return(NULL)
 		}
 
-		dat <- LogicManager$Heatmap$RemoveLowExpressedGenes(transformedData)
+		dat <- LogicManager$Heatmap$CutDataForCorrelationMatrixPlot(transformedData)
 
 		write.csv(dat, file)
 	}
 )
+
+###################		SampleTree Tab related Functions			###################	
+#	Generate Sample Tree plot
+Ctl.Heatmap$set("public", "GetSampleTreePlot",
+	function(input, Reactive_PreProcessResult){
+
+		# prepare data
+		transformedData <- Reactive_PreProcessResult$dat
+		isGeneCentering <- input$is_Heatmap_GeneCentering
+		isGeneNormalize <- input$is_Heatmap_GeneNormalize
+		isSampleCentering <- input$is_Heatmap_SampleCentering
+		isSampleNormalize <- input$is_Heatmap_SampleNormalize
+		
+		dat <- LogicManager$Heatmap$CutDataForSampleTreePlot(transformedData, isGeneCentering, isGeneNormalize, isSampleCentering, isSampleNormalize)
+		
+
+		# generate plot
+		selectedDistFunction <- input$select_Heatmap_MainPlot_DistanceFun
+		selectedhclustFunction <- input$select_Heatmap_MainPlot_HClustFun		
+		
+		p <- LogicManager$Heatmap$GenerateSampLeTreePlot(dat, selectedhclustFunction, selectedDistFunction)
+
+
+		# return plot
+
+		return(p)
+	}
+)
+
+

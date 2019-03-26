@@ -363,3 +363,29 @@ Display.Manager$set("public", "GetHeatmapOfCorrelationMatrix",
 		return(ggheatmap)
 	}
 )
+
+# Sample Tree plot for heatmap tab
+Display.Manager$set("public", "GetSampLeTreePlot",
+	function(dat, hclustfunName, distfunName){
+		hclustfun <- LogicManager$UtilFuns$HierarchicalClusteringFuns[[hclustfunName]]
+		distfun <- LogicManager$UtilFuns$DistanceFuns[[distfunName]]
+
+		p <- plot(
+			as.dendrogram(
+				hclustfun(
+					distfun( t(dat) )
+				)
+			),
+			xlab = "",
+			ylab = paste(distfunName, "(", hclustfunName, "linkage", ")" ),
+			type = "rectangle"
+		)
+
+		return(p)
+	}
+)
+
+
+
+
+

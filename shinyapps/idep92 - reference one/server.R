@@ -3037,20 +3037,8 @@ heatmapData <-  # don't need anymore. Check Heatmap$CutData
   
 output$downloadData <- # done
 
-correlationMatrixData <- reactive({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		# heatmap of correlation matrix
-		x <- readData()$data
-		maxGene <- apply(x,1,max)
-		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
-		
-	    round(cor(x),3)
-})
-output$downloadCorrelationMatrix <- downloadHandler(
-		filename = function() {"correlationMatrix.csv"},
-		content = function(file) {
-			write.csv(correlationMatrixData(), file)
-	    }
+correlationMatrixData <-  #Don't use anymore
+output$downloadCorrelationMatrix <- Done
 	)
 output$correlationMatrix <- Done
 
@@ -3074,8 +3062,10 @@ output$sampleTree <- renderPlot({
 		x <- scale(x, center = input$sampleCentering, scale = input$sampleNormalize) 
 		
 		#plot(as.dendrogram(hclust2( dist2(t(x)))), xlab="", ylab="1 - Pearson C.C.", type = "rectangle")
-		plot(as.dendrogram(  hclustFuns[[as.integer(input$hclustFunctions)]] ( 
-				distFuns[[as.integer(input$distFunctions)]](t(x)))) 
+		plot(as.dendrogram(  
+				hclustFuns[[as.integer(input$hclustFunctions)]] ( 
+					distFuns[[as.integer(input$distFunctions)]](t(x)))
+				) 
 				,xlab="", ylab=paste( names(distFuns)[as.integer(input$distFunctions)],"(", 
 				names(hclustFuns)[as.integer(input$hclustFunctions)],"linkage",")"   ), type = "rectangle")
 
@@ -3083,32 +3073,7 @@ output$sampleTree <- renderPlot({
 # distFuns[[as.integer(input$distFunctions)]]
   } )#, height = 500, width = 500)
 
-sampleTree4download <- reactive({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		# heatmap of correlation matrix
-		x <- readData()$data
-		maxGene <- apply(x,1,max)
-		x <- x[which(maxGene > quantile(maxGene)[1] ) ,] # remove bottom 25% lowly expressed genes, which inflate the PPC
-		if(input$geneCentering)
-			x=as.matrix(x)-apply(x,1,mean)
-		
-		# standardize by gene
-		if(input$geneNormalize) 
-			x <- x / apply(x,1,sd)
-			
-		# row centering and normalize
-		x <- scale(x, center = input$sampleCentering, scale = input$sampleNormalize) 
-		
-		#plot(as.dendrogram(hclust2( dist2(t(x)))), xlab="", ylab="1 - Pearson C.C.", type = "rectangle")
-		plot(as.dendrogram(  hclustFuns[[as.integer(input$hclustFunctions)]] ( 
-				distFuns[[as.integer(input$distFunctions)]](t(x)))) 
-				,xlab="", ylab=paste( names(distFuns)[as.integer(input$distFunctions)],"(", 
-				names(hclustFuns)[as.integer(input$hclustFunctions)],"linkage",")"   ), type = "rectangle")
-
-
-    # distFuns[[as.integer(input$distFunctions)]]
-  } )#, height = 500, width = 500)
-
+sampleTree4download <- # dont need any more
 output$downloadSampleTree <- downloadHandler(
       filename = "sample_tree.eps",
       content = function(file) {
@@ -3116,7 +3081,7 @@ output$downloadSampleTree <- downloadHandler(
         sampleTree4download()
         dev.off()
       }) 
-output$distributionSD_heatmap <- renderPlot({
+output$distributionSD_heatmap <- renderPlot({ # done
 
   }, height = 600, width = 800,res=120 )
 

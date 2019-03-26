@@ -229,9 +229,12 @@ shinyServer(
 				)
 			}
 		)
-#download_Heatmap_CorrelationMatrixData
-#download_Heatmap_CorrelationMatrixPlot
-#Heatmap_CorrelationMatrix
+		
+		# Heatmap 
+		output$Heatmap_SampleTree <- renderPlot({
+			HeatmapCtrl$GetSampleTreePlot(input, ReactVars$PreProcessResult())
+		})
+
 		############################################################################
 		#						0.0		Test R Markdown Report
 		############################################################################
