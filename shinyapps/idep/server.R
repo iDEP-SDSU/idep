@@ -161,7 +161,7 @@ shinyServer(
 			content = function(file) {
 				HeatmapCtrl$SaveHeatmapDataInFile(
 					file, input,
-					ReactVars$PreProcessResult(), PreprocessSampleInfoResult() 
+					ReactVars$PreProcessResult()
 				)
 			}
 		)
@@ -235,6 +235,16 @@ shinyServer(
 			HeatmapCtrl$GetSampleTreePlot(input, ReactVars$PreProcessResult())
 		})
 
+		output$download_Heatmap_SampleTree <- downloadHandler(
+			filename = "sample_tree.eps",
+			content = function(file){
+				HeatmapCtrl$SaveSampleTreePlotEpsInTempFile(
+					file,
+					input,
+					ReactVars$PreProcessResult()
+				)
+			}
+		)
 		############################################################################
 		#						0.0		Test R Markdown Report
 		############################################################################

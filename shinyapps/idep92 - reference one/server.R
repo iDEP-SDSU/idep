@@ -3074,13 +3074,7 @@ output$sampleTree <- renderPlot({
   } )#, height = 500, width = 500)
 
 sampleTree4download <- # dont need any more
-output$downloadSampleTree <- downloadHandler(
-      filename = "sample_tree.eps",
-      content = function(file) {
-	  cairo_ps(file, width = 8, height = 6)
-        sampleTree4download()
-        dev.off()
-      }) 
+output$downloadSampleTree <- #done
 output$distributionSD_heatmap <- renderPlot({ # done
 
   }, height = 600, width = 800,res=120 )

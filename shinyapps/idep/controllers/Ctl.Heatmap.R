@@ -109,7 +109,8 @@ Ctl.Heatmap$set("public", "GetMainHeatmap",
 # This function allow user to download the data set used for generate main heat map
 # It simply saved get cutted data into given file
 Ctl.Heatmap$set("public", "SaveHeatmapDataInFile",
-	function(input, internalVarList, preprocessedResult, preprocessedSampleInfo, allGeneInfo){
+	function( file, input, preprocessedResult){
+		# pre check
 		if(is.null(preprocessedResult)){
 			return(NULL)
 		}
@@ -118,6 +119,7 @@ Ctl.Heatmap$set("public", "SaveHeatmapDataInFile",
 			return(NULL)
 		}
 
+		# get required data
 		dat <- preprocessedResult$dat
 		geneCount <- input$num_Heatmap_PlotlyIncludeGeneCount
 		numHeatmapCutoff <- input$num_Heatmap_HeatmapCutoff
@@ -125,14 +127,17 @@ Ctl.Heatmap$set("public", "SaveHeatmapDataInFile",
 		isGeneNormalize <- input$is_Heatmap_GeneNormalize
 		isSampleCentering <- input$is_Heatmap_SampleCentering
 		isSampleNormalize <- input$is_Heatmap_SampleNormalize
+
+		# start process
 		withProgress(
 			message=sample(LogicManager$DB$Quotes,1), 
 			{
 				incProgress(1/5, "Prepare Data...")
 				cuttedData <- LogicManager$Heatmap$CutData(dat, geneCount, numHeatmapCutoff,
 					isGeneCentering, isGeneNormalize, isSampleCentering, isSampleNormalize)
+
 				incProgress(4/5, "Prepare File...")
-				wrtie.csv(cuttedData, file)
+				write.csv(cuttedData, file)
 				incProgress(1, "Done")
 			}
 		)
@@ -143,7 +148,7 @@ Ctl.Heatmap$set("public", "SaveHeatmapDataInFile",
 Ctl.Heatmap$set("public", "SaveMainPlotEpsInTempFile",
 	function(file, input, internalVarList, preprocessedResult, preprocessedSampleInfo){
 		cairo_ps(file, width = 10, height = 15)
-		self$GetMainPlot(input, internalVarList, preprocessedResult, preprocessedSampleInfo)
+		self$GetMainHeatmap(input, internalVarList, preprocessedResult, preprocessedSampleInfo)
 		dev.off()
 	}
 )
@@ -312,4 +317,12 @@ Ctl.Heatmap$set("public", "GetSampleTreePlot",
 	}
 )
 
+# download eps plot of sample tree
+Ctl.Heatmap$set("public", "SaveSampleTreePlotEpsInTempFile",
+	function(file, input, Reactive_PreProcessResult){
+		cairo_ps(file, width = 8, height = 6)
+		self$GetSampleTreePlot(input, Reactive_PreProcessResult)
+		dev.off()
+	}
+)
 
