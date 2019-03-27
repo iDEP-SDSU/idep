@@ -105,8 +105,8 @@ motifFiles = paste(datapath, "motif/", motifFiles,sep="")
 #demoDataFile = paste0(datapath,"data_go/GSE37704_sailfish_genecounts.csv") #"expression1_no_duplicate.csv"
 #demoDataFile = paste0(datapath,"data_go/BcellGSE71176_p53.csv") # GSE71176
 #demoDataFile2 = paste0(datapath,"data_go/BcellGSE71176_p53_sampleInfo.csv") # sample Info file
-demoDataFile = paste0(datapath, "data_go/BcellGSE71176_p53.csv")) # GSE71176
-demoDataFile2 = paste0(datapath, "data_go/BcellGSE71176_p53_sampleInfo.csv")) # sample Info file
+demoDataFile = paste0(datapath, "data_go/BcellGSE71176_p53.csv") # GSE71176
+demoDataFile2 = paste0(datapath, "data_go/BcellGSE71176_p53_sampleInfo.csv") # sample Info file
 quotes <- dbGetQuery(convert, " select * from quotes")
 quotes = paste0("\"",quotes$quotes,"\"", " -- ",quotes$author,".       ")
 
