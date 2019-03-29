@@ -6,7 +6,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.82"
+iDEPversion = "iDEP.85"
 
 shinyUI(
 navbarPage(
@@ -99,7 +99,9 @@ iDEPversion,
       ,h3("We are working on a plan to improve iDEP. Any new functionality or feature you like to be added? Please "
       ,a("send us",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), "your suggestions!",style = "color:red")      
       ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
-      ,h3("v0.82 fixed a major bug. When using limma, the up- and down-regulation is reversed in some situations.",style = "color:red")
+      ,h5("New! V0.85 now uses updated annotation databases based on 148 genomes in Ensembl release 95, 
+           58  species from Ensembl Plants release 42, and 72 species in Ensembl Metazoa release 42.")
+      ,h5("v0.82 fixed a major bug. When using limma, the up- and down-regulation is reversed in some situations.",style = "color:red")
       ,h5("Now published on", a("BMC Bioinformatics!",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank") )
       ,h5("Due to lack of funding, iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
       ,h5("v0.81 Enabled downloading of publication-ready vector graphics files using EPS.")
@@ -116,7 +118,7 @@ iDEPversion,
         "and",
         a(" paper.", href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6",target="_blank"),
         "Based on annotation of",
-        a( "167 animal and 53 plant genomes ",href="https://idepsite.wordpress.com/species/",target="_blank"), 
+        a( "215 animal and 58 plant genomes ",href="https://idepsite.wordpress.com/species/",target="_blank"), 
         "in Ensembl BioMart as of 12/15/2017."
         ,a("STRING-db ", href="https://string-db.org/",target="_blank")
         ,"offer API access to protein interaction networks and annotations 
@@ -766,7 +768,7 @@ iDEPversion,
                                     "PGSEA"                  = 2, 
                                     "PGSEA w/ all samples"   = 4, 
                                     "ReactomePA"             = 5),
-                     selected = 3) #
+                     selected = 1) #
         ,tags$style(type='text/css', "#pathwayMethod { width:100%;   margin-top:-12px}")
         #,h5("Select genesets (use KEGG to show pathway diagrams w/ fold-change):")
 
@@ -1162,6 +1164,9 @@ iDEPversion,
                           ,"Experiment design file"))
         ,br()
         ,h4("Previous versions of iDEP")
+        ,a("iDEP 0.82 with Ensembl BioMart version 92, archived on March 29, 2019 "
+           , href="http://bioinformatics.sdstate.edu/idep82/")  
+        ,br()
         ,a("iDEP 0.73 with Ensembl BioMart version 91, archived on July 11, 2018 "
             , href="http://bioinformatics.sdstate.edu/idep73/")  
         ,br()
@@ -1213,6 +1218,7 @@ iDEPversion,
        ,h5("7/30/2018: V0.80 Fixed error in downloaded up- and down-regulated gene lists. We thank Juan Xie for pointing this out. ")    
        ,h5("12/2/2018: v0.81 High resolution figure download with eps format, which can be eidted with Adobe Illustrator.")
        ,h5("3/5/2019:  v0.82 Fix a bug regarding limma for identification of D.E.Gs. Up- and down-regulation are opposite in some cases.")
+       ,h5("3/29/2019: v0.85 Annotation database upgrade. Ensembl v 95. Ensembl plants v.42, and Ensembl Metazoa v.42.")
        ,br(),br()
        ,h5("In loving memory of my parents.")
 
