@@ -3,7 +3,7 @@
 # hosted at http://ge-lab.org/idep/
 # manuscript: https://www.biorxiv.org/content/early/2018/04/20/148411 
 
-iDEPversion = "iDEP 0.82"
+iDEPversion = "iDEP 0.85"
 
 ################################################################
 # R packages
@@ -110,7 +110,7 @@ demoDataFile2 = paste0(datapath, "data_go/BcellGSE71176_p53_sampleInfo.csv") # s
 quotes <- dbGetQuery(convert, " select * from quotes")
 quotes = paste0("\"",quotes$quotes,"\"", " -- ",quotes$author,".       ")
 
-STRING10_species = read.csv(paste0(datapath, "data_go/STRING10_species.csv"))
+STRING10_species = read.csv(paste0(datapath, "data_go/STRING11_species.csv"))
 # File needs to be updated when STRING updates, using the following commands
 # library(STRINGdb)
 # species = get_STRING_species(version="10", species_name=NULL)
