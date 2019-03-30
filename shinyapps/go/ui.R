@@ -38,9 +38,11 @@ shinyUI(
         tabPanel("Enrichment" 
 			,conditionalPanel("input.goButton == 0 "  # welcome screen
 				#,br(),br(),h3("We need your support! We are writing a grant proposal (due June 5th) to NIH to seek support for the development and maintenance of ShinyGO. A brief email on how this tool helped your research would go a long way to support our tiny team, even if you are a graduate student. ",a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=ShinyGO support letter"),  style = "color:blue")
-				,br(),br(),h4("Welcome to ShinyGO! Just paste your gene list to get enriched GO terms and othe pathways for over 270 plant and animal species, based on annotation from Ensembl (Release 95), Ensembl plants (R. 42) and Ensembl Metazoa (R. 42). In addition, it also produces
+                ,h4("3/29/2019: V.0.51, Annotation database updated.")
+				,h4("Welcome to ShinyGO! Just paste your gene list to get enriched GO terms and othe pathways for over 270 plant and animal species, based on annotation from Ensembl (Release 95), Ensembl plants (R. 42) and Ensembl Metazoa (R. 42). In addition, it also produces
 				KEGG pathway diagrams with your genes highlighted, hierarchical clustering trees and networks summarizing 
 				overlapping terms/pathways, protein-protein interaction networks, gene characterristics plots, and enriched promoter motifs. See example outputs below:")			
+
 				,br(),img(src='enrich.png', align = "center",width="660", height="339")
 				,br(),br(),img(src='KEGG2.png', align = "center",width="541", height="360")
 				,br(),br(),img(src='GOtree3.png', align = "center",width="500", height="258")
@@ -188,7 +190,7 @@ shinyUI(
      )# bsModal
      ) # mainPanel
     ) #sidebarLayout
-    #,tags$head(includeScript("google_analytics.js")) # tracking usage
+    ,tags$head(includeScript("google_analytics.js")) # tracking usage
   ) #fluidPage
 )
 
