@@ -6,27 +6,39 @@ shinyUI(
      sidebarLayout(
 	 
       sidebarPanel(
-	    titlePanel("ShinyGO v0.50: Gene Ontology Enrichment Analysis + more"),  
+	    titlePanel("ShinyGO v0.51: Gene Ontology Enrichment Analysis + more"),  
 	  	p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" )),					
       tags$style(type="text/css", "textarea {width:100%}"),
-      tags$textarea(id = 'input_text', placeholder = 'Just paste gene lists and click Submit. Most types of gene IDs accepted. Double check the guessed species, and adjust options if needed. Any feedback is appreciated. ', rows = 8, ""),
-       actionButton("goButton", "Submit"),
+      tags$textarea(id = 'input_text', placeholder = 'Just paste gene lists and click Submit. Most types of gene IDs accepted. Double check the guessed species, and adjust if needed. ', rows = 8, ""),
+       #actionButton("goButton", "Submit"),
+       #actionButton("useDemo", "Use demo genes"),  
+       fluidRow(
+         column(4, actionButton("goButton", "Submit") ),
+         column(6, actionButton("useDemo", "Use demo genes") )    
+         ),   
       h6(" "),
       htmlOutput("selectGO1"),
-	  #htmlOutput("selectGO1_test"),
-      selectInput("selectOrg", label = NULL,"Best matching species",width='100%'),  
       numericInput("minFDR", label = h5("P-value cutoff (FDR)"), value = 0.05),
+      #numericInput("maxTerms", label = h5("Max. # of GO terms"), value = 30),
+      selectInput("maxTerms", h5("# of most significant terms to show"),
+                choices = list("10" = 10,
+                  "20" = 20,
+                  "30" = 30,
+                  "40" = 40,
+                  "50" = 50,
+                  "100" = 100,
+                  "500" = 500),
+                  selected = "30"),
      tags$style(type='text/css', "#minFDR { width:100%;   margin-top:-15px}"),  
-     radioButtons("radio", label = NULL, choices = list("Upstream 300bp as promoter" = 300, "Upstream 600bp as promoter" = 600),selected = 300),
-     tableOutput('species' ),
-      h5( textOutput("text1") )
+      selectInput("selectOrg", label = NULL,"Best matching species",width='100%'),  
+     tableOutput('species' )
       ), # sidebarPanel
      mainPanel(
        tabsetPanel(
         tabPanel("Enrichment" 
 			,conditionalPanel("input.goButton == 0 "  # welcome screen
 				#,br(),br(),h3("We need your support! We are writing a grant proposal (due June 5th) to NIH to seek support for the development and maintenance of ShinyGO. A brief email on how this tool helped your research would go a long way to support our tiny team, even if you are a graduate student. ",a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=ShinyGO support letter"),  style = "color:blue")
-				,br(),br(),h4("Welcome to ShinyGO! Just paste your gene list to get enriched GO terms and othe pathways for over 200 plant and animal species. In addition, it also produces
+				,br(),br(),h4("Welcome to ShinyGO! Just paste your gene list to get enriched GO terms and othe pathways for over 270 plant and animal species, based on annotation from Ensembl (Release 95), Ensembl plants (R. 42) and Ensembl Metazoa (R. 42). In addition, it also produces
 				KEGG pathway diagrams with your genes highlighted, hierarchical clustering trees and networks summarizing 
 				overlapping terms/pathways, protein-protein interaction networks, gene characterristics plots, and enriched promoter motifs. See example outputs below:")			
 				,br(),img(src='enrich.png', align = "center",width="660", height="339")
@@ -60,7 +72,10 @@ shinyUI(
 			, plotOutput("genePlot2", inline = TRUE,width='auto',height='auto')  )
         #,tabPanel("Plots2", plotOutput("genePlot2")  )
         , tabPanel("Genome", plotOutput("genomePlot", width = "100%")  )
-        ,tabPanel("Promoter", tableOutput("promoter"), downloadButton('downloadPromoter', 'Download')   )  
+        ,tabPanel("Promoter", 
+           radioButtons("radio", label = NULL, choices = list("Upstream 300bp as promoter" = 300, 
+                                                               "Upstream 600bp as promoter" = 600),selected = 300),
+           tableOutput("promoter"), downloadButton('downloadPromoter', 'Download')   )  
 		,tabPanel("STRING API", 
 						h5("ShinyGO tries to match your species with the 115 archaeal, 1678 bacterial, 
 						and 238 eukaryotic species in the",
@@ -100,11 +115,15 @@ shinyUI(
 		     ," Source code at", a(" GitHub. ", href="https://github.com/iDEP-SDSU/idep/tree/master/shinyapps/go",target="_blank")
 
         ,"Previous versions of ShinyGO for reproducibile research:"
+        ,br()
         ,a("ShinyGO V0.41, "
             , href="http://bioinformatics.sdstate.edu/go41/")
 		     ,"based on database derived from Ensembl BioMart version 91, archived on July 11, 2018"
          ,br()
-		
+        ,a("ShinyGO V0.50, "
+            , href="http://bioinformatics.sdstate.edu/go50/")
+		     ,"based on database derived from Ensembl BioMart version 92, archived on March 29, 2019"
+         ,br()		
 
 		
 					,h5( "Based on gene onotlogy (GO) annotation and gene ID mapping of ",
@@ -145,16 +164,14 @@ shinyUI(
 		 ,br(),br()	
 		 ,"ShinyGO also detects transcription factor (TF) binding motifs enriched in the promoters of user's genes."
 		,br(),br(),img(src='promoter.png', align = "center",width="717", height="288")			 
-		 
+	 
 		 
 		 ,br(),h4("Changes:")
+         ,h5("3/29/2019: V0.51 Update annotation to Ensembl release 95. Interface change. Demo gene lists. Error messages.")
 		 ,h5("9/10/2018: V0.5 Upgraded to Ensembl Biomart 92")
 		 ,h5("4/30/2018: V0.42 changed figure configurations for tree.")
 		 ,h5("4/27/2018: V0.41 Change to ggplot2, add grid and gridExtra packages")		
 		 ,h5("4/24/2018: V0.4 Add STRING API, KEGG diagram, tree display and network.")
-
-
-
 		 
 		 ) ) 	
        ) #tabsetPanel
@@ -171,7 +188,7 @@ shinyUI(
      )# bsModal
      ) # mainPanel
     ) #sidebarLayout
-    ,tags$head(includeScript("google_analytics.js")) # tracking usage
+    #,tags$head(includeScript("google_analytics.js")) # tracking usage
   ) #fluidPage
 )
 

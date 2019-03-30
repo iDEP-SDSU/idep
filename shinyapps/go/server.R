@@ -5,18 +5,30 @@ library(ggplot2)
 library(gridExtra)
 
 # relative path to data files
-datapath = "../../data/data92/"   # production server
+datapath = "../../data/data95/"   # production server
 
 Min_overlap <- 2
 minSetSize = 3;
 mappingCoverage = 0.60 # 60% percent genes has to be mapped for confident mapping
 mappingEdge = 0.5  # Top species has 50% more genes mapped
-maxTerms =30 # max number of enriched terms
+maxTerms =30 # max number of enriched terms; no longer used
 PvalGeneInfo = 0.05; minGenes = 10 # min number of genes for ploting
 PvalGeneInfo1 = 0.01
 PvalGeneInfo2 = 0.001
-# setwd("C:/Users/Xijin.Ge/Google Drive/research/Shiny/go")
-
+ExampleGeneList=
+"Hus1 Rad1 Trp63 Trp73 Usp28 Rad9b Fanci Hus1b 
+Cdk1 Cry1 D7Ertd443e Chek1 Foxo4 Zak Pea15a 
+Mapkapk2 Brca1 Taok1 Cdk5rap3 Ddx39b Mdm2 Fzr1 
+Rad17 Prkdc Cdkn1a Cdc5l Wac Thoc1 Prpf19 Rad9a
+Pidd1 Atrip Uimc1Nek6 Atf2 E2f1 Nbn Rpa2 Rint1 
+Clock Chek2 Casp2 Blm Plk1 Brcc3 Hinfp Fem1b 
+Tipin Atr Cdc14b Rfwd3 Ccar2 Foxn3 Atm Thoc5  
+Rps27l Ints7 Dtl Tiprl Rbbp8 Clspn Cradd Rhno1  
+Sox4 Msh2 Xpc Rad9a Rnaseh2b Fbxo4 Syf2 Cul4a 
+Gigyf2 Mapk14 Bcat1 Fbxo31 Babam1 Cep63 Ccnd1
+Nek11 Fam175a Brsk1 Plk5 Bre Trp53 Taok2 Taok3 
+Nek1 Mre11a Pml Ptpn11 Zfp830 
+"
 
 cleanGeneSet <- function (x){
   # remove duplicate; upper case; remove special characters
@@ -24,6 +36,7 @@ cleanGeneSet <- function (x){
   x <- x[ which( nchar(x)>1) ]  # genes should have at least two characters
   return(x)
 }
+
 # read GMT files, does NO cleaning. Assumes the GMT files are created with cleanGeneSet()
 readGMT <- function (fileName){
   x <- scan(fileName, what="", sep="\n")
@@ -46,7 +59,7 @@ geneInfoFiles = paste(datapath,"geneInfo/",geneInfoFiles,sep="")
 motifFiles = list.files(path = paste0(datapath,"motif"),pattern=".*\\.db")
 motifFiles = paste(datapath,"motif/",motifFiles,sep="")
 
-STRING10_species = read.csv("STRING10_species.csv")
+STRING10_species = read.csv( paste0(datapath,"data_go/STRING11_species.csv") )
 
 # Create a list for Select Input options
 orgInfo <- dbGetQuery(convert, paste("select distinct * from orgInfo " ))
@@ -56,19 +69,19 @@ speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
 speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
 # move one element to the 2nd place
 move2 <- function(i) c(speciesChoice[1],speciesChoice[i],speciesChoice[-c(1,i)])
-i= grep("Glycine max" ,names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Zea mays" ,names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Arabidopsis thaliana",names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Saccharomyces cerevisiae" ,names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Caenorhabditis elegans",names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Danio rerio" ,names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Bos taurus" ,names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Rattus norvegicus" ,names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Mus musculus",names(speciesChoice)); speciesChoice <- move2(i)
-i= grep("Homo sapiens",names(speciesChoice)); speciesChoice <- move2(i)
+i= which( names(speciesChoice) == "Glycine max"); speciesChoice <- move2(i)
+i= which( names(speciesChoice) =="Zea mays"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) =="Arabidopsis thaliana"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) == "Saccharomyces cerevisiae"); speciesChoice <- move2(i)
+i= which(names(speciesChoice)  == "Caenorhabditis elegans"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) =="Zebrafish" ); speciesChoice <- move2(i)
+i= which(names(speciesChoice) == "Cow" ); speciesChoice <- move2(i)
+i= which(names(speciesChoice) == "Rat" ); speciesChoice <- move2(i)
+i= which(names(speciesChoice) == "Mouse"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) == "Human"); speciesChoice <- move2(i)
 
 GO_levels = dbGetQuery(convert, "select distinct id,level from GO
-                                WHERE GO = 'biological_process'"  )
+                                 WHERE GO = 'biological_process'"  )
 level2Terms = GO_levels[which(GO_levels$level %in% c(2,3))  ,1]  # level 2 and 3
 
 idIndex <- dbGetQuery(convert, paste("select distinct * from idIndex " ))
@@ -80,19 +93,23 @@ quotes = paste0("\"",quotes$quotes,"\"", " -- ",quotes$author,".       ")
 # x="GOBP_mmu_mgi_GO:0000183_chromatin_silencing_at_rDNA"
 # chromatin silencing at rDNA
 proper=function(x) paste0(toupper(substr(x, 1, 1)), substring(x, 2))
+
 extract1 <- function (x) {
   words <- unlist ( strsplit(x,"_"))
   if(length( words )  <=4 ) return(gsub("_"," ",x)) else {
   words <- words[-c(1:4)]
   return( proper(paste(words,collapse = " ") ) )}
 }
+
 #find idType based on index
 findIDtypeById <- function(x){ # find
   return( idIndex$idType[ as.numeric(x)] )
 }
+
 findSpeciesById <- function (speciesID){ # find species name use id
   return( orgInfo[which(orgInfo$id == speciesID),]  )
 }
+
 # just return name
 findSpeciesByIdName <- function (speciesID){ # find species name use id
   return( orgInfo[which(orgInfo$id == speciesID),3]  )
@@ -187,7 +204,7 @@ geneInfo <- function (converted,selectOrg){
  }
 
 # Main function. Find a query set of genes enriched with functional category
-FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR) {
+FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms) {
   idNotRecognized = list(x=as.data.frame("ID not recognized!"),
                          groupings= as.data.frame("ID not recognized!")  )
   if(is.null(converted) ) return(idNotRecognized) # no ID
@@ -197,7 +214,9 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR) {
   ix = grep(converted$species[1,1],gmtFiles)
   totalGenes <- converted$species[1,7]
 
-  if (length(ix) == 0 ) {return(idNotRecognized )}
+  errorMessage = list(x=as.data.frame("Annotation file cannot be found"),
+                         groupings= as.data.frame("Annotation file cannot be found")  )
+  if (length(ix) == 0 ) {return( errorMessage )}
 
   # If selected species is not the default "bestMatch", use that species directly
   if(selectOrg != speciesChoice[[1]]) {
@@ -239,7 +258,9 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR) {
 
   x0 = table(result$pathwayID)
   x0 = as.data.frame( x0[which(x0>=Min_overlap)] )# remove low overlaps
-  if(dim(x0)[1] <= 5 ) return(idNotRecognized) # no data
+  errorMessage = list(x=as.data.frame("Too few genes."),
+                         groupings= as.data.frame("Too few genes.")  )
+  if(dim(x0)[1] <= 5 ) return(errorMessage) # no data
   colnames(x0)=c("pathwayID","overlap")
   pathwayInfo <- dbGetQuery( pathway, paste( " select distinct id,n,Description from pathwayInfo where id IN ('",
 						paste(x0$pathwayID,collapse="', '"),   "') ",sep="") )
@@ -271,7 +292,7 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR) {
 
   if(min(x$FDR) > minFDR) x=as.data.frame("No significant enrichment found!") else {
   x <- x[which(x$FDR < minFDR),]
-  if(dim(x)[1] > maxTerms ) x = x[1:maxTerms,]
+  if(dim(x)[1] > as.integer(input_maxTerms) ) x = x[ 1:as.integer(input_maxTerms), ]
   x= cbind(x,sapply( x$pathwayID, sharedGenesPrefered ) )
   colnames(x)[7]= "Genes"
   x <- subset(x,select = c(FDR,overlap,n,description,Genes) )
@@ -677,7 +698,15 @@ shinyServer(
   function(input, output,session){
     options(warn=-1)
 
-    observe({  updateSelectInput(session, "selectOrg", choices = speciesChoice )      })
+    observe({  
+      updateSelectInput(session, "selectOrg", choices = speciesChoice )   
+ 
+      # load demo data when clicked
+      if( input$useDemo ) {
+        updateTextInput(session, 'input_text', value = ExampleGeneList )
+      }
+
+     })
 
 	 # update species for STRING-db related API access
 	 
@@ -689,7 +718,7 @@ shinyServer(
 
 
 
-	# this defines an reactive object that can be accessed from other rendering functions
+# this defines an reactive object that can be accessed from other rendering functions
 converted <- reactive({
 	  if (input$goButton == 0)    return()
 
@@ -705,11 +734,15 @@ geneInfoLookup <- reactive({
 
 significantOverlaps <- reactive({
 	  if (input$goButton == 0 | is.null( input$selectGO) ) return()
+      tem = input$maxTerms
+      tem = input$minFDR
+      tem = input$selectOrg
+      tem = input$selectGO
 	  isolate({ 
 	  withProgress(message= sample(quotes,1),detail="enrichment analysis", {
   	  #gene info is passed to enable lookup of gene symbols
   	  tem = geneInfoLookup(); tem <- tem[which( tem$Set == "List"),]
-  	  FindOverlap( converted(), tem, input$selectGO,input$selectOrg,input$minFDR )
+  	  FindOverlap( converted(), tem, input$selectGO, input$selectOrg, input$minFDR, input$maxTerms )
 	  })
 	})
 	})
@@ -1173,11 +1206,7 @@ output$downloadGrouping <- downloadHandler(
 			write.csv(significantOverlaps()$groupings, file, row.names=FALSE)
 	    }
   )
-    output$text1 <- renderText({
-      #"Example mouse genes: Hus1 Rad1 Trp63 Trp73 Usp28 Rad9b Fanci Hus1b Cdk1 Cry1 D7Ertd443e Chek1 Foxo4 Zak Pea15a Mapkapk2 Brca1 E2f1"
-	  "Example mouse genes: Hus1 Rad1 Trp63 Trp73 Usp28 Rad9b Fanci Hus1b Cdk1 Cry1 D7Ertd443e Chek1 Foxo4 Zak Pea15a Mapkapk2 Brca1 Taok1 Cdk5rap3 Ddx39b Mdm2 Fzr1 Rad17 Prkdc Cdkn1a Cdc5l Wac Thoc1 Prpf19 Rad9a Pidd1 Atrip Uimc1 Nek6 Atf2 E2f1 Nbn Rpa2 Rint1 Clock Chek2 Casp2 Blm Plk1 Brcc3 Hinfp Fem1b Tipin Atr Cdc14b Rfwd3 Ccar2 Foxn3 Atm Thoc5 Nek11 Fam175a Brsk1 Plk5 Rps27l Ints7 Dtl Tiprl Rbbp8 Clspn Cradd Rhno1 Bre Trp53 Taok2 Taok3 Ccnd1 Sox4 Msh2 Xpc Rad9a Rnaseh2b Fbxo4 Syf2 Cul4a Nek1 Mre11a Pml Ptpn11 Zfp830 Gigyf2 Mapk14 Bcat1 Fbxo31 Babam1 Cep63"
-     # Ddx39b excluded as it has multiple ensembl gene ids?
-	})
+
 	
  output$genomePlot <- renderPlot({
 	  if (input$goButton == 0  )    return()
