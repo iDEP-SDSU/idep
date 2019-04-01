@@ -22,7 +22,7 @@ Ctl.Report$set("public", "SaveReportInTempFile",
 		ConvertedTransformedData
 	){
 		params <- list(
-			htmlInput = input,
+			htmlinput = input,
 			ReactVars = ReactVars,
 			PreProcessResult = PreProcessResult,
 			PreprocessSampleInfoResult = PreprocessSampleInfoResult,
@@ -32,13 +32,15 @@ Ctl.Report$set("public", "SaveReportInTempFile",
 			ConvertedRawReadcountData = ConvertedRawReadcountData,
 			ConvertedTransformedData = ConvertedTransformedData
 		)
-
+		self$CleanImages()
+		self$SaveRequiredPlotsInReportFolder(params)
 		rmarkdown::render(
 			"reports/main.Rmd", 
 			output_file = file,
 			output_format = input$selectReportOutputFormat,
 			params = params
 		)
+		self$CleanImages()
 	}
 )
 
@@ -58,7 +60,34 @@ Ctl.Report$set("public", "GetReportFileName",
 	}
 )
 
+Ctl.Report$set("public", "CleanImages",
+	function(){
+		files <- dir( "reports/img/", pattern = ".png$", full.names = TRUE )
+		if(length(files) != 0)
+		file.remove(files)
+	}
+)
 
+Ctl.Report$set("public", "SaveRequiredPlotsInReportFolder",
+	function(params){
+		ReactVars <- params$ReactVars
+		PreProcessResult <- params$PreProcessResult
+		PreprocessSampleInfoResult <- params$PreprocessSampleInfoResult
+		ConvertedIDResult <- params$ConvertedIDResult
+		AllGeneInfo <- params$AllGeneInfo
+		ConvertedPvals <- params$ConvertedPvals
+		ConvertedRawReadcountData <- params$ConvertedRawReadcountData
+		ConvertedTransformedData <- params$ConvertedTransformedData
+		input <- params$htmlinput
+
+		png("reports/img/mainheatmap.png", width = 800, height = 900)
+		HeatmapCtrl$GetMainHeatmap(input, ReactVars, PreProcessResult, PreprocessSampleInfoResult)
+		dev.off()
+
+
+
+	}
+)
 
 
 

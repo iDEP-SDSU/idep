@@ -1,16 +1,34 @@
 ## PreProcessing Result
 
-### Total Raw Count 
-```{r, eval=(input$selectReportOutputFormat == 'html_document')}
+### Preprocess parameters
+
+```{r}
+
+```
+
+### Total Read Count (millions)
+
+```{r}
 PreProcessCtrl$GetTotalReadCountsPlot(PreProcessResult$rawCount)
 ```
 
+### Distribution of transformed data
 
-```{r, eval=(input$selectReportOutputFormat != 'html_document')}
-
+```{r}
+PreProcessCtrl$GetTransformedDataBoxPlot(PreProcessResult$dat)
 ```
 
+### Density plot of transformed data
 
+```{r}
+PreProcessCtrl$GetTransformedDataDensityPlot(PreProcessResult$dat)
+```
+
+### Scatter plot of first two samples
+
+```{r}
+PreProcessCtrl$GetTransformedDataScatterPlot(PreProcessResult$dat)
+```
 
 
 

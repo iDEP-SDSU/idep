@@ -232,7 +232,7 @@ shinyServer(
 			}
 		)
 		
-		# Heatmap 
+		# Heatmap Pop Sample Tree
 		output$Heatmap_SampleTree <- renderPlot({
 			HeatmapCtrl$GetSampleTreePlot(input, ReactVars$PreProcessResult())
 		})

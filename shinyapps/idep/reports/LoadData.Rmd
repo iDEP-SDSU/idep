@@ -1,2 +1,18 @@
 ## Data
 
+
+```{asis, eval=(ReactVars == 'public')}
+The Data used in this report is from a public data source.
+
+```
+
+```{asis, eval=(ReactVars == 'clinet')}
+The Data used in this report is uploaded by user.
+
+```
+
+
+```{asis, eval=(ReactVars == 'demo')}
+The Data used in this report is the demo data.
+
+```
