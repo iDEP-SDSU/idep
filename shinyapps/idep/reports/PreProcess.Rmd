@@ -1,10 +1,41 @@
 ## PreProcessing Result
 
+Before analysis the data, we need some preprocess procedure to make the data tidy and clean.
+
+TODO: more detail about preprocess
+
+
 ### Preprocess parameters
 
-```{r}
+All preprocess setup are listed here.
+*** Common Preprocess Setting ***
+[link to Missing values imputation](Missing values imputation): `r input$selectMissingValueImputationMethod`
+[link to isNoIDConversion](Do not convert gene IDs to Ensembl): `r input$isNoIDConversion`
 
+
+```{asis, echo=(input$dataFileFormat == 1)}
+*** Readcount only settings ***
+[link to numMinCounts](Min. CPM): `r input$numMinCounts`
+[link to numNMinSamplesInCountCase](n libraries): `r input$numNMinSamplesInCountCase`
+[link to selectCountsTransform](Transform algorithm): `r switch(input$selectCountsTransform, 'EdgeR', 'VST', 'rlog')`
 ```
+```{asis, echo=(input$dataFileFormat == 1 && input$selectCountsTransform == 1)}
+[link to Pseudo count c](Pseudo count c): `r input$numCountsLogStart`
+```
+
+```{asis, echo=(input$dataFileFormat == 2)}
+*** FPKM Data Related Settings ***
+[link to numMinFPKM](Min. level): `r input$numMinFPKM`
+[link to numNMinSampleInFPKMCase](n samples): `r input$numNMinSampleInFPKMCase`
+[link to isApplyLogTransFPKM](Log Transformation): `r input$isApplyLogTransFPKM`
+[link to numFPKMLogStart](Constant c for started log): `r input$numFPKMLogStart`
+```
+
+### Guess Species
+
+TODO: Some of description about guess species
+
+The species is `r print(PreProcessCtrl$GetGuessSpeciesResult(ConvertedIDResult))`
 
 ### Total Read Count (millions)
 

@@ -1,18 +1,65 @@
 ## Data
 
+### Data file
 
-```{asis, eval=(ReactVars == 'public')}
-The Data used in this report is from a public data source.
+```{asis, eval=(ReactVars$DataSource == 'Public')}
 
-```
-
-```{asis, eval=(ReactVars == 'clinet')}
-The Data used in this report is uploaded by user.
+*** The data used in this report is from a public data source. ***
+TODO: We should add more information about the data source. like: source, test id, sample id.
 
 ```
 
+```{asis, eval=(ReactVars$DataSource == 'Client')}
 
-```{asis, eval=(ReactVars == 'demo')}
-The Data used in this report is the demo data.
+*** The data used in this report is uploaded by user. ***
+TODO: ????
 
 ```
+
+```{asis, eval=(ReactVars$DataSource == 'Demo')}
+
+The data used in this report is the demo data.
+TODO: add some description about the demo data. 
+
+```
+
+The data type is `r switch(input$dataFileFormat, 'Read counts data', 'Normalized expression values', 'Fold-changes and corrected P values from CuffDiff or any other program')`. 
+
+```{asis, eval= (input$dataFileFormat == 1) }
+TODO: add some description about read count data
+
+```
+
+```{asis, eval= (input$dataFileFormat == 2) }
+TODO: add some description about Normalized expression values
+
+```
+
+```{asis, eval= (input$dataFileFormat == 3) }
+TODO: add some description about Fold-changes and corrected P values from CuffDiff or any other program
+
+```
+
+### Test design
+
+```{asis, eval=is.null(ReactVars$RawTestDesign)}
+
+*** No test design file is uploaded in this analysis. ***
+iDep will group the sample based on sample name. (column name in data file)
+For more detail, please check ( TODO: Add a link to sample group rule section )
+
+```
+
+```{asis, eval!=is.null(ReactVars$RawTestDesign)}
+
+*** Test design file is applied in this analysis. ***
+TODO: add some description about the process when we have test design file.
+
+```
+
+### Some of the data
+
+TODO: Shall we print some data in the report?
+
+
+
