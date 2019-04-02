@@ -1,35 +1,40 @@
-## Heatmap 
+## 3 Heatmap 
+
+TODO: some description about what Heatmap can provide to us
+
+### 3.1 MainPlot of Heatmap
 
 
-### MainPlot of Heatmap
+![Heat map with cluster tree](img/MainHeatmap.png)
 
 
-#![Heat map with cluster tree](img/mainheatmap.png)
+### 3.2 Gene SD Distribution
 
 
-### 
 
-#### Plotly version
-#
-#```{r, context="render", echo = FALSE}
-##plotlyOutput("Heatmap_HeatmapPlotly", width = "100%", height = "800px")
-#```
-#
-#### Distribution of variations among genes
-#
-#```{r, context="render", echo = FALSE}
-##plotOutput("Heatmap_PopShowGeneSDHeatmap")
-#```
-#
-#### Correlation matrix using top 75% genes
-#
-#```{r, context="render", echo = FALSE}
-##plotOutput("Heatmap_CorrelationMatrix")
-#```
-#
-#### Sample Tree
-#
-#```{r, context="render", echo = FALSE}
-##plotOutput("Heatmap_SampleTree")
-#```
+### 3.3 Interactive Heatmap
+
+```{r}
+HeatmapCtrl$GetMainHeatmapPlotly(
+	input,
+	ReactVars,
+	PreProcessResult,
+	PreprocessSampleInfoResult,
+	AllGeneInfo
+)
+```
+
+### 3.4 Correlation matrix
+
+![Correlation matrix using top 75% genes](img/CorrelationMatrix.png)
+
+
+### 3.5 Hierarchical clustering tree
+
+Using genes with maximum expression level at the top 75%. Data is transformed and clustered as specified in the main page.
+
+![Hierarchical clustering tree](img/HierarchicalClusteringTree.png)
+
+
+
 

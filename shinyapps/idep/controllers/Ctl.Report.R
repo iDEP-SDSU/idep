@@ -40,7 +40,6 @@ Ctl.Report$set("public", "SaveReportInTempFile",
 			output_format = input$selectReportOutputFormat,
 			params = params
 		)
-		self$CleanImages()
 	}
 )
 
@@ -80,12 +79,22 @@ Ctl.Report$set("public", "SaveRequiredPlotsInReportFolder",
 		ConvertedTransformedData <- params$ConvertedTransformedData
 		input <- params$htmlinput
 
-		png("reports/img/mainheatmap.png", width = 800, height = 900)
+		#########		Heatmap section needed plots	#########
+		png("reports/img/MainHeatmap.png", width = 800, height = 900)
 		HeatmapCtrl$GetMainHeatmap(input, ReactVars, PreProcessResult, PreprocessSampleInfoResult)
 		dev.off()
 
+#		png("reports/img/GeneSDDistribution.png", height = 600, width = 800, res=120)
+#		HeatmapCtrl$GetGeneSDHeatmap(input, ConvertedTransformedData)
+#		dev.off()
 
+		png("reports/img/CorrelationMatrix.png", height = 600, width = 800, res=120)
+		HeatmapCtrl$GetCorrelationMatrixPlot(input, PreProcessResult)
+		dev.off()
 
+		png("reports/img/HierarchicalClusteringTree.png", height = 600, width = 800, res=120)
+		HeatmapCtrl$GetSampleTreePlot(input, PreProcessResult)
+		dev.off()
 	}
 )
 

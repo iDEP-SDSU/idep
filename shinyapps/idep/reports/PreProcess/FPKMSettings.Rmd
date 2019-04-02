@@ -1,0 +1,9 @@
+** FPKM Data Related Settings **
+
+[link to numMinFPKM](Min. level): `r input$numMinFPKM`
+
+[link to numNMinSampleInFPKMCase](n samples): `r input$numNMinSampleInFPKMCase`
+
+[link to isApplyLogTransFPKM](Log Transformation): `r input$isApplyLogTransFPKM`
+
+[link to numFPKMLogStart](Constant c for started log): `r input$numFPKMLogStart`
