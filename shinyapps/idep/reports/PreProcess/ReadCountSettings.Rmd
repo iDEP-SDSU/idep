@@ -1,4 +1,4 @@
-*** Readcount only settings ***
+**Readcount only settings**
 
 [CPM](https://idepsite.wordpress.com/pre-process#CountsData): `r input$numMinCounts`
 

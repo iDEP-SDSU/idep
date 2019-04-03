@@ -84,15 +84,15 @@ Ctl.Report$set("public", "SaveRequiredPlotsInReportFolder",
 		HeatmapCtrl$GetMainHeatmap(input, ReactVars, PreProcessResult, PreprocessSampleInfoResult)
 		dev.off()
 
-#		png("reports/img/GeneSDDistribution.png", height = 600, width = 800, res=120)
-#		HeatmapCtrl$GetGeneSDHeatmap(input, ConvertedTransformedData)
-#		dev.off()
+		png("reports/img/GeneSDDistribution.png", width = 800, height = 600, res=120)
+		HeatmapCtrl$GetGeneSDHeatmap(input, ConvertedTransformedData)
+		dev.off()
 
-		png("reports/img/CorrelationMatrix.png", height = 600, width = 800, res=120)
+		png("reports/img/CorrelationMatrix.png", width = 800, height = 600, res=120)
 		HeatmapCtrl$GetCorrelationMatrixPlot(input, PreProcessResult)
 		dev.off()
 
-		png("reports/img/HierarchicalClusteringTree.png", height = 600, width = 800, res=120)
+		png("reports/img/HierarchicalClusteringTree.png", width = 800, height = 600, res=120)
 		HeatmapCtrl$GetSampleTreePlot(input, PreProcessResult)
 		dev.off()
 	}

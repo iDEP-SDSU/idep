@@ -9,7 +9,7 @@ TODO: more detail about preprocess
 
 All preprocess setup are listed here.
 
-** Common Preprocess Setting **
+**Common Preprocess Setting**
 
 [Missing values imputation](link to Missing values imputation): `r input$selectMissingValueImputationMethod`
 
@@ -33,25 +33,25 @@ The species is `r PreProcessCtrl$GetGuessSpeciesResult(ConvertedIDResult)`
 
 ### 2.3 Total Read Count (millions)
 
-```{r}
+```{r echo = FALSE, message = FALSE, warning = FALSE, error = FALSE}
 PreProcessCtrl$GetTotalReadCountsPlot(PreProcessResult$rawCount)
 ```
 
 ### 2.4 Distribution of transformed data
 
-```{r}
+```{r echo = FALSE, message = FALSE, warning = FALSE, error = FALSE}
 PreProcessCtrl$GetTransformedDataBoxPlot(PreProcessResult$dat)
 ```
 
 ### 2.5 Density plot of transformed data
 
-```{r}
+```{r echo = FALSE, message = FALSE, warning = FALSE, error = FALSE}
 PreProcessCtrl$GetTransformedDataDensityPlot(PreProcessResult$dat)
 ```
 
 ### 2.6 Scatter plot of first two samples
 
-```{r}
+```{r echo = FALSE, message = FALSE, warning = FALSE, error = FALSE}
 PreProcessCtrl$GetTransformedDataScatterPlot(PreProcessResult$dat)
 ```
 

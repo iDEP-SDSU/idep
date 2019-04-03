@@ -1,4 +1,4 @@
-** FPKM Data Related Settings **
+**FPKM Data Related Settings**
 
 [link to numMinFPKM](Min. level): `r input$numMinFPKM`
 

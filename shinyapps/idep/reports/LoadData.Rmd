@@ -4,13 +4,15 @@
 
 ```{asis, eval=(ReactVars$DataSource == 'Public')}
 
-** The data used in this report is from a public data source. **
+**The data used in this report is from a public data source.**
+
 TODO: We should add more information about the data source. like: source, test id, sample id.
 
 ```
 
 ```{asis, eval=(ReactVars$DataSource == 'Client')}
-** The data used in this report is uploaded by user. **
+**The data used in this report is uploaded by user.**
+
 TODO: ????
 
 ```
@@ -18,12 +20,14 @@ TODO: ????
 ```{asis, eval=(ReactVars$DataSource == 'Demo')}
 
 The data used in this report is the demo data.
+
 TODO: add some description about the demo data. 
 
 ```
 
 ```{asis, eval = (input$dataFileFormat == 1) }
 The data type is **Raw read counts data**.
+
 Raw read count data is one type of [Gene expression matrix](https://idepsite.wordpress.com/data-format#gene_expression_matrix).
 
 TODO: add more description about read count data
@@ -32,6 +36,7 @@ TODO: add more description about read count data
 
 ```{asis, eval = (input$dataFileFormat == 2) }
 The data type is **Normalized read counts data**.
+
 Raw read count data is one type of [Gene expression matrix](https://idepsite.wordpress.com/data-format#gene_expression_matrix).
 
 TODO: add some description about Normalized expression values
@@ -40,8 +45,11 @@ TODO: add some description about Normalized expression values
 
 ```{asis, eval = (input$dataFileFormat == 3) }
 The data type is **Fold-changes and P values**.
+
 The log fold-changes (LFCs) and P values can be derived from Cuffdiff or other programs.
+
 [More detail about Fold-changes and P values](https://idepsite.wordpress.com/data-format#LFCs).
+
 TODO: add some description about Fold-changes and corrected P values from CuffDiff or any other program
 
 ```
@@ -50,15 +58,18 @@ TODO: add some description about Fold-changes and corrected P values from CuffDi
 
 ```{asis, eval=is.null(ReactVars$RawTestDesign)}
 
-*** No test design file is uploaded in this analysis. ***
+**No test design file is uploaded in this analysis.**
+
 iDep will group the sample based on sample name. (column name in data file)
+
 For more detail, please check ( TODO: Add a link to sample group rule section )
 
 ```
 
 ```{asis, eval!=is.null(ReactVars$RawTestDesign)}
 
-*** Test design file is applied in this analysis. ***
+**Test design file is applied in this analysis.**
+
 TODO: add some description about the process when we have test design file.
 
 ```

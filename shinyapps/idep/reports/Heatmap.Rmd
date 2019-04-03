@@ -4,8 +4,9 @@ TODO: some description about what Heatmap can provide to us
 
 ### 3.1 MainPlot of Heatmap
 
+Heat map with cluster tree
 
-![Heat map with cluster tree](img/MainHeatmap.png)
+![](img/MainHeatmap.png)
 
 
 ### 3.2 Gene SD Distribution
@@ -14,7 +15,8 @@ TODO: some description about what Heatmap can provide to us
 
 ### 3.3 Interactive Heatmap
 
-```{r}
+```{r echo = FALSE, message = FALSE, warning = FALSE, error = FALSE}
+
 HeatmapCtrl$GetMainHeatmapPlotly(
 	input,
 	ReactVars,
@@ -22,19 +24,20 @@ HeatmapCtrl$GetMainHeatmapPlotly(
 	PreprocessSampleInfoResult,
 	AllGeneInfo
 )
+
 ```
 
 ### 3.4 Correlation matrix
 
-![Correlation matrix using top 75% genes](img/CorrelationMatrix.png)
+The following is correlation matrix using top 75% genes
+
+![](img/CorrelationMatrix.png)
 
 
 ### 3.5 Hierarchical clustering tree
 
 Using genes with maximum expression level at the top 75%. Data is transformed and clustered as specified in the main page.
 
-![Hierarchical clustering tree](img/HierarchicalClusteringTree.png)
-
-
+![](img/HierarchicalClusteringTree.png)
 
 
