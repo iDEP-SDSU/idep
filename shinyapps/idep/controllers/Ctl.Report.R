@@ -84,9 +84,9 @@ Ctl.Report$set("public", "SaveRequiredPlotsInReportFolder",
 		HeatmapCtrl$GetMainHeatmap(input, ReactVars, PreProcessResult, PreprocessSampleInfoResult)
 		dev.off()
 
-		png("reports/img/GeneSDDistribution.png", width = 800, height = 600, res=120)
-		HeatmapCtrl$GetGeneSDHeatmap(input, ConvertedTransformedData)
-		dev.off()
+		#png("reports/img/GeneSDDistribution.png", width = 800, height = 600, res=120)
+		#HeatmapCtrl$GetGeneSDHeatmap(input, ConvertedTransformedData)
+		#dev.off()
 
 		png("reports/img/CorrelationMatrix.png", width = 800, height = 600, res=120)
 		HeatmapCtrl$GetCorrelationMatrixPlot(input, PreProcessResult)
