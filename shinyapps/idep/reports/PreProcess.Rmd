@@ -1,16 +1,59 @@
-## PreProcessing Result
+## 2 PreProcessing Result
 
-```{r, eval=(input$selectReportOutputFormat == 'html_document')}
+Before analysis the data, we need some preprocess procedure to make the data tidy and clean.
+
+TODO: more detail about preprocess
+
+
+### 2.1 Preprocess parameters
+
+All preprocess setup are listed here.
+
+**Common Preprocess Setting**
+
+[Missing values imputation](link to Missing values imputation): `r input$selectMissingValueImputationMethod`
+
+[Do not convert gene IDs to Ensembl](link to isNoIDConversion): `r input$isNoIDConversion`
+
+
+```{r, child = 'PreProcess/ReadCountSettings.Rmd', eval=(input$dataFileFormat == 1)}
+```
+
+```{r, child = 'PreProcess/ReadCountSettings_PseudoC.Rmd', eval=(input$dataFileFormat == 1 && input$selectCountsTransform == 1)}
+```
+
+```{r, child = 'PreProcess/FPKMSettings.Rmd', eval=(input$dataFileFormat == 2)}
+```
+
+### 2.2 Guess Species
+
+TODO: Some of description about guess species
+
+The species is `r PreProcessCtrl$GetGuessSpeciesResult(ConvertedIDResult)`
+
+### 2.3 Total Read Count (millions)
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, error = FALSE}
 PreProcessCtrl$GetTotalReadCountsPlot(PreProcessResult$rawCount)
 ```
 
+### 2.4 Distribution of transformed data
 
-```{r, eval=(input$selectReportOutputFormat != 'html_document')}
-
+```{r echo = FALSE, message = FALSE, warning = FALSE, error = FALSE}
+PreProcessCtrl$GetTransformedDataBoxPlot(PreProcessResult$dat)
 ```
 
+### 2.5 Density plot of transformed data
 
+```{r echo = FALSE, message = FALSE, warning = FALSE, error = FALSE}
+PreProcessCtrl$GetTransformedDataDensityPlot(PreProcessResult$dat)
+```
 
+### 2.6 Scatter plot of first two samples
+
+```{r echo = FALSE, message = FALSE, warning = FALSE, error = FALSE}
+PreProcessCtrl$GetTransformedDataScatterPlot(PreProcessResult$dat)
+```
 
 
 

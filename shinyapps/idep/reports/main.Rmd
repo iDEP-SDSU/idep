@@ -2,14 +2,17 @@
 title: "iDep Report"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 allow_html_dependencies: true
+always_allow_html: yes
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+library(plotly) 
 ```
 
 ```{r grab data from params, include=FALSE}
-InternalVarList <- params$InternalVarList
+ReactVars <- params$ReactVars
 PreProcessResult <- params$PreProcessResult
 PreprocessSampleInfoResult <- params$PreprocessSampleInfoResult
 ConvertedIDResult <- params$ConvertedIDResult
@@ -17,7 +20,7 @@ AllGeneInfo <- params$AllGeneInfo
 ConvertedPvals <- params$ConvertedPvals
 ConvertedRawReadcountData <- params$ConvertedRawReadcountData
 ConvertedTransformedData <- params$ConvertedTransformedData
-input <- params$htmlInput
+input <- params$htmlinput
 
 ```
 

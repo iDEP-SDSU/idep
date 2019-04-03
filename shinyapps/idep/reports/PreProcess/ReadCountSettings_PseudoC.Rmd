@@ -1,0 +1,1 @@
+[Pseudo count c](https://idepsite.wordpress.com/pre-process#CountsData_transformation): `r input$numCountsLogStart`
