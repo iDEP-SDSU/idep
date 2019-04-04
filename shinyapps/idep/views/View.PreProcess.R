@@ -210,10 +210,10 @@ View.PreProcess$set("public", "PopSearchForGenes",
 			"btn_PopGeneSearchPanel",
 			size = "large",
 			textInput("geneSearch", "Enter full or partial gene ID:", "HOXA"),
-          	checkboxInput("genePlotBox", label = "Show individual samples", value = FALSE),
+          	checkboxInput("is_PreProcess_ShowIndividualSamples", label = "Show individual samples", value = FALSE),
           	plotOutput("genePlot"),
           	conditionalPanel(
-				"input.genePlotBox == 0", 
+				"input.is_PreProcess_ShowIndividualSamples == 0", 
           		checkboxInput("useSD", label = "Use standard deviation instead of standard error", value = FALSE)
 			),
           	downloadButton('downloadGenePlot', 'Figure')

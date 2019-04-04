@@ -313,3 +313,19 @@ Ctl.PreProcess$set("public", "GetConvertedPvals",
 	}
 )
 
+# 
+Ctl.PreProcess$set("public", "GetGenePlot",
+	function(input, Reactive_ConvertedTransformedData, Reactive_AllGeneInfo){
+		Symbols <- rownames(Reactive_ConvertedTransformedData)
+
+		if( input$selectOrg != "NEW" &&  ncol(Reactive_AllGeneInfo) != 1 ) {
+			ix = match( rownames(Reactive_ConvertedTransformedData), Reactive_AllGeneInfo[,1])
+			if( sum( is.na(Reactive_AllGeneInfo$symbol) ) != dim(Reactive_AllGeneInfo)[1] ) {  
+				# symbol really exists? 
+	}
+)
+
+
+
+
+
