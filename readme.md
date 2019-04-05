@@ -32,21 +32,21 @@ A [user](https://github.com/wresch) has contributed scripts to install a standal
 The following are instructions based on [Docker](https://www.docker.com/).
 1. Download following script based on your system:
 + For Ubuntu: [Ubuntu](https://raw.githubusercontent.com/iDEP-SDSU/idep/master/docs/SetupScripts/ubuntu/setup.sh)
-Note: We are working on the script for other system.
+Note: We are working on the script for other systems.
 
 2. Run setup script in root:
 ```
 sudo sh setup.sh
 ```
-Wait until the script shows 'iDEP is ready.' It can take several hours, as the script installs dozens of R pacakges and also copies a large database automatically.
+Wait until the script shows 'iDEP is ready.' It can take several hours, as the script installs dozens of R packages and also copies a large database automatically.
 
 3. Start system
 ```
 sudo docker-compose up -d --scale webapp=15 
 ```
 Now the server is running. 
-Note: `webapp=15` indecate the web application count. Based on your system capacity, you can increase or decrease this number.
-You can bring everything down, removing the containers entirely, with the down command. Pass `--voluems` to also remove the data volume.
+Note: `webapp=15` indicates the web application count. Based on your system capacity, you can increase or decrease this number.
+You can bring everything down, removing the containers entirely, with the down command. Pass `--volumes` to also remove the data volume.
 ```
 sudo docker-compose down --volumes
 ```
@@ -58,5 +58,5 @@ http://docs.rstudio.com/shiny-server/
 
 
 ## Resources
-### Docker-Compoer documentation
+### Docker-Compose documentation
 https://docs.docker.com/compose/reference/overview/
