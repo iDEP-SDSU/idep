@@ -2,6 +2,7 @@ library(shiny)
 library(shinyBS)
 library(shinyjs)
 library(plotly)
+library(DT,verbose=FALSE) 		# for renderDataTable
 
 
 source('server.config')
@@ -121,6 +122,10 @@ shinyServer(
 				)
 			}
 		)
+
+		output$PreProcess_tbl_DT_ConvertedTransformedData <- DT::renderDataTable({
+			PreProcessCtrl$GetDataTableOfConvetedTransformedData(input, AllGeneInfo(), ConvertedTransformedData())
+		})		
 
 		############################################################################
 		#   					1.3  		Heatmap

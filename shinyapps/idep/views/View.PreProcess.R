@@ -1,6 +1,8 @@
 library('R6')
 library(shiny)
 library(shinyBS)
+library(DT,verbose=FALSE) 		# for renderDataTable
+
 
 View.PreProcess <- R6Class("View.PreProcess")
 
@@ -18,7 +20,8 @@ View.PreProcess$set("public", "mainPanel",
 		mainPanel(
 			self$PreRequestNotFitMessagePanel(),
 			self$ResultPanel(),
-			self$PopPlotSingleGenes()
+			self$PopPlotSingleGenes(),
+			self$PopShowConvertedTransformedData()
 		)
 	}
 )
@@ -152,7 +155,7 @@ View.PreProcess$set("public", "ShareSettingsPanel",
         	    selected = "geneMedian"),
         	actionButton("btn_PopGenePlotPanel", "Plot one or more genes"),
         	br(),br(),
-        	actionButton("btn_ExamineDataB", "Search processed data"),
+        	actionButton("btn_PopShowConvertedTransformedData", "Search processed data"),
         	br(),br(),
         	checkboxInput("isNoIDConversion", "Do not convert gene IDs to Ensembl.", value = FALSE),
         	downloadButton('download_PreProcess_ProcessedData', 'Processed data'),
@@ -221,8 +224,18 @@ View.PreProcess$set("public", "PopPlotSingleGenes",
 	}
 )
 
-
-
+###################			PopShowConvertedTransformedData			###################
+View.PreProcess$set("public", "PopShowConvertedTransformedData",
+	function(){
+		bsModal(
+			"modal_PreProcess_ShowConvertedTransformedData",
+			"Converted data (Most variable genes on top)",
+			"btn_PopShowConvertedTransformedData",
+			size = "large", 
+			DT::dataTableOutput('PreProcess_tbl_DT_ConvertedTransformedData')
+		)
+	}
+)
 
 
 

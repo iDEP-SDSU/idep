@@ -344,3 +344,20 @@ Ctl.PreProcess$set("public", "SaveSingleGenesPlotEpsInTempFile",
 )
 
 
+Ctl.PreProcess$set("public", "GetDataTableOfConvetedTransformedData",
+	function(input, Reactive_AllGeneInfo, Reactive_ConvertedTransformedData){
+		if(input$selectOrg == "NEW"| ncol(Reactive_AllGeneInfo) == 1){
+			return( round(Reactive_ConvertedTransformedData, 2) )
+		}else{
+			tb <- merge( 
+				Reactive_AllGeneInfo[,c('ensembl_gene_id','symbol')], 
+				round(Reactive_ConvertedTransformedData,2),
+				by.x="ensembl_gene_id", 
+				by.y ="row.names", 
+				all.y=T
+			)
+
+			return(tb)
+		}
+	}
+)
