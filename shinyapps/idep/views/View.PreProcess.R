@@ -216,7 +216,7 @@ View.PreProcess$set("public", "PopPlotSingleGenes",
 				"input.is_PreProcess_ShowIndividualSamples == 0", 
           		checkboxInput("is_PreProcess_useSD", label = "Use standard deviation instead of standard error", value = FALSE)
 			),
-          	downloadButton('downloadGenePlot', 'Figure')
+          	downloadButton('download_PreProcess_PlotSingleGenes', 'Figure')
 		)
 	}
 )

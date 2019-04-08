@@ -111,6 +111,17 @@ shinyServer(
 		output$PreProcess_SingleGenePlot <- renderPlot({
 			PreProcessCtrl$GetSingleGenePlot(input, ConvertedTransformedData(), AllGeneInfo())
 		})
+
+		output$download_PreProcess_PlotSingleGenes <- downloadHandler(
+			filename = "genePlot.eps",
+			content = function(file) {
+				PreProcessCtrl$SaveSingleGenesPlotEpsInTempFile(
+					input, ConvertedTransformedData(),
+					AllGeneInfo(), file
+				)
+			}
+		)
+
 		############################################################################
 		#   					1.3  		Heatmap
 		############################################################################

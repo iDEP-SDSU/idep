@@ -335,6 +335,12 @@ Ctl.PreProcess$set("public", "GetSingleGenePlot",
 )
 
 
-
+Ctl.PreProcess$set("public", "SaveSingleGenesPlotEpsInTempFile",
+	function(input, Reactive_ConvertedTransformedData, Reactive_AllGeneInfo, file){
+		cairo_ps(file, width = 8, height = 6, points = 8 )
+		self$GetSingleGenePlot(input, Reactive_ConvertedTransformedData, Reactive_AllGeneInfo)
+		dev.off()
+	}
+)
 
 
