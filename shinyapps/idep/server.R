@@ -108,7 +108,9 @@ shinyServer(
 			PreProcessCtrl$GetGuessSpeciesResult(ConvertedIDResult())
 		}, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
-
+		output$PreProcess_SingleGenePlot <- renderPlot({
+			PreProcessCtrl$GetSingleGenePlot(input, ConvertedTransformedData(), AllGeneInfo())
+		})
 		############################################################################
 		#   					1.3  		Heatmap
 		############################################################################
@@ -189,7 +191,7 @@ shinyServer(
 
 		# Heatmap PopShowGeneSDHeatmap
 		output$Heatmap_PopShowGeneSDHeatmap <- renderPlot({
-			HeatmapCtrl$GetGeneSDHeatmap(input, ConvertedTransformedData())		
+			HeatmapCtrl$GetGeneSDHeatmap(input, ConvertedTransformedData())
 		}, height = 600, width = 800, res=120 )
 
 		output$download_Heatmap_PopShowGeneSDHeatmap <- downloadHandler(
@@ -224,13 +226,13 @@ shinyServer(
 			filename = "correlationMatrix.csv",
 			content = function(file){
 				HeatmapCtrl$SaveCorrelationMatrixPlotDataInFile(
-					file,					
+					file,
 					ReactVars$PreProcessResult()
 				)
 			}
 		)
-		
-		# Heatmap 
+
+		# Heatmap
 		output$Heatmap_SampleTree <- renderPlot({
 			HeatmapCtrl$GetSampleTreePlot(input, ReactVars$PreProcessResult())
 		})

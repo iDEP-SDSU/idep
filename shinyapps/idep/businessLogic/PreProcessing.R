@@ -572,5 +572,59 @@ PreProcessing.Logic$set("public", "GetGenesSymbolByEnsemblIDs",
 	}
 )
 
+# GenerateDataForSingleGenePlot
+PreProcessing.Logic$set("public", "GenerateDataForSingleGenePlot",
+	function(ConvertedTransformedData, AllGeneInfo, SelectedOrg, GeneID){
+		Symbols <- rownames(ConvertedTransformedData)
+
+		if( SelectedOrg != "NEW" &&  ncol(AllGeneInfo) != 1 ) {
+			ix = match( rownames(ConvertedTransformedData), AllGeneInfo[,1])
+			if( sum( is.na(AllGeneInfo$symbol) ) != dim(AllGeneInfo)[1] ) {  
+				# symbol really exists?
+				Symbols = as.character( AllGeneInfo$symbol[ix] )
+				Symbols[which( nchar(Symbols) <= 2 ) ] <- rownames(ConvertedTransformedData) [which( nchar(Symbols) <= 2 )]
+			}
+		}
+
+		dat <- as.data.frame(ConvertedTransformedData)
+
+		dat$Genes = Symbols
+
+		searchWord = gsub("^ ","",GeneID )
+		ix = which(regexpr(  paste("^" , toupper(searchWord),sep="")   ,toupper(dat$Genes)) > 0)
+
+		if(grepl(" $", searchWord)){
+			# if there is space character, do exact match
+			ix = match(gsub(" ","", toupper(searchWord)), toupper(dat$Genes) )
+		}  
+		
+		# too few or too many genes found
+		if(length(ix) == 0 | length(ix) > 50 ){
+			return(NULL)
+		}
+
+		mdf = melt(dat[ix,],id.vars="Genes", value.name="value", variable.name="samples")
+
+		return(mdf)
+	}
+)
+
+# GenerateDataForAllSamplesSingleGenePlot
+PreProcessing.Logic$set("public", "GenerateDataForAllSamplesSingleGenePlot",
+	function(mdf){
+
+		# Barplot with error bars
+		mdf$count = 1
+		g = self$DetectGroups(mdf$samples)
+		Means = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = mean, na.rm=TRUE  )
+		SDs = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = sd, na.rm=TRUE  )
+		Ns = aggregate(mdf$count, by= list(g, mdf$Genes) , FUN = sum  )
+		summarized = cbind(Means,SDs[,3],Ns[,3])
+		colnames(summarized)= c("Samples","Genes","Mean","SD","N")
+		summarized$SE = summarized$SD / sqrt(summarized$N)			
+
+		return(summarized)
+	}
+)
 
 

@@ -18,7 +18,7 @@ View.PreProcess$set("public", "mainPanel",
 		mainPanel(
 			self$PreRequestNotFitMessagePanel(),
 			self$ResultPanel(),
-			self$PopSearchForGenes()
+			self$PopPlotSingleGenes()
 		)
 	}
 )
@@ -150,7 +150,7 @@ View.PreProcess$set("public", "ShareSettingsPanel",
 								"Treat as zero" = "treatAsZero", 
 								"Median within sample groups" = "geneMedianInGroup"),
         	    selected = "geneMedian"),
-        	actionButton("btn_PopGeneSearchPanel", "Plot one or more genes"),
+        	actionButton("btn_PopGenePlotPanel", "Plot one or more genes"),
         	br(),br(),
         	actionButton("btn_ExamineDataB", "Search processed data"),
         	br(),br(),
@@ -201,20 +201,20 @@ View.PreProcess$set("public", "GuessSpeciesPanel",
 	}
 )
 
-###################			PopSearchForGenes				###################
-View.PreProcess$set("public", "PopSearchForGenes", 
+###################			PopPlotSingleGenes				###################
+View.PreProcess$set("public", "PopPlotSingleGenes", 
 	function(){
 		bsModal(
-			"modal_PreProcess_SearchForGene",
+			"modal_PreProcess_PlotSingleGenes",
 			"Search for genes",
-			"btn_PopGeneSearchPanel",
+			"btn_PopGenePlotPanel",
 			size = "large",
-			textInput("geneSearch", "Enter full or partial gene ID:", "HOXA"),
+			textInput("txt_PreProcess_SearchedGeneID", "Enter full or partial gene ID:", "HOXA"),
           	checkboxInput("is_PreProcess_ShowIndividualSamples", label = "Show individual samples", value = FALSE),
-          	plotOutput("genePlot"),
+          	plotOutput("PreProcess_SingleGenePlot"),
           	conditionalPanel(
 				"input.is_PreProcess_ShowIndividualSamples == 0", 
-          		checkboxInput("useSD", label = "Use standard deviation instead of standard error", value = FALSE)
+          		checkboxInput("is_PreProcess_useSD", label = "Use standard deviation instead of standard error", value = FALSE)
 			),
           	downloadButton('downloadGenePlot', 'Figure')
 		)

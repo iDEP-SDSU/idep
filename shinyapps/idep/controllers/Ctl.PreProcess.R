@@ -313,15 +313,24 @@ Ctl.PreProcess$set("public", "GetConvertedPvals",
 	}
 )
 
-# 
-Ctl.PreProcess$set("public", "GetGenePlot",
+# GetSingleGenePlot
+Ctl.PreProcess$set("public", "GetSingleGenePlot",
 	function(input, Reactive_ConvertedTransformedData, Reactive_AllGeneInfo){
-		Symbols <- rownames(Reactive_ConvertedTransformedData)
 
-		if( input$selectOrg != "NEW" &&  ncol(Reactive_AllGeneInfo) != 1 ) {
-			ix = match( rownames(Reactive_ConvertedTransformedData), Reactive_AllGeneInfo[,1])
-			if( sum( is.na(Reactive_AllGeneInfo$symbol) ) != dim(Reactive_AllGeneInfo)[1] ) {  
-				# symbol really exists? 
+		mdf <- LogicManager$PreProcessing$GenerateDataForSingleGenePlot(
+			Reactive_ConvertedTransformedData, Reactive_AllGeneInfo, input$selectOrg, 
+			input$txt_PreProcess_SearchedGeneID)
+
+		if(input$is_PreProcess_ShowIndividualSamples == 1){
+			ymax <- max(mdf$value)
+			p <- LogicManager$Display$GetBarPlotSingleGeneOfIndividualSamples(mdf, ymax)
+		}else{
+			summarizedData <- LogicManager$PreProcessing$GenerateDataForAllSamplesSingleGenePlot(mdf)
+			isUseSD <- ifelse(input$is_PreProcess_useSD == 1, TRUE, FALSE)
+			p <- LogicManager$Display$GetBarPlotSingleGeneOfAllSamples(summarizedData, isUseSD)
+		}
+
+		return(p)
 	}
 )
 
