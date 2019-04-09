@@ -627,4 +627,44 @@ PreProcessing.Logic$set("public", "GenerateDataForAllSamplesSingleGenePlot",
 	}
 )
 
+# Logic used to generate 'processedData' 
+# Basically, this function will attach ensemble_id and gene_symbol onto the converted transformed data
+PreProcessing.Logic$set("public", "FormatProcessedTransformedDataForDownload",
+	function(AllGeneInfo, ConvertedTransformedData, ConvertedIDResult){
+		dat <- merge(
+			AllGeneInfo[,c('ensembl_gene_id','symbol')],
+			round(ConvertedTransformedData, 4),
+			by.x = "ensembl_gene_id",
+			by.y = "row.names",
+			all.y = TRUE
+		)
+
+		dat[, 2] =  paste(" ", dat[, 2]) # add space to gene symbol to avoid auto convertion of symbols to dates by Excel 
+		dat <- merge(ConvertedIDResult$conversionTable, dat, 
+			by.x = "ensembl_gene_id", by.y = "ensembl_gene_id", all.y = TRUE)
+		dat <- dat[,-3]						# remove species column
+	
+		ix <- which( dat[,3] == "  NA" )	# find NA index 
+		dat[ix,3] <- ""   					# remove NA's 
+
+		# Legacy code:
+		# ix <- which(is.na(dat[,2]))			# record not in mapping table
+		# uid <- dat[,2]
+		# uid[ix] = dat[ix,1]
+		# Above code equal to: 
+		uids <- ifelse(is.na(dat[,2]), dat[,1], dat[,2]) 
+		uids = paste0(" ",uids)	# prevents Excel auto conversion	
+		dat[,2] <- ifelse(is.na(dat[,2]), "", dat[,1])
+		dat[,1] <- uids
+
+		colnames(dat)[1:2]= c("User_ID sorted by SD","Ensembl_gene_id")
+		
+		# sort by sd
+		dat = dat[ order( -apply(dat[,-3:-1],1,sd )   )  ,]
+		
+		rownames(dat)=1:nrow(dat)
+		
+		return(dat)
+	}
+)
 

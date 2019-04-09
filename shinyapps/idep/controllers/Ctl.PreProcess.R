@@ -361,3 +361,30 @@ Ctl.PreProcess$set("public", "GetDataTableOfConvetedTransformedData",
 		}
 	}
 )
+
+Ctl.PreProcess$set("public", "SaveConvetedTransformedDataInTempFile",
+	function(input, file, Reactive_AllGeneInfo, Reactive_ConvertedTransformedData, Reactive_ConvertedIDResult){
+		
+		withProgress(message = "Download Processed Data",
+		{
+			incProgress(1/5, "Prepare data ... ")
+
+			if(input$selectOrg == "NEW" | ncol(Reactive_AllGeneInfo) == 1 ){
+				# sometimes users upload unknow species but not choosing "NEW".
+				result <- Reactive_ConvertedTransformedData
+			}else{
+				result <- LogicManager$PreProcessing$FormatProcessedTransformedDataForDownload(Reactive_AllGeneInfo, Reactive_ConvertedTransformedData, Reactive_ConvertedIDResult)
+			}
+			
+			incProgress(4/5, "Prepare download file ... ")
+
+			write.csv(result, file, row.names=FALSE)
+
+			incProgress(1, "Done")
+		})
+	}
+)
+
+
+
+

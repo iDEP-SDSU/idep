@@ -57,8 +57,16 @@ shinyServer(
 		#   					1.2  		Pre Process
 		############################################################################
 
-		observe({  updateSelectInput(session, "selectOrg", choices = PreProcessCtrl$InitChoiceSelectOrgUI() ) })
+		# PreProcess: UI init
+		observe({
+			updateSelectInput(
+				session,
+				"selectOrg",
+				choices = PreProcessCtrl$InitChoiceSelectOrgUI()
+			)
+		})
 
+		# PreProcess: Reactive variables
 		ReactVars$PreProcessResult <- reactive({
 			PreProcessCtrl$PreProcessResult(input, session, ReactVars)
 		})
@@ -88,6 +96,8 @@ shinyServer(
 			PreProcessCtrl$GetAllGeneInfomation(ConvertedIDResult(), input)
 		})
 
+		# Preprocess: Plots, Tables and Downloads
+		# Main
 		output$PreProcess_ReadCount <- renderPlotly({
 			PreProcessCtrl$GetTotalReadCountsPlot(ReactVars$PreProcessResult()$rawCount)
 		})
@@ -105,9 +115,22 @@ shinyServer(
 			PreProcessCtrl$GetTransformedDataScatterPlot(ReactVars$PreProcessResult()$dat)
 		})
 
+		# Side bar
 		output$PreProcess_tblSpecies <- renderTable({
 			PreProcessCtrl$GetGuessSpeciesResult(ConvertedIDResult())
 		}, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+
+		output$download_PreProcess_ProcessedData <- downloadHandler(
+			filename = "Processed_Data.csv",
+			content = function(file){
+				PreProcessCtrl$SaveConvetedTransformedDataInTempFile(
+					input, file, AllGeneInfo(),
+					ConvertedTransformedData(), ConvertedIDResult()
+				)
+			}
+		)
+
+		# Pop: Plot one or more gene
 
 		output$PreProcess_SingleGenePlot <- renderPlot({
 			PreProcessCtrl$GetSingleGenePlot(input, ConvertedTransformedData(), AllGeneInfo())
@@ -123,9 +146,11 @@ shinyServer(
 			}
 		)
 
+		# Pop: Search Processed data
+
 		output$PreProcess_tbl_DT_ConvertedTransformedData <- DT::renderDataTable({
 			PreProcessCtrl$GetDataTableOfConvetedTransformedData(input, AllGeneInfo(), ConvertedTransformedData())
-		})		
+		})
 
 		############################################################################
 		#   					1.3  		Heatmap
