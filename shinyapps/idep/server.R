@@ -130,6 +130,17 @@ shinyServer(
 			}
 		)
 
+
+		output$download_PreProcess_ConvertedCounts <- downloadHandler(
+			filename = "Converted_Counts_Data.csv",
+			content = function(file){
+				PreProcessCtrl$SaveConvetedReadCountDataInTempFile(
+					input, file, AllGeneInfo(),
+					ConvertedRawReadcountData(), ConvertedIDResult()
+				)
+			}
+		)
+
 		# Pop: Plot one or more gene
 
 		output$PreProcess_SingleGenePlot <- renderPlot({

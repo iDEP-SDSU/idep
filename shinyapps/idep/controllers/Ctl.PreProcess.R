@@ -385,6 +385,27 @@ Ctl.PreProcess$set("public", "SaveConvetedTransformedDataInTempFile",
 	}
 )
 
+Ctl.PreProcess$set("public", "SaveConvetedReadCountDataInTempFile",
+	function(input, file, Reactive_AllGeneInfo, Reactive_ConvertedRawReadcountData, Reactive_ConvertedIDResult){
+
+		withProgress(message = "Download Processed Count Data",
+		{
+			incProgress(1/5, "Prepare data ... ")
+
+			if(input$selectOrg == "NEW" | ncol(Reactive_AllGeneInfo) == 1){
+				result <- Reactive_ConvertedRawReadcountData
+			}else{
+				result <- LogicManager$PreProcessing$FormatProcessedRawReadcountDataForDownload(Reactive_AllGeneInfo, Reactive_ConvertedRawReadcountData, Reactive_ConvertedIDResult)
+			}
+
+			incProgress(4/5, "Prepare download file ... ")
+
+			write.csv(result, file, row.names=FALSE)
+
+			incProgress(1, "Done")
+		})
+	}
+)
 
 
 
