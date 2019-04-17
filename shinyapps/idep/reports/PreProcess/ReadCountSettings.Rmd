@@ -1,0 +1,10 @@
+**Readcount only settings**
+
+[CPM](https://idepsite.wordpress.com/pre-process#CountsData): `r input$numMinCounts`
+
+[n libraries](https://idepsite.wordpress.com/pre-process#CountsData): `r input$numNMinSamplesInCountCase`
+
+[Transform algorithm](https://idepsite.wordpress.com/pre-process#CountsData_transformation): `r switch(as.numeric(input$selectCountsTransform), 'EdgeR', 'VST', 'rlog')`
+
+
+

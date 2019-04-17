@@ -153,7 +153,6 @@ Ctl.Heatmap$set("public", "SaveMainPlotEpsInTempFile",
 	}
 )
 
-
 ###################		GetMainHeatmapPlotly Function			###################
 #	Generate an plotly heatmap that can be interactived with
 #	There're two steps:
