@@ -385,7 +385,51 @@ Display.Manager$set("public", "GetSampLeTreePlot",
 	}
 )
 
+# bar plot of Single Gene for individual samples
+Display.Manager$set("public", "GetBarPlotSingleGeneOfIndividualSamples",
+	function(dat, ymax){
+		p <- ggplot(data=dat, aes(x=samples, y=value, group = Genes, shape=Genes, colour = Genes)) +
+			geom_line() +
+			geom_point( size=5,  fill="white") + 
+			labs(y="Transformed expression level") +
+			coord_cartesian(ylim = c(0, ymax))
 
+		p <- p + theme(plot.title = element_text(size = 16,hjust = 0.5)) +
+	 		theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
+	    		axis.text.y = element_text(size = 16),
+				axis.title.x = element_blank(),
+				axis.title.y = element_text(size = 16) 
+			) +
+			theme(legend.text=element_text(size=12))
 
+		return(p)
+	}
+)
 
+# bar plot of Single gene for all samples
+Display.Manager$set("public", "GetBarPlotSingleGeneOfAllSamples",
+	function(dat, isUseSD){
+		#http://www.sthda.com/english/wiki/ggplot2-barplots-quick-start-guide-r-software-and-data-visualization
+		if(isUseSD){
+			p <- ggplot(dat, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
+				geom_bar(stat="identity", position=position_dodge()) + # bars represent average
+				geom_errorbar(aes(ymin=Mean-SD, ymax=Mean+SD), width=0.2,position=position_dodge(.9)) +
+				labs(y="Expression Level")
+		}else{
+			p <- ggplot(dat, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
+				geom_bar(stat="identity", position=position_dodge()) + # bars represent average
+				geom_errorbar(aes(ymin=Mean-SE, ymax=Mean+SE), width=0.2,position=position_dodge(.9)) +
+				labs(y="Expression Level") 
+		}
 
+		p <- p + theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
+	 		theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
+	       		axis.text.y = element_text( size = 16),
+		   		axis.title.x = element_blank(),
+		   		axis.title.y = element_text( size = 16) 
+			) +
+			theme(legend.text=element_text(size=16))
+
+		return(p)
+	}
+)

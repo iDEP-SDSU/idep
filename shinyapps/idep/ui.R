@@ -6,6 +6,7 @@ source('views/UIManager.R')
 library(plotly)
 
 
+
 LoadDataView <- View.LoadData$new()
 PreProcessView <- View.PreProcess$new()
 HeatmapView <- View.Heatmap$new()

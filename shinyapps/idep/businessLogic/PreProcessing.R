@@ -572,5 +572,142 @@ PreProcessing.Logic$set("public", "GetGenesSymbolByEnsemblIDs",
 	}
 )
 
+# GenerateDataForSingleGenePlot
+PreProcessing.Logic$set("public", "GenerateDataForSingleGenePlot",
+	function(ConvertedTransformedData, AllGeneInfo, SelectedOrg, GeneID){
+		Symbols <- rownames(ConvertedTransformedData)
+
+		if( SelectedOrg != "NEW" &&  ncol(AllGeneInfo) != 1 ) {
+			ix = match( rownames(ConvertedTransformedData), AllGeneInfo[,1])
+			if( sum( is.na(AllGeneInfo$symbol) ) != dim(AllGeneInfo)[1] ) {  
+				# symbol really exists?
+				Symbols = as.character( AllGeneInfo$symbol[ix] )
+				Symbols[which( nchar(Symbols) <= 2 ) ] <- rownames(ConvertedTransformedData) [which( nchar(Symbols) <= 2 )]
+			}
+		}
+
+		dat <- as.data.frame(ConvertedTransformedData)
+
+		dat$Genes = Symbols
+
+		searchWord = gsub("^ ","",GeneID )
+		ix = which(regexpr(  paste("^" , toupper(searchWord),sep="")   ,toupper(dat$Genes)) > 0)
+
+		if(grepl(" $", searchWord)){
+			# if there is space character, do exact match
+			ix = match(gsub(" ","", toupper(searchWord)), toupper(dat$Genes) )
+		}  
+		
+		# too few or too many genes found
+		if(length(ix) == 0 | length(ix) > 50 ){
+			return(NULL)
+		}
+
+		mdf = melt(dat[ix,],id.vars="Genes", value.name="value", variable.name="samples")
+
+		return(mdf)
+	}
+)
+
+# GenerateDataForAllSamplesSingleGenePlot
+PreProcessing.Logic$set("public", "GenerateDataForAllSamplesSingleGenePlot",
+	function(mdf){
+
+		# Barplot with error bars
+		mdf$count = 1
+		g = self$DetectGroups(mdf$samples)
+		Means = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = mean, na.rm=TRUE  )
+		SDs = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = sd, na.rm=TRUE  )
+		Ns = aggregate(mdf$count, by= list(g, mdf$Genes) , FUN = sum  )
+		summarized = cbind(Means,SDs[,3],Ns[,3])
+		colnames(summarized)= c("Samples","Genes","Mean","SD","N")
+		summarized$SE = summarized$SD / sqrt(summarized$N)			
+
+		return(summarized)
+	}
+)
+
+# Logic used to generate 'processedData' 
+# Basically, this function will attach ensemble_id and gene_symbol onto the converted transformed data
+PreProcessing.Logic$set("public", "FormatProcessedTransformedDataForDownload",
+	function(AllGeneInfo, ConvertedTransformedData, ConvertedIDResult){
+		dat <- merge(
+			AllGeneInfo[,c('ensembl_gene_id','symbol')],
+			round(ConvertedTransformedData, 4),
+			by.x = "ensembl_gene_id",
+			by.y = "row.names",
+			all.y = TRUE
+		)
+
+		dat[, 2] =  paste(" ", dat[, 2]) # add space to gene symbol to avoid auto convertion of symbols to dates by Excel 
+		dat <- merge(ConvertedIDResult$conversionTable, dat, 
+			by.x = "ensembl_gene_id", by.y = "ensembl_gene_id", all.y = TRUE)
+		dat <- dat[,-3]						# remove species column
+	
+		ix <- which( dat[,3] == "  NA" )	# find NA index 
+		dat[ix,3] <- ""   					# remove NA's 
+
+		# Legacy code:
+		# ix <- which(is.na(dat[,2]))			# record not in mapping table
+		# uid <- dat[,2]
+		# uid[ix] = dat[ix,1]
+		# Above code equal to: 
+		uids <- ifelse(is.na(dat[,2]), dat[,1], dat[,2]) 
+		uids = paste0(" ",uids)	# prevents Excel auto conversion	
+		dat[,2] <- ifelse(is.na(dat[,2]), "", dat[,1])
+		dat[,1] <- uids
+
+		colnames(dat)[1:2]= c("User_ID sorted by SD","Ensembl_gene_id")
+		
+		# sort by sd
+		dat = dat[ order( -apply(dat[,-3:-1],1,sd )   )  ,]
+		
+		rownames(dat)=1:nrow(dat)
+		
+		return(dat)
+	}
+)
+
+# Logic used to generate 'processedCountsData' 
+# Basically, this function will attach ensemble_id and gene_symbol onto the converted read count data
+PreProcessing.Logic$set("public", "FormatProcessedRawReadcountDataForDownload",
+	function(AllGeneInfo, ConvertedRawReadcountData, ConvertedIDResult){
+		dat <- merge(
+			AllGeneInfo[,c('ensembl_gene_id','symbol')],
+			round(ConvertedRawReadcountData, 4),
+			by.x = "ensembl_gene_id",
+			by.y = "row.names",
+			all.y = TRUE
+		)
+
+		dat[, 2] =  paste(" ", dat[, 2]) # add space to gene symbol to avoid auto convertion of symbols to dates by Excel 
+		dat <- merge(ConvertedIDResult$conversionTable, dat, 
+			by.x = "ensembl_gene_id", by.y = "ensembl_gene_id", all.y = TRUE)
+		dat <- dat[,-3]						# remove species column
+	
+		ix <- which( dat[,3] == "  NA" )	# find NA index 
+		dat[ix,3] <- ""   					# remove NA's 
+
+		# Legacy code:
+		# ix <- which(is.na(dat[,2]))			# record not in mapping table
+		# uid <- dat[,2]
+		# uid[ix] = dat[ix,1]
+		# Above code equal to: 
+		uids <- ifelse(is.na(dat[,2]), dat[,1], dat[,2]) 
+		uids = paste0(" ",uids)	# prevents Excel auto conversion	
+		dat[,2] <- ifelse(is.na(dat[,2]), "", dat[,1])
+		dat[,1] <- uids
+
+		colnames(dat)[1:2]= c("User_ID sorted by SD","Ensembl_gene_id")
+		
+		# sort by sd
+		dat = dat[ order( -apply(log2(10+ dat[,-3:-1]),1,sd )   )  ,]
+
+		rownames(dat)=1:nrow(dat)
+		
+		return(dat)
+	}
+)
+
 
 

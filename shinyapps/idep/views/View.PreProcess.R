@@ -1,6 +1,8 @@
 library('R6')
 library(shiny)
 library(shinyBS)
+library(DT,verbose=FALSE) 		# for renderDataTable
+
 
 View.PreProcess <- R6Class("View.PreProcess")
 
@@ -17,7 +19,9 @@ View.PreProcess$set("public", "mainPanel",
 	function(){
 		mainPanel(
 			self$PreRequestNotFitMessagePanel(),
-			self$ResultPanel()
+			self$ResultPanel(),
+			self$PopPlotSingleGenes(),
+			self$PopShowConvertedTransformedData()
 		)
 	}
 )
@@ -149,15 +153,17 @@ View.PreProcess$set("public", "ShareSettingsPanel",
 								"Treat as zero" = "treatAsZero", 
 								"Median within sample groups" = "geneMedianInGroup"),
         	    selected = "geneMedian"),
-        	actionButton("btn_GenePlot1", "Plot one or more genes"),
+        	actionButton("btn_PopGenePlotPanel", "Plot one or more genes"),
         	br(),br(),
-        	actionButton("btn_ExamineDataB", "Search processed data"),
+        	actionButton("btn_PopShowConvertedTransformedData", "Search processed data"),
         	br(),br(),
         	checkboxInput("isNoIDConversion", "Do not convert gene IDs to Ensembl.", value = FALSE),
-        	downloadButton('downloadProcessedData', 'Processed data'),
-        	conditionalPanel("input.dataFileFormat == 1", 
-        	   downloadButton('downloadConvertedCounts', 'Converted counts data') ),
-        	downloadButton('downloadEDAplot', 'High-resolution figure'),  ## this need change name later
+        	downloadButton('download_PreProcess_ProcessedData', 'Processed data'),
+        	conditionalPanel(
+				"input.dataFileFormat == 1", 
+        	   	downloadButton('download_PreProcess_ConvertedCounts', 'Converted counts data') 
+			),
+        	downloadButton('download_PreProcess_EDAplot', 'High-resolution figure'),  ## this need change name later
         	br(),br(),
         	textOutput('nGenesFilter'),
         	tags$head(tags$style("#nGenesFilter{color: blue;
@@ -198,11 +204,38 @@ View.PreProcess$set("public", "GuessSpeciesPanel",
 	}
 )
 
+###################			PopPlotSingleGenes				###################
+View.PreProcess$set("public", "PopPlotSingleGenes", 
+	function(){
+		bsModal(
+			"modal_PreProcess_PlotSingleGenes",
+			"Search for genes",
+			"btn_PopGenePlotPanel",
+			size = "large",
+			textInput("txt_PreProcess_SearchedGeneID", "Enter full or partial gene ID:", "HOXA"),
+          	checkboxInput("is_PreProcess_ShowIndividualSamples", label = "Show individual samples", value = FALSE),
+          	plotOutput("PreProcess_SingleGenePlot"),
+          	conditionalPanel(
+				"input.is_PreProcess_ShowIndividualSamples == 0", 
+          		checkboxInput("is_PreProcess_useSD", label = "Use standard deviation instead of standard error", value = FALSE)
+			),
+          	downloadButton('download_PreProcess_PlotSingleGenes', 'Figure')
+		)
+	}
+)
 
-
-
-
-
+###################			PopShowConvertedTransformedData			###################
+View.PreProcess$set("public", "PopShowConvertedTransformedData",
+	function(){
+		bsModal(
+			"modal_PreProcess_ShowConvertedTransformedData",
+			"Converted data (Most variable genes on top)",
+			"btn_PopShowConvertedTransformedData",
+			size = "large", 
+			DT::dataTableOutput('PreProcess_tbl_DT_ConvertedTransformedData')
+		)
+	}
+)
 
 
 

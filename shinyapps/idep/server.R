@@ -2,6 +2,7 @@ library(shiny)
 library(shinyBS)
 library(shinyjs)
 library(plotly)
+library(DT,verbose=FALSE) 		# for renderDataTable
 
 
 source('server.config')
@@ -56,8 +57,16 @@ shinyServer(
 		#   					1.2  		Pre Process
 		############################################################################
 
-		observe({  updateSelectInput(session, "selectOrg", choices = PreProcessCtrl$InitChoiceSelectOrgUI() ) })
+		# PreProcess: UI init
+		observe({
+			updateSelectInput(
+				session,
+				"selectOrg",
+				choices = PreProcessCtrl$InitChoiceSelectOrgUI()
+			)
+		})
 
+		# PreProcess: Reactive variables
 		ReactVars$PreProcessResult <- reactive({
 			PreProcessCtrl$PreProcessResult(input, session, ReactVars)
 		})
@@ -87,27 +96,88 @@ shinyServer(
 			PreProcessCtrl$GetAllGeneInfomation(ConvertedIDResult(), input)
 		})
 
+		# Preprocess: Plots, Tables and Downloads
+		# Main
 		output$PreProcess_ReadCount <- renderPlotly({
-			PreProcessCtrl$GetTotalReadCountsPlot(ReactVars$PreProcessResult()$rawCount)
+			ReactVars$plotly_PreProcess_ReadCount <- PreProcessCtrl$GetTotalReadCountsPlot(ReactVars$PreProcessResult()$rawCount)
+			ReactVars$plotly_PreProcess_ReadCount
 		})
 
 		output$PreProcess_DistTransform <- renderPlotly({
-			PreProcessCtrl$GetTransformedDataBoxPlot(ReactVars$PreProcessResult()$dat)
+			ReactVars$plotly_PreProcess_DistTransform <- PreProcessCtrl$GetTransformedDataBoxPlot(ReactVars$PreProcessResult()$dat)
+			ReactVars$plotly_PreProcess_DistTransform
 		})
 
 
 		output$PreProcess_DensityTransform <- renderPlotly({
-			PreProcessCtrl$GetTransformedDataDensityPlot(ReactVars$PreProcessResult()$dat)
+			ReactVars$plotly_PreProcess_DensityTransform <- PreProcessCtrl$GetTransformedDataDensityPlot(ReactVars$PreProcessResult()$dat)
+			ReactVars$plotly_PreProcess_DensityTransform
 		})
 
 		output$PreProcess_ScatterPlot <- renderPlotly({
-			PreProcessCtrl$GetTransformedDataScatterPlot(ReactVars$PreProcessResult()$dat)
+			ReactVars$plotly_PreProcess_ScatterPlot <- PreProcessCtrl$GetTransformedDataScatterPlot(ReactVars$PreProcessResult()$dat)
+			ReactVars$plotly_PreProcess_ScatterPlot
 		})
 
+		# Side bar
 		output$PreProcess_tblSpecies <- renderTable({
 			PreProcessCtrl$GetGuessSpeciesResult(ConvertedIDResult())
 		}, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
 
+		output$download_PreProcess_ProcessedData <- downloadHandler(
+			filename = "Processed_Data.csv",
+			content = function(file){
+				PreProcessCtrl$SaveConvetedTransformedDataInTempFile(
+					input, file, AllGeneInfo(),
+					ConvertedTransformedData(), ConvertedIDResult()
+				)
+			}
+		)
+
+
+		output$download_PreProcess_ConvertedCounts <- downloadHandler(
+			filename = "Converted_Counts_Data.csv",
+			content = function(file){
+				PreProcessCtrl$SaveConvetedReadCountDataInTempFile(
+					input, file, AllGeneInfo(),
+					ConvertedRawReadcountData(), ConvertedIDResult()
+				)
+			}
+		)
+
+		output$download_PreProcess_EDAplot <- downloadHandler(
+			filename = "EDA.zip",
+      		content = function(file) {
+				PreProcessCtrl$SaveAllPlotsInTempFile(
+					file,
+					ReactVars$plotly_PreProcess_ReadCount,
+					ReactVars$plotly_PreProcess_DistTransform,
+					ReactVars$plotly_PreProcess_DensityTransform,
+					ReactVars$plotly_PreProcess_ScatterPlot
+				)
+			}
+		)
+		# Pop: Plot one or more gene
+
+		output$PreProcess_SingleGenePlot <- renderPlot({
+			PreProcessCtrl$GetSingleGenePlot(input, ConvertedTransformedData(), AllGeneInfo())
+		})
+
+		output$download_PreProcess_PlotSingleGenes <- downloadHandler(
+			filename = "genePlot.eps",
+			content = function(file) {
+				PreProcessCtrl$SaveSingleGenesPlotEpsInTempFile(
+					input, ConvertedTransformedData(),
+					AllGeneInfo(), file
+				)
+			}
+		)
+
+		# Pop: Search Processed data
+
+		output$PreProcess_tbl_DT_ConvertedTransformedData <- DT::renderDataTable({
+			PreProcessCtrl$GetDataTableOfConvetedTransformedData(input, AllGeneInfo(), ConvertedTransformedData())
+		})
 
 		############################################################################
 		#   					1.3  		Heatmap
@@ -191,7 +261,7 @@ shinyServer(
 
 		# Heatmap PopShowGeneSDHeatmap
 		output$Heatmap_PopShowGeneSDHeatmap <- renderPlot({
-			HeatmapCtrl$GetGeneSDHeatmap(input, ConvertedTransformedData())		
+			HeatmapCtrl$GetGeneSDHeatmap(input, ConvertedTransformedData())
 		}, height = 600, width = 800, res=120 )
 
 		output$download_Heatmap_PopShowGeneSDHeatmap <- downloadHandler(
@@ -226,13 +296,14 @@ shinyServer(
 			filename = "correlationMatrix.csv",
 			content = function(file){
 				HeatmapCtrl$SaveCorrelationMatrixPlotDataInFile(
-					file,					
+					file,
 					ReactVars$PreProcessResult()
 				)
 			}
 		)
 		
 		# Heatmap Pop Sample Tree
+
 		output$Heatmap_SampleTree <- renderPlot({
 			HeatmapCtrl$GetSampleTreePlot(input, ReactVars$PreProcessResult())
 		})
