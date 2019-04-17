@@ -99,20 +99,24 @@ shinyServer(
 		# Preprocess: Plots, Tables and Downloads
 		# Main
 		output$PreProcess_ReadCount <- renderPlotly({
-			PreProcessCtrl$GetTotalReadCountsPlot(ReactVars$PreProcessResult()$rawCount)
+			ReactVars$plotly_PreProcess_ReadCount <- PreProcessCtrl$GetTotalReadCountsPlot(ReactVars$PreProcessResult()$rawCount)
+			ReactVars$plotly_PreProcess_ReadCount
 		})
 
 		output$PreProcess_DistTransform <- renderPlotly({
-			PreProcessCtrl$GetTransformedDataBoxPlot(ReactVars$PreProcessResult()$dat)
+			ReactVars$plotly_PreProcess_DistTransform <- PreProcessCtrl$GetTransformedDataBoxPlot(ReactVars$PreProcessResult()$dat)
+			ReactVars$plotly_PreProcess_DistTransform
 		})
 
 
 		output$PreProcess_DensityTransform <- renderPlotly({
-			PreProcessCtrl$GetTransformedDataDensityPlot(ReactVars$PreProcessResult()$dat)
+			ReactVars$plotly_PreProcess_DensityTransform <- PreProcessCtrl$GetTransformedDataDensityPlot(ReactVars$PreProcessResult()$dat)
+			ReactVars$plotly_PreProcess_DensityTransform
 		})
 
 		output$PreProcess_ScatterPlot <- renderPlotly({
-			PreProcessCtrl$GetTransformedDataScatterPlot(ReactVars$PreProcessResult()$dat)
+			ReactVars$plotly_PreProcess_ScatterPlot <- PreProcessCtrl$GetTransformedDataScatterPlot(ReactVars$PreProcessResult()$dat)
+			ReactVars$plotly_PreProcess_ScatterPlot
 		})
 
 		# Side bar
@@ -141,6 +145,18 @@ shinyServer(
 			}
 		)
 
+		output$download_PreProcess_EDAplot <- downloadHandler(
+			filename = "EDA.zip",
+      		content = function(file) {
+				PreProcessCtrl$SaveAllPlotsInTempFile(
+					file,
+					ReactVars$plotly_PreProcess_ReadCount,
+					ReactVars$plotly_PreProcess_DistTransform,
+					ReactVars$plotly_PreProcess_DensityTransform,
+					ReactVars$plotly_PreProcess_ScatterPlot
+				)
+			}
+		)
 		# Pop: Plot one or more gene
 
 		output$PreProcess_SingleGenePlot <- renderPlot({

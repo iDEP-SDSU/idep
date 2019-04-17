@@ -2,6 +2,7 @@ library('R6')
 library(shiny)
 library(shinyBS)
 library(plotly)
+library(processx)
 
 
 Ctl.PreProcess <- R6Class("Ctl.PreProcess")
@@ -408,4 +409,38 @@ Ctl.PreProcess$set("public", "SaveConvetedReadCountDataInTempFile",
 )
 
 
+
+### This function need:
+### 1. orca support: https://github.com/plotly/orca
+### 2. zip command exist
+
+Ctl.PreProcess$set("public", "SaveAllPlotsInTempFile",
+	function(fn, p1, p2, p3, p4){
+		if( is.null(p1) || is.null(p2) || is.null(p3) || is.null(p4) ){
+			return(NULL)
+		}
+
+		# orca cannot export file/to/path directly
+		# 1. use orca generate file
+		# 2. move to the given directry
+		withProgress(message = "Download High Resolution Plots",
+		{
+			incProgress(0/8, "Render plot 1 of 4 ... ")
+			orca(p1, format = "svg", file = '1.svg')
+			incProgress(2/8, "Render plot 2 of 4 ... ")
+			orca(p2, format = "svg", file = '2.svg')
+			incProgress(4/8, "Render plot 3 of 4 ... ")
+			orca(p3, format = "svg", file = '3.svg')
+			incProgress(6/8, "Render plot 4 of 4 ... ")
+			orca(p4, format = "svg", file = '4.svg')
+
+			incProgress(7/8, "Prepare plot zip files ... ")
+			zip('tmp.zip', c('1.svg','2.svg','3.svg','4.svg'))
+			file.copy('tmp.zip', fn)
+			
+			file.remove(c('1.svg','2.svg','3.svg','4.svg','tmp.zip'))
+			incProgress(8/8, "Done")
+		})
+	}
+)
 

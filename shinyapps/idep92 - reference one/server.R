@@ -2431,74 +2431,12 @@ output$downloadGenePlot <- new : output$download_PreProcess_PlotSingleGenes
 
 processedData <- Dont need anymore, check Ctl.Preprocess$SaveConvetedTransformedDataInTempFile
 
-processedCountsData <- reactive({
-		  if (is.null(input$file1) && input$goButton == 0)    return()
-		  
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
-		####################################
-			
-		if(input$selectOrg == "NEW"| ncol(allGeneInfo()) == 1) return(  convertedData() ) else { 
-
-			withProgress(message="Preparing data for download ", {
-
-			if(is.null(convertedCounts() ) ) return(NULL) else 
-			{
-
-				withProgress(message="Preparing data for download ", {
-				
-				tem <-  merge(allGeneInfo()[,c('ensembl_gene_id','symbol')], round(convertedCounts(),4),by.x="ensembl_gene_id", by.y ="row.names", all.y=T )   
-				tem[,2] = paste(" ",tem[,2]) # add space to gene symbol to avoid auto convertion of symbols to dates by Excel 
-				incProgress(1/2, "mapping")
-				#tem[,1] = paste(" ",tem[,1]) # add space
-				 tem2 = merge( converted()$conversionTable, tem, by.x = "ensembl_gene_id",by.y="ensembl_gene_id", all.y=TRUE)
-				 tem2 <- tem2[,-3] # remove species column
-				 ix = which( tem2[,3] == "  NA") # remove NA's 
-				 tem2[ix,3] <- ""
-				 
-				 ix = which(is.na(tem2[,2]) ) # not in mapping table
-				 userIDs = tem2[,2]; userIDs[ix]=tem2[ix,1]	; userIDs = paste0(" ",userIDs)	# prevents Excel auto conversion		 
-				 tem2[,2] = tem2[,1]; tem2[ix,2]= ""
-				 tem2[,1]= userIDs;
-				 colnames(tem2)[1:2]= c("User_ID sorted by SD","Ensembl_gene_id")
-				 # sort by sd
-				 tem2 = tem2[ order( -apply(log2(10+ tem2[,-3:-1]),1,sd )   )  ,]
-				 rownames(tem2)=1:nrow(tem2)
-				 incProgress(1, "Done.")
-				 # add original data
-				# tem3 <- merge( readData()$data, tem2, by.x = "row.names", by.y = "User_input", all.x=TRUE )
-				# return(converted()$conversionTable) #return(readData()$data)
-				# colnames(tem)[1] = "Ensembl_or_Original_ID"
-				})
-				return(tem2)
-			}
-
-			}) # progress
-			
-		}
-	  })  
+processedCountsData <- Dont need anymore, check Ctl.Preprocess$SaveConvetedReadCountDataInTempFile
 
 output$downloadProcessedData <- new : download_PreProcess_ProcessedData
 
- downloadHandler(
-		filename = function() {"Processed_Data.csv"},
-		content = function(file) {
-      write.csv( processedData(), file)	    
-	})
-
 	
-output$downloadConvertedCounts <- downloadHandler(
-		filename = function() {"Converted_Counts_Data.csv"},
-		content = function(file) {
-      write.csv( processedCountsData(), file, row.names=FALSE)	    
-	})
+output$downloadConvertedCounts <- new : download_PreProcess_ConvertedCounts
  
 
 output$examineData <- new : output$PreProcess_tbl_DT_ConvertedTransformedData
