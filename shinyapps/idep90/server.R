@@ -3,7 +3,7 @@
 # hosted at http://ge-lab.org/idep/
 # manuscript: https://www.biorxiv.org/content/early/2018/04/20/148411 
 
-iDEPversion = "iDEP 0.86"
+iDEPversion = "iDEP 0.90"
 
 ################################################################
 # R packages
@@ -130,7 +130,6 @@ speciesChoice <- append( setNames( "BestMatch","Best matching species"), species
 
 # move one element to the 2nd place
 move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
-
 i= which( names(speciesChoice) == "Vitis vinifera"); speciesChoice <- move2(i)
 i= which( names(speciesChoice) == "Oryza sativa Japonica Group"); speciesChoice <- move2(i)
 i= which( names(speciesChoice) == "Oryza sativa Indica Group"); speciesChoice <- move2(i)

@@ -6,7 +6,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.86"
+iDEPversion = "iDEP.90"
 
 shinyUI(
 navbarPage(
@@ -100,22 +100,20 @@ iDEPversion,
     mainPanel(  
       tableOutput('sampleInfoTable')
       ,tableOutput('contents')
-
+      ,h3("Loading R packages ... ... ...")
+      ,htmlOutput('fileFormat')
       #,h3("Service will not be available starting 6:30 am (US central time) on June 21 (Friday) 
       #due to scheduled maintenance. It should take less than 45 minutes. ",  style = "color:red")
-      ,h3("We will re-sbumit our grant proposal to NIH. If you didn't send us a support letter last time, 
-          please consider sending us a brief email/letter with your 
+      ,h3("We will re-sbumit our grant proposal to NIH. Please send us a brief email/letter with your 
           broad area of research and how iDEP helps your work. Thanks!"
       ,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), style = "color:red")
       #,h3("We are working on a plan to improve iDEP. Any new functionality or feature you like to be added? Please "
       #,a("send us",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), "your suggestions!",style = "color:red")      
-      ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
       ,h4("New! Massively upgraded annotation database! V0.86 includes 315 organisms in Ensembl release 96, 
           plus all species from STRINGdb (v10):115 archaeal, 1678 bacterial, and 238 eukaryotic species ")  
       ,h5("Now published on", a("BMC Bioinformatics!",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank") )
       ,h5("Due to lack of funding, iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
-      ,h3("Loading R packages ... ... ...")
-      ,htmlOutput('fileFormat')
+      ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
 
 
     ) # main panel
@@ -1144,6 +1142,9 @@ iDEPversion,
                           ,"Experiment design file"))
         ,br()
         ,h4("Previous versions of iDEP")
+        ,a("iDEP 0.85 with Ensembl 95, archived on May 19, 2019 "
+           , href="http://bioinformatics.sdstate.edu/idep85/")  
+        ,br()
         ,a("iDEP 0.82 with Ensembl BioMart version 92, archived on March 29, 2019 "
            , href="http://bioinformatics.sdstate.edu/idep82/")  
         ,br()
