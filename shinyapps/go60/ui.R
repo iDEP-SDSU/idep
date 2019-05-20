@@ -149,6 +149,8 @@ shinyUI(
 		  "in Ensembl BioMart release 96 as of 5/20/2019."	 
 		  , "In addition, 115 archaeal, 1678 bacterial, and 238 eukaryotic genomes are annotated based on STRING-db v10. 
             Additional pathway data are collected for some model species from difference sources."
+          ,h5( "Genomes based on STRING-db is marked as STRING-db. If the same genome is included in both Ensembl and STRING-db, users should 
+            use Ensembl annotation, as it is more updated and is supported in more functional modules. ")
 		  ,includeHTML("human_mouse_source.html")
 
 		 ,br()
