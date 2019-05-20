@@ -90,7 +90,7 @@ maxSamplesEDAplot = 100  # max number of samples for EDA plots
 ################################################################
 
 # relative path to data files
-datapath = "../../data/data96/"   # production server
+datapath = "../../data/data95/"   # production server
 
 sqlite  <- dbDriver("SQLite")
 convert <- dbConnect( sqlite, paste0(datapath, "convertIDs.db"), flags=SQLITE_RO)  #read only mode
@@ -117,6 +117,45 @@ STRING10_species = read.csv(paste0(datapath, "data_go/STRING11_species.csv"))
 # write.csv(species,"STRING10_species.csv")
 # Also this STRINGdb package downloads a lot of file from the website. Needs to clean the temp folder from time to time. 
 
+# prepare species list
+
+# Create a list for Select Input options
+orgInfo <- dbGetQuery(convert, paste("select distinct * from orgInfo " ))
+orgInfo <- orgInfo[order(orgInfo$name),]
+speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
+# add a defult element to list    # new element name       value
+
+speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
+speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
+
+# move one element to the 2nd place
+move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
+
+i= which( names(speciesChoice) == "Vitis vinifera"); speciesChoice <- move2(i)
+i= which( names(speciesChoice) == "Oryza sativa Japonica Group"); speciesChoice <- move2(i)
+i= which( names(speciesChoice) == "Oryza sativa Indica Group"); speciesChoice <- move2(i)
+i= which( names(speciesChoice) == "Glycine max"); speciesChoice <- move2(i)
+i= which( names(speciesChoice) =="Zea mays"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) =="Arabidopsis thaliana"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) == "Saccharomyces cerevisiae"); speciesChoice <- move2(i)
+i= which(names(speciesChoice)  == "Caenorhabditis elegans"); speciesChoice <- move2(i)
+i= which(names(speciesChoice)  == "Drosophila melanogaster"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) =="Dog"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) =="Macaque"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) =="Chicken"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) =="Pig"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) =="Zebrafish" ); speciesChoice <- move2(i)
+i= which(names(speciesChoice) == "Cow" ); speciesChoice <- move2(i)
+i= which(names(speciesChoice) == "Rat" ); speciesChoice <- move2(i)
+i= which(names(speciesChoice) == "Mouse"); speciesChoice <- move2(i)
+i= which(names(speciesChoice) == "Human"); speciesChoice <- move2(i)
+
+GO_levels = dbGetQuery(convert, "select distinct id,level from GO  
+                                WHERE GO = 'biological_process'"  )
+level2Terms = GO_levels[which(GO_levels$level %in% c(2,3))  ,1]  # level 2 and 3
+idIndex <- dbGetQuery(convert, paste("select distinct * from idIndex " ))
+quotes <- dbGetQuery(convert, " select * from quotes")
+quotes = paste0("\"",quotes$quotes,"\"", " -- ",quotes$author,".       ")
 ################################################################
 #   Utility functions
 ################################################################
@@ -440,35 +479,7 @@ myPGSEA  <- function (exprs, cl, range = c(25, 500), ref = NULL, center = TRUE,
     return(list(results = results, p.results = p.results, means = mean.results, size=Setsize, mean2=mean2, meanSD=meanSD))
 }
 
-# prepare species list
 
-# Create a list for Select Input options
-orgInfo <- dbGetQuery(convert, paste("select distinct * from orgInfo " ))
-orgInfo <- orgInfo[order(orgInfo$name),]
-speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name )
-# add a defult element to list    # new element name       value
-speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
-speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
-
-# move one element to the 2nd place
-move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
-i= which( names(speciesChoice) == "Glycine max"); speciesChoice <- move2(i)
-i= which( names(speciesChoice) =="Zea mays"); speciesChoice <- move2(i)
-i= which(names(speciesChoice) =="Arabidopsis thaliana"); speciesChoice <- move2(i)
-i= which(names(speciesChoice) == "Saccharomyces cerevisiae"); speciesChoice <- move2(i)
-i= which(names(speciesChoice)  == "Caenorhabditis elegans"); speciesChoice <- move2(i)
-i= which(names(speciesChoice) =="Zebrafish" ); speciesChoice <- move2(i)
-i= which(names(speciesChoice) == "Cow" ); speciesChoice <- move2(i)
-i= which(names(speciesChoice) == "Rat" ); speciesChoice <- move2(i)
-i= which(names(speciesChoice) == "Mouse"); speciesChoice <- move2(i)
-i= which(names(speciesChoice) == "Human"); speciesChoice <- move2(i)
-
-GO_levels = dbGetQuery(convert, "select distinct id,level from GO  
-                                WHERE GO = 'biological_process'"  )
-level2Terms = GO_levels[which(GO_levels$level %in% c(2,3))  ,1]  # level 2 and 3
-idIndex <- dbGetQuery(convert, paste("select distinct * from idIndex " ))
-quotes <- dbGetQuery(convert, " select * from quotes")
-quotes = paste0("\"",quotes$quotes,"\"", " -- ",quotes$author,".       ")
 # [ConvertDB Class END]
 
 # This function convert gene set names
@@ -2751,15 +2762,15 @@ output$nGenesFilter <- renderText({
 	# Show info on file format	
 output$fileFormat <- renderUI({
 		i = "<h3>Done. Ready to load data files.</h3>"
-		i = c(i,"Users can upload a CSV or tab-delimited text file with the first column as gene IDs. 
-		For RNA-seq data, read count per gene is recommended.
-		Also accepted are normalized expression data based on FPKM, RPKM, or DNA microarray data. iDEP can convert most types of common gene IDs to Ensembl gene IDs, which is used 
-			internally for enrichment and pathway analyses. iDEP parses column names to define sample groups. To define 3 biological samples (Control,
-		TreatmentA, TreatmentB) with 2 replicates each, column names should be:")
-		i = c(i," <strong> Ctrl_1, Ctrl_2, TrtA_1, TrtA_2, TrtB_1, TrtB_2</strong>.") 
-		i = c(i,"For more complex experimental design, users can upload a <a href=\"https://idepsite.wordpress.com/data-format/\" target=\"_blank\">sample information file</a>  with samples in columns and factors (genotypes and conditions) in rows. 
-		       With such a file, users can define a statistic model according to study design, which enables them to control the effect for batch effects or paired samples. 
-	         or detect interactions between factors (how mutant responds differently to treatment than wild-type).") 
+#		i = c(i,"Users can upload a CSV or tab-delimited text file with the first column as gene IDs. 
+#		For RNA-seq data, read count per gene is recommended.
+#		Also accepted are normalized expression data based on FPKM, RPKM, or DNA microarray data. iDEP can convert most types of common gene IDs to Ensembl gene IDs, which is used 
+#			internally for enrichment and pathway analyses. iDEP parses column names to define sample groups. To define 3 biological samples (Control,
+#		TreatmentA, TreatmentB) with 2 replicates each, column names should be:")
+#		i = c(i," <strong> Ctrl_1, Ctrl_2, TrtA_1, TrtA_2, TrtB_1, TrtB_2</strong>.") 
+#		i = c(i,"For more complex experimental design, users can upload a <a href=\"https://idepsite.wordpress.com/data-format/\" target=\"_blank\">sample information file</a>  with samples in columns and factors (genotypes and conditions) in rows. 
+#		       With such a file, users can define a statistic model according to study design, which enables them to control the effect for batch effects or paired samples. 
+#	         or detect interactions between factors (how mutant responds differently to treatment than wild-type).") 
 		
 		HTML(paste(i, collapse='<br/>') )
 	})

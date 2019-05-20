@@ -103,52 +103,21 @@ iDEPversion,
 
       #,h3("Service will not be available starting 6:30 am (US central time) on June 21 (Friday) 
       #due to scheduled maintenance. It should take less than 45 minutes. ",  style = "color:red")
-      #,h3("We will re-sbumit our grant proposal to NIH. If you didn't send us a support letter last time, 
-      #    please consider sending us a brief email/letter before Nov. 15th, with your 
-      #    broad area of research and how iDEP helps your work. Thanks!"
-      #,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), style = "color:red")
-      ,h3("We are working on a plan to improve iDEP. Any new functionality or feature you like to be added? Please "
-      ,a("send us",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), "your suggestions!",style = "color:red")      
+      ,h3("We will re-sbumit our grant proposal to NIH. If you didn't send us a support letter last time, 
+          please consider sending us a brief email/letter with your 
+          broad area of research and how iDEP helps your work. Thanks!"
+      ,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), style = "color:red")
+      #,h3("We are working on a plan to improve iDEP. Any new functionality or feature you like to be added? Please "
+      #,a("send us",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), "your suggestions!",style = "color:red")      
       ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
-      ,h5("New! V0.85 now uses updated annotation databases based on 148 genomes in Ensembl release 95, 
-           58  species from Ensembl Plants release 42, and 72 species in Ensembl Metazoa release 42.")
-      ,h5("v0.82 fixed a major bug. When using limma, the up- and down-regulation is reversed in some situations.",style = "color:red")
+      ,h4("New! Massively upgraded annotation database! V0.86 includes 315 organisms in Ensembl release 96, 
+          plus all species from STRINGdb (v10):115 archaeal, 1678 bacterial, and 238 eukaryotic species ")  
       ,h5("Now published on", a("BMC Bioinformatics!",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank") )
       ,h5("Due to lack of funding, iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
-      ,h5("v0.81 Enabled downloading of publication-ready vector graphics files using EPS.")
-      ,h5("New v0.80  Updated annotation database. Comprehensive pathway 
-          database for human. TF binding motifs for 200+ speceis. Old version made available."
-      )
-      ,h5("New v0.70  iDEP generates R and R Markdown codes for users to run in stand-alone!")
-      ,a("R Markdown example.",align = "left", href="http://rpubs.com/ge600/R",target="_blank")
-      ,h5("New v0.68! Try the STRING-db API access on the DEG2 page that offer 
-          protein interaction networks and GO enrichment for thousands species, including bacteria.")
-      ,h5("Integrated Differential Expression and Pathway analysis (iDEP)
-          of transcriptomic data.  See ",
-        a(" documentation", href="https://idepsite.wordpress.com/", target="_blank"), 
-        "and",
-        a(" paper.", href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6",target="_blank"),
-        "Based on annotation of",
-        a( "215 animal and 58 plant genomes ",href="https://idepsite.wordpress.com/species/",target="_blank"), 
-        "in Ensembl BioMart as of 12/15/2017."
-        ,a("STRING-db ", href="https://string-db.org/",target="_blank")
-        ,"offer API access to protein interaction networks and annotations 
-        for 115 archaeal, 1678 bacterial, and 238 eukaryotic species."
-        ," Additional  data from"
-        ,a("KEGG, ", href="www.genome.jp/kegg/",target="_blank")
-        ,a("Reactome, ", href="http://www.reactome.org/",target="_blank")
-        ,a("MSigDB (human),", href="https://doi.org/10.1093/bioinformatics/btr260",target="_blank") 
-        ,a("GSKB (mouse)", href="http://biorxiv.org/content/early/2016/10/24/082511",target="_blank") 
-        ,"and"
-        ,a("  araPath (arabidopsis).", href="https://doi.org/10.1093/bioinformatics/bts421", target="_blank")   
-        ," For feedbacks or data contributions (genes and GO mapping of any species), please"
-        ,a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=iDEP" )
-        ,"or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank")
-        ,"Send us suggestions or any error message to help improve iDEP."
-        ,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions")
-      ) #h5
-      ,h3("Loading R packages ... ...")
+      ,h3("Loading R packages ... ... ...")
       ,htmlOutput('fileFormat')
+
+
     ) # main panel
   ) #sidebarLayout
 ) #tabPanel
@@ -1230,6 +1199,7 @@ iDEPversion,
        ,h5("12/2/2018: v0.81 High resolution figure download with eps format, which can be eidted with Adobe Illustrator.")
        ,h5("3/5/2019:  v0.82 Fix a bug regarding limma for identification of D.E.Gs. Up- and down-regulation are opposite in some cases.")
        ,h5("3/29/2019: v0.85 Annotation database upgrade. Ensembl v 95. Ensembl plants v.42, and Ensembl Metazoa v.42.")
+       ,h5("5/19/2019: v0.86 Annotation database upgrade. Ensembl v 96. Ensembl plants v.43, and Ensembl Metazoa v.43. STRING-db v10")
        ,br(),br()
        ,h5("In loving memory of my parents.")
 
