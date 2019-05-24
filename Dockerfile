@@ -9,7 +9,7 @@ RUN apt-get update -qq && apt-get install -y \
   libxml2  \
   libssl-dev \
   libudunits2-dev \
-  libmariadb-client-lgpl-dev \
+  libmariadbclient-dev \
   libpng-dev \
   wget \
   unzip
