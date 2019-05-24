@@ -2,6 +2,7 @@ FROM rocker/shiny:latest
 #FROM debian # for testing
 
 MAINTAINER Ge lab "xijin.ge@sdstate.edu"
+RUN apt-get update || apt-get update
 RUN apt-get update -qq && apt-get install -y \
   git-core \
   libcurl4-openssl-dev \
