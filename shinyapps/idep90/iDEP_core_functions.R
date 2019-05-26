@@ -2213,7 +2213,7 @@ limma <- function() {
 DEG.data <- function() {
 
 		  genes = limma.out$results
-		  genes = as.data.frame( genes[which( rowSums(genes) != 0 ),] )
+		  genes = as.data.frame( genes[which( rowSums( abs (genes) ) != 0 ),] )
 		  colnames(genes) = colnames( limma.out$results )
 		  genes = merge(genes,convertedData.out, by='row.names')
 		  colnames(genes)[1] = "1: upregulation, -1: downregulation"

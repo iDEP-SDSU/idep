@@ -122,6 +122,7 @@ STRING10_species = read.csv(paste0(datapath, "data_go/STRING11_species.csv"))
 # Create a list for Select Input options
 orgInfo <- dbGetQuery(convert, paste("select distinct * from orgInfo " ))
 orgInfo <- orgInfo[order(orgInfo$name),]
+annotatedSpeciesCounts <- sort( table(orgInfo$group) ) # total species, Ensembl, Plants, Metazoa, STRINGv10
 speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
 # add a defult element to list    # new element name       value
 
@@ -535,6 +536,16 @@ convertID <- function (query,selectOrg, selectGO) {
 	if(selectOrg == speciesChoice[[1]]) {
 		comb = paste( result$species,result$idType)
 		sortedCounts = sort(table(comb),decreasing=T)
+		# Try to use Ensembl instead of STRING-db genome annotation
+		if( sortedCounts[1] <= sortedCounts[2] *1.1  # if the #1 species and #2 are close
+			 && as.numeric(names(sortedCounts[1])) > sum( annotatedSpeciesCounts[1:3])  # 1:3 are Ensembl species
+			 && as.numeric(names( sortedCounts[2] )) < sum( annotatedSpeciesCounts[1:3])    ) { # and #2 come earlier (ensembl) than #1
+		  tem <- sortedCounts[2]
+		  sortedCounts[2] <- sortedCounts[1]
+		  names(sortedCounts)[2] <- names(sortedCounts)[1]
+		   sortedCounts[1] <- tem
+		  names(sortedCounts)[1] <- names(tem)    
+		} 
 		recognized =names(sortedCounts[1])
 		result <- result[which(comb == recognized),]
 		speciesMatched=sortedCounts

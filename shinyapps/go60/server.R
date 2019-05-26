@@ -64,6 +64,7 @@ STRING10_species = read.csv( paste0(datapath,"data_go/STRING11_species.csv") )
 # Create a list for Select Input options
 orgInfo <- dbGetQuery(convert, paste("select distinct * from orgInfo " ))
 orgInfo <- orgInfo[order(orgInfo$name),]
+annotatedSpeciesCounts <- sort( table(orgInfo$group) ) # total species, Ensembl, Plants, Metazoa, STRINGv10
 speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
 # add a defult element to list    # new element name       value
 speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
@@ -161,12 +162,23 @@ convertID <- function (query,selectOrg) {
   if(selectOrg == speciesChoice[[1]]) {
     comb = paste( result$species,result$idType)
     sortedCounts = sort( table(comb ),decreasing=T)
+    # Try to use Ensembl instead of STRING-db genome annotation
+    if( sortedCounts[1] <= sortedCounts[2] *1.1  # if the #1 species and #2 are close
+         && as.numeric(names(sortedCounts[1])) > sum( annotatedSpeciesCounts[1:3])  # 1:3 are Ensembl species
+         && as.numeric(names( sortedCounts[2] )) < sum( annotatedSpeciesCounts[1:3])    ) { # and #2 come earlier (ensembl) than #1
+      tem <- sortedCounts[2]
+      sortedCounts[2] <- sortedCounts[1]
+      names(sortedCounts)[2] <- names(sortedCounts)[1]
+       sortedCounts[1] <- tem
+      names(sortedCounts)[1] <- names(tem)    
+    } 
     recognized =names(sortedCounts[1]  )
     result <- result[which(comb == recognized )  , ]
 
 	speciesMatched=sortedCounts
     names(speciesMatched )= sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  )
     speciesMatched <- as.data.frame( speciesMatched )
+
 	if(length(sortedCounts) == 1) { # if only  one species matched
 	  speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
 	 } else {# if more than one species matched
@@ -181,6 +193,7 @@ convertID <- function (query,selectOrg) {
     if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
     speciesMatched <- as.data.frame(paste("Using selected species ", findSpeciesByIdName(selectOrg) )  )
   }
+
   result <- result[which(!duplicated(result[,1]) ),] # remove duplicates in query gene ids 
   result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id  
   colnames(speciesMatched) = c("Matched Species (genes)" )
