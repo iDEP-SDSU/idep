@@ -2640,7 +2640,15 @@ readData <- reactive ({
 
 						if(!input$noFDR) { 	 # if we have FDR
 							pvals = x [,2*(1:n2 ),drop=FALSE ]  # 2, 4, 6
-							x = x[, 2*(1:n2 )-1,drop=FALSE]   # 1, 3, 5				
+							x = x[, 2*(1:n2 )-1,drop=FALSE]   # 1, 3, 5		
+                            if(dim(x)[2] == 1) { # if only 1 column of FDR and P value, add another column
+                              placeholder <- rep(1, dim(x)[1])
+                              pvals <- cbind(pvals, placeholder)
+                              zero_placeholder <- rep(0, dim(x)[1])
+                              x <- cbind(x, zero_placeholder)
+                            }
+
+		
 						}	
 						
 						if(0) {  
