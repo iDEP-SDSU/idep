@@ -727,7 +727,7 @@ shinyServer(
 observe({  updateSelectizeInput(session, "selectOrg", choices = speciesChoice, selected = speciesChoice[1] )      })
  
       # load demo data when clicked
-    observe({ 
+observe({ 
       if( input$useDemo ) {
         updateTextInput(session, 'input_text', value = ExampleGeneList )
       }
@@ -738,7 +738,7 @@ observe({  updateSelectizeInput(session, "selectOrg", choices = speciesChoice, s
 	 
  # tried to solve the double reflashing problems	 
  #https://stackoverflow.com/questions/30991900/avoid-double-refresh-of-plot-in-shiny
- #observe({  	updateSelectInput(session, "speciesName", choices = sort(STRING10_species$official_name) ) 	})
+ observe({  	updateSelectizeInput(session, "speciesName", choices = sort(STRING10_species$official_name) ) 	})
  #click_saved <- reactiveValues(GO = NULL)
  #observeEvent(eventExpr = input$selectGO, handlerExpr = { click_saved$GO <- input$selectGO })
 
