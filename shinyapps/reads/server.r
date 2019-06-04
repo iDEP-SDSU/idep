@@ -3,72 +3,52 @@
 library(shiny)
 library(DT) # for renderDataTable
 library("rhdf5")
+library(RSQLite)
+#library(getDEE2)
 
+dataPath = "../../data/readCounts/"
 destination_fileH = "../../data/readCounts/human_matrix.h5"
 destination_fileM = "../../data/readCounts/mouse_matrix.h5"
-sampleInfoFile = "../../data/readCounts/sampleInfo.txt"
-GSEInfoFile = "../../data/readCounts/GSEinfo.txt"
+destination_fileH_transcript = "../../data/readCounts/human_transcript.h5"
+destination_fileM_transcript = "../../data/readCounts/mouse_transcript.h5"
+GEOdbFile = "../../data/readCounts/GEO.db"
+source("getDEE2_v2.r")
 
-if(file.exists(sampleInfoFile)) {
-  sample_info =read.table(sampleInfoFile, sep="\t",header=T )
-} else {   # create sample info
-  # Check if gene expression file was already downloaded, if not in current directory download file form repository
-  if(!file.exists(destination_fileH)) {
-    print("Downloading compressed gene expression matrix.")
-    url = "https://s3.amazonaws.com/mssm-seq-matrix/human_matrix.h5"
-    download.file(url, destination_file, quiet = FALSE)
-  } else{
-      print("Local file already exists.")
-  }
-    # Check if gene expression file was already downloaded, if not in current directory download file form repository
-    if(!file.exists(destination_fileM)){
-      print("Downloading compressed gene expression matrix.")
-      url = "https://s3.amazonaws.com/mssm-seq-matrix/human_matrix.h5"
-      download.file(url, destination_file, quiet = FALSE)
-    } else{
-      print("Local file already exists.")
-    }
+DEE2Species = c("athaliana"
+				,"celegans"
+				,"dmelanogaster"
+				,"drerio"
+				,"ecoli"
+				,"hsapiens"
+				,"mmusculus"
+				,"rnorvegicus"
+				,"scerevisiae")
+names( DEE2Species ) = c("Arabidopsis"
+				,"Worm"
+				,"Fly"
+				,"Zebrafish"
+				,"E coli"
+				,"Human"
+				,"Mouse"
+				,"Rat"
+				,"Yeast")
 
-      # if(!file.exists(infoFile)){
-      destination_file = destination_fileH
-      # Retrieve information from compressed data
-      GSMs = h5read(destination_file, "meta/Sample_geo_accession")
-      tissue = h5read(destination_file, "meta/Sample_source_name_ch1")
-      #genes = h5read(destination_file, "meta/genes")
-      sample_title = h5read(destination_file, "meta/Sample_title")
-      sample_series_id = h5read(destination_file, "meta/Sample_series_id")
+sqlite  <- dbDriver("SQLite")
+convert <- dbConnect( sqlite, GEOdbFile, flags=SQLITE_RO)  #read only mode
 
-      species = rep("human",length(GSMs))
-      sample_info = cbind(GSMs, tissue, sample_title,sample_series_id,species)
-      H5close()
-
-      destination_file = destination_fileM
-      # Retrieve information from compressed data
-      GSMs = h5read(destination_file, "meta/Sample_geo_accession")
-      tissue = h5read(destination_file, "meta/Sample_source_name_ch1")
-      #genes = h5read(destination_file, "meta/genes")
-      sample_title = h5read(destination_file, "meta/Sample_title")
-      sample_series_id = h5read(destination_file, "meta/Sample_series_id")
-
-      species = rep("mouse",length(GSMs))
-      sample_infoM = cbind(GSMs, tissue, sample_title, sample_series_id,species)
-      H5close()
-      # sample info for both human and mouse
-      sample_info = as.data.frame( rbind(sample_info, sample_infoM) )
-      #write.table(sample_info, sampleInfoFile, sep="\t",row.names=F)
-}
-
-humanNDataset <<- length(unique(sample_info$sample_series_id[which(sample_info$species == "human")]) )
-mouseNDataset <<- length(unique(sample_info$sample_series_id[which(sample_info$species == "mouse")]) )
-
-
+# get a list of species
+orgInfo <- dbGetQuery(convert, paste("select distinct species from GSEinfo " ))
+orgInfo <- sort( orgInfo[,1] ) # convert data frame to vector, and sort
+speciesChoice <- setNames(as.list( orgInfo ), orgInfo )
 
 # Define server logic ----
-server <- function(input, output) {
-  
+server <- function(input, output, session) {
+  # populate species
+  observe({  updateSelectInput(session, "selectedSpecies", choices = speciesChoice )      })
+
   dataset.info <- reactive({
-    dataset.info <- read.table(GSEInfoFile, sep="\t",header=T )
-    dataset.info$GEO.ID = as.character(dataset.info$GEO.ID)
+    dataset.info <- dbGetQuery(convert, "select * from GSEinfo")
+    dataset.info$GSEID = as.character(dataset.info$GSEID)
     return(dataset.info)
   })
   
@@ -76,26 +56,35 @@ server <- function(input, output) {
   Search <- reactive({
     if (is.null(input$SearchData_rows_selected))   return(NULL)
 
-    withProgress(message = "Searching ...", {
-     # row selected
-    iy = which( dataset.info()$Species == input$selected.species.archs4 )
+
+     # row selected by clicking
+    iy = which( dataset.info()$Species == input$selectedSpecies )
     ix = iy[input$SearchData_rows_selected]
 
-    keyword =  dataset.info()$GEO.ID[ix]
+    GSEID =  dataset.info()$GSEID[ix]
   
-    keyword = gsub(" ","",keyword)
-    ix = which(sample_info[,4]== keyword)
+    GSEID = gsub(" ","",GSEID)
 
-    if(length(ix) == 0)
-      return(NULL)
-    else {
+ 	querySTMT <- paste( "select * from sampleInfo where sample_series_id = '",
+                         GSEID, "' AND species = '", input$selectedSpecies, "'", sep="")     
+
+	results <- dbGetQuery(convert, querySTMT)
+
+    selectedSpecies <- names(sort(table(results[,5]),decreasing=T))[1]
+
+	if( dim(results)[1] == 0  ) 
+       return(NULL)
+    else if ( grepl("ARCHS4", selectedSpecies ) ) {    # ARCHS4
     #sample ids
-    samp = sample_info[ix,1]   # c("GSM1532588", "GSM1532592" )
-    if( names(sort(table(sample_info[ix,5]),decreasing=T))[1] == "human" )
+    withProgress(message = "Parsing ARCHS4 file ...", {
+    samp = results[,1]   # c("GSM1532588", "GSM1532592" )
+    if( selectedSpecies == "ARCHS4_Human" ) {
       destination_file = destination_fileH
-    if( names(sort(table(sample_info[ix,5]),decreasing=T))[1] == "mouse" )
-      destination_file = destination_fileM
-
+      destination_file_transcript = destination_fileH_transcript
+    } else  if( selectedSpecies == "ARCHS4_Mouse" ) { 
+       destination_file = destination_fileM
+       destination_file_transcript = destination_fileM_transcript
+    }
     # Identify columns to be extracted
     samples = h5read(destination_file, "meta/Sample_geo_accession")
     sample_locations = which(samples %in% samp)
@@ -103,21 +92,71 @@ server <- function(input, output) {
     # extract gene expression from compressed data
     genes = h5read(destination_file, "meta/genes")
     expression = h5read(destination_file, "data/expression", index=list(1:length(genes), sample_locations))
-    tissue = h5read(destination_file, "meta/Sample_source_name_ch1")
-    sample_title = h5read(destination_file, "meta/Sample_title")
+    #tissue = h5read(destination_file, "meta/Sample_source_name_ch1")
+    sample_title = h5read(destination_file, "meta/Sample_title")[sample_locations]
     H5close()
-    incProgress(1/2)
+    incProgress(.2)
     rownames(expression) <-paste(" ",genes)
-    colnames(expression) <- paste( samples[sample_locations], sample_title[sample_locations], sep=" ")
+    colnames(expression) <- paste( samples[sample_locations], sample_title, sep=" ")
     expression <- expression[,order(colnames(expression))]
-    tem = sample_info[ix,c(5,1:3)]
-    tem = tem[order(tem[,4]),]
-    colnames(tem) <- c("Species", "Sample ID","Tissue","Sample Title")
-    incProgress(1)
-    if(dim(tem)[1]>50) tem = tem[1:50,]
-    return( list(info=tem, counts = expression ) )
+    incProgress(.3)
+    
+    # extract transcript level expression    
+    if( file.exists(destination_file_transcript) ) { 
+    
+    samples = h5read(destination_file_transcript, "meta/Sample_geo_accession")
+    sample_locations = which(samples %in% samp)
+    transcripts = h5read(destination_file_transcript, "meta/transcripts")
+    incProgress(.1)  
+    transcriptCounts = h5read(destination_file_transcript, "data/expression", index=list(1:length(transcripts), sample_locations))
+    rownames(transcriptCounts) <-paste(" ",transcripts)
+    colnames(transcriptCounts) <- paste( samples[sample_locations], sample_title, sep=" ")
+    transcriptCounts <- transcriptCounts[,order(colnames(transcriptCounts))]
+    } else {
+      transcriptCounts = NULL
     }
+    #sample information table
+    results = results[ ,c(4,1:3)]
+
+    results = results[order(results[,2]),]
+    colnames(results) <- c( "GEO ID","Sample ID","Tissue","Sample Title")
+    results = results[, -1] # Remove GSE number
+    incProgress(1)
+    if(dim(results)[1]>100) results = results[1:100,]
     })
+    return( list(info = results, 
+                 counts = expression, 
+                 transcriptCounts = transcriptCounts ) )
+
+    } else  {   # DEE2 data
+
+     withProgress(message = "Downloading expression data from DEE2 server ... This can take 5 minutes. ", {   
+
+     selectedSpecies <- gsub("DEE2_", "", selectedSpecies )
+     selectedSpecies <- DEE2Species[ selectedSpecies ] # species code
+     SRRlist <- results$SRR_accession
+     # download data using DEE2 API
+     data1 <- getDEE2(selectedSpecies, SRRlist )
+     incProgress(.5)
+     geneCounts <- data1$GeneCounts
+     ix = match( colnames(geneCounts), results$SRR_accession )
+     colnames(geneCounts) = paste( colnames(geneCounts),  results$sample_title[ix] )
+     
+     transcriptCounts <- data1$TxCounts
+     ix = match( colnames(transcriptCounts), results$SRR_accession )
+     colnames(transcriptCounts) = paste( colnames(transcriptCounts),  results$sample_title[ix] )
+     
+     results <- results[ , c(-4,-5)]
+     incProgress(1)
+
+    })
+     return( list(info = results, 
+                  counts = geneCounts, 
+                  transcriptCounts = transcriptCounts, 
+                  geneInfo = data1$GeneInfo, 
+                  transcriptInfo = data1$TxInfo  ) )
+    }
+
  })
   
 output$samples <- renderTable({
@@ -128,43 +167,75 @@ output$samples <- renderTable({
 
 output$downloadSearchedData <- downloadHandler(
   
-    filename = function() { paste(selectedGSEID(),".csv",sep="")},
+    filename = function() { paste(selectedGSEID(),"_gene_level.csv",sep="")},
     content = function(file) {
       write.csv( Search()$counts, file )	    }
   )
 
+output$downloadSearchedDataTranscript <- downloadHandler(
+  
+    filename = function() { paste(selectedGSEID(),"_transcript_level.csv",sep="")},
+    content = function(file) {
+      write.csv( Search()$transcriptCounts, file )	    }
+  )
+
+output$downloadSearchedDataTxInfo <- downloadHandler(
+  
+    filename = function() { paste(selectedGSEID(),"_transcript_info.csv",sep="")},
+    content = function(file) {
+      write.csv( Search()$transcriptInfo, file )	    }
+  )
+output$downloadSearchedDataGeneInfo <- downloadHandler(
+  
+    filename = function() { paste(selectedGSEID(),"_gene_info.csv",sep="")},
+    content = function(file) {
+      write.csv( Search()$geneInfo, file )	    }
+  )
 # search GSE IDs
 output$SearchData <- DT::renderDataTable({
     if( is.null( dataset.info())) return(NULL)
-  if( is.null( input$selected.species.archs4)) return(NULL) 
-	     dataset.info()[which( dataset.info()$Species == input$selected.species.archs4)    ,]
+  if( is.null( input$selectedSpecies)) return(NULL) 
+	     dataset.info()[which( dataset.info()$Species == input$selectedSpecies)    ,]
 	
   }, selection = 'single'
 	   ,options = list(  pageLength = 5 ) # only 5 rows shown
 	)
 
-output$humanNsamplesOutput <- renderText({
-  if (is.null(input$SearchData_rows_selected))   return(NULL)
-	 return(as.character(humanNDataset))
-	})
-output$mouseNsamplesOutput <- renderText({
-  if (is.null(input$SearchData_rows_selected))   return(NULL)
-	 return(as.character(mouseNDataset))
-	})
 selectedGSEID <- reactive({
   if (is.null(input$SearchData_rows_selected))   return(NULL)
   # indices for a certain species
-  iy = which( dataset.info()$Species == input$selected.species.archs4 )
+  iy = which( dataset.info()$Species == input$selectedSpecies )
   ix = iy[input$SearchData_rows_selected]
-  return(   dataset.info()$GEO.ID[ix]  )
+  return(   dataset.info()$GSEID[ix]  )
 
 })
+
 output$selectedDataset <- renderText({
   if (is.null(input$SearchData_rows_selected))   return(NULL)
-  return(  paste("Selected:",selectedGSEID() ) )
+  return( 
+    paste( selectedGSEID() ) 
+    #paste("Selected:",selectedGSEID() ) 
+    )
  
 })
+output$stats <- renderTable({
+    withProgress(message = "Parsing ARCHS4 file ...", {
+	# datasets
+	GSEs <- dbGetQuery(convert, "select  species, count(GSEID) from GSEinfo GROUP BY species" )
+    incProgress(0.3)
+	GSMs <- dbGetQuery(convert, "select  species, count(GSMs) from sampleInfo GROUP BY species" )
+    incProgress(0.3)
+	stats <- merge(GSEs, GSMs, by.x = "Species", by.y = "species")
 
+	stats$Source = stats$Species
+	stats$Source <- gsub("_.*", "", stats$Source)
+	stats$Species <- gsub(".*_", "", stats$Species)
+	stats <- stats[, c(4,1:3)]
+	colnames(stats)[3:4] <- c("#Datasets", "#Samples")
+    stats$Source[ which( duplicated(stats$Source)  )] <- ""
+    })
+    return(stats)
+  },bordered = TRUE)
 output$DoneLoading <- renderUI({
   i = "<h4>Done. Ready to search.</h4>"
 

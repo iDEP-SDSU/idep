@@ -77,7 +77,7 @@ iDEPversion,
                     '.tsv'          
                   ) 
       )
-      ,a("New! Analyze public RNA-seq data", href="http://bioinformatics.sdstate.edu/reads/")
+      ,a("New^2! Analyze public RNA-seq data for 9 model organisms", href="http://bioinformatics.sdstate.edu/reads/")
       ,fileInput('file2', h5('Optional: Upload an experiment design file(CSV or text)'),
                   accept = c(
                     'text/csv',
@@ -104,7 +104,7 @@ iDEPversion,
       ,htmlOutput('fileFormat')
       #,h3("Service will not be available starting 6:30 am (US central time) on June 21 (Friday) 
       #due to scheduled maintenance. It should take less than 45 minutes. ",  style = "color:red")
-      ,h3("We are struggling to get funding to maintain and improve iDEP. 
+      ,h3("Less than 5% users sent us an email. Statistically, that's not significant! We are really struggling to get funding to maintain and improve iDEP. 
            Please send us a brief email today to support our grant proposal, indicating  your 
           broad area of research and how iDEP helps your work. All letters count, even from graduate students in another country. Thanks!"
       ,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP letter of support"), style = "color:red")
