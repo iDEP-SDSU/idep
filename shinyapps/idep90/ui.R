@@ -77,7 +77,7 @@ iDEPversion,
                     '.tsv'          
                   ) 
       )
-      ,a("New^2! Analyze public RNA-seq data for 9 model organisms", href="http://bioinformatics.sdstate.edu/reads/")
+      ,a(h4("Analyze public RNA-seq datasets for 9 species"), href="http://bioinformatics.sdstate.edu/reads/")
       ,fileInput('file2', h5('Optional: Upload an experiment design file(CSV or text)'),
                   accept = c(
                     'text/csv',
@@ -88,9 +88,6 @@ iDEPversion,
                     '.tsv'          
                   )
       )
-
-
-
       ,tableOutput('species' )
       ,a( h5("?",align = "right"), href="https://idepsite.wordpress.com/data-format/",target="_blank")
                                                                                        # new window
@@ -100,22 +97,28 @@ iDEPversion,
     mainPanel(  
       tableOutput('sampleInfoTable')
       ,tableOutput('contents')
+      #,conditionalPanel(" input.goButton == 0 "
       ,h3("Loading R packages ... ... ...")
       ,htmlOutput('fileFormat')
       #,h3("Service will not be available starting 6:30 am (US central time) on June 21 (Friday) 
       #due to scheduled maintenance. It should take less than 45 minutes. ",  style = "color:red")
-      ,h3("Less than 5% users sent us an email. Statistically, that's not significant! We are really struggling to get funding to maintain and improve iDEP. 
+      ,h3("Less than 5% users sent us emails of support. 
+           We are struggling to get funding to maintain and improve iDEP. 
+           Reviewers said iDEP is not useful and other tools exist. 
+           iDEP is designed to help small labs make sense of transcriptomes. 
            Please send us a brief email today to support our grant proposal, indicating  your 
-          broad area of research and how iDEP helps your work. All letters count, even from graduate students in another country. Thanks!"
+          broad area of research and how iDEP helps your work. 
+          All letters count, even from graduate students in another country. Thanks!"
       ,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP letter of support"), style = "color:red")
       #,h3("We are working on a plan to improve iDEP. Any new functionality or feature you like to be added? Please "
       #,a("send us",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), "your suggestions!",style = "color:red")      
-      ,h4("New! Massively upgraded annotation database! V0.86 includes 315 organisms in Ensembl release 96, 
+      ,h4("New! Massively upgraded annotation database! V0.90 includes 315 organisms in Ensembl release 96, 
           plus all species from STRINGdb (v10):115 archaeal, 1678 bacterial, and 238 eukaryotic species ")  
       ,h5("Now published on", a("BMC Bioinformatics!",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank") )
       ,h5("Due to lack of funding, iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
+      ,h5("We are happy to help prepare your data for iDEP. Dr. Ge is also open to bioinformatics consulting during the summer.")
       ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
-
+     # ) # conditionalPanel
 
     ) # main panel
   ) #sidebarLayout
@@ -151,7 +154,7 @@ iDEPversion,
 
     ) # conditionalPanel
 
-    
+   
     # If read count data
         ,conditionalPanel("input.dataFileFormat == 1",            
           strong("Keep genes with minimal counts per million (CPM) in at least n libraries:")
@@ -1107,9 +1110,13 @@ iDEPversion,
       column(12,
         h4( a("Email us", href= "mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP", target="_top") , 
            " for questions, suggestions, or data contributions. Stay connected via ", 
-           a("user group,", href="https://groups.google.com/d/forum/idep",target="_blank"),
-           " ", a("GitHub,", href="https://github.com/iDEP-SDSU/idep", target="_blank"),
-           " or ",a("Twitter.", href="https://twitter.com/useIDEP", target="_blank") ),
+           a("user group", href="https://groups.google.com/d/forum/idep",target="_blank"),
+           " or ",a("Twitter.", href="https://twitter.com/StevenXGe", target="_blank"),
+           " Visit our ", a("GitHub", href="https://github.com/iDEP-SDSU/idep", target="_blank"), 
+           " page to see source code, install a local version, or report bugs and request features.", 
+           "iDEP is being developed by a very small team: Dr. Xijin Ge and a graduate student ",
+           a("(Homepage).", href="http://ge-lab.org/")
+           ),
         h2("R as in Reproducibility"),
         
         h5(a("Documentation site.",href="https://idepsite.wordpress.com/", target="_blank"),
@@ -1157,10 +1164,10 @@ iDEPversion,
             expression and pathway analysis of RNA-Seq data. BMC Bioinformatics 2018, 19(1):534. PMID:30567491 ",
             a(" Full text",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank"))
         ,h4("Usage Statistics")
-        ,h5("As of Feb. 8, 2019, iDEP website has been visited 16,344 times by 4,500 users from 80 countries. 
+        ,h5("As of June 5, 2019, iDEP website has been visited 30,895 times by 8,252 users from 91 countries. 
             Fully functional only in early 2018, iDEP has been used by researchers to analyze transcriptomic data 
             from sun flowers to primates to human, 
-            as demonstrated by 12 papers citing iDEP.")
+            as demonstrated by the 22 papers citing iDEP.")
        ,br()  
        ,htmlOutput('RsessionInfo')
 
