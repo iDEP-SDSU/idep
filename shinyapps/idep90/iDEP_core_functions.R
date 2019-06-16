@@ -36,8 +36,9 @@ if(length(new.packages)) install.packages(new.packages, repos="http://cran.rstud
 
 new.bio.packages <- list.of.bio.packages[!(list.of.bio.packages %in% installed.packages()[,"Package"])]
 if(length(new.bio.packages)){
-  source("https://bioconductor.org/biocLite.R")
-  biocLite(new.bio.packages, suppressUpdates = T)
+    if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+    BiocManager::install(new.bio.packages, suppressUpdates = T)
 }	
 
 # WGCNA must be installed after AnnotationDbi, impute, GO.db, preprocessCore
