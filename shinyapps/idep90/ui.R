@@ -102,12 +102,13 @@ iDEPversion,
       ,htmlOutput('fileFormat')
       #,h3("Service will not be available starting 6:30 am (US central time) on June 21 (Friday) 
       #due to scheduled maintenance. It should take less than 45 minutes. ",  style = "color:red")
+      ,h3("Thank you for all the supportive letters! Our deadline for the grant proposal is July 15th! For those who have been busy, please spend 5 minues to write us a short email. We have a lot of great ideas to make iDEP better. 谢谢大家帮忙！ ご声援に感謝します！ 감사합니다. ", style = "color:blue")
       ,h3("Less than 5% users sent us emails of support. 
            We are struggling to get funding to maintain and improve iDEP. 
            Reviewers said iDEP is not useful and other tools exist. 
            iDEP is designed to help small labs make sense of transcriptomes. 
            Please send us a brief email today to support our grant proposal, indicating  your 
-          broad area of research and how iDEP helps your work. 
+          broad area of research, how iDEP helps your work, and any suggestions for improvements. 
           All letters count, even from graduate students in another country. Thanks!"
       ,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP letter of support"), style = "color:red")
       #,h3("We are working on a plan to improve iDEP. Any new functionality or feature you like to be added? Please "
