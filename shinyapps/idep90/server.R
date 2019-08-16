@@ -3554,13 +3554,16 @@ output$readCountsBias <- renderText({
 	
 	totalCounts = colSums(readData()$rawCounts) 
 	groups = as.factor( detectGroups(colnames(readData()$rawCounts ) ) )
+
 	tem = NULL
 	# ANOVA of total read counts vs sample groups parsed by sample name
 	pval = summary( aov(totalCounts ~ groups ))[[1]][["Pr(>F)"]][1]
 
 	means = aggregate(totalCounts, by=list(groups), mean)
 	maxMinRatio = max(means[,2])/min(means[,2])
-	if(pval <0.05)
+	if(is.null(pval)) {
+	  tem <- NULL
+	} else if(pval <0.05)
 	  tem = paste("Warning! Sequencing depth bias detected. Total read counts are significantly different among sample groups (p=",
 				sprintf("%-3.2e",pval),") based on ANOVA. Total read counts max/min =",round(maxMinRatio,2))
 
