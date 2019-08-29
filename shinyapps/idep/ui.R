@@ -47,7 +47,16 @@ shinyUI(
 				HeatmapView$mainPanel()
 			) 
 		),
-
+		
+		#==========================================
+		#				k-Means
+		#==========================================
+		tabPanel("k-Means",
+			sidebarLayout(
+				KMeansView$sidebarPanel(),
+				KMeansView$mainPanel()
+			)
+		),
 		
 		#==========================================
 		#				Report
