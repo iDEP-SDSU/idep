@@ -11,12 +11,13 @@ View.Kmeans <- R6Class("View.Kmeans")
 View.Kmeans$set("public", "sidebarPanel", 
 	function(){
 		sidebarPanel(
-			self$clusterConfiguration(),
+			self$ClusterConfiguration(),
 			actionButton("btn_Kmeans_rerun", "Re-Run")
-			self$additionalPopupTriggers(),
-			self$downloadPlotSection(),
-			self$pathwayEnrichmentConfiguration(),
-			self$pathwayVisualizationAndDownload()
+			self$PopupTriggers(),
+			self$DownloadPlotSection(),
+			# a solid line as divider
+			HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />'),
+			self$PathwayEnrichment()
 		)
 	}
 )
@@ -53,7 +54,7 @@ View.Kmeans$set("public", "mainPanel",
 ###############################################################################
 
 # Configuration which will affect heatmap change
-View.Kmeans$set("public", "clusterConfiguration",
+View.Kmeans$set("public", "ClusterConfiguration",
 	function(){
 		wellPanel(
 			sliderInput(
@@ -73,7 +74,7 @@ View.Kmeans$set("public", "clusterConfiguration",
 				step  = 1 
 			),
 			selectInput(
-				"kmeansNormalization", 
+				"select_Kmeans_Normalization", 
 				h5("Normalize by gene:"), 
 				choices = list(
 					"Mean center" = "geneMean",
@@ -81,14 +82,47 @@ View.Kmeans$set("public", "clusterConfiguration",
 					"L1 Norm"	= "L1Norm"
 				),
 				selected = "Standardization"
-			)     
+			),
+			tags$style(type='text/css', "#select_Kmeans_Normalization { width:100%;   margin-top:-9px}")
 		)
 	}
 )
 
-# 
+# Buttons trigger pop out windows
+View.Kmeans$set("public", "PopupTriggers",
+	function(){
+		wellPanel(
+			actionButton("btn_Kmeans_showNumberOfClusters", "How many clusters?"),
+			actionButton("btn_Kmeans_ShowGeneSD", "Gene SD distribution"),
+			actionButton("btn_Kmeans_ShowTSNE", "t-SNE map")
+		)
+	}
+)
 
+# Download section
+View.Kmeans$set("public", "DownloadPlotSection",
+	function(){
+		downloadButton('download_Kmeans_KmeansData', 'K-means data'),
+        downloadButton('download_Kmeans_Heatmap', 'High-resolution figure')
+	}
+)
 
+# Enrichment part
+View.Kmeans$set("public", "PathwayEnrichment",
+	function(){
+		h5("Pathway database"),
+        htmlOutput("select_Kmeans_PathwayDatabase"),
+        tags$style(type='text/css', "#select_Kmeans_PathwayDatabase { width:100%;   margin-top:-9px}"),
+		checkboxInput("is_Kmeans_RemoveRedudantSets", "Remove redudant genesets", value = TRUE),
+		actionButton("btn_Kmeans_ShowEnrichmentPlot", "Visualize enrichment"),
+		downloadButton("download_Kmeans_EnrichementPlot", "Enrichment details" ),
+		a( 	
+			h5("?",align = "right"), 
+			href="https://idepsite.wordpress.com/k-means/",
+			target="_blank"
+		)
+	}
+)
 
 # Pop out windows definitions
 View.Kmeans$set("public", "PopPromoters",
