@@ -3259,59 +3259,9 @@ output$downloadPCAData <- downloadHandler(
 #   K-means
 ################################################################
   
-Kmeans <- reactive({ # Kmeans clustering
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  {  
-			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
-		}
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) { 
-			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
-		}
-	tem = input$KmeansReRun
-	####################################
-	
-	withProgress(message=sample(quotes,1), detail ="k-means clustering", {
-    x <- convertedData()
-	#x <- readData()
-	#par(mfrow=c(1,2))
-	n=input$nGenesKNN
-	if(n>maxGeneClustering) n = maxGeneClustering # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	if(n<10) n = 10 # min
-	#x1 <- x;
-	#x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	#x = 100* x[1:n,] / apply(x[1:n,],1,sum) 
-	x = x[1:n,]
-	if( input$kmeansNormalization == 'L1Norm')
-		x = 100* x / apply(x,1,function(y) sum(abs(y))) else # L1 norm
-	if( input$kmeansNormalization == 'geneMean')
-		x = x - apply(x,1,mean)  else # this is causing problem??????
-	if( input$kmeansNormalization == 'geneStandardization')	
-		x = (x - apply(x,1,mean) ) / apply(x,1,sd)
-	#colnames(x) = gsub("_.*","",colnames(x))
-	set.seed(input$KmeansReRun)
-	k=input$nClusters
-	
-
-	
-	cl = kmeans(x,k,iter.max = 50)
-	#myheatmap(cl$centers)	
- 
-   incProgress(.3, detail = paste("Heatmap..."))
-	hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
-	tem = match(cl$cluster,hc$order) #  new order 
-	x = x[order(tem),] ; 	bar = sort(tem)
-		incProgress(1, detail = paste("Done")) }) #progress 
-	#myheatmap2(x-apply(x,1,mean), bar,1000)
-	return(list( x = x, bar = bar)) 
-
-  } )
+Kmeans <- Kmeans()  #KmeanCtrl$CalcKmeansCluster
+# Kmeans()$x -> Kmeans()$SortedData
+# Kmeans()$bar -> Kmeans()$SortedIndex
   
 output$KmeansHeatmap <- renderPlot({ # Kmeans clustering
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)

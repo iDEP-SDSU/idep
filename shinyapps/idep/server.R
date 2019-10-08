@@ -320,6 +320,20 @@ shinyServer(
 		)
 
 		############################################################################
+		#   					1.3  		Heatmap
+		############################################################################
+
+        KMeans <- reactive({
+            KmeansCtrl$GetKmeansReactiveVar(input, ConvertedTransformedData())
+        })
+
+        output$Kmeans_Heatmap <- renderPlot({
+            KmeansCtrl$GetMainPlot()
+        })
+
+
+
+		############################################################################
 		#						0.0		Test R Markdown Report
 		############################################################################
 
