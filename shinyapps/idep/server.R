@@ -371,7 +371,7 @@ shinyServer(
 			KmeansCtrl$GetGeneSDHeatmap(input, ConvertedTransformedData())
 		}, height = 600, width = 800, res=120 )
 
-		output$download_Kmeans_GeneDistribution <- <- downloadHandler(
+		output$download_Kmeans_GeneDistribution <- downloadHandler(
 			filename = "gene_SD_distribution.eps",
 			content = function(file){
 				# exactly same as HeatmapCtrl$SaveGeneSDPlotEpsInTempFile
@@ -383,6 +383,12 @@ shinyServer(
 			}
 		)
 
+		output$download_Kmeans_KmeansData <- downloadHandler(
+			filename = "Kmeans.csv",
+			content = function(file) {
+				write.csv(KmeansDataWithGeneInfo(), file)
+			}
+		)	
 
 		############################################################################
 		#						0.0		Test R Markdown Report

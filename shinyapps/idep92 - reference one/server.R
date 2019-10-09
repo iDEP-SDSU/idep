@@ -3273,12 +3273,7 @@ distributionSD4Download <- reactive({} )
 output$downloadDistributionSD <- downloadHandler( ) # this is same logic as heatmap one (downloadDistributionSD1), the only difference is, this one use knnGene as gene count
 output$downloadDistributionSD1 <- downloadHandler({}) # heatmap downloader : download_Heatmap_PopShowGeneSDHeatmap
 
-output$downloadDataKmeans <- downloadHandler(
-		filename = function() {"Kmeans.csv"},
-			content = function(file) {
-      write.csv(KmeansData(), file)
-	    }
-	)	
+output$downloadDataKmeans <- downloadHandler()	#download_Kmeans_KmeansData
 	
 KmeansGOdata <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
