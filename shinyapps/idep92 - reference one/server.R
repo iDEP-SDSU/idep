@@ -3266,120 +3266,13 @@ output$tSNEgenePlot <- renderPlot({  # output$Kmeans_tSNEgenePlot
   }, height = 800, width = 800,res=120 )
 
 
-output$distributionSD <- renderPlot({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if( is.null(Kmeans()) ) return(NULL)
+output$distributionSD <- renderPlot({ }) # output$Kmeans_GeneDistribution
 
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-				
-		tem = input$colorGenes; tem = input$seedTSNE
-			tem = input$KmeansReRun
-		####################################
-		withProgress(message="Calculating SD distribution", {
-		isolate({ 
+distributionSD4Download <- reactive({} )
 
-		
-		SDs=apply(convertedData(),1,sd)
-		maxSD = mean(SDs)+ 4*sd(SDs)
-		SDs[ SDs > maxSD] = maxSD
-		
-		top = input$nGenesKNN
-		if(top > length(SDs)) top = length(SDs)
-		Cutoff=sort(SDs,decreasing=TRUE)[top] 
+output$downloadDistributionSD <- downloadHandler( ) # this is same logic as heatmap one (downloadDistributionSD1), the only difference is, this one use knnGene as gene count
+output$downloadDistributionSD1 <- downloadHandler({}) # heatmap downloader : download_Heatmap_PopShowGeneSDHeatmap
 
-		SDs = as.data.frame(SDs)
-
-		p <- ggplot(SDs, aes(x=SDs)) + 
-		  geom_density(color="darkblue", fill="lightblue") +
-		  labs(x = "Standard deviations of all genes", y="Density")+
-		  geom_vline(aes(xintercept=Cutoff),
-					color="red", linetype="dashed", size=1) +
-					annotate("text", x = Cutoff + 0.4*sd(SDs[,1]), 
-					y = 1,colour = "red", label = paste0("Top ", top))+				
-					theme(axis.text=element_text(size=14),
-						axis.title=element_text(size=16,face="bold"))
-			incProgress(1)
-		p
-		})
-	
-	})
-	
-	
-	 #progress 
-  }, height = 600, width = 800,res=120 )
-
-distributionSD4Download <- reactive({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if( is.null(Kmeans()) ) return(NULL)
-
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-				
-		tem = input$colorGenes; tem = input$seedTSNE
-			tem = input$KmeansReRun
-		####################################
-		withProgress(message="Calculating SD distribution", {
-		isolate({ 
-
-		
-		SDs=apply(convertedData(),1,sd)
-		maxSD = mean(SDs)+ 4*sd(SDs)
-		SDs[ SDs > maxSD] = maxSD
-		
-		top = input$nGenesKNN
-		if(top > length(SDs)) top = length(SDs)
-		Cutoff=sort(SDs,decreasing=TRUE)[top] 
-
-		SDs = as.data.frame(SDs)
-
-		p <- ggplot(SDs, aes(x=SDs)) + 
-		  geom_density(color="darkblue", fill="lightblue") +
-		  labs(x = "Standard deviations of all genes", y="Density")+
-		  geom_vline(aes(xintercept=Cutoff),
-					color="red", linetype="dashed", size=1) +
-					annotate("text", x = Cutoff + 0.4*sd(SDs[,1]), 
-					y = 1,colour = "red", label = paste0("Top ", top))+				
-					theme(axis.text=element_text(size=14),
-						axis.title=element_text(size=16,face="bold"))
-			incProgress(1)
-		print(p)
-		})
-	
-	})
-	
-	
-	 #progress 
-  } )
-
-output$downloadDistributionSD <- downloadHandler(
-      filename = "gene_SD_distribution.eps",
-      content = function(file) {
-	  cairo_ps(file, width = 6, height = 4)
-      distributionSD4Download()
-        dev.off()
-      })
-output$downloadDistributionSD1 <- downloadHandler(
-      filename = "gene_SD_distribution.eps",
-      content = function(file) {
-	  cairo_ps(file, width = 6, height = 4)
-      distributionSD4Download()
-      dev.off()
-      })	
 output$downloadDataKmeans <- downloadHandler(
 		filename = function() {"Kmeans.csv"},
 			content = function(file) {

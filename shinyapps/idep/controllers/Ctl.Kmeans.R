@@ -119,22 +119,34 @@ Ctl.Kmeans$set("public", "GetTSNEGenePlot",
 	}
 )
 
-# 
-Ctl.Kmeans$set("public", "GetGeneDistribution",
-	function(input, Reactive_ConvertedTransformedData){
+
+#	Generate the plot shows in popup tab: GeneSDHeatmap
+Ctl.Kmeans$set("public", "GetGeneSDHeatmap",
+	function(input, ConvertedTransformedData){
 		withProgress(message="Calculating SD distribution", {
-		isolate({ 
-			pickedGeneCount <- input$num_Kmeans_GenesKNN
-			data <- Reactive_ConvertedTransformedData
-
-			incProgress(1/3, "Calculate gene distribution and generate plot")
-
-			LogicManager$KMeans$CalculateGeneDistributionAndPlot(pickedGeneCount, data)
 			
-			incProgress(1, "Done")
+			geneCount = input$num_Kmeans_GenesKNN
+			incProgress(1/5, "Prepare Data...")
+			CutResult <- LogicManager$Heatmap$CutData_SD(geneCount, ConvertedTransformedData) ## Yes. Kmeans one use exactly same logic and code as Heatmap one
+			
+			
+			incProgress(3/5, "Generate Plot...")
+			p <- LogicManager$Heatmap$GenerateSDHeatmapPlot(CutResult$SDs, CutResult$Cutoff)
+			
+			incProgress(1)
 		})
+		return(p)
 	}
 )
+#	Download high resolution plot for GeneSDHeatmap
+Ctl.Heatmap$set("public", "SaveGeneSDPlotEpsInTempFile",
+	function(file, input, ConvertedTransformedData){
+		cairo_ps(file, width = 6, height = 4)
+		self$GetGeneSDHeatmap(input, ConvertedTransformedData)
+		dev.off()
+	}
+)
+
 
 # download eps plot of main heat map
 Ctl.Kmeans$set("public", "SaveMainHeatmapPlotEpsInTempFile",

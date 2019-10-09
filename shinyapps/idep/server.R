@@ -366,11 +366,23 @@ shinyServer(
 
 
 		output$Kmeans_GeneDistribution <- renderPlot({
-			KmeansCtrl$GetDistributionOfVariaionsAmongGenesPlot(
-				input,
-				ConvertedTransformedData()
-			)
-		}, height = 600, width = 800,res=120 )
+			# exactly same logic as HeatmapCtrl$GetGeneSDHeatmap, 
+			# only difference is, the gene count is defined by input$num_Kmeans_GenesKNN
+			KmeansCtrl$GetGeneSDHeatmap(input, ConvertedTransformedData())
+		}, height = 600, width = 800, res=120 )
+
+		output$download_Kmeans_GeneDistribution <- <- downloadHandler(
+			filename = "gene_SD_distribution.eps",
+			content = function(file){
+				# exactly same as HeatmapCtrl$SaveGeneSDPlotEpsInTempFile
+				KmeansCtrl$SaveGeneSDPlotEpsInTempFile(
+					file,
+					input,
+					ConvertedTransformedData()
+				)
+			}
+		)
+
 
 		############################################################################
 		#						0.0		Test R Markdown Report
