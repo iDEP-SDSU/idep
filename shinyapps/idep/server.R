@@ -358,8 +358,19 @@ shinyServer(
 		})
 
 		output$Kmeans_tSNEgenePlot <- renderPlot({
-			KmeansCtrl$GetTSNEGenePlot()
+			KmeansCtrl$GetTSNEGenePlot(
+				input,
+				Kmeans()
+			)
 		}, height = 800, width = 800,res=120 )
+
+
+		output$Kmeans_GeneDistribution <- renderPlot({
+			KmeansCtrl$GetDistributionOfVariaionsAmongGenesPlot(
+				input,
+				ConvertedTransformedData()
+			)
+		}, height = 600, width = 800,res=120 )
 
 		############################################################################
 		#						0.0		Test R Markdown Report

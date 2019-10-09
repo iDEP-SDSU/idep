@@ -3265,6 +3265,7 @@ KmeansData <- reactive({ })  ## KmeansDataWithGeneInfo
 output$tSNEgenePlot <- renderPlot({  # output$Kmeans_tSNEgenePlot
   }, height = 800, width = 800,res=120 )
 
+
 output$distributionSD <- renderPlot({
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 		if( is.null(Kmeans()) ) return(NULL)

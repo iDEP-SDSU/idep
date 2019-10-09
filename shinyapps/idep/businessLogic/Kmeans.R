@@ -89,3 +89,41 @@ Kmeans.Manager$set("public", "CalculateTSNEAndGeneratePlot",
 		}
 	}
 )
+
+
+Kmeans.Manager$set("public", "CalculateGeneDistributionAndPlot",
+	function(pickedGeneCount, data){
+		SDs <- apply(data,1,sd)
+		maxSD <- mean(SDs)+ 4*sd(SDs)
+		SDs[ SDs > maxSD] = maxSD
+
+		if(pickedGeneCount > length(SDs)){
+			pickedGeneCount = length(SDs)
+		}
+
+		Cutoff=sort(SDs,decreasing=TRUE)[pickedGeneCount] 
+
+		SDs = as.data.frame(SDs)
+
+		p <- ggplot(SDs, aes(x=SDs)) + 
+		  	geom_density(color="darkblue", fill="lightblue") +
+		  	labs(x = "Standard deviations of all genes", y="Density")+
+		  	geom_vline(
+				aes(xintercept=Cutoff),
+				color="red", 
+				linetype="dashed", 
+				size=1
+			) +
+			annotate("text", 
+				x = Cutoff + 0.4*sd(SDs[,1]), 
+				y = 1, 
+				colour = "red", 
+				label = paste0("Top ", pickedGeneCount)
+			) +				
+			theme(axis.text=element_text(size=14),
+				axis.title=element_text(size=16,face="bold")
+			)
+		return(p)
+	}
+)
+

@@ -73,8 +73,8 @@ Ctl.Kmeans$set("public", "GetMainHeatmapPlot",
 		}
 
 		withProgress(message="Creating heatmap", {
-			dat <- Reactive_Kmeans$SortedData
-			bar <- Reactive_Kmeans$SortedIndex
+			dat <- Reactive_Kmeans$x
+			bar <- Reactive_Kmeans$bar
 			colorOption <- input$select_Heatmap_MainPlot_HeatColor
 
 			incProgress(1/2, "Generate Plot")
@@ -95,7 +95,8 @@ Ctl.Kmeans$set("public", "GetNclusterPlot",
 	}
 )
 
-# Calling CalculateTSNEAndGeneratePlot function. 
+# GetTSNEGenePlot 
+# The actual business logic will calculate tsne and then plot the result
 Ctl.Kmeans$set("public", "GetTSNEGenePlot", 
 	function(input, Reactive_Kmeans){
 		withProgress(message="Runing t-SNE algorithm", {
@@ -118,6 +119,22 @@ Ctl.Kmeans$set("public", "GetTSNEGenePlot",
 	}
 )
 
+# 
+Ctl.Kmeans$set("public", "GetGeneDistribution",
+	function(input, Reactive_ConvertedTransformedData){
+		withProgress(message="Calculating SD distribution", {
+		isolate({ 
+			pickedGeneCount <- input$num_Kmeans_GenesKNN
+			data <- Reactive_ConvertedTransformedData
+
+			incProgress(1/3, "Calculate gene distribution and generate plot")
+
+			LogicManager$KMeans$CalculateGeneDistributionAndPlot(pickedGeneCount, data)
+			
+			incProgress(1, "Done")
+		})
+	}
+)
 
 # download eps plot of main heat map
 Ctl.Kmeans$set("public", "SaveMainHeatmapPlotEpsInTempFile",
