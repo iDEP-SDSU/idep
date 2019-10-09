@@ -323,15 +323,21 @@ shinyServer(
 		#   					1.4  		KMeans
 		############################################################################
 
-        ReactVars$KMeans <- reactive({
+
+        KMeans <- reactive({
             KmeansCtrl$GetKmeansReactiveVar(input, ConvertedTransformedData())
         })
+
+		KmeansDataWithGeneInfo <- reactive({
+			KmeansCtrl$GetKmeansWithGeneInfo(input, KMeans(), AllGeneInfo() )
+		}) 
+
 
 
 		# output$KmeansHeatmap in old version.
 		# main plot of kmeans tab
         output$Kmeans_Heatmap <- renderPlot({
-            KmeansCtrl$RenderMainHeatmapPlot(ReactVars$KMeans(), input)
+            KmeansCtrl$GetMainHeatmapPlot(input, KMeans() )
         }, width=600, height = 500)
 
         # downloadKmeansHeatmap and KmeansHeatmap4Download in old version.
@@ -342,13 +348,18 @@ shinyServer(
 				KmeansCtrl$SaveMainHeatmapPlotEpsInTempFile(
 					file,
 					input,
-					ReactVars$KMeans()
+					KMeans()
 				)
       		}
 		)
 
+		output$Kmeans_Nclusters <- renderPlot({
+			KmeansCtrl$GetNclusterPlot()
+		})
 
-
+		output$Kmeans_tSNEgenePlot <- renderPlot({
+			KmeansCtrl$GetTSNEGenePlot()
+		}, height = 800, width = 800,res=120 )
 
 		############################################################################
 		#						0.0		Test R Markdown Report

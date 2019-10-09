@@ -48,12 +48,26 @@ Ctl.Kmeans$set("public", "GetKmeansReactiveVar",
     }
 )
 
+# Calculate KmeansDataWithGeneInfo() reactive variable. 
+Ctl.Kmeans$set("public", "GetKmeansWithGeneInfo",
+	function(input, Reactive_Kmeans, Reactive_AllGeneInfo){
+		
+		x <- Reactive_Kmeans$x
+		bar <- Reactive_Kmeans$bar
+		allGeneInfo <- Reactive_AllGeneInfo
+		selectedOrg <- input$selectOrg
+
+		return(MergeGenInfoWithClusterResult( x, bar, allGeneInfo, selectedOrg))
+	}
+)
+
+
 ###############################################################################
 ###################			Result Ouput Functions			###################
 ###############################################################################
 
-Ctl.Kmeans$set("public", "RenderMainHeatmapPlot",
-	function(Reactive_Kmeans, input){
+Ctl.Kmeans$set("public", "GetMainHeatmapPlot",
+	function(input, Reactive_Kmeans){
 		if( is.null(Reactive_Kmeans) ){
 			return(NULL)
 		}
@@ -73,11 +87,43 @@ Ctl.Kmeans$set("public", "RenderMainHeatmapPlot",
 	}
 )
 
+
+## Why this function using different logic 
+Ctl.Kmeans$set("public", "GetNclusterPlot", 
+	function(input, Reactive_ConvertedTransformedData ){
+		stop('KmeansCtrl$GetNclusterPlot have not done yet. Need confirm the logic with Dr. Ge' )
+	}
+)
+
+# Calling CalculateTSNEAndGeneratePlot function. 
+Ctl.Kmeans$set("public", "GetTSNEGenePlot", 
+	function(input, Reactive_Kmeans){
+		withProgress(message="Runing t-SNE algorithm", {
+			isolate({
+				Cluster <- Reactive_Kmeans$bar
+				train <- as.data.frame( cbind(Cluster, Reactive_Kmeans$x) )
+
+				train = unique(train)
+				Cluster = train$Cluster	
+				seed <- input$btn_Kmeans_Recalculate
+				colorGenes <- input$colorGenes
+
+				incProgress(1/3, "Calculate t-SNE and generate plot")
+				
+				LogicManager$Kmeans$CalculateTSNEAndGeneratePlot( train, Cluster, seed, colorGenes )
+				
+				incProgress(1, "Done")
+			})
+		})
+	}
+)
+
+
 # download eps plot of main heat map
-Ctl.Heatmap$set("public", "SaveMainHeatmapPlotEpsInTempFile",
+Ctl.Kmeans$set("public", "SaveMainHeatmapPlotEpsInTempFile",
 	function(file, input, Reactive_Kmeans){
 		cairo_ps(file, width = 8, height = 6)
-		self$RenderMainHeatmapPlot(Reactive_Kmeans, input)
+		self$GetMainHeatmapPlot(input, Reactive_Kmeans)
 		dev.off()
 	}
 )

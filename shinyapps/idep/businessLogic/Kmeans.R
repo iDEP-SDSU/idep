@@ -47,9 +47,25 @@ Kmeans.Manager$set("public", "CalcKmeansCluster",
         x = x[order(tem),] 
         bar = sort(tem)
         
-        return(list( SortedData = x , SortedIndex = bar) )
+        return(list( x = x , bar = bar) )
     }
 )
+
+Kmeans.Manager$set("public", "MergeGenInfoWithClusterResult",
+	function(x, bar, geneInfo, selectedOrg){
+		Cluster <- toupper(letters)[bar]
+		x <- cbind(Cluster, x)
+
+		# add gene symbol
+		if( selectedOrg != "NEW") { 
+			ix <- match( rownames(x), geneInfo[,1])
+			x <- cbind(as.character( geneInfo$symbol)[ix], x) 
+		}
+
+		return(x)
+	}
+)
+
 
 Kmeans.Manager$set("public", "GetKmeansClusterHeatmapWithGeneBar",
 	function(x, bar, color){
@@ -58,3 +74,18 @@ Kmeans.Manager$set("public", "GetKmeansClusterHeatmapWithGeneBar",
 	}
 )
 
+Kmeans.Manager$set("public", "CalculateTSNEAndGeneratePlot",
+	function( train, Cluster, seed, colorGenes ){
+		library(Rtsne,verbose=FALSE)
+		set.seed(seed)
+		tsne <- Rtsne(train[,-1], dims = 2, perplexity=30, verbose=FALSE, max_iter = 400)
+		nClusters = length(unique(Cluster) )
+
+		if(colorGenes) {			
+			plot(tsne$Y[,1], tsne$Y[,2], pch = (0:(nClusters-1))[Cluster], cex = 1.,col = mycolors[Cluster], xlab="X",ylab="Y")
+			legend("topright",toupper(letters)[1:nClusters], pch = 0:(nClusters-1), col=mycolors, title="Cluster"  )
+		} else {
+			plot(tsne$Y[,1], tsne$Y[,2],  cex = 1., xlab="X",ylab="Y")
+		}
+	}
+)

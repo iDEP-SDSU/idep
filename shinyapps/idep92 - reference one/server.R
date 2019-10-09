@@ -3219,47 +3219,11 @@ Kmeans <- Kmeans()  #KmeanCtrl$CalcKmeansCluster
 # Kmeans()$x -> Kmeans()$SortedData
 # Kmeans()$bar -> Kmeans()$SortedIndex
   
-output$KmeansHeatmap <- renderPlot({ # Kmeans clustering
-	
-	if( is.null(Kmeans()) ) return(NULL)
-	
-	withProgress(message="Creating heatmap", {
-   
-	myheatmap2(Kmeans()$x-apply(Kmeans()$x,1,mean), Kmeans()$bar,1000,mycolor=input$heatColors1)
-	
-	incProgress(1, detail = paste("Done")) }) #progress 
-  }, width=600, height = 500)
+output$KmeansHeatmap <- renderPlot() #  output$Kmeans_Heatmap  
 
-KmeansHeatmap4Download <- reactive({ # Kmeans clustering
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+KmeansHeatmap4Download <- reactive({  }) # merged with KmeansHeatmap
 
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$heatColors1; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-	tem = input$KmeansReRun
-	####################################
-	
-	if( is.null(Kmeans()) ) return(NULL)
-	withProgress(message="Creating heatmap", {
-   
-	myheatmap2(Kmeans()$x-apply(Kmeans()$x,1,mean), Kmeans()$bar,1000,mycolor=input$heatColors1)
-	
-	incProgress(1, detail = paste("Done")) }) #progress 
-  })
-
-output$downloadKmeansHeatmap <- downloadHandler(
-      filename = "Kmeans_heatmap.eps",
-      content = function(file) {
-	  cairo_ps(file, width = 8, height = 12)
-	  KmeansHeatmap4Download()
-        dev.off()
-      })
+output$downloadKmeansHeatmap <- downloadHandler() #download_Kmeans_Heatmap
   
 output$KmeansNclusters <- renderPlot({ # Kmeans clustering
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -3294,80 +3258,11 @@ output$KmeansNclusters <- renderPlot({ # Kmeans clustering
 	incProgress(1, detail = paste("Done")) }) #progress 
   } , height = 500, width = 550)
   
-KmeansData <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	if( is.null(Kmeans()) ) return(NULL)
-	tem = input$KmeansReRun
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  
-    		{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) 
-    		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-	####################################
-	
-	#myheatmap2(x, bar)
-	Cluster <- toupper(letters)[Kmeans()$bar]
-	x <- cbind(Cluster,Kmeans()$x)
 
-		# add gene symbol
-	if( input$selectOrg != "NEW") 
-	{ ix <- match( rownames(x), allGeneInfo()[,1])
-	  x <- cbind(as.character( allGeneInfo()$symbol)[ix],x) }
-	return(x)
-	
-	 #progress 
-  })
+
+KmeansData <- reactive({ })  ## KmeansDataWithGeneInfo
   
-output$tSNEgenePlot <- renderPlot({
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if( is.null(Kmeans()) ) return(NULL)
-
-		##################################  
-		# these are needed to make it responsive to changes in parameters
-		tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-		if( !is.null(input$dataFileFormat) ) 
-			if(input$dataFileFormat== 1)  
-				{  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
-		if( !is.null(input$dataFileFormat) )
-			if(input$dataFileFormat== 2) 
-				{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
-				
-		tem = input$colorGenes; tem = input$seedTSNE
-			tem = input$KmeansReRun
-		####################################
-		withProgress(message="Runing t-SNE algorithm", {
-		isolate({ 
-			Cluster <- Kmeans()$bar
-			train <- as.data.frame( cbind(Cluster,Kmeans()$x) )
-
-			library(Rtsne,verbose=FALSE)
-			incProgress(1/3)
-			train = unique(train)
-			Cluster = train$Cluster	
-			set.seed(input$seedTSNE)
-			
-			## Executing the algorithm on curated data
-			tsne <- Rtsne(train[,-1], dims = 2, perplexity=30, verbose=FALSE, max_iter = 400)
-			incProgress(2/3)
-
-			nClusters = length(unique(Cluster) )
-			if(input$colorGenes) {			
-				plot(tsne$Y[,1], tsne$Y[,2], pch = (0:(nClusters-1))[Cluster], cex = 1.,col = mycolors[Cluster], xlab="X",ylab="Y")
-				legend("topright",toupper(letters)[1:nClusters], pch = 0:(nClusters-1), col=mycolors, title="Cluster"  )
-			} else
-				plot(tsne$Y[,1], tsne$Y[,2],  cex = 1., xlab="X",ylab="Y")
-
-			incProgress(1)
-		})
-	
-	})
-	
-	
-	 #progress 
+output$tSNEgenePlot <- renderPlot({  # output$Kmeans_tSNEgenePlot
   }, height = 800, width = 800,res=120 )
 
 output$distributionSD <- renderPlot({
