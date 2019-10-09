@@ -53,12 +53,34 @@ Ctl.Kmeans$set("public", "GetKmeansReactiveVar",
 ###############################################################################
 
 Ctl.Kmeans$set("public", "RenderMainHeatmapPlot",
-	function(){
+	function(Reactive_Kmeans, input){
+		if( is.null(Reactive_Kmeans) ){
+			return(NULL)
+		}
 
+		withProgress(message="Creating heatmap", {
+			dat <- Reactive_Kmeans$SortedData
+			bar <- Reactive_Kmeans$SortedIndex
+			colorOption <- input$select_Heatmap_MainPlot_HeatColor
+
+			incProgress(1/2, "Generate Plot")
+
+			LogicManager$Kmeans$GetKmeansClusterHeatmapWithGeneBar(
+				dat, bar, colorOption
+			)
+			incProgress(1, "Done")
+		})
 	}
 )
 
-
+# download eps plot of main heat map
+Ctl.Heatmap$set("public", "SaveMainHeatmapPlotEpsInTempFile",
+	function(file, input, Reactive_Kmeans){
+		cairo_ps(file, width = 8, height = 6)
+		self$RenderMainHeatmapPlot(Reactive_Kmeans, input)
+		dev.off()
+	}
+)
 
 
 

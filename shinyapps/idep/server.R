@@ -323,15 +323,32 @@ shinyServer(
 		#   					1.4  		KMeans
 		############################################################################
 
-        KMeans <- reactive({
+        ReactVars$KMeans <- reactive({
             KmeansCtrl$GetKmeansReactiveVar(input, ConvertedTransformedData())
         })
 
-        output$Kmeans_Heatmap <- renderPlot({
-            KmeansCtrl$GetMainPlot()
-        })
 
-        
+		# output$KmeansHeatmap in old version.
+		# main plot of kmeans tab
+        output$Kmeans_Heatmap <- renderPlot({
+            KmeansCtrl$RenderMainHeatmapPlot(ReactVars$KMeans(), input)
+        }, width=600, height = 500)
+
+        # downloadKmeansHeatmap and KmeansHeatmap4Download in old version.
+		# Re-use code of Kmeans_Heatmap to generate heatmap
+		output$download_Kmeans_Heatmap <- downloadHandler(
+			filename = "Kmeans_heatmap.eps",
+			content = function(file) {
+				KmeansCtrl$SaveMainHeatmapPlotEpsInTempFile(
+					file,
+					input,
+					ReactVars$KMeans()
+				)
+      		}
+		)
+
+
+
 
 		############################################################################
 		#						0.0		Test R Markdown Report

@@ -51,5 +51,10 @@ Kmeans.Manager$set("public", "CalcKmeansCluster",
     }
 )
 
-
+Kmeans.Manager$set("public", "GetKmeansClusterHeatmapWithGeneBar",
+	function(x, bar, color){
+		centered_x <- x - apply(x,1,mean)
+		return(LogicManager$Display$GetHeatmapWithGeneGroups(x, bar, 1000, mycolor = color))
+	}
+)
 
