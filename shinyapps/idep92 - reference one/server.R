@@ -3216,8 +3216,6 @@ output$downloadPCAData <- downloadHandler(
 ################################################################
   
 Kmeans <- Kmeans()  #KmeanCtrl$CalcKmeansCluster
-# Kmeans()$x -> Kmeans()$SortedData
-# Kmeans()$bar -> Kmeans()$SortedIndex
   
 output$KmeansHeatmap <- renderPlot() #  output$Kmeans_Heatmap  
 
@@ -3298,7 +3296,7 @@ KmeansGOdata <- reactive({
 	tem = input$nClusters
 	tem = input$removeRedudantSets
 	####################################
-	withProgress(message=sample(quotes,1), detail ="GO Enrichment", {
+	
 		# GO
 		pp=0
 		minFDR = 0.01
@@ -3309,6 +3307,7 @@ KmeansGOdata <- reactive({
 			query = rownames(Kmeans()$x)[which(Kmeans()$bar == i)]
 			if(input$selectOrg == "NEW" && !is.null( input$gmtFile) ){ 
 				result <- findOverlapGMT( query, GeneSets(),1) 
+                
 			} else {
 				convertedID <- converted()
 				convertedID$IDs <- query

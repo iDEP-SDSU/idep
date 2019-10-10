@@ -96,6 +96,11 @@ shinyServer(
 			PreProcessCtrl$GetAllGeneInfomation(ConvertedIDResult(), input)
 		})
 
+        GeneSet <- reactive({
+            PreProcessCtrl$GetGeneSet(input, ConvertedIDResult(), ConvertedTransformedData() )
+        })
+
+
 		# Preprocess: Plots, Tables and Downloads
 		# Main
 		output$PreProcess_ReadCount <- renderPlotly({
@@ -332,7 +337,9 @@ shinyServer(
 			KmeansCtrl$GetKmeansWithGeneInfo(input, KMeans(), AllGeneInfo() )
 		}) 
 
-
+        KmeansGOData <- reactive({
+            KmeansCtrl$GetKmeansGoData(input, Kmeans(), ConvertedIDResult(), AllGeneInfo())
+        })
 
 		# output$KmeansHeatmap in old version.
 		# main plot of kmeans tab
@@ -389,6 +396,18 @@ shinyServer(
 				write.csv(KmeansDataWithGeneInfo(), file)
 			}
 		)	
+
+		############################################################################
+		#   					1.5  		
+		############################################################################
+
+
+        ##########################
+        #           Reactive var for PCA tab
+        ##########################
+        GeneSetPCA <- reactive({
+            PreProcessCtrl$GetGeneSetPCA(input, ConvertedIDResult(), ConvertedTransformedData() )
+        })
 
 		############################################################################
 		#						0.0		Test R Markdown Report
