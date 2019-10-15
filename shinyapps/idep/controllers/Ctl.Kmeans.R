@@ -109,7 +109,24 @@ Ctl.Kmeans$set("public", "GetMainHeatmapPlot",
 ## Why this function using different logic 
 Ctl.Kmeans$set("public", "GetNclusterPlot", 
 	function(input, Reactive_ConvertedTransformedData ){
-		stop('KmeansCtrl$GetNclusterPlot have not done yet. Need confirm the logic with Dr. Ge' )
+        withProgress(message="Converting data ... ", {
+            GeneCount <- input$num_Kmeans_GenesKNN
+            NormalizationMethod <- input$select_Kmeans_Normalization
+            
+            incProgress(0.3, detail = paste("Calc Kmeans ... "))
+
+            wss_data <- LogicManager$Kmeans$CalcKmeansNCluster(
+                Reactive_ConvertedTransformedData,
+                GeneCount,
+                NormalizationMethod
+            )
+
+            incProgress(0.6, detail = paste("Generate plot ... "))
+
+            LogicManager$Kmeans$PlotWithinGroupSquareSum(wss_data)
+
+            incProgress(1, "Done")
+        }
 	}
 )
 

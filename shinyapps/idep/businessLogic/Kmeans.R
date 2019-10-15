@@ -6,13 +6,8 @@ source('server.config')
 
 Kmeans.Manager <- R6Class("Kmeans.Manager")
 
-Kmeans.Manager$set("public", "CalcKmeansCluster",
-    function( Reactive_ConvertedTransformedData, 
-        GeneCount, 
-        NormalizationMethod, 
-        RerunSeed,
-        NumberOfCluster )
-    {
+Kmeans.Manager$set("public", "PickupAndNormalizeGene",
+    function(Reactive_ConvertedTransformedData, GeneCount, NormalizationMethod){
         # Check GeneCount value
         if( GeneCount > CONST_KNN_MAX_GENE_CLUSTERING ){
             GeneCount = CONST_KNN_MAX_GENE_CLUSTERING # max
@@ -32,11 +27,25 @@ Kmeans.Manager$set("public", "CalcKmeansCluster",
 
         # normalization
         if( NormalizationMethod == 'L1Norm')
-            dat = 100* dat / apply(dat,1,function(y) sum(abs(y))) else # L1 norm
-        if( NormalizationMethod == 'geneMean')
-            dat = dat - apply(dat,1,mean)  else # this is causing problem??????
-        if( NormalizationMethod == 'geneStandardization')	
+            dat = 100* dat / apply(dat,1,function(y) sum(abs(y))) 
+        else if( NormalizationMethod == 'geneMean')
+            dat = dat - apply(dat,1,mean)  
+        else if( NormalizationMethod == 'geneStandardization')	
             dat = (dat - apply(dat,1,mean) ) / apply(dat,1,sd)
+
+        return(dat)
+    }
+)
+
+Kmeans.Manager$set("public", "CalcKmeansCluster",
+    function( Reactive_ConvertedTransformedData, 
+        GeneCount, 
+        NormalizationMethod, 
+        RerunSeed,
+        NumberOfCluster )
+    {
+
+        dat <- self$PickupAndNormalizeGene(Reactive_ConvertedTransformedData, GeneCount, NormalizationMethod)
         
         set.seed(RerunSeed)
         
@@ -50,6 +59,35 @@ Kmeans.Manager$set("public", "CalcKmeansCluster",
         return(list( x = x , bar = bar) )
     }
 )
+
+Kmeans.Manager$set("public", "CalcKmeansNCluster",
+    function(Reactive_ConvertedTransformedData, 
+        GeneCount, 
+        NormalizationMethod)
+    {
+        dat <- self$PickupAndNormalizeGene(Reactive_ConvertedTransformedData, GeneCount, NormalizationMethod)
+        
+        set.seed(2) ## need double check with Dr GE.
+
+        k = CONST_KNN_MAX_CLUSTER_NUMBER
+        wss <- (nrow(dat)-1)*sum(apply(dat,2,var))
+        for (i in 2:k){
+            wss[i] <- sum(kmeans(dat, centers = i, iter.max = CONST_KNN_ITERATION_MAX)$withinss)
+        } 
+        return(wss)
+    }
+)
+
+Kmeans.Manager$set("public", "PlotWithinGroupSquareSum",
+    function(wss){
+        par(mar=c(4,5,4,4))
+	    plot(1:CONST_KNN_MAX_CLUSTER_NUMBER, wss, type="b", xlab="Number of Clusters (k)",
+		    ylab="Within groups sum of squares",
+		    cex=2,cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	,xaxt="n"	 )
+	    axis(1, at = seq(1, 30, by = 2),cex.axis=1.5,cex=1.5)
+    }
+)
+
 
 Kmeans.Manager$set("public", "MergeGenInfoWithClusterResult",
 	function(x, bar, geneInfo, selectedOrg){

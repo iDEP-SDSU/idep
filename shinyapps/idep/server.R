@@ -361,8 +361,8 @@ shinyServer(
 		)
 
 		output$Kmeans_Nclusters <- renderPlot({
-			KmeansCtrl$GetNclusterPlot()
-		})
+			KmeansCtrl$GetNclusterPlot(input, ConvertedTransformedData()))
+		}, height = 500, width = 550)
 
 		output$Kmeans_tSNEgenePlot <- renderPlot({
 			KmeansCtrl$GetTSNEGenePlot(

@@ -3223,38 +3223,7 @@ KmeansHeatmap4Download <- reactive({  }) # merged with KmeansHeatmap
 
 output$downloadKmeansHeatmap <- downloadHandler() #download_Kmeans_Heatmap
   
-output$KmeansNclusters <- renderPlot({ # Kmeans clustering
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	withProgress(message="k-means clustering", {
-    x <- convertedData()
-	#x <- readData()
-	#par(mfrow=c(1,2))
-	n=input$nGenesKNN
-	#if(n>6000) n = 6000 # max
-	if(n>dim(x)[1]) n = dim(x)[1] # max	as data
-	if(n<10) n = 10 # min
-	x = x[1:n,]
-	if( input$kmeansNormalization == 'L1Norm')
-		x = 100* x / apply(x,1,function(y) sum(abs(y))) else # L1 norm
-	if( input$kmeansNormalization == 'geneMean')
-		x = x - apply(x,1,mean)  else # this is causing problem??????
-	if( input$kmeansNormalization == 'geneStandardization')	
-		x = (x - apply(x,1,mean) ) / apply(x,1,sd)
-	set.seed(2)
-	# determining number of clusters
-	incProgress(.3, detail = paste("Performing k-means..."))
-	
-	k = 30
-	wss <- (nrow(x)-1)*sum(apply(x,2,var))
-	  for (i in 2:k) wss[i] <- sum(kmeans(x,centers=i,iter.max = 30)$withinss)
-		par(mar=c(4,5,4,4))
-	plot(1:k, wss, type="b", xlab="Number of Clusters (k)",
-		 ylab="Within groups sum of squares",
-		 cex=2,cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	,xaxt="n"	 )
-	axis(1, at = seq(1, 30, by = 2),cex.axis=1.5,cex=1.5)
-	
-	incProgress(1, detail = paste("Done")) }) #progress 
-  } , height = 500, width = 550)
+output$KmeansNclusters <- renderPlot({})
   
 
 
@@ -3446,7 +3415,9 @@ output$KmeansPromoter <- renderTable({
 	  results1[,c(4,1:3,5)]
 	  }
 	})
-  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T
+)
+
 
 
 ################################################################
