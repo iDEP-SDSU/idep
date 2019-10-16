@@ -382,7 +382,7 @@ PreProcessing.Logic$set("public", "GetConvertID",
 		} else { # if species is selected
 			result <- result[which(result$species == selectOrg ) ,]
 			if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
-			speciesMatched <- as.data.frame(paste("Using selected species ", self$findSpeciesNameById(selectOrg) )  )
+			speciesMatched <- as.data.frame(paste("Using selected species ", LogicManager$DB$findSpeciesNameById(selectOrg) )  )
 		}
 
 
@@ -391,14 +391,14 @@ PreProcessing.Logic$set("public", "GetConvertID",
 		colnames(speciesMatched) = c("Matched Species (genes)") 
 		conversionTable <- result[,1:2]
 		colnames(conversionTable) = c("User_input","ensembl_gene_id")
-		conversionTable$Species = sapply(result[,3], self$findSpeciesNameById )
+		conversionTable$Species = sapply(result[,3], LogicManager$DB$findSpeciesNameById )
 
 
 		return(	
 			list(
 				originalIDs = querySet,
 				ensemblIDs=unique( result[,2]),			
-				species = self$findSpeciesById(result$species[1]), 
+				species = LogicManager$DB$findSpeciesById(result$species[1]), 
 				speciesMatched = speciesMatched,
 				conversionTable = conversionTable
 			)
@@ -414,7 +414,7 @@ PreProcessing.Logic$set("public", "ConvertIDAutoMatch",
 		recognized =names(sortedCounts[1])
 		result <- result[which(comb == recognized),]
 		speciesMatched=sortedCounts
-		names(speciesMatched )= sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), self$findSpeciesNameById  ) 
+		names(speciesMatched )= sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), LogicManager$DB$findSpeciesNameById  ) 
 		speciesMatched <- as.data.frame( speciesMatched )
 
 		if(length(sortedCounts) == 1) { # if only  one species matched
@@ -474,27 +474,12 @@ PreProcessing.Logic$set("public", "ApplyConvertIDToGivenData",
 )
 
 
-# find species name use id
-PreProcessing.Logic$set("public", "findSpeciesNameById",
-	function(speciesID){ 
-		orgInfo <- LogicManager$DB$OrgInfo
-  		return( orgInfo[which(orgInfo$id == speciesID),3]  )
-	}
-)
-# find species information use id
-PreProcessing.Logic$set("public", "findSpeciesById",
-	function(speciesID){ 
-		orgInfo <- LogicManager$DB$OrgInfo
-  		return( orgInfo[which(orgInfo$id == speciesID),]  )
-	}
-)
-
 # convert sorted species:idType combs into a list for repopulate species choice
 PreProcessing.Logic$set("public", "matchedSpeciesInfo",
 	function(x) {
   		a<- c()
   		for( i in 1:length(x)) {
-  		  	a = c(a,paste( gsub("genes.*","",findSpeciesNameById( as.numeric(gsub(" .*","",names(x[i])) ))), " (",
+  		  	a = c(a,paste( gsub("genes.*","",LogicManager$DB$findSpeciesNameById( as.numeric(gsub(" .*","",names(x[i])) ))), " (",
   		  	               x[i]," mapped from ",findIDtypeById( gsub(".* ","",names(x[i]) ) ),")",sep="") 
   		  	) 
 		}      
@@ -517,7 +502,7 @@ PreProcessing.Logic$set("public", "cleanGeneSet",
 PreProcessing.Logic$set("public", "GetGenesInfomationByEnsemblIDs",
 	function(ensemblIDs, species, selectOrg){
 		if(selectOrg != 'BestMatch'){
-			idxGeneInfoFile = grep(findSpeciesById(selectOrg)[1,1], geneInfoFiles )
+			idxGeneInfoFile = grep(LogicManager$DB$findSpeciesById(selectOrg)[1,1], geneInfoFiles )
 		}else{
 			idxGeneInfoFile = grep(species[1,1],CONFIG_DATA_LIST_GENEINFOFILES)
 		}

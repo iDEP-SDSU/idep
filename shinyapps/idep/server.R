@@ -68,7 +68,7 @@ shinyServer(
 
 		# PreProcess: Reactive variables
 		ReactVars$PreProcessResult <- reactive({
-			PreProcessCtrl$PreProcessResult(input, session, ReactVars)
+			ReactVarsCtrl$PreProcessResult(input, session, ReactVars)
 		})
 
 		PreprocessSampleInfoResult <- reactive({
@@ -406,7 +406,7 @@ shinyServer(
         #           Reactive var for PCA tab
         ##########################
         GeneSetPCA <- reactive({
-            PreProcessCtrl$GetGeneSetPCA(input, ConvertedIDResult(), ConvertedTransformedData() )
+            ReactVarsCtrl$GetGeneSetPCA(input, ConvertedIDResult(), ConvertedTransformedData() )
         })
 
 		############################################################################

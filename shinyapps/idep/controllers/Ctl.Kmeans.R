@@ -61,24 +61,6 @@ Ctl.Kmeans$set("public", "GetKmeansWithGeneInfo",
 	}
 )
 
-# Caculate Kmeans GO data
-Ctl.Kmeans$set("public", "GetKmeansGoData",
-    function(input, Reactive_Kmeans, Reactive_ConvertedIDResult, Reactive_AllGeneInfo){
-        stop('this function need confirm with Dr. Ge')
-        withProgress(message=sample(quotes,1), detail ="GO Enrichment", {
-
-            pp=0
-            minFDR = 0.01
-            selectedOrg <- input$selectOrg
-            gmtFile <- input$gmtFile
-            nCluster <- input$num_Kmeans_Culsters
-
-        
-
-            return(LogicManager$Kmeans$) 
-        })
-    }
-)
 
 ###############################################################################
 ###################			Result Ouput Functions			###################

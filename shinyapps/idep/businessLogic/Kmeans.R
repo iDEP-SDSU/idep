@@ -4,9 +4,9 @@ library(ggplot2,verbose=FALSE)	# graphics
 
 source('server.config')
 
-Kmeans.Manager <- R6Class("Kmeans.Manager")
+Kmeans.Logic <- R6Class("Kmeans.Logic")
 
-Kmeans.Manager$set("public", "PickupAndNormalizeGene",
+Kmeans.Logic$set("public", "PickupAndNormalizeGene",
     function(Reactive_ConvertedTransformedData, GeneCount, NormalizationMethod){
         # Check GeneCount value
         if( GeneCount > CONST_KNN_MAX_GENE_CLUSTERING ){
@@ -37,7 +37,7 @@ Kmeans.Manager$set("public", "PickupAndNormalizeGene",
     }
 )
 
-Kmeans.Manager$set("public", "CalcKmeansCluster",
+Kmeans.Logic$set("public", "CalcKmeansCluster",
     function( Reactive_ConvertedTransformedData, 
         GeneCount, 
         NormalizationMethod, 
@@ -60,7 +60,7 @@ Kmeans.Manager$set("public", "CalcKmeansCluster",
     }
 )
 
-Kmeans.Manager$set("public", "CalcKmeansNCluster",
+Kmeans.Logic$set("public", "CalcKmeansNCluster",
     function(Reactive_ConvertedTransformedData, 
         GeneCount, 
         NormalizationMethod)
@@ -78,7 +78,7 @@ Kmeans.Manager$set("public", "CalcKmeansNCluster",
     }
 )
 
-Kmeans.Manager$set("public", "PlotWithinGroupSquareSum",
+Kmeans.Logic$set("public", "PlotWithinGroupSquareSum",
     function(wss){
         par(mar=c(4,5,4,4))
 	    plot(1:CONST_KNN_MAX_CLUSTER_NUMBER, wss, type="b", xlab="Number of Clusters (k)",
@@ -89,7 +89,7 @@ Kmeans.Manager$set("public", "PlotWithinGroupSquareSum",
 )
 
 
-Kmeans.Manager$set("public", "MergeGenInfoWithClusterResult",
+Kmeans.Logic$set("public", "MergeGenInfoWithClusterResult",
 	function(x, bar, geneInfo, selectedOrg){
 		Cluster <- toupper(letters)[bar]
 		x <- cbind(Cluster, x)
@@ -105,14 +105,14 @@ Kmeans.Manager$set("public", "MergeGenInfoWithClusterResult",
 )
 
 
-Kmeans.Manager$set("public", "GetKmeansClusterHeatmapWithGeneBar",
+Kmeans.Logic$set("public", "GetKmeansClusterHeatmapWithGeneBar",
 	function(x, bar, color){
 		centered_x <- x - apply(x,1,mean)
 		return(LogicManager$Display$GetHeatmapWithGeneGroups(x, bar, 1000, mycolor = color))
 	}
 )
 
-Kmeans.Manager$set("public", "CalculateTSNEAndGeneratePlot",
+Kmeans.Logic$set("public", "CalculateTSNEAndGeneratePlot",
 	function( train, Cluster, seed, colorGenes ){
 		library(Rtsne,verbose=FALSE)
 		set.seed(seed)
@@ -129,7 +129,7 @@ Kmeans.Manager$set("public", "CalculateTSNEAndGeneratePlot",
 )
 
 
-Kmeans.Manager$set("public", "CalculateGeneDistributionAndPlot",
+Kmeans.Logic$set("public", "CalculateGeneDistributionAndPlot",
 	function(pickedGeneCount, data){
 		SDs <- apply(data,1,sd)
 		maxSD <- mean(SDs)+ 4*sd(SDs)
