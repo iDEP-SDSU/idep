@@ -67,8 +67,8 @@ View.PCA$set("public", "ConPanel_PathwaySettings",
 View.PCA$set("public", "ConPanel_NonPathwaySettings",
     function(){
         conditionalPanel("input.select_PCA_Methods != 2",
-            htmlOutput('listFactors'), ## need rename
-            htmlOutput('listFactors2') ## need rename
+            htmlOutput('div_PCA_MainPlotColorSelection'), 
+            htmlOutput('div_PCA_MainPlotShapeSelection') 
         )
     }
 )
