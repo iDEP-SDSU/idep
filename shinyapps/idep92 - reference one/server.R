@@ -3332,43 +3332,43 @@ output$listBlockFactorsDE <- renderUI({
 	
 	
 output$listModelComparisons <- renderUI({
-		tem = input$selectOrg
-		tem=input$limmaPval; tem=input$limmaFC
-		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-		if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
-		   { # if using sample names
-		   
-		   	factors = as.character ( detectGroups( colnames( readData()$data ) ) )
-			factors = unique(factors)# order is reversed
-			comparisons = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=" vs. "))
-			comparisons = c(comparisons, apply(t(combn(rev(factors),2)),1, function(x) paste(x,collapse=" vs. ")) )	
-			comparisons = sort(comparisons)
-			choices =  setNames(gsub(" vs\\. ","-",comparisons), comparisons )
-			checkboxGroupInput("selectModelComprions", 
-									  h5("Select comparisons among sample groups:"), 
-									  choices = choices,
-									  selected = choices[[1]])	
-	   
-		   }	 else { 
-				choices = list()
-				for( selectedFactors in input$selectFactorsModel) { 
-					ix = match(selectedFactors, colnames(readSampleInfo() ) )
-					if(is.na(ix) ) next;   # if column not found, skip
-					factors = unique( readSampleInfo()[,ix])
-					comparisons = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=" vs. "))
-					comparisons = c(comparisons, apply(t(combn(rev(factors),2)),1, function(x) paste(x,collapse=" vs. ")) )	
-					comparisons = sort(comparisons)
-					comparisons = paste0(selectedFactors,": ",comparisons)
-					choices = append( choices, setNames(comparisons, comparisons ))
-					
-				} # for each factor
-				if(length(choices)==0 ) return(NULL) else
-				checkboxGroupInput("selectModelComprions", 
-									  h5("2. Select one or more comparisons:"), 
-									  choices = choices,
-									  selected = choices[[1]])	   
-				} 
-	}) 
+    tem = input$selectOrg
+    tem=input$limmaPval; tem=input$limmaFC
+    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+    if (is.null(readSampleInfo()) | is.null(input$selectFactorsModel) ) # if sample info is uploaded and correctly parsed.
+        { # if using sample names
+        
+        factors = as.character ( detectGroups( colnames( readData()$data ) ) )
+        factors = unique(factors)# order is reversed
+        comparisons = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=" vs. "))
+        comparisons = c(comparisons, apply(t(combn(rev(factors),2)),1, function(x) paste(x,collapse=" vs. ")) )	
+        comparisons = sort(comparisons)
+        choices =  setNames(gsub(" vs\\. ","-",comparisons), comparisons )
+        checkboxGroupInput("selectModelComprions", 
+                                    h5("Select comparisons among sample groups:"), 
+                                    choices = choices,
+                                    selected = choices[[1]])	
+    
+        }	 else { 
+            choices = list()
+            for( selectedFactors in input$selectFactorsModel) { 
+                ix = match(selectedFactors, colnames(readSampleInfo() ) )
+                if(is.na(ix) ) next;   # if column not found, skip
+                factors = unique( readSampleInfo()[,ix])
+                comparisons = apply(t(combn(factors,2)),1, function(x) paste(x,collapse=" vs. "))
+                comparisons = c(comparisons, apply(t(combn(rev(factors),2)),1, function(x) paste(x,collapse=" vs. ")) )	
+                comparisons = sort(comparisons)
+                comparisons = paste0(selectedFactors,": ",comparisons)
+                choices = append( choices, setNames(comparisons, comparisons ))
+                
+            } # for each factor
+            if(length(choices)==0 ) return(NULL) else
+            checkboxGroupInput("selectModelComprions", 
+                                    h5("2. Select one or more comparisons:"), 
+                                    choices = choices,
+                                    selected = choices[[1]])	   
+            } 
+}) 
 
 	
 output$listInteractionTerms <- renderUI({
