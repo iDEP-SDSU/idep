@@ -8,7 +8,7 @@ list.of.packages <- c(
   "plotly",
   "e1071", "reshape2", "DT",
   "data.table", "Rcpp","WGCNA","flashClust","statmod","biclust","igraph","Rtsne",
-  "visNetwork"
+  "visNetwork", "BiocManager"
 )
 
 list.of.bio.packages  <- c(
@@ -47,8 +47,7 @@ while(notInstalledPackageCount != 0){
 
 	if(length(new.packages)) install.packages(new.packages, repos="http://cran.rstudio.com/", dependencies=TRUE, quiet=TRUE)
 	if(length(new.bio.packages)){
-	  source("https://bioconductor.org/biocLite.R")
-	  biocLite(new.bio.packages, suppressUpdates = T, quiet=TRUE)
+		BiocManager::install(new.bio.packages, ask = FALSE, dependencies=TRUE, quiet=TRUE)
 	}
 
 	new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
