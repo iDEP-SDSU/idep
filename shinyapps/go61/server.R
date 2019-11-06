@@ -18,6 +18,7 @@ maxTerms =30 # max number of enriched terms; no longer used
 PvalGeneInfo = 0.05; minGenes = 10 # min number of genes for ploting
 PvalGeneInfo1 = 0.01
 PvalGeneInfo2 = 0.001
+pdf(NULL) # this prevents error Cannot open file 'Rplots.pdf'
 ExampleGeneList=
 "Hus1 Rad1 Tp63 Tp73 Usp28 Rad9b Fanci Hus1b 
 Cdk1 Cry1 D7Ertd443e Chek1 Foxo4 Zak Pea15a 
