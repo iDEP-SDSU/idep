@@ -190,6 +190,10 @@ shinyUI(
         ,br()
         ,strong("Previous versions of ShinyGO for reproducibile research:")
         ,br()
+		,a("ShinyGO V0.60, "
+            , href="http://bioinformatics.sdstate.edu/go60/")
+		     ,"based on database derived from Ensembl BioMart version 96, archived on Nov 6, 2019"
+         ,br()
         ,a("ShinyGO V0.51, "
             , href="http://bioinformatics.sdstate.edu/go51/")
 		     ,"based on database derived from Ensembl BioMart version 95, archived on May 20, 2019"
