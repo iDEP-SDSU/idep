@@ -3,6 +3,9 @@ library(RSQLite)
 library(ggplot2)
 #library(grid)
 library(gridExtra)
+library(plotly)
+library(reshape2)
+library(visNetwork)
 
 # relative path to data files
 datapath = "../../data/data96/"   # production server
@@ -16,7 +19,7 @@ PvalGeneInfo = 0.05; minGenes = 10 # min number of genes for ploting
 PvalGeneInfo1 = 0.01
 PvalGeneInfo2 = 0.001
 ExampleGeneList=
-"Hus1 Rad1 Trp63 Trp73 Usp28 Rad9b Fanci Hus1b 
+"Hus1 Rad1 Tp63 Tp73 Usp28 Rad9b Fanci Hus1b 
 Cdk1 Cry1 D7Ertd443e Chek1 Foxo4 Zak Pea15a 
 Mapkapk2 Brca1 Taok1 Cdk5rap3 Ddx39b Mdm2 Fzr1 
 Rad17 Prkdc Cdkn1a Cdc5l Wac Thoc1 Prpf19 Rad9a
@@ -26,9 +29,45 @@ Tipin Atr Cdc14b Rfwd3 Ccar2 Foxn3 Atm Thoc5
 Rps27l Ints7 Dtl Tiprl Rbbp8 Clspn Cradd Rhno1  
 Sox4 Msh2 Xpc Rad9a Rnaseh2b Fbxo4 Syf2 Cul4a 
 Gigyf2 Mapk14 Bcat1 Fbxo31 Babam1 Cep63 Ccnd1
-Nek11 Fam175a Brsk1 Plk5 Bre Trp53 Taok2 Taok3 
+Nek11 Fam175a Brsk1 Plk5 Bre Tp53 Taok2 Taok3 
 Nek1 Mre11a Pml Ptpn11 Zfp830 
 "
+# Wrapping long text by adding \n 
+#  "Mitotic DNA damage checkpoint"  --> "Mitotic DNA damage\ncheckpoint"
+# https://stackoverflow.com/questions/7367138/text-wrap-for-plot-titles
+wrap_strings <- function( vector_of_strings, width = 30 ) { 
+  as.character( sapply( vector_of_strings, FUN=function(x) 
+  { paste(strwrap(x, width = width), collapse = "\n")}) )
+}
+
+# function to increase vertical spacing between legend keys
+# @clauswilke https://stackoverflow.com/questions/11366964/is-there-a-way-to-change-the-spacing-between-legend-items-in-ggplot2
+draw_key_polygon3 <- function(data, params, size) {
+  lwd <- min(data$size, min(size) / 4)
+
+  grid::rectGrob(
+    width = grid::unit(0.6, "npc"),
+    height = grid::unit(0.6, "npc"),
+    gp = grid::gpar(
+      col = data$colour,
+      fill = alpha(data$fill, data$alpha),
+      lty = data$linetype,
+      lwd = lwd * .pt,
+      linejoin = "mitre"
+    ))
+}
+# register new key drawing function, 
+# the effect is global & persistent throughout the R session
+GeomBar$draw_key = draw_key_polygon3
+
+# find peak values in density plots
+# for adding annotation texts
+# http://ianmadd.github.io/pages/PeakDensityDistribution.html
+densMode <- function(x){
+    td <- density(x, na.rm = TRUE)
+    maxDens <- which.max(td$y)
+    list(x=td$x[maxDens], y=td$y[maxDens])
+}
 
 cleanGeneSet <- function (x){
   # remove duplicate; upper case; remove special characters
@@ -315,12 +354,12 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
 	 colnames(groups) = c("N","High level GO category", "Genes")
 	}
 
-
   if(min(x$FDR) > minFDR) x=as.data.frame("No significant enrichment found!") else {
   x <- x[which(x$FDR < minFDR),]
   if(dim(x)[1] > as.integer(input_maxTerms) ) x = x[ 1:as.integer(input_maxTerms), ]
   x= cbind(x,sapply( x$pathwayID, sharedGenesPrefered ) )
   colnames(x)[7]= "Genes"
+  x$n <- as.numeric(x$n) # convert total genes from character to numeric 10/21/19
   x <- subset(x,select = c(FDR,overlap,n,description,Genes) )
   colnames(x) = c("Enrichment FDR", "Genes in list", "Total genes","Functional Category","Genes"  )
   }
@@ -525,8 +564,8 @@ enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue,
     }, node.size = function(x) {
         2.5 * log10(x)
     }, group = FALSE, group.color = c("green","red" ), group.shape = c("circle", 
-        "square"), legend.parameter = list("topright"), show.legend = TRUE, plotting=TRUE, layoutButton = 0,
-    ...) 
+        "square"), legend.parameter = list("topright"), show.legend = TRUE, plotting=TRUE, 
+    layoutButton = 0, ...) 
 {
 	library(igraph)
 	set.seed(layoutButton)
@@ -587,7 +626,7 @@ enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue,
     n <- min(nrow(x), n)
     x <- x[1:n, ]
     group.level <- sort(unique(group))
-    pvalues <- x[, pvalue]
+    pvalues <- log10( x[, pvalue] )
     for (i in 1:length(group.level)) {
         index <- x[, "Group"] == group.level[i]
         V(g)$shape[index] <- group.shape[i]
@@ -598,16 +637,16 @@ enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue,
                   alpha.f = 0.5)
             }
             else {
-                V(g)$color[index] <- sapply(1 - (group.pvalues - 
+                V(g)$color[index] <- sapply(1 - .9* (group.pvalues - 
                   min(group.pvalues))/(max(group.pvalues) - min(group.pvalues)), 
                   function(x) {
-                    adjustcolor(group.color[i], alpha.f = x)
+                    adjustcolor(group.color[i], alpha.f =  .1 + x ) # change range?
                   })
             }
         }
     }
 	if(plotting) { 
-		plot(g,, vertex.label.dist=0.8, ...)
+		plot(g, , vertex.label.dist = 1.2, ...)
 		if (show.legend) {
 			legend.parameter$legend <- group.level
 			legend.parameter$text.col <- group.color
@@ -617,15 +656,16 @@ enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue,
     return(g)
 }
 
-
-enrichmentNetwork <- function(enrichedTerms,layoutButton=0){
+enrichmentNetwork <- function(enrichedTerms, layoutButton=0, edge.cutoff = 5){
 	geneLists = lapply(enrichedTerms$Genes, function(x) unlist( strsplit(as.character(x)," " )   ) )
-	names(geneLists)= enrichedTerms$Pathways
+	names(geneLists) = enrichedTerms$Pathways
 	enrichedTerms$Direction = gsub(" .*","",enrichedTerms$Direction )
 
 	g <- enrich.net2(enrichedTerms, geneLists, node.id = "Pathways", numChar = 100, 
-	   pvalue = "adj.Pval", edge.cutoff = 0.2, pvalue.cutoff = 1, degree.cutoff = 0,
-	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 1, vertex.label.color = "black", show.legend=FALSE, layoutButton=layoutButton)
+	   pvalue = "adj.Pval",  pvalue.cutoff = 1, degree.cutoff = 0,
+	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 1, 
+       vertex.label.color = "black", show.legend = FALSE, 
+       layoutButton = layoutButton, edge.cutoff = edge.cutoff) 
 
 }
 
@@ -835,11 +875,12 @@ conversionTableData <- reactive({
     				  tem3 <- as.data.frame(tem$originalIDs); colnames(tem3) = "User_input"
     				  merged <- merge(merged, tem3, all=T)
     				  merged$ensembl_gene_id[which(is.na(merged$ensembl_gene_id))] <- "Not mapped"
-    				  merged <- merged[order(merged$ensembl_gene_id, decreasing =T),]
-    				  merged <- merged[order(merged$gene_biotype),]
-    				  merged <- merged[order( as.numeric(merged$chromosome_name)),]
-    				  #merged <- merged[order( merged$start_position),]
-    				  merged$start_position = merged$start_position/1e6
+                      chrName <- suppressWarnings( as.numeric( as.character(merged$chromosome_name) ))
+    				  merged <- merged[order( merged$gene_biotype,
+                                              chrName, 
+                                              merged$start_position                                                
+                                               ), ]
+    				  merged$start_position <- merged$start_position/1e6
     				  colnames(merged) <- c("User ID", "Ensembl Gene ID", "Symbol",
     				     "Gene Type", "Species", "Chr", "Position (Mbp)" )
     				  i = 1:dim(merged)[1]
@@ -875,6 +916,7 @@ output$EnrichmentTable <-renderTable({
 	  if(is.null(significantOverlaps() ) ) return(NULL)
 	  withProgress(message= sample(quotes,1),detail=myMessage, {
 	  tem <- significantOverlaps();
+      tem$x[, 3] <- as.character(tem$x[, 3]) # convert total genes into character 10/21/19
 	  incProgress(1, detail = paste("Done"))	  })
 
 	  if(dim(tem$x)[2] >1 ) tem$x[,2] <- as.character(tem$x[,2])
@@ -886,12 +928,42 @@ significantOverlaps2 <- reactive({
 
     tem <- significantOverlaps();
     if(dim(tem$x)[2] ==1 ) return(NULL)
-	tem <- tem$x;
-    colnames(tem)= c("adj.Pval","nGenesList","nGenesCategor","Pathways","Genes")
+	  tem <- tem$x;
+    colnames(tem) = c("adj.Pval","nGenesList","nGenesCategor","Pathways","Genes")
     tem$Direction ="Diff"	
     tem
 })
-	
+
+# duplicate of the above, with the word wrapping. This is for use in the network plot
+significantOverlaps3 <- reactive({
+    if (input$goButton == 0  )    return()
+
+    tem <- significantOverlaps();
+    if(dim(tem$x)[2] ==1 ) return(NULL)
+	  tem <- tem$x;
+    colnames(tem) = c("adj.Pval","nGenesList","nGenesCategor","Pathways","Genes")
+    if(input$wrapTextNetwork)
+       tem$Pathways <- wrap_strings( tem$Pathways ) # wrap long pathway names using default width of 30 10/21/19
+
+    tem$Direction ="Diff"	
+    tem
+})
+
+# duplicate of the above for word wrapping in static networkplot
+significantOverlaps4 <- reactive({
+    if (input$goButton == 0  )    return()
+
+    tem <- significantOverlaps();
+    if(dim(tem$x)[2] ==1 ) return(NULL)
+	tem <- tem$x;
+    colnames(tem) = c("adj.Pval","nGenesList","nGenesCategor","Pathways","Genes")
+    if(input$wrapTextNetworkStatic)
+       tem$Pathways <- wrap_strings( tem$Pathways ) # wrap long pathway names using default width of 30 10/21/19
+
+    tem$Direction ="Diff"	
+    tem
+})
+		
 output$GOTermsTree <- renderPlot({
     if(input$goButton == 0) return(NULL)
 
@@ -909,19 +981,120 @@ output$GOTermsTree4Download <- downloadHandler(
       })
 
 output$enrichmentNetworkPlot <- renderPlot({
-    if(is.null(significantOverlaps2())) return(NULL)
+    if(is.null(significantOverlaps4())) return(NULL)
 
-	enrichmentNetwork(significantOverlaps2(),layoutButton = input$layoutButton )
+	enrichmentNetwork(significantOverlaps4(),layoutButton = input$layoutButtonStatic, edge.cutoff = input$edgeCutoff )
 
-}, height=900)	  
- 
+}, height=900)
+
 output$enrichmentNetworkPlotDownload <- downloadHandler(
-      filename = "enrichmentPlotNetworkPathway.tiff",
-      content = function(file) {
+    filename = "enrichmentPlotNetworkPathway.tiff",
+    content = function(file) {
 	  tiff(file, width = 12, height = 12, units = 'in', res = 300, compression = 'lzw')
-	  enrichmentNetwork(significantOverlaps2(),layoutButton = input$layoutButton )
-        dev.off()
-      })	  
+	  enrichmentNetwork(significantOverlaps4(),layoutButton = input$layoutButton, edge.cutoff = input$edgeCutoff )
+    dev.off()
+})
+
+# note the same code is used twice as above. They need to be updated together!!!	  
+output$enrichmentNetworkPlotInteractive <- renderVisNetwork({
+    if(is.null(significantOverlaps3())) return(NULL)
+
+	g <- enrichmentNetwork(significantOverlaps3(),layoutButton = input$layoutButton, edge.cutoff = input$edgeCutoff )
+  data1 <- toVisNetworkData(g)
+   
+    # Color codes: https://www.rapidtables.com/web/color/RGB_Color.html
+    data1$nodes$shape <- "dot"
+    # remove the color change of nodes
+    #data1$nodes <- subset(data1$nodes, select = -color)
+ 
+    data1$nodes$size <- 5 + data1$nodes$size^2 
+    visNetwork(nodes = data1$nodes, edges = data1$edges, height = "700px", width = "700px")%>% 
+      visIgraphLayout(layout = "layout_with_fr") %>%
+      visNodes( 
+        color = list(
+          #background = "#32CD32",
+          border = "#000000",
+          highlight = "#FF8000"
+      ),
+      font = list(
+        color = "#000000",
+        size = 20
+      ),
+      borderWidth = 1,
+      shadow = list(enabled = TRUE, size = 10)
+    )  %>%
+    visEdges(
+      shadow = FALSE,
+      color = list(color = "#A9A9A9", highlight = "#FFD700")
+    ) %>% visExport(type = "jpeg", 
+                    name = "export-network", 
+                    float = "left", 
+                    label = "Export as an image (only what's visible on the screen!)", 
+                    background = "white", 
+                    style= "") 
+})	
+
+output$enrichmentNetworkPlotInteractiveDownload <- downloadHandler(
+    filename = "enrichmentPlotNetwork.html",
+    content = function(file) {
+	  #jpeg(file, width = 12, height = 12, units = 'in', res = 300, compression = 'lzw')
+    
+ 	  g <- enrichmentNetwork(significantOverlaps3(),layoutButton = input$layoutButton, edge.cutoff = input$edgeCutoff )
+    data1 <- toVisNetworkData(g)
+   
+    # Color codes: https://www.rapidtables.com/web/color/RGB_Color.html
+    data1$nodes$shape <- "dot"
+    # remove the color change of nodes
+    #data1$nodes <- subset(data1$nodes, select = -color)
+ 
+    data1$nodes$size <- 5 + data1$nodes$size^2 
+    g2 <-
+    visNetwork(nodes = data1$nodes, edges = data1$edges, height = "700px", width = "700px")%>% 
+      visIgraphLayout(layout = "layout_with_fr") %>%
+      visNodes( 
+        color = list(
+          #background = "#32CD32",
+          border = "#000000",
+          highlight = "#FF8000"
+      ),
+      font = list(
+        color = "#000000",
+        size = 20
+      ),
+      borderWidth = 1,
+      shadow = list(enabled = TRUE, size = 10)
+    )  %>%
+    visEdges(
+      shadow = FALSE,
+      color = list(color = "#A9A9A9", highlight = "#FFD700")
+    )   %>% 
+     visSave(file = file, background = "white")
+
+})
+
+output$downloadNodes <- downloadHandler(
+	  filename = function() {"network_nodes.csv"},
+		content = function(file) {
+    	g <- enrichmentNetwork(significantOverlaps3(),layoutButton = input$layoutButton, edge.cutoff = input$edgeCutoff )
+      data1 <- toVisNetworkData(g)
+      data1$nodes$shape <- "dot"
+      data1$nodes$size <- 5 + data1$nodes$size^2 
+      
+			write.csv(data1$nodes, file, row.names=FALSE)
+	    }
+  )
+output$downloadEdges <- downloadHandler(
+	  filename = function() {"network_edges.csv"},
+		content = function(file) {
+    	g <- enrichmentNetwork(significantOverlaps3(),layoutButton = input$layoutButton, edge.cutoff = input$edgeCutoff )
+      data1 <- toVisNetworkData(g)
+      data1$nodes$shape <- "dot"
+      data1$nodes$size <- 5 + data1$nodes$size^2 
+      
+			write.csv(data1$edges, file, row.names=FALSE)
+	    }
+  )   
+  
 output$downloadEnrichment <- downloadHandler(
 	  filename = function() {"enrichment.csv"},
 		content = function(file) {
@@ -1340,22 +1513,16 @@ output$genePlot <- renderPlot({
 		freq <- freq[order(    freq[,1], decreasing=T), ]
 		freq[,1] <- freq[,1] *colSums(freq)[2]/colSums(freq)[1]
 		tem = gsub("protein_coding","Coding",rownames(freq));
-		tem =gsub("processed_pseudogene","proc_pseudo",tem)
-	    tem =gsub("processed","proc",tem); #row.names(freq)= tem
+		tem =gsub("pseudogene","pseudo",tem)
+	    tem =gsub("processed","proc",tem); 
+        row.names(freq)= tem
 		par(mar=c(20,6,4.1,2.1))
 		freq = freq[,c(2,1)] # reverse order
 		head(freq)
 		
-        barplot(t(freq), beside=TRUE,las=2,col=c("red","lightgrey"), ylab="Number of Genes",
-	      main= sig,cex.lab=1.5, cex.axis= 1.5,cex.names=1.5, cex.main=1.5)
-
+        barplot(t(freq), beside=TRUE, las=2, col=c("red","lightgrey"), ylab="Number of Genes",
+	      main= sig, cex.lab=1.2, cex.axis= 1.2,cex.names=1.2, cex.main=1.2)
 	    legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n", cex=2)
-		if(0) { 
-        plt = barplot(t(freq), beside=TRUE,las=2,col=c("red","lightgrey"), ylab="Number of Genes",
-	      main= sig,cex.lab=1.5, cex.axis= 2, cex.names=1.5, cex.main=1.5, str=45, adj=1, xpd=TRUE,xaxt="n" )
-		text( plt,par("usr")[3], labels = rownames(freq), srt = 45, adj=c(1.1,1.1), xpd=TRUE ,cex = 1.5  )
-		}
-
 
 		}
 		}
@@ -1407,7 +1574,6 @@ output$genePlot <- renderPlot({
 	 }) #isolate
     }, width=600,height = 1500)
 	
-	
 # density plots using ggplot2	
 output$genePlot2 <- renderPlot({
 	   if (input$goButton == 0  )    return()
@@ -1422,21 +1588,29 @@ output$genePlot2 <- renderPlot({
 	   # par(mar=c(8,6,8,2))
 	   
 	  # increase fonts
-	  theme_set(theme_gray(base_size = 25)) 
+	  theme_set(theme_gray(base_size = 20)) 
 	   
       #Coding Sequence length 
-	  if( sum(!is.na( x2$cds_length) ) >= minGenes && length(unique(x2$cds_length) ) > 2 && length(which(x2$Set == "List") ) > minGenes) {
+	  if( sum(!is.na( x2$cds_length) ) >= minGenes && length(unique(x2$cds_length) ) > 2 
+          && length(which(x2$Set == "List") ) > minGenes) {
 	   Pval = t.test(log(cds_length)~Set, data=x2 )$p.value
 	   sig = paste("P = ",formatC(Pval, digits=2, format="G"),sep="")
 	   if( Pval <PvalGeneInfo2)  sig = paste(sig," ***" ) else 
 			if( Pval <PvalGeneInfo1)  sig = paste(sig," **" ) else 
 			if( Pval <PvalGeneInfo)  sig = paste(sig," *" )  			
-			
+
+
+
 	   p1 <- ggplot(x2, aes(cds_length, fill= Set, colour = Set) )+
 			geom_density(alpha = 0.1) + 
 			scale_x_log10() +
-			labs(x = "Coding sequence length (bp)") +
-			annotate("text",x= min(x2$cds_length)+50, y = .5, label=sig, size=8)				
+			labs(x = "Coding sequence length (bp)", y = "Density") +
+			annotate("text",x= min(x2$cds_length)+50, y = .5, label=sig, size=8) +
+            #annotate("text",x= max(x2$cds_length), y = densMode(x2$cds_length)$y, label=sig, size=8, hjust=1) +
+            guides(color = guide_legend(nrow = 2)) +
+            theme(legend.key = element_rect(color = NA, fill = NA), 
+                  legend.key.size = unit(1.2, "line")) + 
+            theme(plot.margin = unit(c(0,0,1,0), "cm"))
        }
 
 	   	   incProgress(1/8)
@@ -1454,8 +1628,13 @@ output$genePlot2 <- renderPlot({
 			p2 <- ggplot(x2, aes(transcript_length, fill= Set, colour = Set) )+
 				geom_density(alpha = 0.1) + 
 				scale_x_log10() +
-				annotate("text",x= min(x2$cds_length)+100, y = .5, label=sig, size=8)+	
-				labs(x = "Transcript length (bp)")		   
+				annotate("text",x= min(x2$transcript_length)+100, y = .5, label=sig, size=8)+	
+                #annotate("text",x= max(x2$transcript_length), y = densMode(x2$transcript_length)$y, label=sig, size=8, hjust=1) +
+				labs(x = "Transcript length (bp)", y = "Density") +
+                guides(color = guide_legend(nrow = 2)) +
+                theme(legend.key = element_rect(color = NA, fill = NA), 
+                      legend.key.size = unit(1.2, "line")) + 
+                theme(plot.margin = unit(c(0,0,1,0), "cm"))		   
 		  }
 	   	   incProgress(1/8)
 		   
@@ -1471,7 +1650,12 @@ output$genePlot2 <- renderPlot({
 			geom_density(alpha = 0.1) + 
 			scale_x_log10() +
 			annotate("text",x=  min(x2$genomeSpan)+200, y = .5, label=sig, size=8)+	
-			labs(x = "Genome span (bp)")		   
+            #annotate("text",x= max(x2$genomeSpan), y = densMode(x2$genomeSpan)$y, label=sig, size=8, hjust=1) +
+			labs(x = "Genome span (bp)", y = "Density") +
+            guides(color = guide_legend(nrow = 2)) +
+            theme(legend.key = element_rect(color = NA, fill = NA), 
+                  legend.key.size = unit(1.2, "line")) + 
+            theme(plot.margin = unit(c(0,0,1,0), "cm"))			   
 	   }			  
 
 	   incProgress(1/8)
@@ -1490,7 +1674,12 @@ output$genePlot2 <- renderPlot({
 			scale_x_log10() +
 			annotate("text",x= min(x2[ which(!is.na(x2$FiveUTR) &x2$FiveUTR > 0 ),'FiveUTR'])+5, 
 				y = .5, label=sig, size=8)+	
-			labs(x = "5' UTR length(bp)")
+            #annotate("text",x= max(x2$FiveUTR), y = densMode(x2$FiveUTR)$y, label=sig, size=8, hjust=1) +
+			labs(x = "5' UTR length (bp)", y = "Density")  +
+            guides(color = guide_legend(nrow = 2)) +
+            theme(legend.key = element_rect(color = NA, fill = NA), 
+                  legend.key.size = unit(1.2, "line")) + 
+            theme(plot.margin = unit(c(0,0,1,0), "cm"))	
 	}	
 
 	    incProgress(1/8)
@@ -1507,7 +1696,12 @@ output$genePlot2 <- renderPlot({
 			geom_density(alpha = 0.1) + 
 			scale_x_log10() +
 			annotate("text",x= min(x2[ which(!is.na(x2$ThreeUTR) &x2$ThreeUTR > 0 ),'ThreeUTR'])+5, y = .5, label=sig, size=8)+	
-			labs(x = "3' UTR length(bp)")
+            #annotate("text",x= max(x2$ThreeUTR), y = densMode(x2$ThreeUTR)$y, label=sig, size=8, hjust=1) +
+			labs(x = "3' UTR length (bp)", y = "Density")  +
+            guides(color = guide_legend(nrow = 2)) +
+            theme(legend.key = element_rect(color = NA, fill = NA), 
+                  legend.key.size = unit(1.2, "line")) + 
+            theme(plot.margin = unit(c(0,0,1,0), "cm"))	
 	  }	
 	   incProgress(1/8)
 		   
@@ -1524,8 +1718,13 @@ output$genePlot2 <- renderPlot({
 
 			p6 <- ggplot(x2, aes(percentage_gc_content, fill= Set, colour = Set) )+
 				geom_density(alpha = 0.1) + 
-				annotate("text",x= min(x2$percentage_gc_content)+5, y = .02, label=sig, size=8)+	
-				labs(x = "GC content (%)")		   
+				#annotate("text",x= min(x2$percentage_gc_content)+5, y = .02, label=sig, size=8)+	
+                annotate("text",x= max(x2$percentage_gc_content), y = densMode(x2$percentage_gc_content)$y, label=sig, size=8, hjust=1) +
+				labs(x = "GC content (%)", y = "Density")  +
+                guides(color = guide_legend(nrow = 2)) +
+                theme(legend.key = element_rect(color = NA, fill = NA), 
+                      legend.key.size = unit(1.2, "line")) + 
+                theme(plot.margin = unit(c(0,0,1,0), "cm"))		   
 	   }		  
 		  
 	   incProgress(1/8)	
@@ -1890,7 +2089,7 @@ my.keggview.native <- function (plot.data.gene = NULL, plot.data.cpd = NULL, col
     both.dirs = list(gene = T, cpd = T), low = list(gene = "green", 
         cpd = "blue"), mid = list(gene = "gray", cpd = "gray"), 
     high = list(gene = "red", cpd = "yellow"), na.col = "transparent", 
-    new.signature = TRUE, plot.col.key = TRUE, key.align = "x", 
+    new.signature = TRUE, plot.col.key = FALSE, key.align = "x", 
     key.pos = "topright", ...) 
 {
     img <- readPNG(paste(kegg.dir, "/", pathway.name, ".png", 
