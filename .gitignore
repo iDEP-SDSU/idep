@@ -16,7 +16,6 @@ plumber_*.tar.gz
 .old_impl
 .data_go
 *.job
-google_analytics.js
 *.Rproj
 .shinyapps/idep/data
 shinyapps/ExtractData/data
