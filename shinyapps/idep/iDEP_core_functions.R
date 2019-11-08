@@ -9,49 +9,57 @@
 ################################################################
 # Install packages
 ################################################################
+################################################################
+list.of.packages <- c(
+  "shiny", "shinyAce", "shinyBS", "plotly",
+  "RSQLite", "gplots", 
+  "ggplot2", "dplyr", #"tidyverse",
+  "plotly",
+  "e1071", "reshape2", "DT",
+  "data.table", "Rcpp","WGCNA","flashClust","statmod","biclust","igraph","Rtsne",
+  "visNetwork", "BiocManager"
+)
 
-# dplyr complains this required libraries: libudunits2-dev, libmariadb-client-lgpl-dev
-# install.packages("plotly", repos="http://cran.rstudio.com/", dependencies=TRUE)
-# sometimes need to remove all installed packages: https://www.r-bloggers.com/how-to-remove-all-user-installed-packages-in-r/ 
-#cat("\n Installing lots of R packages, this may take several hours ... \n
-#   Each of these packages took years to develop.\n So be a patient thief.\n
-#   \n Note 1: Sometimes dependencies needs to be installed manually. 
-#   \n Note 2: If you are using an older version of R, and having trouble with package installation,
-#   \n         sometimes, it is easier to install the new version of R and delete all old packages, and start fresh. 
-#  ")
+list.of.bio.packages  <- c(
+  "limma", "DESeq2", "edgeR", "gage", "PGSEA", "fgsea", 
+  #"ReactomePA", 
+  "pathview", "PREDA",
+  "impute", "runibic","QUBIC","rhdf5", "STRINGdb",
+  "PREDAsampledata", "sfsmisc", "lokern", "multtest", "hgu133plus2.db"
+)
 
-list.of.packages <- c("dendextend", "htmlwidgets","RSQLite", 
-	"gplots", "ggplot2", "dplyr", "tidyverse","plotly","e1071", 
-	"reshape2",  "Rcpp","flashClust","statmod",
-	"biclust","igraph","Rtsne")
-
-list.of.bio.packages  <- c("STRINGdb", "limma", "DESeq2", "edgeR", "gage", 
-	"PGSEA", "fgsea", "ReactomePA", "pathview", "PREDA", "impute", "runibic",
-	"QUBIC","rhdf5", "PREDAsampledata", "sfsmisc", "lokern", "multtest", 
-	"GSEABase","hgu133plus2.db")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+new.bio.packages <- list.of.bio.packages[!(list.of.bio.packages %in% installed.packages()[,"Package"])]
+notInstalledPackageCount = length(new.packages) + length(new.bio.packages)
 
 #Install Require packages
-new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) install.packages(new.packages, repos="http://cran.rstudio.com/", dependencies=TRUE)
+while(notInstalledPackageCount != 0){
+  
+  if(length(new.packages)) install.packages(new.packages, repos="http://cran.rstudio.com/", dependencies=TRUE, quiet=TRUE)
+  if(length(new.bio.packages)){
+    BiocManager::install(new.bio.packages, ask = FALSE, dependencies=TRUE, quiet=TRUE)
+  }
+  
+  new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+  new.bio.packages <- list.of.bio.packages[!(list.of.bio.packages %in% installed.packages()[,"Package"])]
+  if( notInstalledPackageCount == length(new.packages) + length(new.bio.packages) )
+  {
+    #no new package installed.
+    break
+  }
+  else {
+    notInstalledPackageCount = length(new.packages) + length(new.bio.packages)
+  }
+}
 
-new.bio.packages <- list.of.bio.packages[!(list.of.bio.packages %in% installed.packages()[,"Package"])]
-if(length(new.bio.packages)){
-  source("https://bioconductor.org/biocLite.R")
-  biocLite(new.bio.packages, suppressUpdates = T)
-}	
+#Load Packages
+suc = unlist ( lapply(list.of.packages, require, character.only = TRUE) )
+if(sum(suc) < length(list.of.packages) )
+  cat ("\n\nWarnning!!!!!! These R packages cannot be loaded:", list.of.packages[!suc] )
 
-# WGCNA must be installed after AnnotationDbi, impute, GO.db, preprocessCore
-# install.packages(c("WGCNA"))
-
-#Test Load Packages    This cause an error when too many packages are loaded.
-# suc = unlist ( lapply(list.of.packages, require, character.only = TRUE) )
-# if(sum(suc) < length(list.of.packages) )
-# 	cat ("\n\nWarnning!!!!!! These R packages cannot be loaded:", list.of.packages[!suc] )
-
-# suc = unlist ( lapply(list.of.bio.packages, require, character.only = TRUE) )
-# if(sum(suc) < length(list.of.bio.packages) )
-#	cat ("\n\nWarnning!!!!!! These Bioconductor packages cannot be loaded:", list.of.bio.packages[!suc] )
-
+suc = unlist ( lapply(list.of.bio.packages, require, character.only = TRUE) )
+if(sum(suc) < length(list.of.bio.packages) )
+  cat ("\n\nWarnning!!!!!! These Bioconductor packages cannot be loaded:", list.of.bio.packages[!suc] )
 
 ################################################################
 # Global variables
