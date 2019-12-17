@@ -50,8 +50,8 @@ iDEPversion,
                     '.csv',
                     '.tsv'          
                   ) 
-      )
-      ,a("New! Analyze public RNA-seq data", href="http://bioinformatics.sdstate.edu/reads/")
+      ),
+      a("New! Analyze public RNA-seq data", href="http://bioinformatics.sdstate.edu/reads/")
       ,fileInput('file2', h5('Optional: Upload an experiment design file(CSV or text)'),
                   accept = c(
                     'text/csv',
@@ -61,10 +61,11 @@ iDEPversion,
                     '.csv',
                     '.tsv'          
                   )
-      )
+      ),
+      actionButton("btnStartExpDesign", "Experiment Design"),
 
-      ,strong("3. Verify guessed species. Change if neccessary.")
-      ,selectInput("selectOrg", label = NULL,"Best matching species",width='100%') 
+      h5(strong("3. Verify guessed species. Change if neccessary.")),
+      selectInput("selectOrg", label = NULL,"Best matching species",width='100%') 
         
       ,conditionalPanel("input.selectOrg == 'NEW'",
         fileInput('gmtFile', 'Upload a geneset .GMT file for enrichment analysis (optional)',
@@ -137,7 +138,21 @@ iDEPversion,
         ,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions")
       ) #h5
       ,h3("Loading R packages ... ...")
-      ,htmlOutput('fileFormat')
+      ,htmlOutput('fileFormat'),
+      bsModal(
+          "popDesignFileGenerater",
+          "Generate Design File",
+          "btnStartExpDesign",
+          size = "large",
+          fluidPage(
+            textOutput('txtSampleCount'),
+            actionButton('btnUseThisDesign', 'Use this design file'),
+            downloadButton('downloadDesignFile', 'Generate and download design file'),
+            textInput('txtVariables', 'Controlled variables: '),
+            uiOutput('uiVarValue'),
+            uiOutput('uiSamples')
+          )
+        )
     ) # main panel
   ) #sidebarLayout
 ) #tabPanel

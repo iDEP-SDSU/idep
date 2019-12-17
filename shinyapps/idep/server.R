@@ -2639,6 +2639,7 @@ readData <- reactive ({
 	})
 
 readSampleInfo <- reactive ({
+    if(!is.null(testDesignDataFromDesignGenerater())){ return(testDesignDataFromDesignGenerater())}
 		if( is.null(input$file2) && !is.null( readData()$sampleInfoDemo ) ) return( readData()$sampleInfoDemo   )
 		inFile <- input$file2
 		inFile <- inFile$datapath
@@ -2754,6 +2755,104 @@ output$fileFormat <- renderUI({
 		
 		HTML(paste(i, collapse='<br/>') )
 	})
+
+output$txtSampleCount <- renderText({
+    if(is.null(readData())){
+        return('Please upload expression data first.')
+    }else{
+        sampleC <- ncol(readData()$rawCounts)
+        return(paste0(c('There are ', toString(sampleC), ' samples in your expression data. Please tell us your factors(Genotype, Treatment) and their values(Wildtype/Mutant, Treat/NonTreat). ')))
+    }
+})
+
+
+  DesignGenerator.vars <- reactive({
+    varStr <- input$txtVariables
+    pattern <- '[[:alnum:]]+'
+    vars <- stringr::str_extract_all(varStr, pattern, simplify = T)[1,]
+    return(vars)
+  })
+  
+  output$uiVarValue <- renderUI({
+    print(DesignGenerator.vars())
+    if(is.null(DesignGenerator.vars()) || length(DesignGenerator.vars()) == 0){
+      return(NULL)
+    }
+    
+    varUILayout <- function(var){ 
+      textInput(paste0('txtVarValue_',var), paste0('Possible Values of ',var))
+    }
+    
+    lapply(1:length(DesignGenerator.vars()), function(i){varUILayout(DesignGenerator.vars()[i])})
+  })
+  
+  output$uiSamples <- renderUI({
+    if(is.null(DesignGenerator.vars()) || length(DesignGenerator.vars()) == 0){
+      return(NULL)
+    }
+    
+    
+    getChoices <- function(var_j){
+      var <- DesignGenerator.vars()[var_j]
+      choicesStr <- input[[paste0('txtVarValue_',var)]]
+      pattern <- '[[:alnum:]]+'
+      choices <- stringr::str_extract_all(choicesStr, pattern, simplify = T)[1,]
+      return(choices)
+    }
+    
+    sampleUISelectionCellLayout <- function(sample_i, var_j){
+      var_choices <- getChoices(var_j)
+      column( 2,
+              selectInput(
+                paste0('select_', sample_i, '_', var_j),
+                label = NULL,
+                choices = var_choices,
+                selected = var_choices[1]
+              )
+        
+      )
+    }
+    
+    sampleUIRowLayout <- function(sample_i){
+      fluidRow(
+        column(3, renderText(colnames(readData()$rawCounts)[sample_i])),
+        lapply(
+          1:length(DesignGenerator.vars()), 
+          function(j){ sampleUISelectionCellLayout(sample_i, j) }
+        )
+      )
+    }
+    
+    lapply(1:ncol(readData()$rawCounts), function(i){sampleUIRowLayout(i)})
+  })
+  
+  
+  testDesignDataFromDesignGenerater <- reactiveVal(NULL)
+  
+  observeEvent(input$btnUseThisDesign,{
+      tb <- NULL
+    for(i in 1:ncol(readData()$rawCounts)){
+      tb <- cbind(tb, sapply(1:length(DesignGenerator.vars()), function(j){input[[paste0('select_', i, '_', j)]]}  ))
+    }
+    rownames(tb) <- DesignGenerator.vars()
+    colnames(tb) <- colnames(readData()$rawCounts)
+    tb <- t(tb)
+    testDesignDataFromDesignGenerater(tb)
+  })
+
+output$downloadDesignFile <- downloadHandler(
+     filename = "experiment design.csv",
+      content = function(file) {
+                tb <- NULL
+            for(i in 1:ncol(readData()$rawCounts)){
+            tb <- cbind(tb, sapply(1:length(DesignGenerator.vars()), function(j){input[[paste0('select_', i, '_', j)]]}  ))
+            }
+            rownames(tb) <- DesignGenerator.vars()
+            colnames(tb) <- colnames(readData()$rawCounts)
+            
+            write.csv(tb, file, quote=FALSE)
+      }
+)   
 
 converted <- reactive({
 		if (is.null(input$file1) && input$goButton == 0)    return(NULL)
