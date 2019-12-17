@@ -2639,7 +2639,7 @@ readData <- reactive ({
 	})
 
 readSampleInfo <- reactive ({
-    if(!is.null(testDesignDataFromDesignGenerater())){ return(testDesignDataFromDesignGenerater())}
+    if(!is.null(testDesignDataFromDesignGenerater()) && input$selectDesignSource == 'generate'){ return(testDesignDataFromDesignGenerater())}
 		if( is.null(input$file2) && !is.null( readData()$sampleInfoDemo ) ) return( readData()$sampleInfoDemo   )
 		inFile <- input$file2
 		inFile <- inFile$datapath
@@ -2761,7 +2761,7 @@ output$txtSampleCount <- renderText({
         return('Please upload expression data first.')
     }else{
         sampleC <- ncol(readData()$rawCounts)
-        return(paste0(c('There are ', toString(sampleC), ' samples in your expression data. Please tell us your factors(Genotype, Treatment) and their values(Wildtype/Mutant, Treat/NonTreat). ')))
+        return(paste0(c('There are ', toString(sampleC), ' samples in your expression data. You can: Upload an experiment design file or Generate a design file now.')))
     }
 })
 
@@ -2828,17 +2828,6 @@ output$txtSampleCount <- renderText({
   
   
   testDesignDataFromDesignGenerater <- reactiveVal(NULL)
-  
-  observeEvent(input$btnUseThisDesign,{
-      tb <- NULL
-    for(i in 1:ncol(readData()$rawCounts)){
-      tb <- cbind(tb, sapply(1:length(DesignGenerator.vars()), function(j){input[[paste0('select_', i, '_', j)]]}  ))
-    }
-    rownames(tb) <- DesignGenerator.vars()
-    colnames(tb) <- colnames(readData()$rawCounts)
-    tb <- t(tb)
-    testDesignDataFromDesignGenerater(tb)
-  })
 
 output$downloadDesignFile <- downloadHandler(
      filename = "experiment design.csv",
@@ -2849,10 +2838,15 @@ output$downloadDesignFile <- downloadHandler(
             }
             rownames(tb) <- DesignGenerator.vars()
             colnames(tb) <- colnames(readData()$rawCounts)
-            
+            testDesignDataFromDesignGenerater(t(tb))
             write.csv(tb, file, quote=FALSE)
       }
 )   
+
+output$file1IsUploaded <- reactive({
+    return(!is.null(readData()))
+})
+outputOptions(output, 'file1IsUploaded', suspendWhenHidden=FALSE)
 
 converted <- reactive({
 		if (is.null(input$file1) && input$goButton == 0)    return(NULL)
