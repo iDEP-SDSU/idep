@@ -51,7 +51,17 @@ iDEPversion,
                     '.tsv'          
                   ) 
       ),
-      a("New! Analyze public RNA-seq data", href="http://bioinformatics.sdstate.edu/reads/"),
+      a("New! Analyze public RNA-seq data", href="http://bioinformatics.sdstate.edu/reads/")
+      ,fileInput('file2', h5('Optional: Upload an experiment design file(CSV or text)'),
+                  accept = c(
+                    'text/csv',
+                    'text/comma-separated-values',
+                    'text/tab-separated-values',
+                    'text/plain',
+                    '.csv',
+                    '.tsv'          
+                  )
+      ),
       actionButton("btnStartExpDesign", "Experiment Design"),
 
       h5(strong("3. Verify guessed species. Change if neccessary.")),
@@ -130,46 +140,17 @@ iDEPversion,
       ,h3("Loading R packages ... ...")
       ,htmlOutput('fileFormat'),
       bsModal(
-          "popDesignFile",
+          "popDesignFileGenerater",
           "Generate Design File",
           "btnStartExpDesign",
           size = "large",
           fluidPage(
             textOutput('txtSampleCount'),
-            conditionalPanel(
-                condition = 'output.file1IsUploaded',
-                radioButtons(
-                'selectDesignSource', 
-                '',
-                c(
-                    'Upload an experiment design' = 'upload',
-                    'Generate a design file' = 'generate'
-                )
-            ),
-            conditionalPanel(
-                condition = 'input.selectDesignSource == "upload"',
-                fileInput('file2', h5('Optional: Upload an experiment design file(CSV or text)'),
-                  accept = c(
-                    'text/csv',
-                    'text/comma-separated-values',
-                    'text/tab-separated-values',
-                    'text/plain',
-                    '.csv',
-                    '.tsv'          
-                  )
-                ),
-            ),
-            conditionalPanel(
-                condition = 'input.selectDesignSource == "generate"',
-                h5('Please tell us your factors(Genotype, Treatment) and their values(Wildtype/Mutant, Treat/NonTreat). '),
-                textInput('txtVariables', 'Controlled variables: '),
-                uiOutput('uiVarValue'),
-                uiOutput('uiSamples'),
-                downloadButton('downloadDesignFile', 'Generate, use and download design file')
-            )
-
-            )            
-            
+            actionButton('btnUseThisDesign', 'Use this design file'),
+            downloadButton('downloadDesignFile', 'Generate and download design file'),
+            textInput('txtVariables', 'Controlled variables: '),
+            uiOutput('uiVarValue'),
+            uiOutput('uiSamples')
           )
         )
     ) # main panel
