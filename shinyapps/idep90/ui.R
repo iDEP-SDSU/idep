@@ -100,8 +100,8 @@ iDEPversion,
       #,conditionalPanel(" input.goButton == 0 "
       ,h3("Loading R packages ... ... ...")
       ,htmlOutput('fileFormat')
-      ,br(),br(),h3("Service will not be available from 8am (US central time) on December 18 (Wednesday), 2019  
-      due to scheduled maintenance. It should take about 3 hours. ",  style = "color:red"),br(),br()
+      #,br(),br(),h3("Service will not be available from 8am (US central time) on December 18 (Wednesday), 2019  
+      # due to scheduled maintenance. It should take about 3 hours. ",  style = "color:red"),br(),br()
       #,h3("Send your letters before July 12th so we can include them in our proposal!  谢谢大家帮忙！ ご声援に感謝します！ 감사합니다. ", style = "color:blue")
      # ,h3("Less than 5% users sent us emails of support. 
      #     We are struggling to get funding to maintain and improve iDEP. 
