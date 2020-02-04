@@ -2661,6 +2661,12 @@ readData <- reactive ({
 					
 					
 				dataSize = dim(x);
+
+                # this updates sample sizes for scatter plot in the pre-process tab
+                sampleChoice <- setNames(as.list( 1:( dim(x)[2] ) ), colnames( x ) )
+                observe({  updateSelectInput(session, "scatterX", choices = sampleChoice, selected = sampleChoice[1]) })
+                observe({  updateSelectInput(session, "scatterY", choices = sampleChoice, selected = sampleChoice[2]) })
+
 				validate( need(dim(x)[1]>5 & dim(x)[2]>=1 , 
 					"Data file not recognized. Please double check."))
 
@@ -3047,6 +3053,7 @@ output$EDA <- renderPlot({
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2 }
+    sample1 <- as.integer( input$scatterX); sample2 <- as.integer( input$scatterY );
 	####################################
 
 	
@@ -3070,6 +3077,16 @@ output$EDA <- renderPlot({
 	if(ncol(x) < 31 )  
 	   cexFactor = 2.2 else
 	   cexFactor =1.6
+    
+	plot(x[,c(sample1,sample2)],xlab=colnames(x)[sample1],ylab=colnames(x)[sample2], 
+         main="Scatter plot of transformed expression in two samples",
+	     cex.lab=2.2, cex.axis=2.2, cex.main=2, cex.sub=2)
+    text( x = min(x[, sample1]) + .75 * ( max( x[, sample1] ) - min( x[, sample1]) ),
+          y = min(x[, sample2]) + .25 * ( max( x[, sample2] ) - min( x[, sample2]) ),
+          paste0("R = ", round(cor(x[, sample1], x[, sample2]),3 )), 
+          cex = 3
+        )
+              
 	#------------------------boxplot
 	boxplot(x, las = 2,  main=paste("Distribution of transformed data",memo)
 		,cex.lab=2.2,  cex.axis=cexFactor, cex.main=2, cex.sub=2,col=col1)	
@@ -3087,8 +3104,7 @@ output$EDA <- renderPlot({
 
    
 
-	plot(x[,1:2],xlab=colnames(x)[1],ylab=colnames(x)[2], main="Scatter plot of first two samples",
-	cex.lab=2.2, cex.axis=2.2, cex.main=2, cex.sub=2)
+
 	
    }, height = 1600)
 EDA4download <- reactive({
@@ -3103,6 +3119,7 @@ EDA4download <- reactive({
 	if( !is.null(input$dataFileFormat) )
     	if(input$dataFileFormat== 2) 
     		{ tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2 }
+    sample1 <- as.integer( input$scatterX); sample2 <- as.integer( input$scatterY );
 	####################################
     
     # total read counts plots
@@ -3125,6 +3142,8 @@ EDA4download <- reactive({
 	if(ncol(x) < 31 )  
 	   cexFactor = 1.5 else
 	   cexFactor =1
+
+
 	   
 	barplot( colSums(x)/1e6, col=col1,las=3, 
 		cex.axis=1.5,    # expansion factor for numeric axis labels.
@@ -3167,10 +3186,14 @@ EDA4download <- reactive({
 	if(nlevels(groups)< 31 ) # if too many samples do not show legends
 		legend("topright", levels(groups), lty=rep(1,nlevels(groups)), col=rainbow(nlevels(groups)), cex = 2 )	
 
-   
-
-	plot(x[,1:2],xlab=colnames(x)[1],ylab=colnames(x)[2], main="Scatter plot of first two samples",
-	cex.lab=2.2, cex.axis=2.2, cex.main=2, cex.sub=2)
+	plot(x[,c(sample1,sample2)],xlab=colnames(x)[sample1],ylab=colnames(x)[sample2], 
+         main="Scatter plot of transformed expression in two samples",
+	     cex.lab=2.2, cex.axis=2.2, cex.main=2, cex.sub=2)
+    text( x = min(x[, sample1]) + .75 * ( max( x[, sample1] ) - min( x[, sample1]) ),
+          y = min(x[, sample2]) + .25 * ( max( x[, sample2] ) - min( x[, sample2]) ),
+          paste0("R = ", round(cor(x[, sample1], x[, sample2]),3 )), 
+          cex = 3
+        )
 	
    })
 output$downloadEDAplot <- downloadHandler(
@@ -4218,7 +4241,7 @@ output$PCA <- renderPlot({
 	# these are needed to make it responsive to changes in parameters
 	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	#tem = input$selectGO6
-	
+    PCAxy <- c(as.integer( input$PCAx ),as.integer( input$PCAy) ) # selected principal components
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  {  
 			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
@@ -4246,16 +4269,19 @@ output$PCA <- renderPlot({
 			xlab = "First principal component", ylab="Second Principal Component")
 			text( pca.object$x[,1], pca.object$x[,2],  pos=4, labels =colnames(x), offset=.5, cex=.8)
 			}
-			
-		pcaData = as.data.frame(pca.object$x[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+		pcaData = as.data.frame(pca.object$x[, PCAxy]); 
+        pcaData = cbind(pcaData,detectGroups(colnames(x)) )
 		colnames(pcaData) = c("PC1", "PC2", "Sample_Name")
-		percentVar=round(100*summary(pca.object)$importance[2,1:2],0)
+		percentVar=round(100*summary(pca.object)$importance[2, PCAxy],0)
 		if(is.null(readSampleInfo())) { 
 			p=ggplot(pcaData, aes(PC1, PC2, color=Sample_Name, shape = Sample_Name)) 
 			} else {
 			pcaData = cbind(pcaData,readSampleInfo() )
-			p=ggplot(pcaData, aes_string("PC1", "PC2", color=input$selectFactors,shape=input$selectFactors2))  
-
+			p=ggplot(pcaData, 
+                     aes_string( "PC1", 
+                                 "PC2", 
+                                 color=input$selectFactors,
+                                 shape=input$selectFactors2))  
 			}
 		 if(ncol(x)<20) # change size depending of # samples
 			p <- p + geom_point(size=5)  else if(ncol(x)<50)
@@ -4265,8 +4291,8 @@ output$PCA <- renderPlot({
 
 		p <- p+	 scale_shape_manual(values= shapes)	 
 		
-		p=p+xlab(paste0("PC1: ",percentVar[1],"% variance")) 
-		p=p+ylab(paste0("PC2: ",percentVar[2],"% variance")) 
+		p=p+xlab(paste0("PC", input$PCAx ,": ", percentVar[1],"% variance")) 
+		p=p+ylab(paste0("PC", input$PCAy ,": ",percentVar[2],"% variance")) 
 		p=p+ggtitle("Principal component analysis (PCA)")+coord_fixed(ratio=1.0)+ 
 		 theme(plot.title = element_text(size = 16,hjust = 0.5)) + theme(aspect.ratio=1) +
 		 theme(axis.text.x = element_text( size = 16),
@@ -4412,7 +4438,7 @@ PCAplots4Download <- reactive({
 	# these are needed to make it responsive to changes in parameters
 	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
 	#tem = input$selectGO6
-	
+    PCAxy <- c(as.integer( input$PCAx ),as.integer( input$PCAy) ) # selected principal componen	
 	if( !is.null(input$dataFileFormat) ) 
     	if(input$dataFileFormat== 1)  {  
 			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
@@ -4441,9 +4467,9 @@ PCAplots4Download <- reactive({
 			text( pca.object$x[,1], pca.object$x[,2],  pos=4, labels =colnames(x), offset=.5, cex=.8)
 			}
 			
-		pcaData = as.data.frame(pca.object$x[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+		pcaData = as.data.frame(pca.object$x[, PCAxy]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
 		colnames(pcaData) = c("PC1", "PC2", "Sample_Name")
-		percentVar=round(100*summary(pca.object)$importance[2,1:2],0)
+		percentVar=round(100*summary(pca.object)$importance[2, PCAxy],0)
 		if(is.null(readSampleInfo())) { 
 			p=ggplot(pcaData, aes(PC1, PC2, color=Sample_Name, shape = Sample_Name)) 
 			} else {
@@ -4459,8 +4485,8 @@ PCAplots4Download <- reactive({
 
 		p <- p+	 scale_shape_manual(values= shapes)	 
 		
-		p=p+xlab(paste0("PC1: ",percentVar[1],"% variance")) 
-		p=p+ylab(paste0("PC2: ",percentVar[2],"% variance")) 
+		p=p+xlab(paste0("PC", input$PCAx ,": ", percentVar[1], "% variance")) 
+		p=p+ylab(paste0("PC", input$PCAy ,": ", percentVar[2], "% variance")) 
 		p=p+ggtitle("Principal component analysis (PCA)")+coord_fixed(ratio=1.0)+ 
 		 theme(plot.title = element_text(size = 16,hjust = 0.5)) + theme(aspect.ratio=1) +
 		 theme(axis.text.x = element_text( size = 16),
@@ -4614,7 +4640,7 @@ PCAdata <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
     x <- readData()$data
 	
-	 result = prcomp(t(x))$x[,1:2]
+	 result = prcomp(t(x))$x[,1:5]
 	 fit = cmdscale( dist2(t(x) ), eig=T, k=2)
      result = cbind( result, fit$points[,1:2] )
 	 library(Rtsne,verbose=FALSE)
@@ -4624,7 +4650,7 @@ PCAdata <- reactive({
 	result = cbind( result, tsne$Y)
 	 
 	 
-	 colnames(result) = c("PCA.x","PCA.y","MDS.x", "MDS.y", "tSNE.x", "tSNE.y")
+	 colnames(result) = c("PCA.1","PCA.2","PCA.3","PCA.4","PCA.5","MDS.x", "MDS.y", "tSNE.x", "tSNE.y")
 	 return( result)		  
   })
 

@@ -216,8 +216,11 @@ iDEPversion,
     
       mainPanel(
         h5("Aspect ratios of figures can be adjusted by changing the width of browser window.")
-        ,br(),br()
         ,conditionalPanel("input.dataFileFormat == 1", plotOutput("totalCounts") )
+        ,fluidRow( 
+          column(4, selectInput("scatterX", "Select a sample for x-axis", choices = 1:5, selected = 1))  
+          ,column(4, selectInput("scatterY", "Select a sample for y-axis", choices = 1:5, selected = 2) )
+          ) 
         ,plotOutput("EDA")
         ,bsModal("modalExample10", "Converted data (Most variable genes on top)", 
                  "examineDataB", size = "large", DT::dataTableOutput('examineData'))
@@ -455,11 +458,21 @@ iDEPversion,
       # main Panel of PCA ------------------------------------------------------------------------------
       mainPanel(
         plotOutput("PCA", inline=TRUE)
+        ,conditionalPanel("input.PCA_MDS == 1", # only show if t-SNE
+          fluidRow( 
+            column(4, selectInput("PCAx", "Principal component for x-axis", choices = 1:5, selected = 1))  
+            ,column(4, selectInput("PCAy", "Principal component for y-axis", choices = 1:5, selected = 2) )
+          ) )
+#        ,tags$style(type='text/css', "#PCAx { width:100%;   margin-top:-12px}") 
+#        ,tags$style(type='text/css', "#FirstPCA { width:100%;   margin-top:-12px}")    
+        ,br()
         ,conditionalPanel("input.PCA_MDS == 4", # only show if t-SNE
           actionButton("tsneSeed2", "Re-calculate t-SNE"),br(),br() )
-        ,br(),br()
+        
         ,conditionalPanel("input.PCA_MDS == 1 |input.PCA_MDS == 2 " # only show if PCA or MDS (not pathway)
-          ,htmlOutput('PCA2factor') )
+          ,htmlOutput('PCA2factor')
+          ,br(),br() )
+         
       
       ) # mainPanel
     )  #sidebarLayout     
@@ -1211,6 +1224,7 @@ iDEPversion,
        ,h5("3/5/2019:  v0.82 Fix a bug regarding limma for identification of D.E.Gs. Up- and down-regulation are opposite in some cases.")
        ,h5("3/29/2019: v0.85 Annotation database upgrade. Ensembl v 95. Ensembl plants v.42, and Ensembl Metazoa v.42.")
        ,h5("5/19/2019: v0.90 Annotation database upgrade. Ensembl v 96. Ensembl plants v.43, and Ensembl Metazoa v.43. STRING-db v10")
+       ,h5("2/3/2020: v0.90 customizable PCA plot and scatter plot")
        ,br(),br()
        ,h5("In loving memory of my parents. X.G.")
 

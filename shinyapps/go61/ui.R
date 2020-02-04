@@ -54,6 +54,7 @@ shinyUI(
 			    ,conditionalPanel("input.goButton == 0 "  # welcome screen
 			      # ,br(),br(),h2("Scheduled maintenance from 8am to 11am (US Central Standard Time) Wednesday Dec. 18, 2019. Service will be temporarily unavailable.",  style = "color:red"),br(),br()
 				    #,br(),br(),h3("We need your support! We are writing a grant proposal (due June 5th) to NIH to seek support for the development and maintenance of ShinyGO. A brief email on how this tool helped your research would go a long way to support our tiny team, even if you are a graduate student. ",a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=ShinyGO support letter"),  style = "color:blue")
+            ,h4("2/3/2020: Now published by", a("Bioinformatics.", href="https://doi.org/10.1093/bioinformatics/btz931",target="_blank"))
             ,h4("11/3/2019: V 0.61, Improve graphical visualization (thanks to reviewers). Interactive networks and much more.")
             ,h4("5/20/2019: V.0.60, Annotation database updated to Ensembl 96. New bacterial and fungal genomes based on STRING-db!")
 				    ,h4("Just paste your gene list to get enriched GO terms and othe pathways for over 315 plant and animal species, based on annotation from Ensembl (Release 96), Ensembl plants (R. 43) and Ensembl Metazoa (R. 43). An additional 2031 genomes (including bacteria and fungi) are   annotated based on STRING-db (v.10). In addition, it also produces
@@ -184,12 +185,16 @@ shinyUI(
          ," For feedbacks, please"
          ,a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=ShinyGO" )
          , "or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank")
-         ,"For details, please see our", a("manuscript", href="https://www.biorxiv.org/content/biorxiv/early/2018/05/04/315150.full.pdf",target="_blank")
+         ,"For details, please see our", a("paper", href="https://doi.org/10.1093/bioinformatics/btz931", target="_blank")
 		 ,"and a detailed", a("demo.", href="https://www.biorxiv.org/content/biorxiv/suppl/2018/05/04/315150.DC1/315150-1.pdf",target="_blank") 
 		 , "ShinyGO shares many functionalities and databases with ", a("iDEP.", href="http://ge-lab.org/idep/",target="_blank")
 		     ," Source code at", a(" GitHub. ", href="https://github.com/iDEP-SDSU/idep/tree/master/shinyapps/go",target="_blank")
+        ,br(),br()
+        ,strong("Citation:")
         ,br()
-        ,strong("Previous versions of ShinyGO for reproducibile research:")
+        ,"Ge SX, Jung D & Yao R,", a(" Bioinformatics 2020", href="https://doi.org/10.1093/bioinformatics/btz931", target="_blank")
+        ,br(),br()
+        ,strong("Previous versions (still functional):")
         ,br()
 		,a("ShinyGO V0.60, "
             , href="http://bioinformatics.sdstate.edu/go60/")
