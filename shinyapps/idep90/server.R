@@ -3,7 +3,7 @@
 # hosted at http://ge-lab.org/idep/
 # manuscript: https://www.biorxiv.org/content/early/2018/04/20/148411 
 
-iDEPversion = "iDEP 0.90"
+iDEPversion = "iDEP 0.91"
 
 ################################################################
 # R packages
@@ -219,19 +219,31 @@ dynamicRange <- function( x ) {
 }  
 
 
- detectGroups <- function (x){  # x are col names
-  # Define sample groups based on column names
-  # Args:
-  #   x are vector of characters, column names in data file
-  # Returns: 
-  #   a character vector, representing sample groups.
-  tem <- gsub("[0-9]*$","",x) # Remove all numbers from end
-  #tem = gsub("_Rep|_rep|_REP","",tem)
-  tem <- gsub("_$","",tem); # remove "_" from end
-  tem <- gsub("_Rep$","",tem); # remove "_Rep" from end
-  tem <- gsub("_rep$","",tem); # remove "_rep" from end
-  tem <- gsub("_REP$","",tem)  # remove "_REP" from end
-  return( tem )
+ detectGroups <- function (x, sampleInfo = NULL){  # x are col names
+# parsing samples by either the name or using a data frame of sample infos. 
+# Note that each row of the sampleInfo data frame represents a sample.
+# Revised 4-19-2020
+  if(is.null(sampleInfo)) {
+    # Define sample groups based on column names
+    # Args:
+    #   x are vector of characters, column names in data file
+    # Returns: 
+    #   a character vector, representing sample groups.
+    g <- gsub("[0-9]*$","",x) # Remove all numbers from end
+    #g = gsub("_Rep|_rep|_REP","", g)
+    g <- gsub("_$", "", g); # remove "_" from end
+    g <- gsub("_Rep$", "", g); # remove "_Rep" from end
+    g <- gsub("_rep$", "", g); # remove "_rep" from end
+    g <- gsub("_REP$", "", g)  # remove "_REP" from end
+    return( g ) 
+  } else {
+   if(ncol(sampleInfo) == 1) {  # if there's only one factor
+     g = sampleInfo[, 1] 
+     } else {   # multiple columns/factors
+       g = apply(sampleInfo, 1, function (y) paste(y, collapse = "_")) 
+     }
+   }
+  return( as.character( g) )
  }
 
 # heatmap with color bar define gene groups
@@ -960,7 +972,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 	}
 
 	groups = colnames(x)
-	groups = detectGroups( groups)
+	groups =  detectGroups( groups, sampleInfo) 
 	g =  unique(groups)  
 	
 	# check for replicates, removes samples without replicates
@@ -1299,9 +1311,8 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 # Differential expression using DESeq2
 DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedComparisons=NULL, sampleInfo = NULL,modelFactors=NULL, blockFactor = NULL, referenceLevels=NULL){
 	library(DESeq2,verbose=FALSE) # count data analysis
-	groups = as.character ( detectGroups( colnames( rawCounts ) ) )
-	g = unique(groups)# order is reversed
-	
+	groups = as.character ( detectGroups( colnames( rawCounts ), sampleInfo) )
+	g = unique(groups)# order is reversed	
 	
 	# check for replicates, removes samples without replicates
 	reps = as.matrix(table(groups)) # number of replicates per biological sample
@@ -3065,7 +3076,7 @@ output$EDA <- renderPlot({
 		x <- x[, part ]
 		memo =paste("(only showing", maxSamplesEDAplot, "samples)")
 		}
-	groups = as.factor( detectGroups(colnames(x ) ) )
+	groups = as.factor( detectGroups(colnames(x ), readSampleInfo() ) )
 	if(nlevels(groups)<=1 | nlevels(groups) >20 )  
 	   col1 = "green"  else
 	   col1 = rainbow(nlevels(groups))[ groups ]	
@@ -3134,7 +3145,7 @@ EDA4download <- reactive({
 		x <- x[,part]
 		memo =paste(" (only showing", maxSamplesEDAplot, "samples)")
 	}
-	groups = as.factor( detectGroups(colnames(x ) ) )
+	groups = as.factor( detectGroups(colnames(x ), readSampleInfo() ) )
 	if(nlevels(groups)<=1 | nlevels(groups) >20)  
 	   col1 = "green"  else
 	   col1 = rainbow(nlevels(groups))[ groups ]	
@@ -3160,7 +3171,7 @@ EDA4download <- reactive({
 		x <- x[, part ]
 		memo =paste("(only showing", maxSamplesEDAplot, "samples)")
 		}
-	groups = as.factor( detectGroups(colnames(x ) ) )
+	groups = as.factor( detectGroups(colnames(x ), readSampleInfo() ) )
 	if(nlevels(groups)<=1 | nlevels(groups) >20 )  
 	   col1 = "green"  else
 	   col1 = rainbow(nlevels(groups))[ groups ]	
@@ -3265,7 +3276,7 @@ output$genePlot <- renderPlot({
 
 	# Barplot with error bars
 	mdf$count = 1
-	g = detectGroups(mdf$samples)
+	g = detectGroups(mdf$samples, readSampleInfo())
 	Means = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = mean, na.rm=TRUE  )
 	SDs = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = sd, na.rm=TRUE  )
 	Ns = aggregate(mdf$count, by= list(g, mdf$Genes) , FUN = sum  )
@@ -3358,7 +3369,7 @@ genePlot4Download <- reactive({
 
 	# Barplot with error bars
 	mdf$count = 1
-	g = detectGroups(mdf$samples)
+	g = detectGroups(mdf$samples, readSampleInfo())
 	Means = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = mean, na.rm=TRUE  )
 	SDs = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = sd, na.rm=TRUE  )
 	Ns = aggregate(mdf$count, by= list(g, mdf$Genes) , FUN = sum  )
@@ -3554,7 +3565,7 @@ output$totalCounts <- renderPlot({
 		x <- x[,part]
 		memo =paste(" (only showing", maxSamplesEDAplot, "samples)")
 	}
-	groups = as.factor( detectGroups(colnames(x ) ) )
+	groups = as.factor( detectGroups(colnames(x ), readSampleInfo() ) )
 	if(nlevels(groups)<=1 | nlevels(groups) >20)  
 	   col1 = "green"  else
 	   col1 = rainbow(nlevels(groups))[ groups ]	
@@ -3576,7 +3587,7 @@ output$readCountsBias <- renderText({
     if (is.null(readData()$rawCounts))   return(NULL)
 	
 	totalCounts = colSums(readData()$rawCounts) 
-	groups = as.factor( detectGroups(colnames(readData()$rawCounts ) ) )
+	groups = as.factor( detectGroups(colnames(readData()$rawCounts ), readSampleInfo() ) )
 
 	tem = NULL
 	# ANOVA of total read counts vs sample groups parsed by sample name
@@ -3615,8 +3626,7 @@ output$listFactorsHeatmap <- renderUI({
 	
     if (is.null(readSampleInfo() ) ) # if sample info is uploaded and correctly parsed.
        { return(NULL) }	 else { 
-	  selectInput("selectFactorsHeatmap", label="Sample color bar:",choices= c(colnames(readSampleInfo()), "Sample_Name")
-	     , selected = "Sample_Name")   } 
+	  selectInput("selectFactorsHeatmap", label="Sample color bar:",choices= c(colnames(readSampleInfo()), "Sample_Name"))   } 
 	})  
 
 	# conventional heatmap.2 plot
@@ -3633,8 +3643,10 @@ output$heatmap1 <- renderPlot({
     	if(input$dataFileFormat== 2) { 
 			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
 		}
+
+
 	####################################
-		
+
     x <- readData()$data   # x = read.csv("expression1.csv")
 	withProgress(message=sample(quotes,1), detail ="Runing hierarchical clustering ", {
 	n=input$nGenes
@@ -3738,6 +3750,7 @@ output$heatmap1 <- renderPlot({
 	
 	incProgress(1,"Done")
 	})
+
 
 } , height = 900 )  #, width = 600
 
@@ -4270,7 +4283,7 @@ output$PCA <- renderPlot({
 			text( pca.object$x[,1], pca.object$x[,2],  pos=4, labels =colnames(x), offset=.5, cex=.8)
 			}
 		pcaData = as.data.frame(pca.object$x[, PCAxy]); 
-        pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+        pcaData = cbind(pcaData,detectGroups(colnames(x), readSampleInfo()) )
 		colnames(pcaData) = c("PC1", "PC2", "Sample_Name")
 		percentVar=round(100*summary(pca.object)$importance[2, PCAxy],0)
 		if(is.null(readSampleInfo())) { 
@@ -4356,12 +4369,12 @@ output$PCA <- renderPlot({
 		 incProgress(1/3,detail = " MDS")
 		# par(pin=c(5,5))
 		if(0) {
-		plot( fit$points[,1],fit$points[,2],pch = 1,cex = 2,col = detectGroups(colnames(x)),
+		plot( fit$points[,1],fit$points[,2],pch = 1,cex = 2,col = detectGroups(colnames(x), readSampleInfo()),
 			 xlim=c(min(fit$points[,1]),max(fit$points[,1])*1.5   ),
 		  xlab = "First dimension", ylab="Second dimension"  )
 		 text( fit$points[,1], fit$points[,2],  pos=4, labels =colnames(x), offset=.5, cex=1)
 		}
-		pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+		pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x), readSampleInfo()) )
 		colnames(pcaData) = c("x1", "x2", "Sample_Name")
 		
 
@@ -4398,7 +4411,7 @@ output$PCA <- renderPlot({
 		 set.seed(input$tsneSeed2)
 		 tsne <- Rtsne(t(x), dims = 2, perplexity=1, verbose=FALSE, max_iter = 400)
 
-		pcaData = as.data.frame(tsne$Y); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+		pcaData = as.data.frame(tsne$Y); pcaData = cbind(pcaData,detectGroups(colnames(x), readSampleInfo()) )
 		colnames(pcaData) = c("x1", "x2", "Sample_Name")
 		
 		#pcaData$Sample_Name = as.factor( pcaData$Sample_Name)
@@ -4461,13 +4474,13 @@ PCAplots4Download <- reactive({
 		 pca.object <- prcomp(t(x))
 		 # par(mfrow=c(2,1))
 		if(0){
-		 plot( pca.object$x[,1], pca.object$x[,2], pch = 1,cex = 2,col = detectGroups(colnames(x)),
+		 plot( pca.object$x[,1], pca.object$x[,2], pch = 1,cex = 2,col = detectGroups(colnames(x), readSampleInfo()),
 			 xlim=c(min(pca.object$x[,1]),max(pca.object$x[,1])*1.5   ),
 			xlab = "First principal component", ylab="Second Principal Component")
 			text( pca.object$x[,1], pca.object$x[,2],  pos=4, labels =colnames(x), offset=.5, cex=.8)
 			}
 			
-		pcaData = as.data.frame(pca.object$x[, PCAxy]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+		pcaData = as.data.frame(pca.object$x[, PCAxy]); pcaData = cbind(pcaData,detectGroups(colnames(x), readSampleInfo()) )
 		colnames(pcaData) = c("PC1", "PC2", "Sample_Name")
 		percentVar=round(100*summary(pca.object)$importance[2, PCAxy],0)
 		if(is.null(readSampleInfo())) { 
@@ -4555,7 +4568,7 @@ PCAplots4Download <- reactive({
 		  xlab = "First dimension", ylab="Second dimension"  )
 		 text( fit$points[,1], fit$points[,2],  pos=4, labels =colnames(x), offset=.5, cex=1)
 		}
-		pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+		pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x), readSampleInfo()) )
 		colnames(pcaData) = c("x1", "x2", "Sample_Name")
 		
 
@@ -4592,7 +4605,7 @@ PCAplots4Download <- reactive({
 		 set.seed(input$tsneSeed2)
 		 tsne <- Rtsne(t(x), dims = 2, perplexity=1, verbose=FALSE, max_iter = 400)
 
-		pcaData = as.data.frame(tsne$Y); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+		pcaData = as.data.frame(tsne$Y); pcaData = cbind(pcaData,detectGroups(colnames(x), readSampleInfo()) )
 		colnames(pcaData) = c("x1", "x2", "Sample_Name")
 		
 		#pcaData$Sample_Name = as.factor( pcaData$Sample_Name)
@@ -6636,7 +6649,7 @@ output$scatterPlot <- renderPlot({
 	 
 	 genes <- convertedData()[,iz]
 	 
-	 g = detectGroups(colnames(genes))
+	 g = detectGroups(colnames(genes), readSampleInfo())
 	 
 	 if(length(unique(g))  > 2) { plot.new(); text(0.5,0.5, "Not available.") } else{
 		average1 <- apply( genes[, which( g == unique(g)[1] ) ],1,mean)
@@ -6653,10 +6666,7 @@ output$scatterPlot <- renderPlot({
 		pch =16, cex = .3, xlab= paste("Average expression in", unique(g)[2] ), 
 		ylab = paste("Average expression in", unique(g)[1] ),
 		cex.lab=2, cex.axis=2, cex.main=2, cex.sub=2	)    
-		legend("bottomright",c("Upregulated","Downregulated"),fill = c("red","blue"),cex=1.3 )
-
-
-	 
+		legend("bottomright",c("Upregulated","Downregulated"),fill = c("red","blue"),cex=1.3 ) 
 	 }
 	 
 		})
