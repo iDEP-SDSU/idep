@@ -524,9 +524,9 @@ iDEPversion,
         column(8, downloadButton('downloadGeneListsGMT', 'Gene lists') ) )
         ,br()
 # the fold change data is wrong when using LIMMA from DEG1 tab
-#        ,fluidRow(
-#           column(8, downloadButton('download.DEG.data', 'FDR & fold-changes for all genes') )
-#        )
+        ,fluidRow(
+           column(8, downloadButton('download.DEG.data', 'FDR & fold-changes for all genes(Only use with DESeq2) ') )
+        )
         ,downloadButton('downloadSigGeneStats', 'Figure')
         ,br(),h4( textOutput("textLimma") )
         ,tags$head(tags$style("#textLimma{color: blue;font-size: 15px;}"))  
