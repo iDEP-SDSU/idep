@@ -5852,8 +5852,9 @@ output$sigGeneStats <- renderPlot({
 			 scale_fill_manual(values=c("red", "blue")) +
 			 ylab("Number of differntially expressed genes") +
 			 theme(axis.title.y=element_blank(),
-				axis.text=element_text(size=14)) 
-			
+				axis.text=element_text(size=14)) +  
+			 geom_text(aes(label=Genes), position=position_dodge(width=0.9), vjust=0.5, hjust =0)
+# updated 2020 
 		p
 			
 
