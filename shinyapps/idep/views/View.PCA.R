@@ -33,7 +33,7 @@ View.PCA$set("public", "sidebarPanel",
     function(){
         sidebarPanel(
             radioButtons("select_PCA_Methods", "Methods", 
-                c(  "Principal Component Analysis"      = 1,            
+                c(  "Principal Component Analysis"     = 1,            
                     "Multidimensional Scaling"         = 3, 
                     "t-SNE"                            = 4,
                     "Pathway Analysis of PCA rotation" = 2  
