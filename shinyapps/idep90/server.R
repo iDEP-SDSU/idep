@@ -224,6 +224,7 @@ dynamicRange <- function( x ) {
 # Note that each row of the sampleInfo data frame represents a sample.
 # Revised 4-19-2020
   if(is.null(sampleInfo)) {
+  #if(1) {
     # Define sample groups based on column names
     # Args:
     #   x are vector of characters, column names in data file
@@ -240,9 +241,13 @@ dynamicRange <- function( x ) {
    if(ncol(sampleInfo) == 1) {  # if there's only one factor
      g = sampleInfo[, 1] 
      } else {   # multiple columns/factors
-       g = apply(sampleInfo, 1, function (y) paste(y, collapse = "_")) 
+       g = sampleInfo[, 1] 
+      # This does not work as sometimes there is no replicates wt vs mt, 1, 2, 3 paired replicates as factors 
+      #g = unlist( apply(sampleInfo, 1, function (y) paste(y, collapse = "_")) )
+
      }
    }
+   
   return( as.character( g) )
  }
 
@@ -2448,7 +2453,6 @@ observe({  updateSelectInput(session, "distFunctions", choices = distChoices )  
 observe({  updateSelectInput(session, "hclustFunctions", choices = hclustChoices )      })
 # update species for STRING-db related API access
 observe({  	updateSelectizeInput(session, "speciesName", choices = sort(STRING10_species$official_name) ) 	})
-
 
 	################################################################
 	#   Read data
