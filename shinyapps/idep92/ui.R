@@ -6,7 +6,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
-iDEPversion = "iDEP.91"
+iDEPversion = "iDEP.92"
 
 shinyUI(
 navbarPage(
