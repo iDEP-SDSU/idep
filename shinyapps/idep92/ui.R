@@ -114,8 +114,9 @@ iDEPversion,
       #,h3("We are working on a plan to improve iDEP. Any new functionality or feature you like to be added? Please "
       #,a("send us",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), "your suggestions!",style = "color:red")      
       #,h3("Thank you for your support letters!", style = "color:red")
-      ,h4("New! Massively upgraded annotation database! V0.90 includes 315 organisms in Ensembl release 96, 
-          plus all species from STRINGdb (v10):115 archaeal, 1678 bacterial, and 238 eukaryotic species ")  
+      ,h4("New! V0.92 includes a large collection of pathway data for 20 model organisms, plus the new Ensembl release 100 
+with 203 species in Ensembl, 80 in Ensembl Plants and 110 in Ensembl Metazoa. 
+           We are still working on adding annotation from STRINGdb (v11).  ")  
       ,h5("Now published on", a("BMC Bioinformatics!",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank") )
       ,h5("Due to lack of funding, iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
       ,h5("We are happy to help prepare your data for iDEP. Dr. Ge is also open to bioinformatics consulting during the summer.")
