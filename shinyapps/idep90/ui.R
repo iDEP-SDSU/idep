@@ -114,7 +114,8 @@ iDEPversion,
       #,h3("We are working on a plan to improve iDEP. Any new functionality or feature you like to be added? Please "
       #,a("send us",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), "your suggestions!",style = "color:red")      
       #,h3("Thank you for your support letters!", style = "color:red")
-      ,h4("New! Massively upgraded annotation database! V0.90 includes 315 organisms in Ensembl release 96, 
+      ,h4("New 5/24/2020! Try out our new version 0.91 in testing mode. While the code is not changed, the new version is based on Ensembl release 100 with 392 species, updated annotaton, and many  manually collected pathways for 20 model organisms.", a("iDEP 0.91",href="http://bioinformatics.sdstate.edu/idep91/") )
+      ,h4("Massively upgraded annotation database! V0.90 includes 315 organisms in Ensembl release 96, 
           plus all species from STRINGdb (v10):115 archaeal, 1678 bacterial, and 238 eukaryotic species ")  
       ,h5("Now published on", a("BMC Bioinformatics!",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank") )
       ,h5("Due to lack of funding, iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
