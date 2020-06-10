@@ -12,7 +12,7 @@ services:
       - ./shinylog/:/var/log/shiny-server/
       - ./config/:/etc/shiny-server/
       - ./classes/:/usr/local/src/myscripts/
-    command: ["/usr/bin/shiny-server.sh"]
+    #command: ["/usr/bin/shiny-server.sh"]  # not used; cause error
     
   nginx:
     build: ./nginx
