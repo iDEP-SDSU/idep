@@ -2725,14 +2725,7 @@ output$PCA <- renderPlot({
      if(input$PCA_MDS ==1) {   #PCA
 		 incProgress(1/3,detail="PCA")
 		 pca.object <- prcomp(t(x))
-		 # par(mfrow=c(2,1))
-		if(0){
-		 plot( pca.object$x[,1], pca.object$x[,2], pch = 1,cex = 2,col = detectGroups(colnames(x)),
-			 xlim=c(min(pca.object$x[,1]),max(pca.object$x[,1])*1.5   ),
-			xlab = "First principal component", ylab="Second Principal Component")
-			text( pca.object$x[,1], pca.object$x[,2],  pos=4, labels =colnames(x), offset=.5, cex=.8)
-			}
-			
+
 		PCALOGIC$GetPCAPlot
 	  }
 	# variance chart
@@ -2762,238 +2755,19 @@ output$PCA <- renderPlot({
 
   }, height = 700, width = 700)
 
-PCAplots4Download <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-	##################################  
-	# these are needed to make it responsive to changes in parameters
-	tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
-	#tem = input$selectGO6
-	
-	if( !is.null(input$dataFileFormat) ) 
-    	if(input$dataFileFormat== 1)  {  
-			tem = input$minCounts ;tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform 
-		}
-	if( !is.null(input$dataFileFormat) )
-    	if(input$dataFileFormat== 2) { 
-			tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2
-		}
-	####################################
-	# for showing shapes on ggplot2. The first 6 are default. Default mapping can only show 6 types.
-	shapes = c(16,17,15,3,7,8,   1,2,4:6,9:15,18:25  )
-
-	withProgress(message="Running ", {
-
-	x <- convertedData();
-	
-	#---PCA----------------------------------------------- 
-     if(input$PCA_MDS ==1) {   #PCA
-		 incProgress(1/3,detail="PCA")
-		 pca.object <- prcomp(t(x))
-		 # par(mfrow=c(2,1))
-		if(0){
-		 plot( pca.object$x[,1], pca.object$x[,2], pch = 1,cex = 2,col = detectGroups(colnames(x)),
-			 xlim=c(min(pca.object$x[,1]),max(pca.object$x[,1])*1.5   ),
-			xlab = "First principal component", ylab="Second Principal Component")
-			text( pca.object$x[,1], pca.object$x[,2],  pos=4, labels =colnames(x), offset=.5, cex=.8)
-			}
-			
-		pcaData = as.data.frame(pca.object$x[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
-		colnames(pcaData) = c("PC1", "PC2", "Sample_Name")
-		percentVar=round(100*summary(pca.object)$importance[2,1:2],0)
-		if(is.null(readSampleInfo())) { 
-			p=ggplot(pcaData, aes(PC1, PC2, color=Sample_Name, shape = Sample_Name)) 
-			} else {
-			pcaData = cbind(pcaData,readSampleInfo() )
-			p=ggplot(pcaData, aes_string("PC1", "PC2", color=input$selectFactors,shape=input$selectFactors2))  
-
-			}
-		 if(ncol(x)<20) # change size depending of # samples
-			p <- p + geom_point(size=5)  else if(ncol(x)<50)
-			 p <- p + geom_point(size=3)  else 
-			 p <- p + geom_point(size=2)
-			 
-
-		p <- p+	 scale_shape_manual(values= shapes)	 
-		
-		p=p+xlab(paste0("PC1: ",percentVar[1],"% variance")) 
-		p=p+ylab(paste0("PC2: ",percentVar[2],"% variance")) 
-		p=p+ggtitle("Principal component analysis (PCA)")+coord_fixed(ratio=1.0)+ 
-		 theme(plot.title = element_text(size = 16,hjust = 0.5)) + theme(aspect.ratio=1) +
-		 theme(axis.text.x = element_text( size = 16),
-			   axis.text.y = element_text( size = 16),
-			   axis.title.x = element_text( size = 16),
-			   axis.title.y = element_text( size = 16) ) +
-		theme(legend.text=element_text(size=16))
-		 print(p)
-	  }
-	# variance chart
-	# plot(pca.object,type="bar", xlab="Principal Components", main ="Variances explained")
-
-	#---PGSEA----------------------------------------------- 	
-	if(input$PCA_MDS ==2) {  # pathway
-		incProgress(1/8, detail="PGSEA")
-		library(PGSEA,verbose=FALSE)
-		pca.object <- prcomp(t(x))
-		pca = 100*pca.object$rotation 
-		Npca = 5
-		Nterms = 6
-		if (Npca > dim(pca)[2]) { Npca = dim(pca)[2] } else pca <-  pca[,1:Npca]
-		#pca = pca[,1:5]
-		if(is.null(GeneSetsPCA() ) ) return(NULL)  # no species recognized
-		if(length(GeneSetsPCA() ) <= 1 ) return(NULL)
-		#cat("\n\nGene Sets:",length( GeneSets()))
-		pg = myPGSEA (pca,cl=GeneSetsPCA(),range=c(15,2000),p.value=TRUE, weighted=FALSE,nPermutation=1)
-		incProgress(2/8)
-		# correcting for multiple testing
-		p.matrix = pg$p.result
-		tem = p.adjust(as.numeric(p.matrix),"fdr")
-		p.matrix = matrix(tem, nrow=dim(p.matrix)[1], ncol = dim(p.matrix)[2] )
-		rownames(p.matrix) = rownames(pg$p.result); colnames(p.matrix) = colnames(pg$p.result)
-
-
-		selected =c()
-		for( i in 1:dim(p.matrix)[2]) {
-		  tem = which( rank(p.matrix[,i],ties.method='first') <= Nterms)  # rank by P value
-		 #tem = which( rank(pg$result[,i],ties.method='first') >= dim(p.matrix)[1]-3.1) # rank by mean
-		 names(tem) = paste("PC",i," ", rownames(p.matrix)[tem], sep="" )
-		 selected = c(selected, tem)
-		}
-		rowids = gsub(" .*","",names(selected))
-		rowids = as.numeric( gsub("PC","",rowids) )
-		pvals = p.matrix[ cbind(selected,rowids) ]
-		a=sprintf("%-1.0e",pvals)
-		tem = pg$result[selected,]
-		rownames(tem) = paste(a,names(selected)); #colnames(tem)= paste("PC",colnames(tem),sep="")
-		
-		tem = tem[!duplicated(selected),] 
-		incProgress(3/8, detail ="Running PGSEA")
-		#tem = t(tem); tem = t( (tem - apply(tem,1,mean)) ) #/apply(tem,1,sd) )
-
-		smcPlot(tem,scale =  c(-max(tem), max(tem)), show.grid = T, margins = c(1,1, 3, 30),
-			col = .rwb,cex.lab=0.8)
-
-	}
-	 
-	#---MDS----------------------------------------------- 
-	if(input$PCA_MDS ==3) {  # MDS
-		 fit = cmdscale( dist2(t(x) ), eig=T, k=2)
-		 incProgress(1/3,detail = " MDS")
-		# par(pin=c(5,5))
-		if(0) {
-		plot( fit$points[,1],fit$points[,2],pch = 1,cex = 2,col = detectGroups(colnames(x)),
-			 xlim=c(min(fit$points[,1]),max(fit$points[,1])*1.5   ),
-		  xlab = "First dimension", ylab="Second dimension"  )
-		 text( fit$points[,1], fit$points[,2],  pos=4, labels =colnames(x), offset=.5, cex=1)
-		}
-		pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
-		colnames(pcaData) = c("x1", "x2", "Sample_Name")
-		
-
-		if(is.null(readSampleInfo())) { 
-		p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name))  
-		} else {
-			pcaData = cbind(pcaData,readSampleInfo() )
-			p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2))  
-			}
-			
-		if(ncol(x)<20) # change size depending of # samples
-			p <- p + geom_point(size=5)  else if(ncol(x)<50)
-			 p <- p + geom_point(size=3)  else 
-			 p <- p + geom_point(size=2)
-		p <- p+	 scale_shape_manual(values= shapes)	 
-		
-		p=p+xlab("Dimension 1") 
-		p=p+ylab("Dimension 2") 
-		p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
-		 theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
-			 theme(axis.text.x = element_text( size = 16),
-			   axis.text.y = element_text( size = 16),
-			   axis.title.x = element_text( size = 16),
-			   axis.title.y = element_text( size = 16) ) +
-		theme(legend.text=element_text(size=16))
-		   print(p)
-		
-		 }
-
-	#--t-SNE----------------------------------------------------------------
-	if(input$PCA_MDS ==4) {  # t-SNE
-		incProgress(1/4, detail=" t-SNE")
-		library(Rtsne,verbose=FALSE)
-		 set.seed(input$tsneSeed2)
-		 tsne <- Rtsne(t(x), dims = 2, perplexity=1, verbose=FALSE, max_iter = 400)
-
-		pcaData = as.data.frame(tsne$Y); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
-		colnames(pcaData) = c("x1", "x2", "Sample_Name")
-		
-		#pcaData$Sample_Name = as.factor( pcaData$Sample_Name)
-
-		if(is.null(readSampleInfo())) { 
-			p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name)) 
-		} else {
-			pcaData = cbind(pcaData,readSampleInfo() )
-			p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) 
-			}
-			
-		if(ncol(x)<20) # change size depending of # samples
-			p <- p + geom_point(size=5)  else if(ncol(x)<50)
-			 p <- p + geom_point(size=3)  else 
-			 p <- p + geom_point(size=2)
-		p <- p+	 scale_shape_manual(values= shapes)	  
-		p=p+xlab("Dimension 1") 
-		p=p+ylab("Dimension 2") 
-		p=p+ggtitle("t-SNE plot")+ coord_fixed(ratio=1.)+ 
-		 theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
-			 theme(axis.text.x = element_text( size = 16),
-			   axis.text.y = element_text( size = 16),
-			   axis.title.x = element_text( size = 16),
-			   axis.title.y = element_text( size = 16) ) +
-		theme(legend.text=element_text(size=16))
-		   print(p)
-		
-	 }
-	 incProgress(1)
-		 }) # progress
-
-  })
+PCAplots4Download <- reactive({ }) # dont need. Use PCACtrl$GetMainPlot() instead
 
  
 
 
-output$downloadPCA <- downloadHandler(
-      filename = "PCA_MDS_tSNE.eps",
-      content = function(file) {
-	  cairo_ps(file, width = 6, height = 6)
-	  PCAplots4Download()
-        dev.off()
-      })    
+output$downloadPCA <- output$download_PCA_Mainplot
   
-PCAdata <- reactive({
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-    x <- readData()$data
-	
-	 result = prcomp(t(x))$x[,1:2]
-	 fit = cmdscale( dist2(t(x) ), eig=T, k=2)
-     result = cbind( result, fit$points[,1:2] )
-	 library(Rtsne,verbose=FALSE)
-	 set.seed(input$tsneSeed2)
-	 tsne <- Rtsne(t(x), dims = 2, perplexity=1, verbose=FALSE, max_iter = 400)
-	
-	result = cbind( result, tsne$Y)
-	 
-	 
-	 colnames(result) = c("PCA.x","PCA.y","MDS.x", "MDS.y", "tSNE.x", "tSNE.y")
-	 return( result)		  
-  })
+PCAdata <- reactive({}) PCAdata()
 
 # correlation PCA with factors  
 output$PCA2factor <- ShowCorrelationBetweenPCs
  
-output$downloadPCAData <- downloadHandler(
-		filename = function() {"PCA_and_MDS.csv"},
-		content = function(file) {
-          write.csv(PCAdata(), file) 
-	    }
-	)
+output$downloadPCAData <- output$download_PCA_Data
 
 ################################################################
 #   K-means

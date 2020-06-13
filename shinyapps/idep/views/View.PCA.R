@@ -43,7 +43,7 @@ View.PCA$set("public", "sidebarPanel",
             self$ConPanel_NonPathwaySettings(),
             br(),
             downloadButton('download_PCA_Data', 'Coordinates'),
-            downloadButton('download_PCA_Mainplot', 'Coordinates'),
+            downloadButton('download_PCA_Mainplot', 'High-resolution figure'),
             a(h5("?",align = "right"), href="https://idepsite.wordpress.com/pca/",target="_blank")
         )
     }
@@ -105,7 +105,7 @@ View.PCA$set("public", "ConPanel_TSNEMainPanel",
 View.PCA$set("public", "ConPanel_MDSorPCAMainPanel",
     function(){
         conditionalPanel("input.select_PCA_Methods == 1 | input.select_PCA_Methods == 2",
-            htmlOutput('PCA_CorrelationBetweenPCs') ## need rename
+            htmlOutput('div_PCA_CorrelationBetweenPCs')
         )
     }
 )

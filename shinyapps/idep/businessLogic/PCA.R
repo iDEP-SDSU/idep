@@ -181,3 +181,24 @@ PCA.Logic$set("public", "GetTSNEPlot",
     }
 )
 
+
+# Generate the downloaded dataset
+PCA.Logic$set("public", "GeneratePCAData",
+    function(PreprocessResultData, TSNESeed){
+        x <- PreprocessResultData
+        
+        result = prcomp(t(x))$x[,1:2]
+        fit = cmdscale( dist2(t(x) ), eig=T, k=2)
+        result = cbind( result, fit$points[,1:2] )
+        library(Rtsne,verbose=FALSE)
+        set.seed(TSNESeed)
+        tsne <- Rtsne(t(x), dims = 2, perplexity=1, verbose=FALSE, max_iter = 400)
+        
+        result = cbind( result, tsne$Y)
+        
+        colnames(result) = c("PCA.x","PCA.y","MDS.x", "MDS.y", "tSNE.x", "tSNE.y")
+        return(result)	
+    }
+)
+
+

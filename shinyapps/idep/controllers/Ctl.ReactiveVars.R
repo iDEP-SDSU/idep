@@ -83,6 +83,22 @@ Ctl.ReactiveVars$set("public", "GeneSetPCA",
 	}
 )
 
+# the PCAdata set downloaded in PCA page
+Ctl.ReactiveVars$set("public", "PCAdata", 
+	function(input, PreProcessResult){
+        if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+
+        PreprocessResultData <- PreProcessResult$data
+        TSNESeed <- input$btn_PCA_RecalcTSNE
+
+        return(
+            LogicManager$PCA$GeneratePCAData(PreprocessResultData, TSNESeed)
+        )
+        
+	}
+)
+
+
 
 # exactly same logic as "GetGeneSetPCA"
 # but the 'select GO is input$selectGO' in original code

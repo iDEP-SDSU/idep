@@ -407,12 +407,16 @@ shinyServer(
 
         output$div_PCA_MainPlotColorSelection <- PCACtrl$InitColorSelection(PreprocessSampleInfoResult())
         output$div_PCA_MainPlotShapeSelection <- PCACtrl$InitShapeSelection(PreprocessSampleInfoResult())
-
+        
         ############################################################################
         #                      Reactive var for PCA tab
         ############################################################################
         GeneSetPCA <- reactive({
             ReactVarsCtrl$GeneSetPCA(input, ConvertedIDResult(), ConvertedTransformedData() )
+        })
+
+        PCAdata <- reactive({
+            ReactVarsCtrl$PCAdata(input, PreProcessResult() )
         })
 
         ############################################################################
@@ -422,8 +426,27 @@ shinyServer(
             PCACtrl$GetMainPlot(input, ConvertedTransformedData(), PreprocessSampleInfoResult(), GeneSetsPCA())
         }, height = 800, width = 800,res=120 )
 
-        
-        output$PCA_CorrelationBetweenPCs <- PCACtrl$ShowCorrelationBetweenPCs()
+        output$PCA_CorrelationBetweenPCs <- PCACtrl$ShowCorrelationBetweenPCs(
+            input, 
+            PreProcessResult(),
+            PreprocessSampleInfoResult()
+        )
+
+        output$download_PCA_Mainplot <- downloadHandler(
+            filename = "PCA_MDS_tSNE.eps",
+            content = function(file) {
+                cairo_ps(file, width = 6, height = 6)
+                PCACtrl$GetMainPlot(input, ConvertedTransformedData(), PreprocessSampleInfoResult(), GeneSetsPCA())
+                dev.off()
+            }
+        )
+
+        output$download_PCA_Data <- downloadHandler(
+            filename = function() {"PCA_and_MDS.csv"},
+            content = function(file) {
+                write.csv(PCAdata(), file) 
+            }
+        )
 
         ############################################################################
 		#   					1.6     DEG 1

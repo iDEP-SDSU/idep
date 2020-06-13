@@ -83,13 +83,13 @@ Ctl.PCA$set("public", "GetMainPlot",  ## not done yet
 
 
 Ctl.PCA$set("public", "ShowCorrelationBetweenPCs",
-    function(){
+    function(input, PreProcessResult, PreprocessSampleInfoResult){
         renderUI({
             if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
-            if(is.null(readSampleInfo())) return(NULL)
+            if(is.null(PreprocessSampleInfoResult)) return(NULL)
             npc = 5 # number of Principal components
-            x <- readData()$data
-            y <- readSampleInfo()
+            x <- PreProcessResult$data
+            y <- PreprocessSampleInfoResult
 
             pca.object <- prcomp(t(x))
             pcaData = as.data.frame(pca.object$x[,1:npc]); 
