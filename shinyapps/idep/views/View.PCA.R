@@ -13,10 +13,10 @@ View.PCA$set("public", "sidebarPanel",
 	function(){
 		mainPanel(
             plotOutput("PCA_mainplot", inline=TRUE),
-            self$ConPanel_tSNEMainPanel(),
+            self$ConPanel_TSNEMainPanel(),
             br(),
             br(),
-            self$ConPanel_Need a name()
+            self$ConPanel_MDSorPCAMainPanel()
         )
     }
 )
@@ -58,7 +58,25 @@ View.PCA$set("public", "sidebarPanel",
 View.PCA$set("public", "ConPanel_PathwaySettings",
     function(){
         conditionalPanel("input.select_PCA_Methods == 2",
-            htmlOutput('select_PCA_GO')  ## selectGO6 in previous version
+            htmlOutput('select_PCA_GO'),  ## selectGO6 in previous version
+            fluidRow( 
+                column(6, numericInput( "num_PCA_minGeneSetSize", 
+                    label = h5("Geneset size: Min."), 
+                    min   = 5, 
+                    max   = 30, 
+                    value = 15,
+                    step  = 1)
+                ),
+                column(6, numericInput( "num_PCA_maxGeneSetSize", 
+                    label = h5("Max."), 
+                    min   = 1000, 
+                    max   = 2000, 
+                    value = 2000,
+                    step  = 100) 
+                )
+            ), # fluidRow
+            tags$style(type='text/css', "#num_PCA_minGeneSetSize { width:100%;   margin-top:-12px}"),
+            tags$style(type='text/css', "#num_PCA_maxGeneSetSize { width:100%;   margin-top:-12px}")
         )
     }
 )
@@ -74,7 +92,7 @@ View.PCA$set("public", "ConPanel_NonPathwaySettings",
 )
 
 # main panel conditional panel, for TSNE only
-View.PCA$set("public", "ConPanel_tSNEMainPanel",
+View.PCA$set("public", "ConPanel_TSNEMainPanel",
     function(){
         conditionalPanel("input.select_PCA_Methods == 4",
             actionButton("btn_PCA_RecalcTSNE", "Re-calculate t-SNE"),
@@ -84,10 +102,10 @@ View.PCA$set("public", "ConPanel_tSNEMainPanel",
     }
 )
 
-View.PCA$set("public", "ConPanel_Need a name",
+View.PCA$set("public", "ConPanel_MDSorPCAMainPanel",
     function(){
-        conditionalPanel("CONDITIONNEEDCONFIRM",
-            htmlOutput('PCA2factor') ## need rename
+        conditionalPanel("input.select_PCA_Methods == 1 | input.select_PCA_Methods == 2",
+            htmlOutput('PCA_CorrelationBetweenPCs') ## need rename
         )
     }
 )

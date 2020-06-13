@@ -398,16 +398,43 @@ shinyServer(
 		)	
 
 		############################################################################
-		#   					1.5  		
+		#   					1.5  	PCA
+		############################################################################
+
+        ############################################################################
+        #                           PCA: UI init
+        ############################################################################
+
+        output$div_PCA_MainPlotColorSelection <- PCACtrl$InitColorSelection(PreprocessSampleInfoResult())
+        output$div_PCA_MainPlotShapeSelection <- PCACtrl$InitShapeSelection(PreprocessSampleInfoResult())
+
+        ############################################################################
+        #                      Reactive var for PCA tab
+        ############################################################################
+        GeneSetPCA <- reactive({
+            ReactVarsCtrl$GeneSetPCA(input, ConvertedIDResult(), ConvertedTransformedData() )
+        })
+
+        ############################################################################
+        #                          PCA: functions
+        ############################################################################
+        outout$PCA_mainplot <- renderPlot({
+            PCACtrl$GetMainPlot(input, ConvertedTransformedData(), PreprocessSampleInfoResult(), GeneSetsPCA())
+        }, height = 800, width = 800,res=120 )
+
+        
+        output$PCA_CorrelationBetweenPCs <- PCACtrl$ShowCorrelationBetweenPCs()
+
+        ############################################################################
+		#   					1.6     DEG 1
 		############################################################################
 
 
-        ##########################
-        #           Reactive var for PCA tab
-        ##########################
-        GeneSetPCA <- reactive({
-            ReactVarsCtrl$GetGeneSetPCA(input, ConvertedIDResult(), ConvertedTransformedData() )
-        })
+        
+
+
+
+
 
 		############################################################################
 		#						0.0		Test R Markdown Report

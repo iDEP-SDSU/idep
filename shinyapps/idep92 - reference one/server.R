@@ -2126,18 +2126,12 @@ convertedCounts <- ConvertedRawReadcountData()
 
 convertedPvals <- ConvertedPvals() 
 
-GeneSetsPCA <- reactive({
-		if (is.null(input$file1) && input$goButton == 0)	return()
-		tem = input$selectOrg
-		tem = input$selectGO6
-		tem =input$minSetSize; tem= input$maxSetSize; 
-		isolate( {
-			if(input$selectOrg == "NEW" && !is.null(input$gmtFile) ) # new species 
-			{     inFile <- input$gmtFile; inFile <- inFile$datapath
-				return( readGMTRobust(inFile) ) }else
-		return( readGeneSets( converted(), convertedData(), input$selectGO6,input$selectOrg,c(input$minSetSize, input$maxSetSize)  ) ) }) 
-	})	
+# GeneSetsPCA is the reactive var used in PCA stage
 
+GeneSetsPCA <- GeneSetPCA()
+
+
+# Gene sets is a reactive var used in Kmeans and some other later stage 
 GeneSets <- reactive({
 		if (is.null(input$file1) && input$goButton == 0)	return()
 		tem = input$selectOrg
@@ -2753,79 +2747,14 @@ output$PCA <- renderPlot({
 	 
 	#---MDS----------------------------------------------- 
 	if(input$PCA_MDS ==3) {  # MDS
-		 fit = cmdscale( dist2(t(x) ), eig=T, k=2)
 		 incProgress(1/3,detail = " MDS")
-		# par(pin=c(5,5))
-		if(0) {
-		plot( fit$points[,1],fit$points[,2],pch = 1,cex = 2,col = detectGroups(colnames(x)),
-			 xlim=c(min(fit$points[,1]),max(fit$points[,1])*1.5   ),
-		  xlab = "First dimension", ylab="Second dimension"  )
-		 text( fit$points[,1], fit$points[,2],  pos=4, labels =colnames(x), offset=.5, cex=1)
-		}
-		pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
-		colnames(pcaData) = c("x1", "x2", "Sample_Name")
-		
-
-		if(is.null(readSampleInfo())) { 
-		p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name))  
-		} else {
-			pcaData = cbind(pcaData,readSampleInfo() )
-			p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2))  
-			}
-			
-		if(ncol(x)<20) # change size depending of # samples
-			p <- p + geom_point(size=5)  else if(ncol(x)<50)
-			 p <- p + geom_point(size=3)  else 
-			 p <- p + geom_point(size=2)
-		p <- p+	 scale_shape_manual(values= shapes)	 
-		
-		p=p+xlab("Dimension 1") 
-		p=p+ylab("Dimension 2") 
-		p=p+ggtitle("Multidimensional scaling (MDS)")+ coord_fixed(ratio=1.)+ 
-		 theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
-			 theme(axis.text.x = element_text( size = 16),
-			   axis.text.y = element_text( size = 16),
-			   axis.title.x = element_text( size = 16),
-			   axis.title.y = element_text( size = 16) ) +
-		theme(legend.text=element_text(size=16))
-		   print(p)
-		
+            PCALOGIC$GetMDSPlot
 		 }
 
 	#--t-SNE----------------------------------------------------------------
 	if(input$PCA_MDS ==4) {  # t-SNE
 		incProgress(1/4, detail=" t-SNE")
-		library(Rtsne,verbose=FALSE)
-		 set.seed(input$tsneSeed2)
-		 tsne <- Rtsne(t(x), dims = 2, perplexity=1, verbose=FALSE, max_iter = 400)
-
-		pcaData = as.data.frame(tsne$Y); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
-		colnames(pcaData) = c("x1", "x2", "Sample_Name")
-		
-		#pcaData$Sample_Name = as.factor( pcaData$Sample_Name)
-
-		if(is.null(readSampleInfo())) { 
-			p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name)) 
-		} else {
-			pcaData = cbind(pcaData,readSampleInfo() )
-			p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2)) 
-			}
-			
-		if(ncol(x)<20) # change size depending of # samples
-			p <- p + geom_point(size=5)  else if(ncol(x)<50)
-			 p <- p + geom_point(size=3)  else 
-			 p <- p + geom_point(size=2)
-		p <- p+	 scale_shape_manual(values= shapes)	  
-		p=p+xlab("Dimension 1") 
-		p=p+ylab("Dimension 2") 
-		p=p+ggtitle("t-SNE plot")+ coord_fixed(ratio=1.)+ 
-		 theme(plot.title = element_text(hjust = 0.5)) + theme(aspect.ratio=1) +
-			 theme(axis.text.x = element_text( size = 16),
-			   axis.text.y = element_text( size = 16),
-			   axis.title.x = element_text( size = 16),
-			   axis.title.y = element_text( size = 16) ) +
-		theme(legend.text=element_text(size=16))
-		   print(p)
+		PCALOGIC$GetTSNEPlot
 		
 	 }
 	 incProgress(1)

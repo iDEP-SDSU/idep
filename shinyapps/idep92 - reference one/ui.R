@@ -356,7 +356,7 @@ shinyUI(
     
       # main Panel of PCA ------------------------------------------------------------------------------
       mainPanel(
-        plotOutput("PCA", inline=TRUE)
+        plotOutput("PCA", inline=TRUE) <-  this is called 'PCA_mainplot'
         ,conditionalPanel("input.PCA_MDS == 4", # only show if t-SNE
           actionButton("tsneSeed2", "Re-calculate t-SNE"),br(),br() )
         ,br(),br()

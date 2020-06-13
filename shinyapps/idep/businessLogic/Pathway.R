@@ -8,7 +8,7 @@ Pathway.Logic <- R6Class("Pathway.Logic")
 
 Pathway.Logic$set("public", "GetGeneSetByGOOption",
 	function( ConvertedIDResult, ConvertedTransformedData, selectOrg, gmtFile, GO, maxSetSize){
-		if(is.null(ConvertedTransformedData) | is.null(ConvertedIDResult) ) {
+		if(is.null(ConvertedTransformedData) | is.null(ConvertedID Result) ) {
 			return(NULL)
 		}
 

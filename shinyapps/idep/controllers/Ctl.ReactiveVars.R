@@ -62,41 +62,54 @@ Ctl.ReactiveVars$set("public", "PreProcessResult",
 
 
 
-
-
-
-
-Ctl.ReactiveVars$set("public", "GetGeneSet", 
+# the gene set used in PCA page
+Ctl.ReactiveVars$set("public", "GeneSetPCA", 
 	function(input, ConvertedIDResult, ConvertedTransformedData){
-
 		selectOrg <- input$selectOrg
 		gmtFile <- input$gmtFile
-		GO <- input$ ## the select GO 1 in pathway analysis
-
+		GO <- input$select_PCA_GO 
+        minGeneSetSize <- input$num_PCA_minGeneSetSize ##this is in pathway ???
+        maxGeneSetSize <- input$num_PCA_maxGeneSetSize ##this is in pathway ???
 		return(
-			LogicManager$Pathway$GetGeneSetByGOOption(
-				ConvertedIDResult
+			DB.Manager$QueryGeneSetsFromPathway(
+				ConvertedIDResult,
+                ConvertedTransformedData,
+                GO,
+                selectedOrg,
+                c(minGeneSetSize, maxGeneSetSize)
 			)
 		)
+
 	}
 )
 
-Ctl.ReactiveVars$set("public", "GetGeneSetPCA", 
+
+# exactly same logic as "GetGeneSetPCA"
+# but the 'select GO is input$selectGO' in original code
+Ctl.ReactiveVars$set("public", "GeneSet", 
 	function(input, ConvertedIDResult, ConvertedTransformedData){
-		### this one need use GO 6
-		
-		selectOrg <- input$selectOrg
-		gmtFile <- input$gmtFile
-		GO <- input$selectGO6
-
+        # NOT DONE YET
+		#selectOrg <- input$selectOrg
+		#gmtFile <- input$gmtFile
+		#GO <- ## this is "input$selectGO" ## the select GO 1 in pathway analysis
+        #minGeneSetSize <- input$minGeneSetSize ##this is in pathway ???
+        #maxGeneSetSize <- input$maxGeneSetSize ##this is in pathway ???
+		#return(
+		#	LogicManager$Pathway$GetGeneSetByGOOption(
+		#		ConvertedIDResult,
+        #        ConvertedTransformedData,
+        #        GO,
+        #        selected
+		#	)
+		#)
 	}
 )
+
 
 
 # Caculate Kmeans GO data
 Ctl.ReactiveVars$set("public", "GetKmeansGoData",
     function(input, Reactive_Kmeans, Reactive_ConvertedIDResult, Reactive_AllGeneInfo){
-        stop('this function need confirm with Dr. Ge')
         withProgress(message=sample(quotes,1), detail ="GO Enrichment", {
 
             pp=0

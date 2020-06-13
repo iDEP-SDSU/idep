@@ -7,18 +7,15 @@ Ctl.PCA <- R6Class("Ctl.PCA")
 ###############################################################################
 
 Ctl.PCA$set("public", "InitColorSelection",
-    function(){
+    function(PreprocessSampleInfoResult){
         renderUI({
-            tem = input$selectOrg
-            tem=input$limmaPval; tem=input$limmaFC
-            
-            if (is.null(readSampleInfo()) ){ 
+            if (is.null(PreprocessSampleInfoResult) ){ 
                 return(HTML("Upload a sample info file to customize this plot.") ) 
             }else{
                 selectInput(
                     "select_PCA_ColorSelection", 
                     label="Color:",
-                    choices=c( colnames(readSampleInfo()), "Sample_Name"),
+                    choices=c( colnames(PreprocessSampleInfoResult, "Sample_Name"),
                     selected = "Sample_Name")  
             } 
         })
@@ -26,16 +23,12 @@ Ctl.PCA$set("public", "InitColorSelection",
 )
 
 Ctl.PCA$set("public", "InitShapeSelection",
-    function(){
+    function(PreprocessSampleInfoResult){
         renderUI({
-            tem = input$selectOrg
-	        tem=input$limmaPval
-            tem=input$limmaFC
-	
-            if (is.null(readSampleInfo()) ){ 
+            if (is.null(PreprocessSampleInfoResult) ){ 
                 return(NULL) 
             }else{ 
-	            tem <- c( colnames(readSampleInfo()), "Sample_Name")
+	            tem <- c( colnames(PreprocessSampleInfoResult), "Sample_Name")
 	            if(length(tem)>1) { 
                     tem2 = tem[1]
                     tem[1] <- tem[2]
@@ -52,6 +45,42 @@ Ctl.PCA$set("public", "InitShapeSelection",
         })
     }
 )
+
+
+###############################################################################
+###################			Result Ouput Functions			###################
+###############################################################################
+
+Ctl.PCA$set("public", "GetMainPlot",  ## not done yet
+    function( input, ConvertedTransformedData, PreprocessSampleInfoResult, GeneSetsPCA ){
+
+        withProgress(message=sample(quotes,1), detail ="Running ", {
+
+            if(input$select_PCA_Methods == 1){
+                incProgress(1/3,detail="PCA")
+                p <- LogicManager$PCA$GetPCAPlot(ConvertedTransformedData, PreprocessSampleInfoResult)
+                incProgress(1,detail="Done")
+                return(p)
+            }else if (input$select_PCA_Methods == 2) {
+                incProgress(1/8, detail="PGSEA")
+                p <- LogicManager$PCA$plotPathway(ConvertedTransformedData, GeneSetsPCA)
+                incProgress(1,detail="Done")
+                return(p)
+            }else if (input$select_PCA_Methods == 3) {
+                incProgress(1/3,detail = " MDS")
+                p <- LogicManager$PCA$plotMDS(ConvertedTransformedData, PreprocessSampleInfoResult)
+                incProgress(1,detail="Done")
+                return(p)
+            }else{
+                incProgress(1/4, detail=" t-SNE")
+                p <- LogicManager$PCA$plotTSNE(ConvertedTransformedData, PreprocessSampleInfoResult, input$btn_PCA_RecalcTSNE)
+                incProgress(1,detail="Done")
+                return(p)
+            }
+        }
+    }
+)
+
 
 Ctl.PCA$set("public", "ShowCorrelationBetweenPCs",
     function(){
@@ -90,40 +119,6 @@ Ctl.PCA$set("public", "ShowCorrelationBetweenPCs",
     }
 )
 
-
-###############################################################################
-###################			Result Ouput Functions			###################
-###############################################################################
-
-Ctl.PCA$set("public", "GetMainPlot",
-    function(){
-
-        withProgress(message=sample(quotes,1), detail ="Running ", {
-
-            if(input$select_PCA_Methods == 1){
-                incProgress(1/3,detail="PCA")
-                p <- LogicManager$PCA$plotPCA()
-                incProgress(1,detail="Done")
-                return(p)
-            }else if (input$select_PCA_Methods == 2) {
-                incProgress(1/8, detail="PGSEA")
-                p <- LogicManager$PCA$plotPathway()
-                incProgress(1,detail="Done")
-                return(p)
-            }else if (input$select_PCA_Methods == 3) {
-                incProgress(1/3,detail = " MDS")
-                p <- LogicManager$PCA$plotMDS()
-                incProgress(1,detail="Done")
-                return(p)
-            }else{
-                incProgress(1/4, detail=" t-SNE")
-                p <- LogicManager$PCA$plotTSNE()
-                incProgress(1,detail="Done")
-                return(p)
-            }
-        }
-    }
-)
 
 Ctl.PCA$set("public","")
 
