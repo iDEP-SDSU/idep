@@ -11,6 +11,8 @@ LoadDataView <- View.LoadData$new()
 PreProcessView <- View.PreProcess$new()
 HeatmapView <- View.Heatmap$new()
 ReportView <- View.Report$new()
+KMeansView <- View.Kmeans$new()
+PCAView <- View.PCA$new()
 
 
 shinyUI(
@@ -58,6 +60,17 @@ shinyUI(
 			)
 		),
 		
+		#==========================================
+		#				PCA
+		#==========================================
+		tabPanel("PCA",
+			sidebarLayout(
+				PCAView$sidebarPanel(),
+				PCAView$mainPanel()
+			)
+		),
+
+
 		#==========================================
 		#				Report
 		#==========================================

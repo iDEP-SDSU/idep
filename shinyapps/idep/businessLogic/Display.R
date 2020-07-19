@@ -25,7 +25,6 @@ Display.Manager$set("public", "initialize",
 	}
 )
 
-
 Display.Manager$set("public", "GetReadcountBarPlot",
 	function(readCount, groups){
 		memo = ""
@@ -483,4 +482,107 @@ Display.Manager$set("public", "GetHeatmapWithGeneGroups",
 			lwd = 10 )           # line width
 		}
 	}
-}
+)
+
+
+# a program for ploting enrichment results by highlighting the similarities among terms
+# must have columns: Direction, adj.Pval   Pathways Genes
+#  Direction	adj.Pval	nGenes	Pathways		Genes
+#Down regulated	3.58E-59	131	Ribonucleoprotein complex biogenesis	36	Nsun5 Nhp2 Rrp15 
+#Down regulated	2.55E-57	135	NcRNA metabolic process	23	Nsun5 Nhp2 Rrp15 Emg1 Ddx56 Rsl1d1 enrichmentPlot <- function( enrichedTerms){
+# Up or down regulation is color-coded
+# gene set size if represented by the size of marker
+Display.Manager$set("public", "GetEnrichmentPlot",
+    function( enrichedTerms, rightMargin=33) {
+        if(class(enrichedTerms) != "data.frame") return(NULL)
+        if(nrow(enrichedTerms) <=1 ) return(NULL)  # only one term or less
+        library(dendextend) # customizing tree
+        
+        geneLists = lapply(enrichedTerms$Genes, function(x) unlist( strsplit(as.character(x)," " )   ) )
+        names(geneLists)= enrichedTerms$Pathways
+
+        # compute overlaps percentage--------------------
+
+        n = length(geneLists)
+        w <- matrix(NA, nrow = n, ncol = n)
+        # compute overlaps among all gene lists
+            for (i in 1:n) {
+                for (j in i:n) {
+                    u <- unlist(geneLists[i])
+                    v <- unlist(geneLists[j])
+                    w[i, j] = length(intersect(u, v))/length(unique(c(u,v)))
+                }
+            }
+        # the lower half of the matrix filled in based on symmetry
+            for (i in 1:n) 
+                for (j in 1:(i-1)) 
+                    w[i, j] = w[j,i] 
+        
+
+        # compute overlaps P value---------------------
+        if(0) {
+        total_elements = 30000
+        n = length(geneLists)
+        w <- matrix(rep(0,n*n), nrow = n, ncol = n)
+        # compute overlaps among all gene lists
+            for (i in 1:n) {
+                for (j in (i+1):n) {
+                    u <- unlist(geneLists[i])
+                    v <- unlist(geneLists[j])
+                    xx= length( intersect(u, v) )
+                    if(xx == 0)
+                        next;
+                    mm = length(u)
+                    nn <- total_elements - mm	
+                    kk = length(v)
+                    w[i,j] = -sqrt( -phyper(xx-1,mm,nn,kk, lower.tail=FALSE,log.p = TRUE ));
+                    
+                }
+            }
+            
+
+        # the lower half of the matrix filled in based on symmetry
+            for (i in 1:n) 
+                for (j in 1:(i-1)) 
+                    w[i, j] = w[j,i] 
+                    
+            # w =  w-min(w) 			
+            # for( i in 1:n) 		w[i,i] = 0;
+        
+        }
+
+        Terms = paste( sprintf("%-1.0e",as.numeric(enrichedTerms$adj.Pval)), 
+                        names(geneLists))
+        rownames(w) = Terms
+        colnames(w) = Terms
+        par(mar=c(0,0,1,rightMargin)) # a large margin for showing 
+
+        dend <- as.dist(1-w) %>%
+            hclust (method="average") 
+        ix = dend$order # permutated order of leaves
+
+        leafType= as.factor( gsub(" .*","", enrichedTerms$Direction[ix] ) )
+        if(length(unique(enrichedTerms$Direction)  ) ==2 )
+            leafColors = c("green","red")  else  # mycolors
+            leafColors = mycolors
+            
+        #leafSize = unlist( lapply(geneLists,length) ) # leaf size represent number of genes
+        #leafSize = sqrt( leafSize[ix] )  
+        leafSize = -log10(as.numeric( enrichedTerms$adj.Pval[ix] ) ) # leaf size represent P values
+        leafSize = 1.5*leafSize/max( leafSize ) + .2
+        
+            dend %>% 
+            as.dendrogram(hang=-1) %>%
+            set("leaves_pch", 19) %>%   # type of marker
+            set("leaves_cex", leafSize) %>% #Size
+            set("leaves_col", leafColors[leafType]) %>% # up or down genes
+            plot(horiz=TRUE)
+            
+        #legend("top",pch=19, col=leafColors[1:2],legend=levels(leafType),bty = "n",horiz =T  )
+        # add legend using a second layer
+            par(lend = 1)           # square line ends for the color legend
+            add_legend("top",pch=19, col=leafColors,legend=levels(leafType),bty = "n",horiz =T 
+
+            )
+    }
+)

@@ -15,8 +15,11 @@ Ctl.PCA$set("public", "InitColorSelection",
                 selectInput(
                     "select_PCA_ColorSelection", 
                     label="Color:",
-                    choices=c( colnames(PreprocessSampleInfoResult, "Sample_Name"),
-                    selected = "Sample_Name")  
+                    choices=c( 
+                        colnames(PreprocessSampleInfoResult, "Sample_Name"),
+                        selected = "Sample_Name"
+                    )
+                )  
             } 
         })
     }
@@ -54,7 +57,7 @@ Ctl.PCA$set("public", "InitShapeSelection",
 Ctl.PCA$set("public", "GetMainPlot",  ## not done yet
     function( input, ConvertedTransformedData, PreprocessSampleInfoResult, GeneSetsPCA ){
 
-        withProgress(message=sample(quotes,1), detail ="Running ", {
+        withProgress(message=sample(LogicManager$DB$Quotes,1), detail ="Running ", {
 
             if(input$select_PCA_Methods == 1){
                 incProgress(1/3,detail="PCA")
@@ -77,7 +80,7 @@ Ctl.PCA$set("public", "GetMainPlot",  ## not done yet
                 incProgress(1,detail="Done")
                 return(p)
             }
-        }
+        })
     }
 )
 
@@ -119,8 +122,6 @@ Ctl.PCA$set("public", "ShowCorrelationBetweenPCs",
     }
 )
 
-
-Ctl.PCA$set("public","")
 
 
 

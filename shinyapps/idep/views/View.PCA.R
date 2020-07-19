@@ -9,7 +9,7 @@ View.PCA <- R6Class("View.PCA")
 ###############################################################################
 ###################				Main Panel					###################
 ###############################################################################
-View.PCA$set("public", "sidebarPanel",
+View.PCA$set("public", "mainPanel",
 	function(){
 		mainPanel(
             plotOutput("PCA_mainplot", inline=TRUE),

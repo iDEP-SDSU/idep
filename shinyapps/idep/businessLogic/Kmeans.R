@@ -3,6 +3,7 @@ library(gplots,verbose=FALSE)		# for hierarchical clustering
 library(ggplot2,verbose=FALSE)	# graphics
 
 source('server.config')
+source('constant.config')
 
 Kmeans.Logic <- R6Class("Kmeans.Logic")
 
@@ -49,14 +50,14 @@ Kmeans.Logic$set("public", "CalcKmeansCluster",
         
         set.seed(RerunSeed)
         
-        cl = kmeans(x, NumberOfCluster, iter.max = CONST_KNN_ITERATION_MAX)
+        cl = kmeans(dat, NumberOfCluster, iter.max = CONST_KNN_ITERATION_MAX)
     
-        hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
+        hc <- LogicManager$UtilFuns$HierarchicalClusteringFuns$hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
         tem = match(cl$cluster,hc$order) #  new order 
-        x = x[order(tem),] 
+        dat = dat[order(tem),] 
         bar = sort(tem)
         
-        return(list( x = x , bar = bar) )
+        return(list( x = dat , bar = bar) )
     }
 )
 
@@ -165,3 +166,156 @@ Kmeans.Logic$set("public", "CalculateGeneDistributionAndPlot",
 	}
 )
 
+
+Kmeans.Logic$set("public", "GetKmeansGoData", 
+    function(minFDR, selectedOrg, gmtFile, nCluster, GO, is_Kmeans_RemoveRedudantSets,
+        Reactive_Kmeans, Reactive_ConvertedIDResult, Reactive_AllGeneInfo,
+        Reactive_GeneSet ){
+        pp = 0
+        for( i in 1:nCluster) {
+            
+			query = rownames(Reactive_Kmeans$x)[which(Reactive_Kmeans$bar == i)]
+			if(selectOrg == "NEW" && !is.null( gmtFile) ){ 
+				result <- LogicManager$DB.Manager$FindOverlapGMT( query, Reactive_GeneSet,1) 
+                
+			} else {
+				convertedID <- Reactive_ConvertedIDResult
+				convertedID$IDs <- query
+				if(is_Kmeans_RemoveRedudantSets) 
+                    reduced = CONST_redudantGeneSetsRatio 
+                else 
+                    reduced = FALSE
+				result = FindOverlap (convertedID,allGeneInfo(),input$selectGO3,input$selectOrg,1,reduced) 
+			}
+			if( dim(result)[2] ==1) next;   # result could be NULL
+			result$direction = toupper(letters)[i] 
+			if (pp==0) 
+            { 
+                results <- result; 
+                pp <- 1;
+			} else {
+				results <- rbind(results,result)
+			}
+		}
+
+        if(pp == 0) {
+            return(as.data.frame("No enrichment found."))
+        }
+        
+		results= results[,c(6,1,2,4,5)]
+		colnames(results)= c("Cluster","FDR","nGenes","Pathways","Genes")
+		if(min(results$FDR) > minFDR ){
+            results = as.data.frame("No signficant enrichment found.") 
+        } else {
+            results = results[which(results$FDR < minFDR),]
+        }
+		
+        if( is.null(results) )  return ( as.matrix("No significant enrichment.") )	
+        if( class(results) != "data.frame")  return ( as.matrix("No significant enrichment.") )
+        if( dim(results)[2] ==1)  return ( as.matrix("No significant enrichment.") )
+        colnames(results)[2] = "adj.Pval"
+
+        return(results)
+    }
+)
+
+Kmeans.Logic$set("public", "GetGeneSetByGOOption",
+	function( ConvertedIDResult, ConvertedTransformedData, selectOrg, gmtFile, GO, maxSetSize){
+		if(is.null(ConvertedTransformedData) | is.null(ConvertedIDResult) ) {
+			return(NULL)
+		}
+
+		if( selectOrg == "NEW" | !is.null(gmtFile) ){ # new species 
+			inFile <- gmtFile$datapath
+			return( DB$readGMTRobust(inFile) )
+		}
+
+		return(DB$QueryGeneSetsFromPathway(ConvertedIDResult, ConvertedTransformedData, selectOrg, gmtFile, GO, maxSetSize))
+	}
+)
+
+Kmeans.Logic$set("public", "CalculateKmeansGoTableData",
+    function(KmeansGOData, is_Kmeans_RemoveRedudantSets){
+        if(is.null(KmeansGOData)) {
+            return(NULL)
+        }
+            
+        results1 = KmeansGOData
+        if(dim(results1)[2] == 1) {
+            return(results1) 
+        }else{
+            results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )
+            results1[,1] <- as.character(results1[,1])
+            results1[ duplicated (results1[,1] ),1 ] <- ""  
+            
+            return( results1[,-5])
+	    }
+    }
+)
+
+Kmeans.Logic$set("public", "GenerateEnrichmentPlot",
+    function(selectedGO, selectedOrg, gmtFile, Reactive_Kmeans, Reactive_KmeansGOData ){
+        if(is.null(Reactive_KmeansGOData)){
+            return(NULL) 
+        }
+
+        if(is.null(selectedGO)){
+            return (NULL)
+        }
+
+        if(selectedGO == "ID not recognized!"){
+            return ( as.matrix("Gene ID not recognized.") )#No matching species
+        } 
+
+   	    if( is.null(Reactive_Kmeans) ) {
+            return(NULL)
+        }
+
+	    if( selectedOrg == "NEW" && is.null(gmtFile) ) {
+            return(NULL) # new but without gmtFile
+        }
+
+       	tem1 = KmeansGOdata()
+        colnames(tem1)[1]="Direction"
+        return( LogicManager$Display$GetEnrichmentPlot(tem1, 46) )
+    }
+)
+
+
+Kmeans.Logic$set("public", "PromoterAnalysis",
+    function(nClusters, selectOrg, selectGO2, promoterBP, Reactive_Kmeans){
+        results1 <- NULL
+        result <- NULL 
+	    pp<- 0
+	    for( i in 1:nClusters ) {
+	        
+            #query = rownames(x)[which(bar == i)]
+            query = rownames(Reactive_Kmeans$x)[which(Reactive_Kmeans$bar == i)]	
+            convertedID = LogicManager$PreProcessing$GetConvertID(query, selectOrg);#"gmax_eg_gene"
+            result <- LogicManager$UtilFuns$promoter( convertedID, selectOrg, promoterBP )
+            
+            if( is.null(result) ){
+                next   # result could be NULL
+            }
+
+            if( dim(result)[2] ==1) {
+                next
+            }
+
+            result$List = toupper(letters)[i]    
+            if (pp==0 ) { 
+                results1 <- result; 
+                pp <- 1 
+            } else { 
+                results1 = rbind(results1,result) 
+            }
+        }
+
+        if( is.null(results1) ) {
+            return( as.data.frame("No significant motif enrichment found.") )
+        } else {
+            results1[ duplicated (results1[,4] ),4 ] <- ""
+            return( results1[,c(4,1:3,5)] )
+        }
+    }
+)

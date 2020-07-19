@@ -14,55 +14,6 @@ Ctl.Kmeans$set("public", "InitPathwayDatabaseSelection",
 
 
 ###############################################################################
-###################			Reactive Variables      		###################
-###############################################################################
-
-# Calculate Kmeans() reactive variable
-Ctl.Kmeans$set("public", "GetKmeansReactiveVar",
-    function(input, Reactive_ConvertedTransformedData ){
-        withProgress(message="Converting data ... ", {            
-            # if no converted transformed data, return null
-            if(is.null(Reactive_ConvertedTransformedData)){
-                return(NULL)
-            }
-
-            GeneCount <- input$num_Kmeans_GenesKNN
-            NormalizationMethod <- input$select_Kmeans_Normalization
-            RerunSeed <- input$btn_Kmeans_rerun
-            NumberOfCluster <- input$num_Kmeans_Culsters
-
-            incProgress(0.3, detail = paste("Calc Kmeans ... "))
-            
-            result <- LogicManager$Kmeans$CalcKmeansCluster(
-                Reactive_ConvertedTransformedData, 
-                GeneCount, 
-                NormalizationMethod, 
-                RerunSeed,
-                NumberOfCluster
-            )
-            
-            incProgress(1, detail = paste("Done"))
-            
-            return(result)
-        })
-    }
-)
-
-# Calculate KmeansDataWithGeneInfo() reactive variable. 
-Ctl.Kmeans$set("public", "GetKmeansWithGeneInfo",
-	function(input, Reactive_Kmeans, Reactive_AllGeneInfo){
-		
-		x <- Reactive_Kmeans$x
-		bar <- Reactive_Kmeans$bar
-		allGeneInfo <- Reactive_AllGeneInfo
-		selectedOrg <- input$selectOrg
-
-		return(LogicManager$Kmeans$MergeGenInfoWithClusterResult( x, bar, allGeneInfo, selectedOrg))
-	}
-)
-
-
-###############################################################################
 ###################			Result Ouput Functions			###################
 ###############################################################################
 
@@ -108,7 +59,7 @@ Ctl.Kmeans$set("public", "GetNclusterPlot",
             LogicManager$Kmeans$PlotWithinGroupSquareSum(wss_data)
 
             incProgress(1, "Done")
-        }
+        })
 	}
 )
 
@@ -156,7 +107,7 @@ Ctl.Kmeans$set("public", "GetGeneSDHeatmap",
 	}
 )
 #	Download high resolution plot for GeneSDHeatmap
-Ctl.Heatmap$set("public", "SaveGeneSDPlotEpsInTempFile",
+Ctl.Kmeans$set("public", "SaveGeneSDPlotEpsInTempFile",
 	function(file, input, ConvertedTransformedData){
 		cairo_ps(file, width = 6, height = 4)
 		self$GetGeneSDHeatmap(input, ConvertedTransformedData)
@@ -174,5 +125,78 @@ Ctl.Kmeans$set("public", "SaveMainHeatmapPlotEpsInTempFile",
 	}
 )
 
+# the table displaying Kmeans GO data
+Ctl.Kmeans$set("public", "GetKmeansGoTableData",
+	function(input, Reactive_KmeansGOData){
+        is_Kmeans_RemoveRedudantSets = input$is_Kmeans_RemoveRedudantSets
 
+		return(
+            LogicManager$Kmeans$CalculateKmeansGoTableData(Reactive_KmeansGOData, is_Kmeans_RemoveRedudantSets)
+        )
+	}
+)
 
+# Enrichment plot
+Ctl.Kmeans$set("public", "GetEnrichmentPlot",
+    function(input, Reactive_Kmeans, Reactive_KmeansGOData){
+
+        selectedGO <- input$selectGO3
+        selectedOrg <- input$selectOrg
+        gmtFile <- input$gmtFile
+
+       	##################################  
+        # these are needed to make it responsive to changes in parameters
+        tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+        if( !is.null(input$dataFileFormat) ) 
+            if(input$dataFileFormat== 1)  
+                {  tem = input$minCounts ; tem= input$NminSamples; tem = input$countsLogStart; tem=input$CountsTransform }
+        if( !is.null(input$dataFileFormat) )
+            if(input$dataFileFormat== 2) 
+                { tem = input$transform; tem = input$logStart; tem= input$lowFilter ; tem =input$NminSamples2}
+        tem = input$KmeansReRun; 
+        tem = input$nGenesKNN;
+        tem = input$kmeansNormalization
+        tem = input$nClusters
+        tem = input$removeRedudantSets
+        ####################################
+        
+
+        return( LogicManager$Kmeans$GenerateEnrichmentPlot(selectedGO, selectedOrg, gmtFile, Reactive_Kmeans, Reactive_KmeansGOData ))
+    }
+)
+
+# Kmeans Promoter Table
+Ctl.Kmeans$set("public", "GetPromoterTable",
+    function(input, Reactive_Kmeans){
+
+        nClusters <- input$nClusters
+        selectOrg <- input$selectOrg
+        selectGO2 <- input$selectGO2
+        promoterBP <- input$select_PromoterKmeans
+
+        ##################################  
+        # these are needed to make it responsive to changes in parameters
+        tem = input$selectOrg;  tem = input$dataFileFormat; tem = input$noIDConversion; tem=input$missingValue
+        if( !is.null(input$dataFileFormat) ) 
+            if(input$dataFileFormat== 1)  
+                {  tem = input$minCounts ; tem= input$NminSamples;tem = input$countsLogStart; tem=input$CountsTransform }
+        if( !is.null(input$dataFileFormat) )
+            if(input$dataFileFormat== 2) 
+                { tem = input$transform; tem = input$logStart; tem= input$lowFilter; tem =input$NminSamples2 }
+        tem = input$KmeansReRun
+        ####################################
+
+        withProgress(message="Promoter analysis", {
+            result <-  LogicManager$Kmeans$PromoterAnalysis(
+                nClusters,
+                selectOrg,
+                selectGO2,
+                promoterBP,
+                Reactive_Kmeans
+            )
+            incProgress(1, detail = paste("Done")) 
+	    }) #progress
+
+    }
+
+)

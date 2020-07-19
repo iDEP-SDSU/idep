@@ -8,12 +8,14 @@ library(DT,verbose=FALSE) 		# for renderDataTable
 source('server.config')
 source('controllers/ControllerManager.R')
 
+pdf(NULL) # this prevents error Cannot open file 'Rplots.pdf'
 
 ReactVars <- reactiveValues()
 RegularVars <- list()
 
 shinyServer(
 	function(input, output, session) {
+
 
 		############################################################################
 		#   					1.1  		Read data
@@ -325,26 +327,31 @@ shinyServer(
 		)
 
 		############################################################################
-		#   					1.4  		KMeans
+		#   					1.4  		Kmeans
 		############################################################################
 
+        GeneSets <- reactive({
+            ReactVarsCtrl$GeneSets(
+                input, ConvertedIDResult(), ConvertedTransformedData()
+            )
+        })
 
-        KMeans <- reactive({
-            KmeansCtrl$GetKmeansReactiveVar(input, ConvertedTransformedData())
+        Kmeans <- reactive({
+            ReactVarsCtrl$KmeansReactiveVar(input, ConvertedTransformedData())
         })
 
 		KmeansDataWithGeneInfo <- reactive({
-			KmeansCtrl$GetKmeansWithGeneInfo(input, KMeans(), AllGeneInfo() )
+			ReactVarsCtrl$KmeansWithGeneInfo(input, Kmeans(), AllGeneInfo() )
 		}) 
 
         KmeansGOData <- reactive({
-            KmeansCtrl$GetKmeansGoData(input, Kmeans(), ConvertedIDResult(), AllGeneInfo())
+            ReactVarsCtrl$KmeansGoData(input, Kmeans(), ConvertedIDResult(), AllGeneInfo(), GeneSets())
         })
 
 		# output$KmeansHeatmap in old version.
-		# main plot of kmeans tab
+		# main plot of Kmeans tab
         output$Kmeans_Heatmap <- renderPlot({
-            KmeansCtrl$GetMainHeatmapPlot(input, KMeans() )
+            KmeansCtrl$GetMainHeatmapPlot(input, Kmeans() )
         }, width=600, height = 500)
 
         # downloadKmeansHeatmap and KmeansHeatmap4Download in old version.
@@ -355,13 +362,13 @@ shinyServer(
 				KmeansCtrl$SaveMainHeatmapPlotEpsInTempFile(
 					file,
 					input,
-					KMeans()
+					Kmeans()
 				)
       		}
 		)
 
 		output$Kmeans_Nclusters <- renderPlot({
-			KmeansCtrl$GetNclusterPlot(input, ConvertedTransformedData()))
+			KmeansCtrl$GetNclusterPlot(input, ConvertedTransformedData())
 		}, height = 500, width = 550)
 
 		output$Kmeans_tSNEgenePlot <- renderPlot({
@@ -377,6 +384,33 @@ shinyServer(
 			# only difference is, the gene count is defined by input$num_Kmeans_GenesKNN
 			KmeansCtrl$GetGeneSDHeatmap(input, ConvertedTransformedData())
 		}, height = 600, width = 800, res=120 )
+
+
+        output$Kmeans_GO_Table <- renderTable(
+            {
+                KmeansCtrl$GetKmeansGoTableData(input, KmeansGOData())
+            }, 
+            digits = 0, spacing="s", striped=TRUE,
+            bordered = TRUE, width = "auto", hover=T
+        )
+
+        output$Kmeans_Promoter_Table <- renderTable({
+                KmeansCtrl$GetPromoterTable(input, Kmeans())
+            },
+            digits = 0, spacing="s", striped=TRUE,
+            bordered = TRUE, width = "auto", hover=T
+        )
+
+        output$Kmeans_EnrichmentPlot <- renderPlot({
+            KmeansCtrl$GetEnrichmentPlot(input, Kmeans(), KmeansGOData())
+        }, width = 800, height = 1600)
+
+        output$download_Kmeans_KmeansGO <- downloadHandler(
+            filename = function() {"KmeansEnrichment.csv"},
+		    content = function(file) {
+			    write.csv(KmeansGOdata(), file, row.names=FALSE)
+	        }
+        )
 
 		output$download_Kmeans_GeneDistribution <- downloadHandler(
 			filename = "gene_SD_distribution.eps",
@@ -396,6 +430,16 @@ shinyServer(
 				write.csv(KmeansDataWithGeneInfo(), file)
 			}
 		)	
+
+        output$download_Kmeans_EnrichmentPlot <- downloadHandler(
+            filename = "enrichmentPlotKmeans.eps",
+                content = function(file) {
+                cairo_ps(file, width = 10, height = 16)
+                KmeansCtrl$GetEnrichmentPlot(input, Kmeans(), KmeansGOData())
+                dev.off()
+            }
+        )
+	
 
 		############################################################################
 		#   					1.5  	PCA
@@ -422,7 +466,7 @@ shinyServer(
         ############################################################################
         #                          PCA: functions
         ############################################################################
-        outout$PCA_mainplot <- renderPlot({
+        output$PCA_mainplot <- renderPlot({
             PCACtrl$GetMainPlot(input, ConvertedTransformedData(), PreprocessSampleInfoResult(), GeneSetsPCA())
         }, height = 800, width = 800,res=120 )
 

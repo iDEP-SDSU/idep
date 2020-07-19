@@ -18,8 +18,8 @@ DB.Manager$set("public","initialize",
 		
 		self$dbConvert <- dbConnect( self$sqlite, paste0(CONFIG_DATA_DATAPATH, "convertIDs.db"), flags=SQLITE_RO) 
 		
-		self$gmtFiles = list.files(path = paste0(datapath,"pathwayDB"), pattern=".*\\.db")
-		self$gmtFiles = paste(datapath, "pathwayDB/", gmtFiles,sep="")
+		self$gmtFiles = list.files(path = paste0(CONFIG_DATA_DATAPATH,"pathwayDB"), pattern=".*\\.db")
+		self$gmtFiles = paste(CONFIG_DATA_DATAPATH, "pathwayDB/", self$gmtFiles,sep="")
 		dbQueryResult <- dbGetQuery(self$dbConvert, paste("select distinct * from orgInfo " ))
 		self$OrgInfo <- dbQueryResult[order(dbQueryResult$name),]
 
@@ -101,7 +101,95 @@ DB.Manager$set("public", "QueryGeneSetsFromPathway",
 		dbDisconnect(pathway)
 		return( geneSets )
 	}
-} 
+) 
+
+DB.Manager$set("public", "cleanGeneSet",
+    function(x){
+        # remove duplicate; upper case; remove special characters
+        x <- unique( toupper( gsub("\n| ","",x) ) )
+        x <- x[which( nchar(x)>1) ]  # genes should have at least two characters
+        return(x)
+    }
+)
+
+
+DB.Manager$set("public", "findOverlapGMT",
+# Given a gene set, finds significant overlaps with a gene set database  object 
+    function( query, geneSet, minFDR=.2 ,minSize=2,maxSize=10000 ){
+        total_elements = 30000
+        Min_overlap <- 1
+        maxTerms =10 # max number of enriched terms
+        noSig <- as.data.frame("No significant enrichment found!")
+        query <- self$cleanGeneSet(query)   # convert to upper case, unique()
+
+        if(length(query) <=2) return(noSig)
+        if(length(geneSet) <1) return(noSig)
+        geneSet <- geneSet[which(sapply(geneSet,length) > minSize)]  # gene sets smaller than 1 is ignored!!!
+        geneSet <- geneSet[which(sapply(geneSet,length) < maxSize)]  # gene sets smaller than 1 is ignored!!!
+        result <- unlist( lapply(geneSet, function(x) length( intersect (query, x) ) ) )
+        result <- cbind(unlist( lapply(geneSet, length) ), result )
+        result <- result[ which(result[,2]>Min_overlap), ,drop=F]
+        if(dim(result)[1] == 0) return( noSig)
+        xx <- result[,2]
+        mm <- length(query)
+        nn <- total_elements - mm
+        kk <- result[,1]
+        Pval_enrich=phyper(xx-1,mm,nn,kk, lower.tail=FALSE );
+        FDR <- p.adjust(Pval_enrich,method="fdr",n=length(geneSet) )
+        result <- as.data.frame(cbind(FDR,result))
+        result <- result[,c(1,3,2)]
+        result$pathway = rownames(result)
+        result$Genes = ""  # place holder just 
+        colnames(result)= c("Corrected P value (FDR)", "Genes in list", "Total genes in category","Functional Category","Genes"  )
+        result <- result[ which( result[,1] < minFDR),,drop=F]
+        if( dim( result)[1] == 0) return(noSig) 
+        if(min(FDR) > minFDR) return(noSig) 
+        result <- result[order(result[,1] ),]
+        if(dim(result)[1] > maxTerms ) result <- result[1:maxTerms,]
+
+        return( result)
+    }
+
+)
+
+
+# read gene set files in the GMT format, does NO cleaning. Assumes the GMT files are created with cleanGeneSet()
+# See http://software.broadinstitute.org/cancer/software/gsea/wiki/index.php/Data_formats#Gene_Set_Database_Formats
+readGMT <- function (fileName){ 
+  x <- scan(fileName, what="", sep="\n")
+  x <- strsplit(x, "\t")
+  # Extract the first vector element and set it as the list element name
+  names(x) <- sapply(x, `[[`, 1)
+  x <- lapply(x, `[`, -c(1,2)) # 2nd element is comment, ignored
+  x = x[which(sapply(x,length) > 1)]  # gene sets smaller than 1 is ignored!!!
+  return(x)
+}
 
 
 
+# Read gene sets GMT file
+# This functions cleans and converts to upper case
+readGMTRobust <- function (file1) {   # size restriction
+	# Read in the first file 
+	x <- scan(file1, what="", sep="\n")
+	# x <- gsub("\t\t.","",x)     # GMT files saved by Excel has a lot of empty cells "\t\t\t\t"   "\t." means one or more tab
+	x <- gsub(" ","",x)  # remove white space
+	x <- toupper(x)    # convert to upper case
+
+	#----Process the first file
+	# Separate elements by one or more whitespace
+	y <- strsplit(x, "\t")
+	# Extract the first vector element and set it as the list element name
+	names(y) <- sapply(y, `[[`, 1)
+	#names(y) <- sapply(y, function(x) x[[1]]) # same as above
+	# Remove the first vector element from each list element
+	y <- lapply(y, `[`, -c(1,2))
+	#y <- lapply(y, function(x) x[-1]) # same as above
+	# remove duplicated elements
+	for ( i in 1:length(y) )  y[[i]] <- cleanGeneSet(y[[i]])
+	# check the distribution of the size of gene lists sapply(y, length) hold a vector of sizes
+	if( max( sapply(y,length) ) <5) cat("Warning! Gene sets have very small number of genes!\n Please double check format.")
+	y <- y[which(sapply(y,length) > 1)]  # gene sets smaller than 1 is ignored!!!
+
+	return(y)
+}

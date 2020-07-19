@@ -198,7 +198,7 @@ Ctl.Heatmap$set("public", "GetMainHeatmapPlotly",
 
 				incProgress(3/5, "Generate Plot...")
 				p <- LogicManager$Heatmap$GenerateHeatmapPlotly(cuttedData, clusteredOrder, selectedHeatColor, allGeneInfo)
-
+                
 				incProgress(1, "Done")
 				return(p)
 			}

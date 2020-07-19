@@ -11,6 +11,7 @@ source('views/View.LoadData.R')
 source('views/View.PreProcess.R')
 source('views/View.Heatmap.R')
 source('views/View.Kmeans.R')
+source('views/VIew.PCA.R')
 source('views/View.Report.R')
 
 

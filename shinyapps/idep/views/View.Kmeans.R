@@ -12,7 +12,7 @@ View.Kmeans$set("public", "sidebarPanel",
 	function(){
 		sidebarPanel(
 			self$ClusterConfiguration(),
-			actionButton("btn_Kmeans_rerun", "Re-Run")
+			actionButton("btn_Kmeans_rerun", "Re-Run"),
 			self$PopupTriggers(),
 			self$DownloadPlotSection(),
 			# a solid line as divider
@@ -37,7 +37,7 @@ View.Kmeans$set("public", "mainPanel",
 			plotOutput("Kmeans_Heatmap", inline=TRUE),
 			br(),
 			h4("Enriched pathways for each cluster"),
-			tableOutput("tbl_Kmeans_GO"),
+			tableOutput("Kmeans_GO_Table"),
 			self$PopPromoters(), 
 			self$PopNumberOfClusters(),
 			self$PopTSNEPlot(),
@@ -101,25 +101,29 @@ View.Kmeans$set("public", "PopupTriggers",
 # Download section
 View.Kmeans$set("public", "DownloadPlotSection",
 	function(){
-		downloadButton('download_Kmeans_KmeansData', 'K-means data'),
-        downloadButton('download_Kmeans_Heatmap', 'High-resolution figure')
+        wellPanel(
+		    downloadButton('download_Kmeans_KmeansData', 'K-means data'),
+            downloadButton('download_Kmeans_Heatmap', 'High-resolution figure')
+        )
 	}
 )
 
 # Enrichment part
 View.Kmeans$set("public", "PathwayEnrichment",
 	function(){
-		h5("Pathway database"),
-        htmlOutput("select_Kmeans_PathwayDatabase"),
-        tags$style(type='text/css', "#select_Kmeans_PathwayDatabase { width:100%;   margin-top:-9px}"),
-		checkboxInput("is_Kmeans_RemoveRedudantSets", "Remove redudant genesets", value = TRUE),
-		actionButton("btn_Kmeans_ShowEnrichmentPlot", "Visualize enrichment"),
-		downloadButton("download_Kmeans_EnrichementPlot", "Enrichment details" ),
-		a( 	
-			h5("?",align = "right"), 
-			href="https://idepsite.wordpress.com/k-means/",
-			target="_blank"
-		)
+        wellPanel(
+            h5("Pathway database"),
+            htmlOutput("select_Kmeans_PathwayDatabase"),
+            tags$style(type='text/css', "#select_Kmeans_PathwayDatabase { width:100%;   margin-top:-9px}"),
+            checkboxInput("is_Kmeans_RemoveRedudantSets", "Remove redudant genesets", value = TRUE),
+            actionButton("btn_Kmeans_ShowEnrichmentPlot", "Visualize enrichment"),
+            downloadButton("download_Kmeans_KmeansGO", "Enrichment details" ),
+            a( 	
+                h5("?",align = "right"), 
+                href="https://idepsite.wordpress.com/k-means/",
+                target="_blank"
+            )
+        )
 	}
 )
 
@@ -136,7 +140,7 @@ View.Kmeans$set("public", "PopPromoters",
                         choices  = list("Upstream 300bp as promoter" = 300, 
                                         "Upstream 600bp as promoter" = 600),
                         selected = 300),
-          	tableOutput("tbl_KmeansPromoter")
+          	tableOutput("Kmeans_Promoter_Table")
 		)
 	}
 )

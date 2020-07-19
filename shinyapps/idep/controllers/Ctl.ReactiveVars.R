@@ -102,43 +102,88 @@ Ctl.ReactiveVars$set("public", "PCAdata",
 
 # exactly same logic as "GetGeneSetPCA"
 # but the 'select GO is input$selectGO' in original code
-Ctl.ReactiveVars$set("public", "GeneSet", 
+Ctl.ReactiveVars$set("public", "GeneSets", 
 	function(input, ConvertedIDResult, ConvertedTransformedData){
-        # NOT DONE YET
-		#selectOrg <- input$selectOrg
-		#gmtFile <- input$gmtFile
-		#GO <- ## this is "input$selectGO" ## the select GO 1 in pathway analysis
-        #minGeneSetSize <- input$minGeneSetSize ##this is in pathway ???
-        #maxGeneSetSize <- input$maxGeneSetSize ##this is in pathway ???
-		#return(
-		#	LogicManager$Pathway$GetGeneSetByGOOption(
-		#		ConvertedIDResult,
-        #        ConvertedTransformedData,
-        #        GO,
-        #        selected
-		#	)
-		#)
+		selectOrg <- input$selectOrg
+		gmtFile <- input$gmtFile
+		GO <- input$selectGO
+        minGeneSetSize <- input$minGeneSetSize 
+        maxGeneSetSize <- input$maxGeneSetSize 
+		return(
+			LogicManager$Pathway$GetGeneSetByGOOption(
+				ConvertedIDResult,
+                ConvertedTransformedData,
+                GO,
+                selected
+			)
+		)
+	}
+)
+
+
+# Calculate Kmeans() reactive variable
+Ctl.ReactiveVars$set("public", "KmeansReactiveVar",
+    function(input, Reactive_ConvertedTransformedData ){
+
+        withProgress(message="Converting data ... ", {            
+            # if no converted transformed data, return null
+            if(is.null(Reactive_ConvertedTransformedData)){
+                return(NULL)
+            }
+
+            GeneCount <- input$num_Kmeans_GenesKNN
+            NormalizationMethod <- input$select_Kmeans_Normalization
+            RerunSeed <- input$btn_Kmeans_rerun
+            NumberOfCluster <- input$num_Kmeans_Culsters
+
+            incProgress(0.3, detail = paste("Calc Kmeans ... "))
+            
+            result <- LogicManager$Kmeans$CalcKmeansCluster(
+                Reactive_ConvertedTransformedData, 
+                GeneCount, 
+                NormalizationMethod, 
+                RerunSeed,
+                NumberOfCluster
+            )
+            
+            incProgress(1, detail = paste("Done"))
+            
+            return(result)
+        })
+    }
+)
+
+# Calculate KmeansDataWithGeneInfo() reactive variable. 
+Ctl.ReactiveVars$set("public", "KmeansWithGeneInfo",
+	function(input, Reactive_Kmeans, Reactive_AllGeneInfo){
+		
+		x <- Reactive_Kmeans$x
+		bar <- Reactive_Kmeans$bar
+		allGeneInfo <- Reactive_AllGeneInfo
+		selectedOrg <- input$selectOrg
+
+		return(LogicManager$Kmeans$MergeGenInfoWithClusterResult( x, bar, allGeneInfo, selectedOrg))
 	}
 )
 
 
 
 # Caculate Kmeans GO data
-Ctl.ReactiveVars$set("public", "GetKmeansGoData",
-    function(input, Reactive_Kmeans, Reactive_ConvertedIDResult, Reactive_AllGeneInfo){
-        withProgress(message=sample(quotes,1), detail ="GO Enrichment", {
-
-            pp=0
-            minFDR = 0.01
-            selectedOrg <- input$selectOrg
-            gmtFile <- input$gmtFile
-            nCluster <- input$num_Kmeans_Culsters
-			GO <- input$select_Kmeans_PathwayDatabase
-
-			overlap <- LogicManager$DB$findOverlap(query, )			
-
-            return(LogicManager$Kmeans$) 
-        })
+Ctl.ReactiveVars$set("public", "KmeansGoData",
+    function(input, Reactive_Kmeans, Reactive_ConvertedIDResult, Reactive_AllGeneInfo, Reactive_GeneSets){
+        minFDR = 0.01
+        selectedOrg <- input$selectOrg
+        gmtFile <- input$gmtFile
+        nCluster <- input$num_Kmeans_Culsters
+        GO <- input$select_Kmeans_PathwayDatabase
+        is_Kmeans_RemoveRedudantSets <- input$is_Kmeans_RemoveRedudantSets
+        return(
+            LogicManager$Kmeans$GetKmeansGoData(
+                minFDR, selectedOrg, gmtFile, nCluster, GO, is_Kmeans_RemoveRedudantSets,
+                Reactive_Kmeans, Reactive_ConvertedIDResult, Reactive_AllGeneInfo,
+                Reactive_GeneSets
+            )
+        ) 
     }
 )
 
