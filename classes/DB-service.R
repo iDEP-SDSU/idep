@@ -63,5 +63,84 @@ idIndex <- DBI::dbGetQuery(convert, paste("select distinct * from idIndex "))
 quotes <- DBI::dbGetQuery(convert, " select * from quotes")
 quotes = paste0("\"", quotes$quotes, "\"", " -- ", quotes$author, ".       ")
 
+# convert gene IDs to ensembl gene ids and find species
+convertID <- function (query,selectOrg, selectGO) {
+  querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,')))
+  # querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
+  
+  if( selectOrg == "BestMatch") { # query all species
+    querySTMT <- paste( "select distinct id,ens,species from mapping where id IN ('", paste(querySet,collapse="', '"),"')",sep="")
+  } else {  # organism has been selected query specific one
+    querySTMT <- paste( "select distinct id,ens,species from mapping where species = '",selectOrg,
+                        "' AND id IN ('", paste(querySet,collapse="', '"),"')",sep="")    
+  }
+  result <- dbGetQuery(convert, querySTMT)
+  if( dim(result)[1] == 0  ) return(NULL)
+  if(selectOrg == speciesChoice[[1]]) {
+    comb = paste( result$species,result$idType)
+    sortedCounts = sort(table(comb),decreasing=T)
+    # Try to use Ensembl instead of STRING-db genome annotation
+    if( sortedCounts[1] <= sortedCounts[2] *1.1  # if the #1 species and #2 are close
+        && as.numeric(names(sortedCounts[1])) > sum( annotatedSpeciesCounts[1:3])  # 1:3 are Ensembl species
+        && as.numeric(names( sortedCounts[2] )) < sum( annotatedSpeciesCounts[1:3])    ) { # and #2 come earlier (ensembl) than #1
+      tem <- sortedCounts[2]
+      sortedCounts[2] <- sortedCounts[1]
+      names(sortedCounts)[2] <- names(sortedCounts)[1]
+      sortedCounts[1] <- tem
+      names(sortedCounts)[1] <- names(tem)    
+    } 
+    recognized =names(sortedCounts[1])
+    result <- result[which(comb == recognized),]
+    speciesMatched=sortedCounts
+    names(speciesMatched )= sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  ) 
+    speciesMatched <- as.data.frame( speciesMatched )
+    if(length(sortedCounts) == 1) { # if only  one species matched
+      speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
+    } else {# if more than one species matched
+      speciesMatched[,1] <- as.character(speciesMatched[,1])
+      speciesMatched[,1] <- paste( speciesMatched[,1]," (",speciesMatched[,2], ")", sep="") 
+      speciesMatched[1,1] <- paste( speciesMatched[1,1],"   ***Used in mapping***  To change, select from above and resubmit query.") 	
+      speciesMatched <- as.data.frame(speciesMatched[,1])
+    }
+  } else { # if species is selected
+    result <- result[which(result$species == selectOrg ) ,]
+    if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
+    speciesMatched <- as.data.frame(paste("Using selected species ", findSpeciesByIdName(selectOrg) )  )
+  }
+  result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id
+  result <- result[which(!duplicated(result[,1]) ),] # remove duplicates in user ID
+  colnames(speciesMatched) = c("Matched Species (genes)" ) 
+  conversionTable <- result[,1:2]; colnames(conversionTable) = c("User_input","ensembl_gene_id")
+  conversionTable$Species = sapply(result[,3], findSpeciesByIdName )
+  if(0){
+    # generate a list of gene set categories
+    ix = grep(findSpeciesById(result$species[1])[1,1],gmtFiles)
+    if (length(ix) == 0 ) {categoryChoices = NULL}
+    # If selected species is not the default "bestMatch", use that species directly
+    if(selectOrg != speciesChoice[[1]]) {  
+      ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
+      if (length(ix) == 0 ) {categoryChoices = NULL}
+      totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
+    }
+    pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
+    # Generate a list of geneset categories such as "GOBP", "KEGG" from file
+    geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
+    geneSetCategory  <- geneSetCategory[,1]
+    categoryChoices <- setNames(as.list( geneSetCategory ), geneSetCategory )
+    categoryChoices <- append( setNames( "All","All available gene sets"), categoryChoices  )
+    #change GOBO to the full description for display
+    names(categoryChoices)[ match("GOBP",categoryChoices)  ] <- "GO Biological Process"
+    names(categoryChoices)[ match("GOCC",categoryChoices)  ] <- "GO Cellular Component"
+    names(categoryChoices)[ match("GOMF",categoryChoices)  ] <- "GO Molecular Function"
+    dbDisconnect(pathway)
+  } #if (0)
+  
+  return(list(originalIDs = querySet,IDs=unique( result[,2]), 
+              species = findSpeciesById(result$species[1]), 
+              #idType = findIDtypeById(result$idType[1] ),
+              speciesMatched = speciesMatched,
+              conversionTable = conversionTable
+  ) )
+}
 # References
 ## [1] Drivers: https://db.rstudio.com/best-practices/drivers/
