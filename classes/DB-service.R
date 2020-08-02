@@ -71,6 +71,18 @@ cleanGeneSet <- function (x) {
   return(x)
 }
 
+#find idType based on index 
+findIDtypeById <- function(x){ # find 
+  return( idIndex$idType[ as.numeric(x)] )
+}
+findSpeciesById <- function (speciesID){ # find species name use id
+  return( orgInfo[which(orgInfo$id == speciesID),]  )
+}
+# just return name
+findSpeciesByIdName <- function (speciesID){ # find species name use id
+  return( orgInfo[which(orgInfo$id == speciesID),3]  )
+}
+
 # convert gene IDs to ensembl gene ids and find species
 convertID <- function (query, selectOrg, selectGO) {
   querySet <- cleanGeneSet(unlist(strsplit(toupper(query), '\t| |\n|\\,')))
