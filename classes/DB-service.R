@@ -12,6 +12,7 @@
 ## 2. brew install psqlodbc
 ## 3. brew services start postgresql
 
+# pgloader --root-dir /scratch/opt/tmp convertIDs.db postgresql://idep:iDEP666@localhost/idep96
 # Create connection
 con <- DBI::dbConnect(odbc::odbc(),
                       driver   = "/usr/local/lib/psqlodbcw.so",
@@ -145,9 +146,9 @@ convertID <- function (query, selectOrg, selectGO) {
       if (length(ix) == 0 ) {categoryChoices = NULL}
       totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
     }
-    pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
+    pathway <- DBI::dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
     # Generate a list of geneset categories such as "GOBP", "KEGG" from file
-    geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
+    geneSetCategory <-  DBI::dbGetQuery(pathway, "select distinct * from categories " ) 
     geneSetCategory  <- geneSetCategory[,1]
     categoryChoices <- setNames(as.list( geneSetCategory ), geneSetCategory )
     categoryChoices <- append( setNames( "All","All available gene sets"), categoryChoices  )
@@ -163,7 +164,7 @@ convertID <- function (query, selectOrg, selectGO) {
               #idType = findIDtypeById(result$idType[1] ),
               speciesMatched = speciesMatched,
               conversionTable = conversionTable
-  ) )
+  ))
 }
 # References
 ## [1] Drivers: https://db.rstudio.com/best-practices/drivers/
