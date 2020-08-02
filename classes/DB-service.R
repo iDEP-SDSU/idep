@@ -73,47 +73,50 @@ cleanGeneSet <- function (x) {
 
 # convert gene IDs to ensembl gene ids and find species
 convertID <- function (query, selectOrg, selectGO) {
-  querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,')))
+  querySet <- cleanGeneSet(unlist(strsplit(toupper(query), '\t| |\n|\\,')))
   # querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
   
-  if( selectOrg == "BestMatch") { # query all species
-    querySTMT <- paste( "select distinct id,ens,species from mapping where id IN ('", paste(querySet,collapse="', '"),"')",sep="")
+  if(selectOrg == "BestMatch") { # query all species
+    querySTMT <- paste0("select distinct id,ens,species from mapping where id IN ('", paste(querySet, collapse = "', '"), "')")
   } else {  # organism has been selected query specific one
-    querySTMT <- paste( "select distinct id,ens,species from mapping where species = '",selectOrg,
-                        "' AND id IN ('", paste(querySet,collapse="', '"),"')",sep="")    
+    querySTMT <- paste0("select distinct id,ens,species from mapping where species = '", selectOrg,
+                        "' AND id IN ('", paste(querySet, collapse="', '"), "')")
   }
-  result <- dbGetQuery(convert, querySTMT)
-  if( dim(result)[1] == 0  ) return(NULL)
+  tictoc::tic("Big query [Convert Gene IDs]")
+  result <- DBI::dbGetQuery(convert, querySTMT)
+  tictoc::toc()
+  
+  if(dim(result)[1] == 0) return(NULL)
   if(selectOrg == speciesChoice[[1]]) {
-    comb = paste( result$species,result$idType)
-    sortedCounts = sort(table(comb),decreasing=T)
+    comb <- paste(result$species, result$idType)
+    sortedCounts <- sort(table(comb), decreasing = TRUE)
     # Try to use Ensembl instead of STRING-db genome annotation
-    if( sortedCounts[1] <= sortedCounts[2] *1.1  # if the #1 species and #2 are close
-        && as.numeric(names(sortedCounts[1])) > sum( annotatedSpeciesCounts[1:3])  # 1:3 are Ensembl species
-        && as.numeric(names( sortedCounts[2] )) < sum( annotatedSpeciesCounts[1:3])    ) { # and #2 come earlier (ensembl) than #1
+    if(sortedCounts[1] <= sortedCounts[2] * 1.1  # if the #1 species and #2 are close
+        && as.numeric(names(sortedCounts[1])) > sum(annotatedSpeciesCounts[1:3])  # 1:3 are Ensembl species
+        && as.numeric(names(sortedCounts[2])) < sum(annotatedSpeciesCounts[1:3])) { # and #2 come earlier (ensembl) than #1
       tem <- sortedCounts[2]
       sortedCounts[2] <- sortedCounts[1]
       names(sortedCounts)[2] <- names(sortedCounts)[1]
       sortedCounts[1] <- tem
       names(sortedCounts)[1] <- names(tem)    
     } 
-    recognized =names(sortedCounts[1])
+    recognized <- names(sortedCounts[1])
     result <- result[which(comb == recognized),]
-    speciesMatched=sortedCounts
-    names(speciesMatched )= sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  ) 
-    speciesMatched <- as.data.frame( speciesMatched )
+    speciesMatched <- sortedCounts
+    names(speciesMatched) <- sapply(as.numeric(gsub(" .*", "", names(sortedCounts))), findSpeciesByIdName)
+    speciesMatched <- as.data.frame(speciesMatched)
     if(length(sortedCounts) == 1) { # if only  one species matched
-      speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
+      speciesMatched[1,1] <- paste0(rownames(speciesMatched), "(", speciesMatched[1, 1], ")")
     } else {# if more than one species matched
       speciesMatched[,1] <- as.character(speciesMatched[,1])
-      speciesMatched[,1] <- paste( speciesMatched[,1]," (",speciesMatched[,2], ")", sep="") 
-      speciesMatched[1,1] <- paste( speciesMatched[1,1],"   ***Used in mapping***  To change, select from above and resubmit query.") 	
-      speciesMatched <- as.data.frame(speciesMatched[,1])
+      speciesMatched[,1] <- paste0(speciesMatched[, 1], " (", speciesMatched[, 2], ")") 
+      speciesMatched[1,1] <- paste(speciesMatched[1, 1], "   ***Used in mapping***  To change, select from above and resubmit query.") 	
+      speciesMatched <- as.data.frame(speciesMatched[, 1])
     }
   } else { # if species is selected
-    result <- result[which(result$species == selectOrg ) ,]
-    if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
-    speciesMatched <- as.data.frame(paste("Using selected species ", findSpeciesByIdName(selectOrg) )  )
+    result <- result[which(result$species == selectOrg), ]
+    if(dim(result)[1] == 0) return(NULL) #stop("ID not recognized!")
+    speciesMatched <- as.data.frame(paste("Using selected species ", findSpeciesByIdName(selectOrg)))
   }
   result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id
   result <- result[which(!duplicated(result[,1]) ),] # remove duplicates in user ID
