@@ -63,8 +63,16 @@ idIndex <- DBI::dbGetQuery(convert, paste("select distinct * from idIndex "))
 quotes <- DBI::dbGetQuery(convert, " select * from quotes")
 quotes = paste0("\"", quotes$quotes, "\"", " -- ", quotes$author, ".       ")
 
+# Clean up gene sets. Remove spaces and other control characters from gene names  
+cleanGeneSet <- function (x) {
+  # remove duplicate; upper case; remove special characters
+  x <- unique(toupper(gsub("\n| ", "", x)))
+  x <- x[which(nchar(x) > 1)]  # genes should have at least two characters
+  return(x)
+}
+
 # convert gene IDs to ensembl gene ids and find species
-convertID <- function (query,selectOrg, selectGO) {
+convertID <- function (query, selectOrg, selectGO) {
   querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,')))
   # querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
   
