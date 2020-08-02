@@ -73,24 +73,27 @@ cleanGeneSet <- function (x) {
 
 # convert gene IDs to ensembl gene ids and find species
 convertID <- function (query, selectOrg, selectGO) {
-  querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,')))
+  querySet <- cleanGeneSet(unlist(strsplit(toupper(query), '\t| |\n|\\,')))
   # querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
   
-  if( selectOrg == "BestMatch") { # query all species
-    querySTMT <- paste( "select distinct id,ens,species from mapping where id IN ('", paste(querySet,collapse="', '"),"')",sep="")
+  if(selectOrg == "BestMatch") { # query all species
+    querySTMT <- paste0("select distinct id,ens,species from mapping where id IN ('", paste(querySet, collapse ="', '"), "')")
   } else {  # organism has been selected query specific one
-    querySTMT <- paste( "select distinct id,ens,species from mapping where species = '",selectOrg,
-                        "' AND id IN ('", paste(querySet,collapse="', '"),"')",sep="")    
+    querySTMT <- paste0("select distinct id,ens,species from mapping where species = '", selectOrg,
+                        "' AND id IN ('", paste(querySet, collapse="', '"),"')")
   }
-  result <- dbGetQuery(convert, querySTMT)
-  if( dim(result)[1] == 0  ) return(NULL)
+  tictoc::tic("Big query [Convert Gene IDs]")
+  result <- DBI::dbGetQuery(convert, querySTMT)
+  tictoc::toc()
+  
+  if(dim(result)[1] == 0) return(NULL)
   if(selectOrg == speciesChoice[[1]]) {
-    comb = paste( result$species,result$idType)
-    sortedCounts = sort(table(comb),decreasing=T)
+    comb = paste(result$species, result$idType)
+    sortedCounts = sort(table(comb), decreasing = TRUE)
     # Try to use Ensembl instead of STRING-db genome annotation
-    if( sortedCounts[1] <= sortedCounts[2] *1.1  # if the #1 species and #2 are close
+    if(sortedCounts[1] <= sortedCounts[2] * 1.1  # if the #1 species and #2 are close
         && as.numeric(names(sortedCounts[1])) > sum( annotatedSpeciesCounts[1:3])  # 1:3 are Ensembl species
-        && as.numeric(names( sortedCounts[2] )) < sum( annotatedSpeciesCounts[1:3])    ) { # and #2 come earlier (ensembl) than #1
+        && as.numeric(names(sortedCounts[2])) < sum( annotatedSpeciesCounts[1:3])) { # and #2 come earlier (ensembl) than #1
       tem <- sortedCounts[2]
       sortedCounts[2] <- sortedCounts[1]
       names(sortedCounts)[2] <- names(sortedCounts)[1]
