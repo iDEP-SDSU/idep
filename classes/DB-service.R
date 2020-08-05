@@ -12,18 +12,29 @@
 ## 2. brew install psqlodbc
 ## 3. brew services start postgresql
 
-# pgloader --root-dir /scratch/opt/tmp convertIDs.db postgresql://idep:iDEP666@localhost/idep96
-# Create connection
-con <- DBI::dbConnect(odbc::odbc(),
-                      driver   = "/usr/local/lib/psqlodbcw.so",
-                      database = "idep96",
-                      UID      = "idep", #rstudioapi::askForPassword("Database user")
-                      PWD      = rstudioapi::askForPassword("Database password"),
-                      server     = "pt.jacks.local", 
-                      Port     = 5432)
+# Run from CMD/Terminal
+## pgloader --root-dir /scratch/opt/tmp convertIDs.db postgresql://idep:iDEP666@localhost/idep96
 
-convert <- con
+# Create connection
+convert <- DBI::dbConnect(odbc::odbc(),
+                          driver   = "/usr/local/lib/psqlodbcw.so",
+                          database = "idep96v2",
+                          UID      = rstudioapi::askForPassword("Database user"),
+                          PWD      = rstudioapi::askForPassword("Database password"),
+                          server   = "localhost", 
+                          Port     = 5432)
+
+querySet <- read.csv("demo.csv", header = FALSE)
+querySet<- trimws(querySet[, 1])
+querySTMT <- paste0("select distinct id,ens,species from mapping where id IN ('", paste(querySet, collapse="', '"), "');")
+tictoc::tic("Remote query")
+result <- DBI::dbGetQuery(convert, querySTMT)
+tictoc::toc()
+
+# Other code from server.R
 quotes <- DBI::dbGetQuery(convert, " select * from quotes")
+
+
 quotes <- paste0("\"", quotes$quotes, "\"", " -- ", quotes$author,".       ")
 
 # Create a list for Select Input options
