@@ -455,14 +455,14 @@ Display.Manager$set("public", "GetHeatmapWithGeneGroups",
 		#colnames(x)= detectGroups(colnames(x))
 		if(is.null(bar)) # no side colors
 			heatmap.2(x,  Rowv =F,Colv=F, dendrogram ="none",
-				col=heatColors[as.integer(mycolor),], density.info="none", trace="none", scale="none", keysize=.3
+				col=self$HeatColors[as.integer(mycolor)], density.info="none", trace="none", scale="none", keysize=.3
 				,key=F, labRow = F,
 				#,RowSideColors = mycolors[bar]
 				,margins = c(8, 24)
 				,srtCol=45
 			) else
 			heatmap.2(x,  Rowv =F,Colv=F, dendrogram ="none",
-				col=heatColors[as.integer(mycolor),], density.info="none", trace="none", scale="none", keysize=.3
+				col=self$HeatColors[as.integer(mycolor)], density.info="none", trace="none", scale="none", keysize=.3
 				,key=F, labRow = F,
 				,RowSideColors = sideColors[bar]
 				,margins = c(8, 24)

@@ -29,6 +29,31 @@ DB.Manager$set("public","initialize",
 	}
 )
 
+DB.Manager$set("public", "GetSpeciesChoice",
+    function(){
+        orgInfo <- self$OrgInfo
+
+		speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
+		# add a defult element to list    # new element name       value
+		speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
+		speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
+
+		# move one element to the 2nd place
+		move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
+		i= which( names(speciesChoice) == "Glycine max"); speciesChoice <- move2(i)
+		i= which( names(speciesChoice) =="Zea mays"); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) =="Arabidopsis thaliana"); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) == "Saccharomyces cerevisiae"); speciesChoice <- move2(i)
+		i= which(names(speciesChoice)  == "Caenorhabditis elegans"); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) =="Zebrafish" ); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) == "Cow" ); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) == "Rat" ); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) == "Mouse"); speciesChoice <- move2(i)
+		i= which(names(speciesChoice) == "Human"); speciesChoice <- move2(i)
+        return(speciesChoice)
+    }
+)
+
 # find species information use id
 DB.Manager$set("public", "findSpeciesById",
 	function(speciesID){ 
@@ -112,8 +137,99 @@ DB.Manager$set("public", "cleanGeneSet",
     }
 )
 
+DB.Manager$set("public", "FindOverlap",
+    function(converted, gInfo, GO, selectOrg, minFDR, reduced = FALSE){
+        maxTerms =15 # max number of enriched terms
+        idNotRecognized = as.data.frame("ID not recognized!")
+        
+        if(is.null(converted) ) return(idNotRecognized) # no ID 
+        
+        # only coding
+        gInfo <- gInfo[which( gInfo$gene_biotype == "protein_coding"),]  
+        querySet <- intersect( converted$IDs, gInfo[,1]);
+        
+        if(length(querySet) == 0) return(idNotRecognized )
+        
+        ix = grep(converted$species[1,1],self$gmtFiles )
+        totalGenes <- converted$species[1,7]
+        
+        if (length(ix) == 0 ) {return(idNotRecognized )}
+        
+        # If selected species is not the default "bestMatch", use that species directly
+        if(selectOrg != self$GetSpeciesChoice()[[1]]) {  
+            ix = grep(self$findSpeciesById(selectOrg)[1,1], self$gmtFiles  )
+            if (length(ix) == 0 ) {return(idNotRecognized )}
+            totalGenes <- self$orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
+        }
+        pathway <- dbConnect(self$sqlite,self$gmtFiles[ix],flags=SQLITE_RO)
+        
+            
+        sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySet,collapse="', '"),"')" ,sep="")
+        
+        #cat(paste0("HH",GO,"HH") )
+        
+        if( GO != "All") sqlQuery = paste0(sqlQuery, " AND category ='",GO,"'")
+        result <- dbGetQuery( pathway, sqlQuery  )
+        if( dim(result)[1] ==0) {return(as.data.frame("No matching species or gene ID file!" )) }
 
-DB.Manager$set("public", "findOverlapGMT",
+        # given a pathway id, it finds the overlapped genes, symbol preferred
+        sharedGenesPrefered <- function(pathwayID) {
+            tem <- result[which(result[,2]== pathwayID ),1]
+            ix = match(tem, converted$conversionTable$ensembl_gene_id) # convert back to original
+            tem2 <- unique( converted$conversionTable$User_input[ix] )
+            if(length(unique(gInfo$symbol) )/dim(gInfo)[1] >.7  ) # if 70% genes has symbol in geneInfo
+            { ix = match(tem, gInfo$ensembl_gene_id); 
+            tem2 <- unique( gInfo$symbol[ix] )      }
+        return( paste( tem2 ,collapse=" ",sep="") )}
+        
+        x0 = table(result$pathwayID)					
+        x0 = as.data.frame( x0[which(x0>=Min_overlap)] )# remove low overlaps
+        if(dim(x0)[1] <= 5 ) return(idNotRecognized) # no data
+        colnames(x0)=c("pathwayID","overlap")
+        pathwayInfo <- dbGetQuery( pathway, paste( " select distinct id,n,Description from pathwayInfo where id IN ('", 
+                                paste(x0$pathwayID,collapse="', '"),   "') ",sep="") )
+        
+        x = merge(x0,pathwayInfo, by.x='pathwayID', by.y='id')
+        
+        x$Pval=phyper(x$overlap-1,length(querySet),totalGenes - length(querySet),as.numeric(x$n), lower.tail=FALSE );
+        x$FDR = p.adjust(x$Pval,method="fdr")
+        x <- x[ order( x$FDR)  ,]  # sort according to FDR
+        
+        if(dim(x)[1] > maxTerms ) x = x[1:maxTerms,]	
+        
+        if(min(x$FDR) > minFDR) x=as.data.frame("No significant enrichment found!") else {
+            x <- x[which(x$FDR < minFDR),] 
+
+            x= cbind(x,sapply( x$pathwayID, sharedGenesPrefered ) )
+            colnames(x)[7]= "Genes"
+            x <- subset(x,select = c(FDR,overlap,n,description,Genes) )
+            colnames(x) = c("Corrected P value (FDR)", "Genes in list", "Total genes in category","Functional Category","Genes"  )
+            
+            # remove redudant gene sets
+            if(reduced != FALSE ){  # reduced=FALSE no filtering,  reduced = 0.9 filter sets overlap with 90%
+                n=  nrow(x)
+                tem=rep(TRUE,n )
+                geneLists = lapply(x$Genes, function(y) unlist( strsplit(as.character(y)," " )   ) )
+                for( i in 2:n)
+                    for( j in 1:(i-1) ) { 
+                    if(tem[j]) { # skip if this one is already removed
+                        commonGenes = length(intersect(geneLists[i] ,geneLists[j] ) )
+                        if( commonGenes/ length(geneLists[j] ) > reduced )
+                            tem[i] = FALSE	
+                    }			
+                    }								
+                x <- x[which(tem),]		
+            }
+            
+
+        }
+                
+        dbDisconnect(pathway)
+        return(x)
+    }
+)
+
+DB.Manager$set("public", "FindOverlapGMT",
 # Given a gene set, finds significant overlaps with a gene set database  object 
     function( query, geneSet, minFDR=.2 ,minSize=2,maxSize=10000 ){
         total_elements = 30000

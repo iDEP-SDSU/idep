@@ -52,7 +52,7 @@ Kmeans.Logic$set("public", "CalcKmeansCluster",
         
         cl = kmeans(dat, NumberOfCluster, iter.max = CONST_KNN_ITERATION_MAX)
     
-        hc <- LogicManager$UtilFuns$HierarchicalClusteringFuns$hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
+        hc <- LogicManager$UtilFuns$hclust2(LogicManager$UtilFuns$dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
         tem = match(cl$cluster,hc$order) #  new order 
         dat = dat[order(tem),] 
         bar = sort(tem)
@@ -109,7 +109,7 @@ Kmeans.Logic$set("public", "MergeGenInfoWithClusterResult",
 Kmeans.Logic$set("public", "GetKmeansClusterHeatmapWithGeneBar",
 	function(x, bar, color){
 		centered_x <- x - apply(x,1,mean)
-		return(LogicManager$Display$GetHeatmapWithGeneGroups(x, bar, 1000, mycolor = color))
+		return(LogicManager$Display$GetHeatmapWithGeneGroups(centered_x, bar, 1000, mycolor = color))
 	}
 )
 
@@ -175,8 +175,8 @@ Kmeans.Logic$set("public", "GetKmeansGoData",
         for( i in 1:nCluster) {
             
 			query = rownames(Reactive_Kmeans$x)[which(Reactive_Kmeans$bar == i)]
-			if(selectOrg == "NEW" && !is.null( gmtFile) ){ 
-				result <- LogicManager$DB.Manager$FindOverlapGMT( query, Reactive_GeneSet,1) 
+			if(selectedOrg == "NEW" && !is.null( gmtFile) ){ 
+				result <- LogicManager$DB$FindOverlapGMT( query, Reactive_GeneSet,1) 
                 
 			} else {
 				convertedID <- Reactive_ConvertedIDResult
@@ -185,7 +185,7 @@ Kmeans.Logic$set("public", "GetKmeansGoData",
                     reduced = CONST_redudantGeneSetsRatio 
                 else 
                     reduced = FALSE
-				result = FindOverlap (convertedID,allGeneInfo(),input$selectGO3,input$selectOrg,1,reduced) 
+				result = LogicManager$DB$FindOverlap(convertedID, Reactive_AllGeneInfo, GO, selectedOrg,1,reduced) 
 			}
 			if( dim(result)[2] ==1) next;   # result could be NULL
 			result$direction = toupper(letters)[i] 

@@ -112,6 +112,8 @@ UtilFuns$set("public", "hclust.centroid",
 # Find enriched TF binding motifs in promoters
 UtilFuns$set("public", "promoter",
     function(converted,selectOrg, radio){
+        speciesChoice <- LogicManager$DB$GetSpeciesChoice()
+
         idNotRecognized = as.data.frame("ID not recognized!") 
         if(is.null(converted) ) return(idNotRecognized) # no ID 
         querySet <- converted$IDs;
