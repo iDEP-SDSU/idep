@@ -177,7 +177,6 @@ Kmeans.Logic$set("public", "GetKmeansGoData",
 			query = rownames(Reactive_Kmeans$x)[which(Reactive_Kmeans$bar == i)]
 			if(selectedOrg == "NEW" && !is.null( gmtFile) ){ 
 				result <- LogicManager$DB$FindOverlapGMT( query, Reactive_GeneSet,1) 
-                
 			} else {
 				convertedID <- Reactive_ConvertedIDResult
 				convertedID$IDs <- query
@@ -187,6 +186,9 @@ Kmeans.Logic$set("public", "GetKmeansGoData",
                     reduced = FALSE
 				result <- LogicManager$DB$FindOverlap(convertedID, Reactive_AllGeneInfo, GO, selectedOrg,1,reduced) 
 			}
+            if(is.null(result)){
+                next
+            }
 			if( dim(result)[2] ==1) next;   # result could be NULL
 			result$direction = toupper(letters)[i] 
 			if (pp==0) 
