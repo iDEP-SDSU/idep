@@ -475,7 +475,7 @@ shinyServer(
         #                          PCA: functions
         ############################################################################
         output$PCA_mainplot <- renderPlot({
-            PCACtrl$GetMainPlot(input, ConvertedTransformedData(), PreprocessSampleInfoResult(), GeneSetsPCA())
+            PCACtrl$GetMainPlot(input, ConvertedTransformedData(), PreprocessSampleInfoResult(), GeneSetPCA())
         }, height = 800, width = 800,res=120 )
 
         output$PCA_CorrelationBetweenPCs <- PCACtrl$ShowCorrelationBetweenPCs(
@@ -488,7 +488,7 @@ shinyServer(
             filename = "PCA_MDS_tSNE.eps",
             content = function(file) {
                 cairo_ps(file, width = 6, height = 6)
-                PCACtrl$GetMainPlot(input, ConvertedTransformedData(), PreprocessSampleInfoResult(), GeneSetsPCA())
+                PCACtrl$GetMainPlot(input, ConvertedTransformedData(), PreprocessSampleInfoResult(), GeneSetPCA())
                 dev.off()
             }
         )

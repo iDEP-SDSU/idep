@@ -71,11 +71,11 @@ Ctl.ReactiveVars$set("public", "GeneSetPCA",
         minGeneSetSize <- input$num_PCA_minGeneSetSize ##this is in pathway ???
         maxGeneSetSize <- input$num_PCA_maxGeneSetSize ##this is in pathway ???
 		return(
-			DB.Manager$QueryGeneSetsFromPathway(
+			LogicManager$DB$QueryGeneSetsFromPathway(
 				ConvertedIDResult,
                 ConvertedTransformedData,
                 GO,
-                selectedOrg,
+                selectOrg,
                 c(minGeneSetSize, maxGeneSetSize)
 			)
 		)

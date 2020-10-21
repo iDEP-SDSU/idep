@@ -55,7 +55,7 @@ Ctl.PCA$set("public", "InitShapeSelection",
 ###############################################################################
 
 Ctl.PCA$set("public", "GetMainPlot",  ## not done yet
-    function( input, ConvertedTransformedData, PreprocessSampleInfoResult, GeneSetsPCA ){
+    function( input, ConvertedTransformedData, PreprocessSampleInfoResult, GeneSetPCA ){
 
         withProgress(message=sample(LogicManager$DB$Quotes,1), detail ="Running ", {
 
@@ -66,17 +66,23 @@ Ctl.PCA$set("public", "GetMainPlot",  ## not done yet
                 return(p)
             }else if (input$select_PCA_Methods == 2) {
                 incProgress(1/8, detail="PGSEA")
-                p <- LogicManager$PCA$plotPathway(ConvertedTransformedData, GeneSetsPCA)
+                p <- LogicManager$PCA$GetPGSEAPlot(ConvertedTransformedData, GeneSetPCA)
                 incProgress(1,detail="Done")
                 return(p)
             }else if (input$select_PCA_Methods == 3) {
-                incProgress(1/3,detail = " MDS")
-                p <- LogicManager$PCA$plotMDS(ConvertedTransformedData, PreprocessSampleInfoResult)
+                incProgress(1/3,detail = "MDS")
+                p <- LogicManager$PCA$GetMDSPlot(ConvertedTransformedData, PreprocessSampleInfoResult, input$select_PCA_ColorSelection, input$select_PCA_ShapeSelection)
                 incProgress(1,detail="Done")
                 return(p)
             }else{
-                incProgress(1/4, detail=" t-SNE")
-                p <- LogicManager$PCA$plotTSNE(ConvertedTransformedData, PreprocessSampleInfoResult, input$btn_PCA_RecalcTSNE)
+                incProgress(1/4, detail="t-SNE")
+                p <- LogicManager$PCA$GetTSNEPlot(
+                    ConvertedTransformedData, 
+                    PreprocessSampleInfoResult, 
+                    input$btn_PCA_RecalcTSNE, 
+                    input$select_PCA_ColorSelection, 
+                    input$select_PCA_ShapeSelection
+                )
                 incProgress(1,detail="Done")
                 return(p)
             }
