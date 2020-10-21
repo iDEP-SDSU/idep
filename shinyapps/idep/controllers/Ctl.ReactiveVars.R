@@ -156,13 +156,14 @@ Ctl.ReactiveVars$set("public", "KmeansReactiveVar",
 # Calculate KmeansDataWithGeneInfo() reactive variable. 
 Ctl.ReactiveVars$set("public", "KmeansWithGeneInfo",
 	function(input, Reactive_Kmeans, Reactive_AllGeneInfo){
-		
-		x <- Reactive_Kmeans$x
-		bar <- Reactive_Kmeans$bar
-		allGeneInfo <- Reactive_AllGeneInfo
-		selectedOrg <- input$selectOrg
+        withProgress(message="Calculating KmeansData Based on Gene Info ... ", {  
+            x <- Reactive_Kmeans$x
+            bar <- Reactive_Kmeans$bar
+            allGeneInfo <- Reactive_AllGeneInfo
+            selectedOrg <- input$selectOrg
 
-		return(LogicManager$Kmeans$MergeGenInfoWithClusterResult( x, bar, allGeneInfo, selectedOrg))
+            return(LogicManager$Kmeans$MergeGenInfoWithClusterResult( x, bar, allGeneInfo, selectedOrg))
+        })
 	}
 )
 
@@ -171,19 +172,21 @@ Ctl.ReactiveVars$set("public", "KmeansWithGeneInfo",
 # Caculate Kmeans GO data
 Ctl.ReactiveVars$set("public", "KmeansGoData",
     function(input, Reactive_Kmeans, Reactive_ConvertedIDResult, Reactive_AllGeneInfo, Reactive_GeneSets){
-        minFDR = 0.01
-        selectedOrg <- input$selectOrg
-        gmtFile <- input$gmtFile
-        nCluster <- input$num_Kmeans_Culsters
-        GO <- input$select_Kmeans_PathwayDatabase
-        is_Kmeans_RemoveRedudantSets <- input$is_Kmeans_RemoveRedudantSets
-        return(
-            LogicManager$Kmeans$GetKmeansGoData(
-                minFDR, selectedOrg, gmtFile, nCluster, GO, is_Kmeans_RemoveRedudantSets,
-                Reactive_Kmeans, Reactive_ConvertedIDResult, Reactive_AllGeneInfo,
-                Reactive_GeneSets
+        withProgress(message="Calculating Kmeans GO Data ... ", {
+            minFDR = 0.01
+            selectedOrg <- input$selectOrg
+            gmtFile <- input$gmtFile
+            nCluster <- input$num_Kmeans_Culsters
+            GO <- input$select_Kmeans_PathwayDatabase
+            is_Kmeans_RemoveRedudantSets <- input$is_Kmeans_RemoveRedudantSets  
+            return(
+                LogicManager$Kmeans$GetKmeansGoData(
+                    minFDR, selectedOrg, gmtFile, nCluster, GO, is_Kmeans_RemoveRedudantSets,
+                    Reactive_Kmeans, Reactive_ConvertedIDResult, Reactive_AllGeneInfo,
+                    Reactive_GeneSets
+                )
             )
-        ) 
+        })
     }
 )
 
