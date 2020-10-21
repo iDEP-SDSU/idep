@@ -330,6 +330,14 @@ shinyServer(
 		#   					1.4  		Kmeans
 		############################################################################
 
+        # init UI
+        output$select_Kmeans_PathwayDatabase <- KmeansCtrl$InitPathwayDatabaseSelection(
+            input, 
+            ConvertedIDResult(), 
+            ConvertedTransformedData()
+        )
+
+        # reactives
         GeneSets <- reactive({
             ReactVarsCtrl$GeneSets(
                 input, ConvertedIDResult(), ConvertedTransformedData()

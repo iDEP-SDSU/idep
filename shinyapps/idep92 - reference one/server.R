@@ -419,42 +419,8 @@ keggPathwayID <- function (pathwayDescription, Species, GO,selectOrg) {
 	return( gsub("_.*","",tem) )
 }
 
-gmtCategory <- function (converted, convertedData, selectOrg,gmtFile) {
-	if(selectOrg == "NEW" && !is.null(gmtFile) )
-		return( list(Custom_GeneSet ="Custom" ) )
-	idNotRecognized = as.data.frame("ID not recognized!")
-	if(is.null(converted) ) return(idNotRecognized) # no ID 
-	querySet <- rownames(convertedData)
-	if(length(querySet) == 0) return(idNotRecognized )
-	ix = grep(converted$species[1,1],gmtFiles)
-	if (length(ix) == 0 ) {return(idNotRecognized )}
-	
-	# If selected species is not the default "bestMatch", use that species directly
-	if(selectOrg != speciesChoice[[1]]) {  
-		ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
-		if (length(ix) == 0 ) {return(idNotRecognized )}
-	}
-	pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
-	#cat(paste("selectOrg:",selectOrg) )
-	# Generate a list of geneset categories such as "GOBP", "KEGG" from file
-	geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
-	geneSetCategory  <- sort( geneSetCategory[,1] )
-	categoryChoices <- setNames(as.list( geneSetCategory ), geneSetCategory )
-	categoryChoices <- append( setNames( "All","All available gene sets"), categoryChoices  )
-	
-	# move one element to the 2nd place
-	move1 <- function(i) c(categoryChoices[1],categoryChoices[i],categoryChoices[-c(1,i)])
-	i = which( names(categoryChoices)  == "KEGG"); categoryChoices= move1(i);	
-	i = which( names(categoryChoices)  == "GOMF"); categoryChoices= move1(i);	
-	i = which( names(categoryChoices)  == "GOCC"); categoryChoices= move1(i);	
-	i = which( names(categoryChoices)  == "GOBP"); categoryChoices= move1(i);
-	#change GOBP to the full description for display
-	names(categoryChoices)[ match("GOBP",categoryChoices)  ] <- "GO Biological Process"
-	names(categoryChoices)[ match("GOCC",categoryChoices)  ] <- "GO Cellular Component"
-	names(categoryChoices)[ match("GOMF",categoryChoices)  ] <- "GO Molecular Function"
-	
-	dbDisconnect(pathway)
-	return(categoryChoices )
+#DB.Manager$set("public", "gmtCategory"
+gmtCategory <- function (converted, convertedData, selectOrg, gmtFile) {
 } 
  
 # Main function. Find a query set of genes enriched with functional category
@@ -4623,16 +4589,7 @@ output$selectGO2 <- renderUI({
 	})
 	
 	
-output$selectGO3 <- renderUI({
-	  tem = input$selectOrg
-      if (is.null(input$file1)&& input$goButton == 0 )
-       { selectInput("selectGO3", label = NULL, # h6("Funtional Category"), 
-                  choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
-                                "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  }	 else { 
-								
-	  selectInput("selectGO3", label=NULL,choices=gmtCategory(converted(), convertedData(), input$selectOrg,input$gmtFile)
-	     ,selected = "GOBP" )   } 
-	})
+output$selectGO3 <- select_Kmeans_PathwayDatabase
 	
 output$selectGO4 <- renderUI({
 	  tem = input$selectOrg

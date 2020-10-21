@@ -185,7 +185,7 @@ Kmeans.Logic$set("public", "GetKmeansGoData",
                     reduced = CONST_redudantGeneSetsRatio 
                 else 
                     reduced = FALSE
-				result = LogicManager$DB$FindOverlap(convertedID, Reactive_AllGeneInfo, GO, selectedOrg,1,reduced) 
+				result <- LogicManager$DB$FindOverlap(convertedID, Reactive_AllGeneInfo, GO, selectedOrg,1,reduced) 
 			}
 			if( dim(result)[2] ==1) next;   # result could be NULL
 			result$direction = toupper(letters)[i] 

@@ -453,21 +453,24 @@ Display.Manager$set("public", "GetHeatmapWithGeneGroups",
 		cutoff = median(unlist(x)) - 3*sd (unlist(x)) 
 		x[x< cutoff] <- cutoff
 		#colnames(x)= detectGroups(colnames(x))
-		if(is.null(bar)) # no side colors
+		if(is.null(bar)){
 			heatmap.2(x,  Rowv =F,Colv=F, dendrogram ="none",
 				col=self$HeatColors[as.integer(mycolor)], density.info="none", trace="none", scale="none", keysize=.3
 				,key=F, labRow = F,
 				#,RowSideColors = mycolors[bar]
 				,margins = c(8, 24)
 				,srtCol=45
-			) else
-			heatmap.2(x,  Rowv =F,Colv=F, dendrogram ="none",
+			)
+        } # no side colors
+        else{
+            heatmap.2(x,  Rowv =F,Colv=F, dendrogram ="none",
 				col=self$HeatColors[as.integer(mycolor)], density.info="none", trace="none", scale="none", keysize=.3
 				,key=F, labRow = F,
 				,RowSideColors = sideColors[bar]
 				,margins = c(8, 24)
 				,srtCol=45
 			)
+        }
 			
 		if(!is.null(bar)) { 
 			legend.text = paste("Cluster ", toupper(letters)[unique(bar)], " (N=", ngenes,")", sep="") 

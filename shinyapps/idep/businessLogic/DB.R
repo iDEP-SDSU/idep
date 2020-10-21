@@ -143,7 +143,9 @@ DB.Manager$set("public", "FindOverlap",
         idNotRecognized = as.data.frame("ID not recognized!")
         
         if(is.null(converted) ) return(idNotRecognized) # no ID 
-        
+        if(is.null(GO)){
+          return(NULL)
+        }
         # only coding
         gInfo <- gInfo[which( gInfo$gene_biotype == "protein_coding"),]  
         querySet <- intersect( converted$IDs, gInfo[,1]);
@@ -165,7 +167,6 @@ DB.Manager$set("public", "FindOverlap",
         
             
         sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySet,collapse="', '"),"')" ,sep="")
-        
         #cat(paste0("HH",GO,"HH") )
         
         if( GO != "All") sqlQuery = paste0(sqlQuery, " AND category ='",GO,"'")
@@ -309,3 +310,45 @@ readGMTRobust <- function (file1) {   # size restriction
 
 	return(y)
 }
+
+# Find correspond gmt category
+DB.Manager$set("public", "gmtCategory",
+    function(converted, convertedData, selectOrg, gmtFile) {
+        if(selectOrg == "NEW" && !is.null(gmtFile) )
+            return( list(Custom_GeneSet ="Custom" ) )
+        idNotRecognized = as.data.frame("ID not recognized!")
+        if(is.null(converted) ) return(idNotRecognized) # no ID 
+        querySet <- rownames(convertedData)
+        if(length(querySet) == 0) return(idNotRecognized )
+        ix = grep(converted$species[1,1],self$gmtFiles)
+        if (length(ix) == 0 ) {return(idNotRecognized )}
+        
+        speciesChoice <- self$GetSpeciesChoice()
+        # If selected species is not the default "bestMatch", use that species directly
+        if(selectOrg != speciesChoice[[1]]) {  
+            ix = grep(findSpeciesById(selectOrg)[1,1], self$gmtFiles )
+            if (length(ix) == 0 ) {return(idNotRecognized )}
+        }
+        pathway <- dbConnect(self$sqlite,self$gmtFiles[ix],flags=SQLITE_RO)
+        #cat(paste("selectOrg:",selectOrg) )
+        # Generate a list of geneset categories such as "GOBP", "KEGG" from file
+        geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
+        geneSetCategory  <- sort( geneSetCategory[,1] )
+        categoryChoices <- setNames(as.list( geneSetCategory ), geneSetCategory )
+        categoryChoices <- append( setNames( "All","All available gene sets"), categoryChoices  )
+        
+        # move one element to the 2nd place
+        move1 <- function(i) c(categoryChoices[1],categoryChoices[i],categoryChoices[-c(1,i)])
+        i = which( names(categoryChoices)  == "KEGG"); categoryChoices= move1(i);	
+        i = which( names(categoryChoices)  == "GOMF"); categoryChoices= move1(i);	
+        i = which( names(categoryChoices)  == "GOCC"); categoryChoices= move1(i);	
+        i = which( names(categoryChoices)  == "GOBP"); categoryChoices= move1(i);
+        #change GOBP to the full description for display
+        names(categoryChoices)[ match("GOBP",categoryChoices)  ] <- "GO Biological Process"
+        names(categoryChoices)[ match("GOCC",categoryChoices)  ] <- "GO Cellular Component"
+        names(categoryChoices)[ match("GOMF",categoryChoices)  ] <- "GO Molecular Function"
+        
+        dbDisconnect(pathway)
+        return(categoryChoices)
+    }
+)

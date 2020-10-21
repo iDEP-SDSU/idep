@@ -7,9 +7,25 @@ Ctl.Kmeans <- R6Class("Ctl.Kmeans")
 ###############################################################################
 
 Ctl.Kmeans$set("public", "InitPathwayDatabaseSelection",
-	function(){
-		
-	}
+    function(input, ConvertedIDResult, ConvertedTransformedData){
+        renderUI({
+            tem = input$selectOrg
+            if (is.null(input$fileUploadedData)&& input$btn_LoadData_DemoData == 0 ){ 
+                selectInput(
+                    "select_Kmeans_PathwayDatabase", 
+                    label = NULL,
+                    choices = list("All available gene sets" = "All", "GO Biological Process" = "GOBP","GO Molecular Function" = "GOMF","GO Cellular Component" = "GOCC",
+                                        "KEGG metabolic pathways" = "KEGG"), selected = "GOBP")  
+            }else { 
+                selectInput(
+                    "select_Kmeans_PathwayDatabase", 
+                    label=NULL,
+                    choices=LogicManager$DB$gmtCategory(ConvertedIDResult, ConvertedTransformedData, input$selectOrg,input$gmtFile),
+                    selected = "GOBP" 
+                )   
+            } 
+        })
+    }
 )
 
 

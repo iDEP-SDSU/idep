@@ -22,13 +22,10 @@ shinyUI(
 		#================================================================================================== 
 		#   Load Data
 		#================================================================================================== 
-		tabPanel("Load Data",
-			sidebarLayout(
-				LoadDataView$sidebarPanel(),
-				LoadDataView$mainPanel()
-			) 
-		),
-		
+input$file1  is changed to input$fileUploadedData
+input$gmtFile no change
+input$selectOrg no change
+input$goButton is changed to input$btn_LoadData_DemoData
   #================================================================================================== 
   #   Pre-Process
   #================================================================================================== 
@@ -265,7 +262,7 @@ shinyUI(
         # a solid line as divider
         ,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') 
         ,h5("Pathway database")
-        ,htmlOutput("selectGO3")
+        ,htmlOutput("selectGO3") <- this has been changed to select_Kmeans_PathwayDatabase
         ,tags$style(type='text/css', "#selectGO3 { width:100%;   margin-top:-9px}")
         ,checkboxInput("removeRedudantSets", "Remove redudant genesets", value = TRUE)
         ,actionButton("ModalEnrichmentPlotKmeans", "Visualize enrichment")
