@@ -6,25 +6,25 @@ source('server.config')
 PCA.Logic <- R6Class("PCA.Logic")
 
 PCA.Logic$set("public", "GetPCAPlot",
-    function(ConvertedTransformedData,PreprocessSampleInfoResult){
+    function(ConvertedTransformedData,PreprocessSampleInfoResult, colorSelection, shapeSelection){
         ####################################
         # for showing shapes on ggplot2. The first 6 are default. Default mapping can only show 6 types.
         shapes = c(16,17,15,3,7,8,   1,2,4:6,9:15,18:25  )
         
         pca.object <- prcomp(t(ConvertedTransformedData))
         pcaData = as.data.frame(pca.object$x[,1:2]); 
-        pcaData = cbind(pcaData,LogicManager$PreProcessing$DetectGroups(colnames(x)) )
+        pcaData = cbind(pcaData,LogicManager$PreProcessing$DetectGroups(colnames(pca.object$x)) )
 		colnames(pcaData) = c("PC1", "PC2", "Sample_Name")
 		percentVar=round(100*summary(pca.object)$importance[2,1:2],0)
 		if(is.null(PreprocessSampleInfoResult)) { 
 			p=ggplot(pcaData, aes(PC1, PC2, color=Sample_Name, shape = Sample_Name)) 
 			} else {
 			pcaData = cbind(pcaData,PreprocessSampleInfoResult )
-			p=ggplot(pcaData, aes_string("PC1", "PC2", color=input$selectFactors,shape=input$selectFactors2))  
+			p=ggplot(pcaData, aes_string("PC1", "PC2", color=colorSelection,shape=shapeSelection))  
 
 			}
-		 if(ncol(x)<20) # change size depending of # samples
-			p <- p + geom_point(size=5)  else if(ncol(x)<50)
+		 if(ncol(pca.object$x)<20) # change size depending of # samples
+			p <- p + geom_point(size=5)  else if(ncol(pca.object$x)<50)
 			 p <- p + geom_point(size=3)  else 
 			 p <- p + geom_point(size=2)
 			 

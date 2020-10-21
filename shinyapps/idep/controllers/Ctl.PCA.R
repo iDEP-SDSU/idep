@@ -61,7 +61,7 @@ Ctl.PCA$set("public", "GetMainPlot",  ## not done yet
 
             if(input$select_PCA_Methods == 1){
                 incProgress(1/3,detail="PCA")
-                p <- LogicManager$PCA$GetPCAPlot(ConvertedTransformedData, PreprocessSampleInfoResult)
+                p <- LogicManager$PCA$GetPCAPlot(ConvertedTransformedData, PreprocessSampleInfoResult, input$select_PCA_ColorSelection, input$select_PCA_ShapeSelection)
                 incProgress(1,detail="Done")
                 return(p)
             }else if (input$select_PCA_Methods == 2) {
