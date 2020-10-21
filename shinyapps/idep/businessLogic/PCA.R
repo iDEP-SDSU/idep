@@ -13,7 +13,7 @@ PCA.Logic$set("public", "GetPCAPlot",
         
         pca.object <- prcomp(t(ConvertedTransformedData))
         pcaData = as.data.frame(pca.object$x[,1:2]); 
-        pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+        pcaData = cbind(pcaData,LogicManager$PreProcessing$DetectGroups(colnames(x)) )
 		colnames(pcaData) = c("PC1", "PC2", "Sample_Name")
 		percentVar=round(100*summary(pca.object)$importance[2,1:2],0)
 		if(is.null(PreprocessSampleInfoResult)) { 
@@ -108,16 +108,16 @@ PCA.Logic$set("public", "GetMDSPlot",
 
         fit = cmdscale( dist2(t(ConvertedTransformedData) ), eig=T, k=2)
 
-		pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,detectGroups(colnames(x)) )
+		pcaData = as.data.frame(fit$points[,1:2]); pcaData = cbind(pcaData,LogicManager$PreProcessing$DetectGroups(colnames(x)) )
 		colnames(pcaData) = c("x1", "x2", "Sample_Name")
 		
 
-		if(is.null(PreprocessSampleInfoResult) { 
-		p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name))  
+		if(is.null(PreprocessSampleInfoResult)){ 
+		    p=ggplot(pcaData, aes(x1, x2, color=Sample_Name, shape = Sample_Name))  
 		} else {
 			pcaData = cbind(pcaData,PreprocessSampleInfoResult )
 			p=ggplot(pcaData, aes_string("x1", "x2", color=input$selectFactors,shape=input$selectFactors2))  
-			}
+		}
 			
 		if(ncol(ConvertedTransformedData)<20) # change size depending of # samples
 			p <- p + geom_point(size=5)  else if(ncol(ConvertedTransformedData)<50)
@@ -150,7 +150,7 @@ PCA.Logic$set("public", "GetTSNEPlot",
         tsne <- Rtsne(t(ConvertedTransformedData), dims = 2, perplexity=1, verbose=FALSE, max_iter = 400)
     
         pcaData = as.data.frame(tsne$Y); 
-        pcaData = cbind(pcaData,detectGroups(colnames(ConvertedTransformedData)) )
+        pcaData = cbind(pcaData,LogicManager$PreProcessing$DetectGroups(colnames(ConvertedTransformedData)) )
 		colnames(pcaData) = c("x1", "x2", "Sample_Name")
 		
 		#pcaData$Sample_Name = as.factor( pcaData$Sample_Name)
