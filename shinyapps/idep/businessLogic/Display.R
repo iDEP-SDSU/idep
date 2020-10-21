@@ -438,7 +438,7 @@ Display.Manager$set("public", "GetBarPlotSingleGeneOfAllSamples",
 
 # heatmap with color bar define gene groups
 Display.Manager$set("public", "GetHeatmapWithGeneGroups",
-	function(x,bar=NULL,n=-1,mycolor=1,clusterNames=NULL,sideColors=NULL ) {
+	function(x,bar=NULL,n=-1,mycolor='Green-Black-Red',clusterNames=NULL,sideColors=NULL ) {
 		# number of genes to show
 		ngenes = as.character( table(bar))
 		if(length(bar) >n && n != -1) {ix = sort( sample(1:length(bar),n) ); bar = bar[ix]; x = x[ix,]  }
@@ -455,7 +455,7 @@ Display.Manager$set("public", "GetHeatmapWithGeneGroups",
 		#colnames(x)= detectGroups(colnames(x))
 		if(is.null(bar)){
 			heatmap.2(x,  Rowv =F,Colv=F, dendrogram ="none",
-				col=self$HeatColors[as.integer(mycolor)], density.info="none", trace="none", scale="none", keysize=.3
+				col=self$HeatColors[[mycolor]], density.info="none", trace="none", scale="none", keysize=.3
 				,key=F, labRow = F,
 				#,RowSideColors = mycolors[bar]
 				,margins = c(8, 24)
@@ -464,7 +464,7 @@ Display.Manager$set("public", "GetHeatmapWithGeneGroups",
         } # no side colors
         else{
             heatmap.2(x,  Rowv =F,Colv=F, dendrogram ="none",
-				col=self$HeatColors[as.integer(mycolor)], density.info="none", trace="none", scale="none", keysize=.3
+				col=self$HeatColors[[mycolor]], density.info="none", trace="none", scale="none", keysize=.3
 				,key=F, labRow = F,
 				,RowSideColors = sideColors[bar]
 				,margins = c(8, 24)
