@@ -54,6 +54,9 @@ shinyUI(
 			    ,conditionalPanel("input.goButton == 0 "  # welcome screen
 			      # ,br(),br(),h2("Scheduled maintenance from 8am to 11am (US Central Standard Time) Wednesday Dec. 18, 2019. Service will be temporarily unavailable.",  style = "color:red"),br(),br()
 				    #,br(),br(),h3("We need your support! We are writing a grant proposal (due June 5th) to NIH to seek support for the development and maintenance of ShinyGO. A brief email on how this tool helped your research would go a long way to support our tiny team, even if you are a graduate student. ",a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=ShinyGO support letter"),  style = "color:blue")
+
+     ,h3("We recently hired Jenny Qi for database updates and user support.",a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), style = "color:red") 
+
             ,h4("2/3/2020: Now published by", a("Bioinformatics.", href="https://doi.org/10.1093/bioinformatics/btz931",target="_blank"))
             ,h4("11/3/2019: V 0.61, Improve graphical visualization (thanks to reviewers). Interactive networks and much more.")
             ,h4("5/20/2019: V.0.60, Annotation database updated to Ensembl 96. New bacterial and fungal genomes based on STRING-db!")
@@ -183,7 +186,7 @@ shinyUI(
 		)	
 		,tabPanel("?"
          ," For feedbacks, please"
-         ,a("contact us, ",href="mailto:xijin.ge@sdstate.edu?Subject=ShinyGO" )
+         ,a("contact us, ",href="mailto:gelabinfo@gmail?Subject=ShinyGO" )
          , "or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank")
          ,"For details, please see our", a("paper", href="https://doi.org/10.1093/bioinformatics/btz931", target="_blank")
 		 ,"and a detailed", a("demo.", href="https://www.biorxiv.org/content/biorxiv/suppl/2018/05/04/315150.DC1/315150-1.pdf",target="_blank") 
