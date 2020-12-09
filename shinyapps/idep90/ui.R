@@ -113,8 +113,11 @@ iDEPversion,
      # ,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP letter of support"), style = "color:red")
       #,h3("We are working on a plan to improve iDEP. Any new functionality or feature you like to be added? Please "
       #,a("send us",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), "your suggestions!",style = "color:red")      
-      #,h3("Thank you for your support letters!", style = "color:red")
-     ,h4("Run iDEP ", a("locally on your laptop, lab computer, HPC, or in the cloud.",href="https://idepsite.wordpress.com/local/", target="_blank") )
+     ,h3("Thanks to your strong support letters, we have been 
+                awarded a major 4-year NIH R01 to redevelop iDEP!", style = "color:red")
+     ,h3("We recently hired Jenny Qi for database updates and user support.",a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), style = "color:red") 
+
+     #,h4("Run iDEP ", a("locally on your laptop, lab computer, HPC, or in the cloud.",href="https://idepsite.wordpress.com/local/", target="_blank") )
       ,h4("New 5/24/2020! Try out our new version 0.92, which is still in testing mode. While the code is not changed, the new version is based on Ensembl release 100 with more (392) species, updated annotaton, and many  manually collected pathways for 20 model organisms.", a("iDEP 0.92",href="http://bioinformatics.sdstate.edu/idep92/") )
       ,h4("Massively upgraded annotation database! V0.90 includes 315 organisms in Ensembl release 96, 
           plus all species from STRINGdb (v10):115 archaeal, 1678 bacterial, and 238 eukaryotic species ")  
@@ -1126,7 +1129,7 @@ iDEPversion,
   ,tabPanel("R",
     fluidRow(    
       column(12,
-        h4( a("Email us", href= "mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP", target="_top") , 
+        h4( a("Email us", href= "mailto:gelabinfo@gmail.com?Subject=iDEP", target="_top") , 
            " for questions, suggestions, or data contributions. Stay connected via ", 
            a("user group", href="https://groups.google.com/d/forum/idep",target="_blank"),
            " or ",a("Twitter.", href="https://twitter.com/StevenXGe", target="_blank"),
