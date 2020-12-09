@@ -114,6 +114,10 @@ iDEPversion,
       #,h3("We are working on a plan to improve iDEP. Any new functionality or feature you like to be added? Please "
       #,a("send us",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), "your suggestions!",style = "color:red")      
       #,h3("Thank you for your support letters!", style = "color:red")
+     ,h3("Thanks to your strong support letters, we have been 
+                awarded a major 4-year NIH R01 to redevelop iDEP!", style = "color:red")
+     ,h3("We recently hired Jenny Qi for database updates and user support.",a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), style = "color:red") 
+
      ,h4("Run iDEP ", a("locally on your laptop, lab computer, HPC, or in the cloud.",href="https://idepsite.wordpress.com/local/", target="_blank") )
       ,h4("New! V0.92 includes a large collection of pathway data for 20 model organisms, plus the new Ensembl release 100 
 with 203 species in Ensembl, 80 in Ensembl Plants and 110 in Ensembl Metazoa. 
