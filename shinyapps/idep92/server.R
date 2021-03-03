@@ -2509,7 +2509,8 @@ readData <- reactive ({
 				dataSizeOriginal = dim(x); dataSizeOriginal[2] = dataSizeOriginal[2] -1
 				
 				x[,1] <- toupper(x[,1])
-				x[,1] <- gsub(" |\"|\'|\\.[0-9]{1,2}$", "", x[ , 1]) 
+				#x[,1] <- gsub(" |\"|\'|\\.[0-9]{1,2}$", "", x[ , 1]) 
+                 x[,1] <- gsub(" |\"|\'", "", x[ , 1]) 
 				             # remove spaces in gene ids
 				                 # remove " in gene ids, mess up SQL query				
 				                      # remove ' in gene ids		
