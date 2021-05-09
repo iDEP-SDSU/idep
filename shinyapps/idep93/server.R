@@ -617,8 +617,8 @@ convertID <- function (query,selectOrg, selectGO) {
 				) )
 }
 
-# finds id index corresponding to entrez gene and KEGG for id conversion
-idType_Entrez <- dbGetQuery(convert, paste("select distinct * from idIndex where idType = 'entrezgene'" ))
+# finds id index corresponding to entrez gene and KEGG for id conversion ; from ensembl 100 changed from 'entrezgene' to 'entrezgene_id'
+idType_Entrez <- dbGetQuery(convert, paste("select distinct * from idIndex where idType = 'entrezgene_id'" ))
 if(dim(idType_Entrez)[1] != 1) {cat("Warning! entrezgene ID not found!")}
 idType_Entrez = as.numeric( idType_Entrez[1,1])
 idType_KEGG <- dbGetQuery(convert, paste("select distinct * from idIndex where idType = 'kegg'" ))
