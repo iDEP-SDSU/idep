@@ -115,7 +115,7 @@ iDEPversion,
       #,a("send us",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), "your suggestions!",style = "color:red")      
      ,h3("Thanks to your strong support letters, we have been 
                 awarded a major 4-year NIH R01 to redevelop iDEP!", style = "color:red")
-     ,h3("We recently hired Jenny Qi for database updates and user support.",a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), style = "color:red") 
+     ,h3("We recently hired Jenny Qi for database updates and user support. She and Dr Ge are happy to help prepare your data for iDEP. ",a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), style = "color:red") 
 
      #,h4("Run iDEP ", a("locally on your laptop, lab computer, HPC, or in the cloud.",href="https://idepsite.wordpress.com/local/", target="_blank") )
       ,h4("New 5/24/2020! Try out our new version 0.92, which is still in testing mode. While the code is not changed, the new version is based on Ensembl release 100 with more (392) species, updated annotaton, and many  manually collected pathways for 20 model organisms.", a("iDEP 0.92",href="http://bioinformatics.sdstate.edu/idep92/") )
@@ -123,7 +123,7 @@ iDEPversion,
           plus all species from STRINGdb (v10):115 archaeal, 1678 bacterial, and 238 eukaryotic species ")  
       ,h5("Now published on", a("BMC Bioinformatics!",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank") )
       ,h5("Due to lack of funding, iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
-      ,h5("We are happy to help prepare your data for iDEP. Dr. Ge is also open to bioinformatics consulting during the summer.")
+
       ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
      # ) # conditionalPanel
 
