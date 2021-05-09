@@ -3247,7 +3247,7 @@ output$genePlot <- renderPlot({
 	   }
 	x = as.data.frame(x)
 	x$Genes = Symbols
-  write.csv(x,"tem.csv")
+  #write.csv(x,"tem.csv")
 	# Search for genes
 	#ix = grep("HOXA",toupper(x$Genes) )
 	# ix = grep(toupper(input$geneSearch),toupper(x$Genes))  # sox --> Tsox  
