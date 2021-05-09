@@ -3247,7 +3247,7 @@ output$genePlot <- renderPlot({
 	   }
 	x = as.data.frame(x)
 	x$Genes = Symbols
-    #write.csv(x,"tem.csv")
+  write.csv(x,"tem.csv")
 	# Search for genes
 	#ix = grep("HOXA",toupper(x$Genes) )
 	# ix = grep(toupper(input$geneSearch),toupper(x$Genes))  # sox --> Tsox  
@@ -3276,15 +3276,17 @@ output$genePlot <- renderPlot({
 		   axis.title.y = element_text( size = 16) ) +
 	theme(legend.text=element_text(size=12))	
 		
-		
+
 	#ggplotly(p) %>% layout(margin = list(b = 250,l=100))  # prevent cutoff of sample names
 
 	# Barplot with error bars
 	mdf$count = 1
 	g = detectGroups(mdf$samples, readSampleInfo())
-	Means = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = mean, na.rm=TRUE  )
-	SDs = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = sd, na.rm=TRUE  )
-	Ns = aggregate(mdf$count, by= list(g, mdf$Genes) , FUN = sum  )
+	mdf$g = g	
+	Means <- mdf %>% group_by(g, Genes) %>%  summarise(mean(value))
+	SDs <- mdf %>% group_by(g, Genes) %>%  summarise(sd(value))
+	Ns <- mdf %>% group_by(g, Genes) %>%  summarise(sum(value))
+
 	summarized = cbind(Means,SDs[,3],Ns[,3])
 	colnames(summarized)= c("Samples","Genes","Mean","SD","N")
 	summarized$SE = summarized$SD / sqrt(summarized$N)	
@@ -3309,7 +3311,7 @@ output$genePlot <- renderPlot({
 	theme(legend.text=element_text(size=16))
 	
 	if( input$genePlotBox == 1)  p1 else p2
-	
+
 	})
    })
 genePlot4Download <- reactive({

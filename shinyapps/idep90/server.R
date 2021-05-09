@@ -3281,9 +3281,10 @@ output$genePlot <- renderPlot({
 	# Barplot with error bars
 	mdf$count = 1
 	g = detectGroups(mdf$samples, readSampleInfo())
-	Means = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = mean, na.rm=TRUE  )
-	SDs = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = sd, na.rm=TRUE  )
-	Ns = aggregate(mdf$count, by= list(g, mdf$Genes) , FUN = sum  )
+	mdf$g = g	
+	Means <- mdf %>% group_by(g, Genes) %>%  summarise(mean(value))
+	SDs <- mdf %>% group_by(g, Genes) %>%  summarise(sd(value))
+	Ns <- mdf %>% group_by(g, Genes) %>%  summarise(sum(value))
 	summarized = cbind(Means,SDs[,3],Ns[,3])
 	colnames(summarized)= c("Samples","Genes","Mean","SD","N")
 	summarized$SE = summarized$SD / sqrt(summarized$N)	
