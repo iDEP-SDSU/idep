@@ -232,7 +232,7 @@ with 203 species in Ensembl, 80 in Ensembl Plants and 110 in Ensembl Metazoa.
                  "examineDataB", size = "large", DT::dataTableOutput('examineData'))
          
         ,bsModal("modalExample1021", "Search for genes", "genePlot1", size = "large", 
-          textInput("geneSearch", "Enter full or partial gene ID:", "HOXA"),
+          textInput("geneSearch", "Enter full or partial gene ID, or list of genes separated by semicolon:", "HOXA1;e2f2;tp53"),
           checkboxInput("genePlotBox", label = "Show individual samples", value = FALSE),
           plotOutput("genePlot"),
           conditionalPanel("input.genePlotBox == 0", 
