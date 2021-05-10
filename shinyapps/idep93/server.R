@@ -3407,7 +3407,7 @@ genePlot4Download <- reactive({
 	  #calculate mean, SD, N, per gene per condition
 	  summarized <- mdf %>% 
 	    group_by(g, Genes) %>%  
-	    summarise(Mean = mean(value), SD = sd(value), N = sum(value))
+	    summarise(Mean = mean(value), SD = sd(value), N = sum(count))
 	  colnames(summarized)= c("Samples","Genes","Mean","SD","N")
 	  summarized$SE = summarized$SD / sqrt(summarized$N)	
 	  
