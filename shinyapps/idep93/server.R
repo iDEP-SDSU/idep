@@ -238,15 +238,22 @@ dynamicRange <- function( x ) {
     g <- gsub("_REP$", "", g)  # remove "_REP" from end
     return( g ) 
   } else {
-   if(ncol(sampleInfo) == 1) {  # if there's only one factor
-     g = sampleInfo[, 1] 
+    
+    # the orders of samples might not be the same.The total number of samples might also differ
+    iy = match(x, row.names(sampleInfo))
+    sampleInfo2 = sampleInfo[iy,]
+    
+   if(ncol(sampleInfo2) == 1) {  # if there's only one factor
+     g = sampleInfo2[, 1] 
+     
      } else {   # multiple columns/factors
 
-      # This does not work as sometimes there is no replicates wt vs mt, 1, 2, 3 paired replicates as factors 
-      g = unlist( apply(sampleInfo, 1, function (y) paste(y, collapse = "_")) )
-      names(g) = row.names(sampleInfo)
+      #old comments: This does not work as sometimes there is no replicates wt vs mt, 1, 2, 3 paired replicates as factors 
+      g = unlist( apply(sampleInfo2, 1, function (y) paste(y, collapse = "_")) )
+      names(g) = row.names(sampleInfo2)
+      
       if( min( table(g) ) ==  1 ) # no replicates? 
-         g = sampleInfo[, 1]        
+         g = sampleInfo2[, 1]        
 
      }
    }
@@ -3297,7 +3304,7 @@ output$genePlot <- renderPlot({
 	#calculate mean, SD, N, per gene per condition
 	summarized <- mdf %>% 
 	  group_by(g, Genes) %>%  
-	  summarise(Mean = mean(value), SD = sd(value), N = sum(value))
+	  summarise(Mean = mean(value), SD = sd(value), N = sum(count))
 	colnames(summarized)= c("Samples","Genes","Mean","SD","N")
 	summarized$SE = summarized$SD / sqrt(summarized$N)	
 		
