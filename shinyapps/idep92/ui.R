@@ -100,6 +100,9 @@ iDEPversion,
       #,conditionalPanel(" input.goButton == 0 "
       ,h3("Loading R packages ... ... ...")
       ,htmlOutput('fileFormat')
+     ,h4("New version 5/13/2021 in testing mode! ",a("iDEP v0.93beta",href="http://bioinformatics.sdstate.edu/idep93/", target="_blank"),
+         "includes upgrades to R 4.05, Bioconductor 3.12, 
+         larger database from Ensembl Release 103 and STRING-db v11. Fixed KEGG pathway chart and gene plot.") 
       #,br(),br(),h3("Service will not be available from 8am (US central time) on December 18 (Wednesday), 2019  
       # due to scheduled maintenance. It should take about 3 hours. ",  style = "color:red"),br(),br()
       #,h3("Send your letters before July 12th so we can include them in our proposal!  谢谢大家帮忙！ ご声援に感謝します！ 감사합니다. ", style = "color:blue")
