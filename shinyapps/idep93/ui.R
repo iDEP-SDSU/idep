@@ -1186,10 +1186,10 @@ with 203 species in Ensembl, 80 in Ensembl Plants and 110 in Ensembl Metazoa.
             expression and pathway analysis of RNA-Seq data. BMC Bioinformatics 2018, 19(1):534. PMID:30567491 ",
             a(" Full text",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank"))
         ,h4("Usage Statistics")
-        ,h5("As of June 5, 2019, iDEP website has been visited 30,895 times by 8,252 users from 91 countries. 
-            Fully functional only in early 2018, iDEP has been used by researchers to analyze transcriptomic data 
+        ,h5("As of May 11 2021, iDEP website has been visited 167832 times by 43,220 users from 100+ countries. 
+            iDEP has been used by researchers to analyze transcriptomic data 
             from sun flowers to primates to human, 
-            as demonstrated by the 22 papers citing iDEP.")
+            as demonstrated by the 191 papers citing iDEP.")
        ,br()  
        ,htmlOutput('RsessionInfo')
 
