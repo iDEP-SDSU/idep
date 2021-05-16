@@ -100,18 +100,21 @@ iDEPversion,
       #,conditionalPanel(" input.goButton == 0 "
       ,h4("Loading R packages ... ... ...")
       ,htmlOutput('fileFormat')
-      ,h4("New version 5/13/2021 in testing mode! ",a("iDEP v0.93beta",href="http://bioinformatics.sdstate.edu/idep93/", target="_blank"),
+      ,h3("New version 5/13/2021 in testing mode! ",a("iDEP v0.93beta",
+                                                      href="http://bioinformatics.sdstate.edu/idep93/", target="_blank"),
           "includes upgrades to R 4.05, Bioconductor 3.12, 
-         larger database from Ensembl Release 103 and STRING-db v11. Fixed KEGG pathway chart and gene plot.") 
-     ,h3("We recently hired Jenny Qi for database updates and user support.",a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), style = "color:red") 
+         larger database (5000+ species) from Ensembl Release 103 and STRING-db v11. 
+          Fixed KEGG pathway chart and gene plot.", style = "color:red") 
+     ,h4("We recently hired Jenny Qi for database updates and user support.",
+         a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP")) 
 
      #,h4("Run iDEP ", a("locally on your laptop, lab computer, HPC, or in the cloud.",href="https://idepsite.wordpress.com/local/", target="_blank") )
      # ,h4("New! V0.92 includes a large collection of pathway data for 20 model organisms, plus the new Ensembl release 100 
 # with 203 species in Ensembl, 80 in Ensembl Plants and 110 in Ensembl Metazoa. 
 #           We are still working on adding annotation from STRINGdb (v11).  ")  
 #      ,h5("Now published on", a("BMC Bioinformatics!",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank") )
-      ,h5("Due to lack of funding, iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
-      ,h5("We are happy to help prepare your data for iDEP. Dr. Ge is also open to bioinformatics consulting during the summer.")
+      ,h5("iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
+      ,h5("We will be happy to help prepare your data for iDEP.")
       ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
      # ) # conditionalPanel
 

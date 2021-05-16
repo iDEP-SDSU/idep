@@ -4286,7 +4286,7 @@ output$PCA <- renderPlot({
 	#---PGSEA----------------------------------------------- 	
 	if(input$PCA_MDS ==2) {  # pathway
 		incProgress(1/8, detail="PGSEA")
-		library(PGSEA,verbose=FALSE)
+		#library(PGSEA,verbose=FALSE)
 		pca.object <- prcomp(t(x))
 		pca = 100*pca.object$rotation 
 		Npca = 5
