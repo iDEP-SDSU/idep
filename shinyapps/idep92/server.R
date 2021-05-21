@@ -6245,7 +6245,9 @@ selectedHeatmap.data <- reactive({
 								)
 	
 		# color bar
-		 bar = genes[,ix]
+		 bar = as.vector( genes[,ix]  ); # new R versions stopped autoconvert single column data frames to vectors.
+		 names(bar) = row.names( genes[,ix] )
+		 bar = bar[bar!=0]
 		 bar = bar[bar!=0]
 
 		 # retreive related data		 
