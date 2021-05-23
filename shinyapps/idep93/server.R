@@ -1756,7 +1756,36 @@ promoter <- function (converted,selectOrg, radio){
 # find sample index for selected comparisons
 findContrastSamples <- function(selectContrast, allSampleNames,sampleInfo=NULL, selectFactorsModel=NULL,selectModelComprions =NULL , referenceLevels=NULL, countsDEGMethod=NULL, dataFileFormat=NULL ){
 	iz= match( detectGroups(allSampleNames), unlist(strsplit( selectContrast, "-"))	  )
-	iz = which(!is.na(iz))		 
+	iz = which(!is.na(iz))
+	
+	# has design file, but didn't select factors
+	if ( !is.null(sampleInfo) & is.null(selectFactorsModel) & length(selectModelComprions)==0 ) {
+	  
+	  findSamples <- function( factorLevel ) { 
+	    # given a factor level such as "wt", return a vector indicating the samples with TRUE FALST
+	    #  p53_mock_1  p53_mock_2  p53_mock_3  p53_mock_4    p53_IR_1    p53_IR_2    p53_IR_3    p53_IR_4 null_mock_1 null_mock_2 
+	    #  TRUE        TRUE        TRUE        TRUE        TRUE        TRUE        TRUE        TRUE       FALSE       FALSE 
+  	  tem = apply(sampleInfo, 2, function(y) y == factorLevel )
+  	  colSums(tem) > 0
+  	  tem <- tem[, colSums(tem) > 0]
+  	  return(tem)
+	  }
+	  
+	  
+	  sample1 <- gsub("-.*","",selectContrast)
+	  level1 <- gsub("_.*","",sample1)
+	  level2 <- gsub(".*_","",sample1)
+	  iz <- which( findSamples( level1 ) & findSamples( level2 ) )
+	  
+	  sample2 <- gsub(".*-","",selectContrast)
+	  level1 <- gsub("_.*","",sample2)
+	  level2 <- gsub(".*_","",sample2)
+	  iz <- c(iz, which( findSamples( level1 ) & findSamples( level2 ) ))	
+	  
+	  
+	}
+	
+	#Has design file and chose factors
 	if ( !is.null(sampleInfo) & !is.null(selectFactorsModel) & length(selectModelComprions)>0 ) {
 
 		comparisons = gsub(".*: ","",selectModelComprions)   # strings like: "groups: mutant vs. control"
@@ -6234,7 +6263,7 @@ selectedHeatmap.data <- reactive({
 		  iy = match(query, rownames(convertedData()  ) )
 		  
 
-		 iz = findContrastSamples(	input$selectContrast, 
+		 iz = findContrastSamples( input$selectContrast, 
 									colnames(convertedData()),
 									readSampleInfo(),
 									input$selectFactorsModel,
