@@ -6370,17 +6370,28 @@ geneListData <- reactive({
 		  top1 <- top1[which(abs(top1$Fold)  >= log2( input$limmaFC)) ,]
 		  top1$Top_Genes <- rownames(top1)
 		  top1 <- top1[,c(3,1,2)]
-		  
+		        
 		  # if new species
-		  if( input$selectGO2 == "ID not recognized!" | input$selectOrg == "NEW") return (top1); 
+		  if( input$selectGO2 == "ID not recognized!" 
+		      | input$selectOrg == "NEW" 
+		      | dim(allGeneInfo())[1] == 1)  # stringDB species
+		    return (top1); 
 		  
 		  #convertedID = convertID(top1[,1],input$selectOrg, "GOBP" );#"gmax_eg_gene"
 		  # tem <- geneInfo(convertedID,input$selectOrg) #input$selectOrg ) ;
 		 #  tem <- geneInfo(converted(),input$selectOrg)
+		  if(dim(allGeneInfo())[1] >1) { # Has geneInfo? 
 		  top1 <- merge(top1, allGeneInfo(), by.x ="Top_Genes", by.y="ensembl_gene_id",all.x=T )
+		  } else {  #StringDB species does not have gene info.
+		   top1$symbol = top1$Top_Genes
+		   top1$chr = NA		   
+		   top1$gene_biotype = NA	
+		   top1$band = NA
+		   top1$chromosome_name = NA
+		  }
 		  
 		  if ( sum( is.na(top1$band)) == dim(top1)[1] ) top1$chr = top1$chromosome_name else
-			top1$chr = paste( top1$chromosome_name, top1$band,sep="")
+			top1$chr = paste( top1$chromosome_name, top1$band, sep="")
 		  
 		  top1 <- top1[,c('Top_Genes','Fold','FDR','symbol','chr','gene_biotype')]
 		  
@@ -6393,7 +6404,8 @@ geneListData <- reactive({
 		  colnames(top1) <- c("Ensembl ID", "log2 Fold Change", "Adj.Pval", "Symbol","Chr","Type")
 		  if ( sum( is.na(top1$Symbol)) == dim(top1)[1] ) top1 <- top1[,-4] 
 
-		  return(top1)
+		  return(top1)  
+		  
 	
   })
 
@@ -10157,10 +10169,13 @@ output$geneListBicluster <- renderTable({
 		top1 = biclust::bicluster(biclustering()$x, res, as.numeric( input$selectBicluster)  )[[1]]	
 		top2 = top1  
 		  # if  new species
-		if(  input$selectGO4 == "ID not recognized!" | input$selectOrg == "NEW") {
+		if(  input$selectGO4 == "ID not recognized!" | 
+		     input$selectOrg == "NEW" | 
+		     dim(allGeneInfo())[1] == 1) {
 			top1 = as.data.frame(rownames(top1))
 			colnames(top1)="Genes"
-		} else {	# add gene info			  
+		} else {	# add gene info	
+		  
 		  top1 <- merge(top1, allGeneInfo(), by.x ="row.names", by.y="ensembl_gene_id",all.x=T )
 		  
 		  if ( sum( is.na(top1$band)) == dim(top1)[1] ) top1$chr = top1$chromosome_name else
@@ -10752,7 +10767,9 @@ output$moduleNetwork <- renderPlot({
 		
 		# adding symbols 
 		probeToGene = NULL
-		if( input$selectGO5 != "ID not recognized!" & input$selectOrg != "NEW")
+		if( input$selectGO5 != "ID not recognized!" 
+		    & input$selectOrg != "NEW"
+		    & dim(allGeneInfo())[1] > 1)
 	    if(sum(is.na( allGeneInfo()$symbol ) )/ dim( allGeneInfo() )[1] <.5 ) { # if more than 50% genes has symbol
 			probeToGene = allGeneInfo()[,c("ensembl_gene_id","symbol")]
 			probeToGene$symbol = gsub(" ","",probeToGene$symbol)
