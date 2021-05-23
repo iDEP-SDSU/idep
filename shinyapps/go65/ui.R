@@ -8,7 +8,7 @@ shinyUI(
      sidebarLayout(
 	 
       sidebarPanel(
-	    titlePanel("ShinyGO v0.61: Gene Ontology Enrichment Analysis + more"),  
+	    titlePanel("ShinyGO v0.65: Gene Ontology Enrichment Analysis + more"),  
 	  	p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" )),					
       tags$style(type="text/css", "textarea {width:100%}"),
       strong("1. Select or search for your species."),
@@ -55,8 +55,10 @@ shinyUI(
 			      # ,br(),br(),h2("Scheduled maintenance from 8am to 11am (US Central Standard Time) Wednesday Dec. 18, 2019. Service will be temporarily unavailable.",  style = "color:red"),br(),br()
 				    #,br(),br(),h3("We need your support! We are writing a grant proposal (due June 5th) to NIH to seek support for the development and maintenance of ShinyGO. A brief email on how this tool helped your research would go a long way to support our tiny team, even if you are a graduate student. ",a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=ShinyGO support letter"),  style = "color:blue")
 
-     ,h3("We recently hired Jenny Qi for database updates and user support.",a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), style = "color:red") 
-
+     ,h4("We recently hired Jenny Qi for database updates and user support.",a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP")) 
+     ,h3("5/23/2021: V. 0.65 Annotation update to Ensembl Release 103 and STRING-db V11. Includes 5000 species and tens of thousands of 
+         manually collected pathways for 20 model organisms.", style = "color:red")
+     
             ,h4("2/3/2020: Now published by", a("Bioinformatics.", href="https://doi.org/10.1093/bioinformatics/btz931",target="_blank"))
             ,h4("11/3/2019: V 0.61, Improve graphical visualization (thanks to reviewers). Interactive networks and much more.")
             ,h4("5/20/2019: V.0.60, Annotation database updated to Ensembl 96. New bacterial and fungal genomes based on STRING-db!")
@@ -199,6 +201,10 @@ shinyUI(
         ,br(),br()
         ,strong("Previous versions (still functional):")
         ,br()
+		 ,a("ShinyGO V0.61, "
+		    , href="http://bioinformatics.sdstate.edu/go61/")
+		 ,"based on database derived from Ensembl Release 96, archived on May 23, 2020"
+		 ,br()		 
 		,a("ShinyGO V0.60, "
             , href="http://bioinformatics.sdstate.edu/go60/")
 		     ,"based on database derived from Ensembl BioMart version 96, archived on Nov 6, 2019"
