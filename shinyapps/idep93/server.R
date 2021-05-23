@@ -9418,7 +9418,7 @@ output$genomePlotly <- renderPlotly({
 	 
 			 tem = sort( table( x$chromosome_name), decreasing=T)
 
-			 chromosomes <- names( tem[tem >= 5 ] )  # chromosomes with less than 100 genes are excluded
+			 chromosomes <- names( tem[tem >= 1 ] )  # chromosomes with less than 100 genes are excluded
 			 if(length(chromosomes) > 50) chromosomes <- chromosomes[1:50]  # at most 50 chromosomes
 			 chromosomes <- chromosomes[ nchar(chromosomes)<=12] # chr. name less than 10 characters
 			 chromosomes = chromosomes[order(as.numeric(chromosomes) ) ]
@@ -9462,15 +9462,16 @@ output$genomePlotly <- renderPlotly({
 			#x = x[which(x$FDR<input$limmaPval),]
 			# x = x[which(abs(x$Fold) > log2( input$limmaFC)),]
 			
-			ix = which( (x$FDR< as.numeric(input$limmaPvalViz)) & (abs(x$Fold) > as.numeric(input$limmaFCViz) ) )
+			ix = which( (x$FDR< as.numeric(input$limmaPvalViz)) &
+			              (abs(x$Fold) > as.numeric(input$limmaFCViz) ) )
 			
 			if (length(ix) > 5) { 
 
 				x = x[ix,]		
 				
 				x$start_position = x$start_position/1000000 # Mbp
-				chrD = 20 # distance between chrs.
-				foldCutoff = 3   # max log2 fold 
+				chrD = 30 # distance between chrs.
+				foldCutoff = 4   # max log2 fold 
 				
 				x$Fold = x$Fold / sd(x$Fold)  # standardize fold change
 				
@@ -9490,15 +9491,16 @@ output$genomePlotly <- renderPlotly({
 				p= ggplot(x, aes(x = x, y = y, colour = R, text = symbol ) ) + geom_point(shape = 20, size = .2)
 				
 					#label y with chr names
-				p <- p +  scale_y_continuous(labels = paste("chr",chromosomes[chrLengthTable$chrNum],sep=""), breaks = chrD* (1:chrTotal), limits = c(0, 
-					chrD*chrTotal + 5) )
+				p <- p +  scale_y_continuous(labels = paste("chr",chromosomes[chrLengthTable$chrNum],sep=""), 
+				                             breaks = chrD* (1:chrTotal), 
+				                             limits = c(0, chrD*chrTotal + 5) )
 				# draw horizontal lines for each chr.
 				for( i in 1:dim(chrLengthTable)[1] )
 					p = p+ annotate( "segment",x = 0, xend = chrLengthTable$start_position[i],
 						y = chrLengthTable$chrNum[i]*chrD, yend = chrLengthTable$chrNum[i]*chrD)
 				# change legend		http://ggplot2.tidyverse.org/reference/scale_manual.html
 				p=p+scale_colour_manual(name="",   # customize legend text
-					values=c("blue", "red"),
+					values=c("red", "blue"),
 					breaks=c("1","-1"),
 					labels=c("Up", "Dn"))	
 				p = p + xlab("Position on chrs. (Mbp)") +	 theme(axis.title.y=element_blank())					 

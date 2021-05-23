@@ -923,7 +923,7 @@ iDEPversion,
       
       # main panel of Genome tab -----------------------------------------------------------------------------------
       mainPanel(  
-        plotlyOutput("genomePlotly",height = "700px")
+        plotlyOutput("genomePlotly",height = "900px")
         ,bsModal("modalExample111", "Differentially expressed genomic loci", "runPREDA", size="large"
                  ,fluidRow( 
                            column(3, numericInput("RegionsPvalCutoff", 
