@@ -98,21 +98,16 @@ iDEPversion,
       tableOutput('sampleInfoTable')
       ,tableOutput('contents')
       #,conditionalPanel(" input.goButton == 0 "
-      ,h4("Loading R packages ... ... ...")
+      ,h4("Loading R packages, please wait ... ... ...")
       ,htmlOutput('fileFormat')
-      ,h3("New version 5/13/2021 in testing mode! ",a("iDEP v0.93beta",
-                                                      href="http://bioinformatics.sdstate.edu/idep93/", target="_blank"),
-          "includes upgrades to R 4.05, Bioconductor 3.12, 
+      ,h3("New version 0.93 released on 5/23/2021  
+          includes upgrades to R 4.05, Bioconductor 3.12, 
          larger database (5000+ species) from Ensembl Release 103 and STRING-db v11. 
+         Massive, manually-collected pathway database for 20 model organisms.
           Fixed KEGG pathway chart and gene plot.", style = "color:red") 
      ,h4("We recently hired Jenny Qi for database updates and user support.",
          a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP")) 
 
-     #,h4("Run iDEP ", a("locally on your laptop, lab computer, HPC, or in the cloud.",href="https://idepsite.wordpress.com/local/", target="_blank") )
-     # ,h4("New! V0.92 includes a large collection of pathway data for 20 model organisms, plus the new Ensembl release 100 
-# with 203 species in Ensembl, 80 in Ensembl Plants and 110 in Ensembl Metazoa. 
-#           We are still working on adding annotation from STRINGdb (v11).  ")  
-#      ,h5("Now published on", a("BMC Bioinformatics!",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank") )
       ,h5("iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
       ,h5("We will be happy to help prepare your data for iDEP.")
       ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
@@ -1162,13 +1157,19 @@ iDEPversion,
                           ,"Experiment design file"))
         ,br()
         ,h4("Previous versions of iDEP")
-        ,a("iDEP 0.85 with Ensembl 95, archived on May 19, 2019 "
+        ,a("iDEP 0.92 with Ensembl Release 100, archived on May 20, 2021 "
+           , href="http://bioinformatics.sdstate.edu/idep92/")  
+        ,br()
+        ,a("iDEP 0.90 with Ensembl Release 96, archived on May 20, 2021 "
+           , href="http://bioinformatics.sdstate.edu/idep90/")  
+        ,br()
+        ,a("iDEP 0.85 with Ensembl Release 95, archived on May 19, 2019 "
            , href="http://bioinformatics.sdstate.edu/idep85/")  
         ,br()
-        ,a("iDEP 0.82 with Ensembl BioMart version 92, archived on March 29, 2019 "
+        ,a("iDEP 0.82 with Ensembl  Release 92, archived on March 29, 2019 "
            , href="http://bioinformatics.sdstate.edu/idep82/")  
         ,br()
-        ,a("iDEP 0.73 with Ensembl BioMart version 91, archived on July 11, 2018 "
+        ,a("iDEP 0.73 with Ensembl  Release 91, archived on July 11, 2018 "
             , href="http://bioinformatics.sdstate.edu/idep73/")  
         ,br()
         ,h4("Citation")  
@@ -1222,6 +1223,7 @@ iDEPversion,
        ,h5("3/29/2019: v0.85 Annotation database upgrade. Ensembl v 95. Ensembl plants v.42, and Ensembl Metazoa v.42.")
        ,h5("5/19/2019: v0.90 Annotation database upgrade. Ensembl v 96. Ensembl plants v.43, and Ensembl Metazoa v.43. STRING-db v10")
        ,h5("2/3/2020: v0.90 customizable PCA plot and scatter plot")
+       ,h5("5/10/2020: V0.93 updated to Ensembl Release 103 and String-DB v11.")
        ,br(),br()
        ,h5("In loving memory of my parents. X.G.")
 
