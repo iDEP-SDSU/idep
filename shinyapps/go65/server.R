@@ -688,7 +688,12 @@ output$downloadGrouping <- downloadHandler(
 		   y1 = .50 # vertical position, from 0 - 1, relative to bottom left.
 		   text(0,y1,"I" );text(1,y1,"I" ); # start and end
 		   text(0,y1+.2, paste("Chr:",chr,sep=""),cex=2);
-		   text(1,y1+.2, paste(round(chrLength/1e6,0),"Mbp",sep=""),cex=2)
+           if(chrLength > 1e6) {
+		      text(1,y1+.2, paste(round(chrLength/1e6,1),"Mb",sep=""),cex=2)
+           } else {
+		      text(1,y1+.2, paste(round(chrLength/1e3,0),"Kb",sep=""),cex=2)
+           }
+
 		   segments(0,y1+.01,1,y1+.01,col="blue")
            sapply(1:dim(a1)[1], function (i) text(a1$start_position[i], y1+.03, "|"))
 		   if(dim(a1)[1] <100 && freq[i,2] >0)  # if more genes, do not show symbol
