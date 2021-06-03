@@ -741,7 +741,12 @@ output$genePlot <- renderPlot({
 
 		   legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n", cex =2)
 			}
-		}
+		} else {             # Create empty plot
+            plot(x = 0:1, y = 0:1, ann = F, bty = "n", type = "n", xaxt = "n", yaxt = "n")
+			text(x = 0.5,y = 0.5,  # Add text to empty plot				 
+				 "Chromosome plot not available.", 
+				 cex = 1.8)
+            }
 		incProgress(1/8)
 		
 		
@@ -770,7 +775,12 @@ output$genePlot <- renderPlot({
 	    legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n", cex=2)
 
 		}
-		}
+		} else {             # Create empty plot
+            plot(x = 0:1, y = 0:1, ann = F, bty = "n", type = "n", xaxt = "n", yaxt = "n")
+			text(x = 0.5,y = 0.5,  # Add text to empty plot				 
+				 "Gene type plot not available.", 
+				 cex = 1.8)
+            }
 		
 		
 		incProgress(1/8)
@@ -792,7 +802,12 @@ output$genePlot <- renderPlot({
         barplot(t(freq), beside=TRUE,las=2,col=c("red","lightgrey"), ylab="Number of Genes",
 	      main= sig ,xlab =c("Number of exons"),cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5)
 	    legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n",cex=2)
-		}}
+		}}  else {             # Create empty plot
+            plot(x = 0:1, y = 0:1, ann = F, bty = "n", type = "n", xaxt = "n", yaxt = "n")
+			text(x = 0.5,y = 0.5,  # Add text to empty plot				 
+				 "Exon plot not available.", 
+				 cex = 1.8)
+            }
 		incProgress(1/8)
 
 		#Transcript count
@@ -811,7 +826,12 @@ output$genePlot <- renderPlot({
         barplot(t(freq), beside=TRUE,las=2,col=c("red","lightgrey"), ylab="Number of Genes",
 	      main= sig,xlab =c("Number of transcripts per gene") ,cex.lab=1.5, cex.axis= 2,cex.names=1.5, cex.main=1.5 )
 	    legend("topright", c("List","Expected"), pch=15, col=c("red","lightgrey"),bty="n",cex=2)
-       } }
+       } } else {             # Create empty plot
+            plot(x = 0:1, y = 0:1, ann = F, bty = "n", type = "n", xaxt = "n", yaxt = "n")
+			text(x = 0.5,y = 0.5,  # Add text to empty plot				 
+				 "Transcript plot not available.", 
+				 cex = 1.8)
+            }
 	   incProgress(1/8)
 	   
      } # if minGenes
