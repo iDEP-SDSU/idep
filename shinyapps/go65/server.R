@@ -724,7 +724,7 @@ output$genePlot <- renderPlot({
 	   if( sum(!is.na( x$chromosome_name) ) >= minGenes && length(unique(x$chromosome_name) ) > 2 && length(which(x$Set == "List") ) > minGenes )
 	   {
 		   freq = table( x$chromosome_name,x$Set );
-		   freq <- as.matrix(freq[which(nchar(row.names(freq))<3   ),])# remove unmapped chromosomes
+		   #freq <- as.matrix(freq[which(nchar(row.names(freq))<3   ),])# remove unmapped chromosomes
 		   if(dim(freq)[2] >1 && dim(freq)[1]>1 ) { # some organisms do not have fully seuqence genome: chr. names: scaffold_99816
 				Pval = chisq.test(freq)$p.value
 				sig = paste("Distribution of query genes on chromosomes \nChi-squared test P=",formatC(Pval, digits=2, format="G") )
@@ -856,7 +856,16 @@ output$genePlot2 <- renderPlot({
             theme(legend.key = element_rect(color = NA, fill = NA), 
                   legend.key.size = unit(1.2, "line")) + 
             theme(plot.margin = unit(c(0,0,1,0), "cm"))
-       }
+       } else p1 <- ggplot() + 
+                     geom_point() + 
+                     xlim(-10, 10) + 
+                     ylim(-10, 10) + 
+                     annotate("text", x = 0, y = 0, label = "Coding Sequence length plot not available.") +
+					  theme(legend.position = "none",
+							panel.grid = element_blank(),
+							axis.title = element_blank(),
+							axis.text = element_blank(),
+							axis.ticks = element_blank())
 
 	   	   incProgress(1/8)
 		   
@@ -880,7 +889,16 @@ output$genePlot2 <- renderPlot({
                 theme(legend.key = element_rect(color = NA, fill = NA), 
                       legend.key.size = unit(1.2, "line")) + 
                 theme(plot.margin = unit(c(0,0,1,0), "cm"))		   
-		  }
+		  }  else p2 <- ggplot() + 
+                     geom_point() + 
+                     xlim(-10, 10) + 
+                     ylim(-10, 10) + 
+                     annotate("text", x = 0, y = 0, label = "Transcript length plot not available.") +
+					  theme(legend.position = "none",
+							panel.grid = element_blank(),
+							axis.title = element_blank(),
+							axis.text = element_blank(),
+							axis.ticks = element_blank())
 	   	   incProgress(1/8)
 		   
 	   #Genome span ------------		  
@@ -901,7 +919,16 @@ output$genePlot2 <- renderPlot({
             theme(legend.key = element_rect(color = NA, fill = NA), 
                   legend.key.size = unit(1.2, "line")) + 
             theme(plot.margin = unit(c(0,0,1,0), "cm"))			   
-	   }			  
+	   } else p3 <- ggplot() + 
+                     geom_point() + 
+                     xlim(-10, 10) + 
+                     ylim(-10, 10) + 
+                     annotate("text", x = 0, y = 0, label = "Genome span plot not available.") +
+					  theme(legend.position = "none",
+							panel.grid = element_blank(),
+							axis.title = element_blank(),
+							axis.text = element_blank(),
+							axis.ticks = element_blank())		  
 
 	   incProgress(1/8)
 		   
@@ -925,7 +952,16 @@ output$genePlot2 <- renderPlot({
             theme(legend.key = element_rect(color = NA, fill = NA), 
                   legend.key.size = unit(1.2, "line")) + 
             theme(plot.margin = unit(c(0,0,1,0), "cm"))	
-	}	
+	}	else p4 <- ggplot() + 
+                     geom_point() + 
+                     xlim(-10, 10) + 
+                     ylim(-10, 10) + 
+                     annotate("text", x = 0, y = 0, label = "5' UTR plot not available.") +
+					  theme(legend.position = "none",
+							panel.grid = element_blank(),
+							axis.title = element_blank(),
+							axis.text = element_blank(),
+							axis.ticks = element_blank())
 
 	    incProgress(1/8)
 		   
@@ -947,7 +983,16 @@ output$genePlot2 <- renderPlot({
             theme(legend.key = element_rect(color = NA, fill = NA), 
                   legend.key.size = unit(1.2, "line")) + 
             theme(plot.margin = unit(c(0,0,1,0), "cm"))	
-	  }	
+	  }	else p5 <- ggplot() + 
+                     geom_point() + 
+                     xlim(-10, 10) + 
+                     ylim(-10, 10) + 
+                     annotate("text", x = 0, y = 0, label = "3' UTR plot not available.") +
+					  theme(legend.position = "none",
+							panel.grid = element_blank(),
+							axis.title = element_blank(),
+							axis.text = element_blank(),
+							axis.ticks = element_blank())
 	   incProgress(1/8)
 		   
 	   #GC content ------------		  
@@ -970,7 +1015,16 @@ output$genePlot2 <- renderPlot({
                 theme(legend.key = element_rect(color = NA, fill = NA), 
                       legend.key.size = unit(1.2, "line")) + 
                 theme(plot.margin = unit(c(0,0,1,0), "cm"))		   
-	   }		  
+	   }	else p6 <- ggplot() + 
+                     geom_point() + 
+                     xlim(-10, 10) + 
+                     ylim(-10, 10) + 
+                     annotate("text", x = 0, y = 0, label = "GC content plot not available.") +
+					  theme(legend.position = "none",
+							panel.grid = element_blank(),
+							axis.title = element_blank(),
+							axis.text = element_blank(),
+							axis.ticks = element_blank())
 		  
 	   incProgress(1/8)	
 	   grid.arrange(p1,p2,p3,p4,p5,p6, ncol=1)
