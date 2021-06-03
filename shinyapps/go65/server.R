@@ -21,8 +21,6 @@ observe({
  #click_saved <- reactiveValues(GO = NULL)
  #observeEvent(eventExpr = input$selectGO, handlerExpr = { click_saved$GO <- input$selectGO })
 
-
-
 # this defines an reactive object that can be accessed from other rendering functions
 converted <- reactive({
 	  if (input$goButton == 0)    return()
@@ -660,7 +658,7 @@ output$downloadGrouping <- downloadHandler(
 	   if((sum(!is.na( x$chromosome_name) ) >= minGenes && length(unique(x$chromosome_name) ) > 2 ) && length(which(x$Set == "List") ) > minGenes )
 	   {
 		   freq = table( x$chromosome_name,x$Set );
-		   freq <- as.matrix(freq[which(nchar(row.names(freq))<3   ),])# remove unmapped chromosomes
+		   #freq <- as.matrix(freq[which(nchar(row.names(freq))<3   ),])# remove unmapped chromosomes    Removed. Chr. VII in yeast
 		   freq <- as.matrix(freq[which( freq[,1]/colSums(freq)[1] >.01),])
 		   if(dim(freq)[2] >1 && dim(freq)[1]>1 && dim(freq)[1]<100) { # some organisms do not have fully seuqence genome: chr. names: scaffold_99816
 		   freq <-freq[order( as.numeric(row.names(freq) )), ]

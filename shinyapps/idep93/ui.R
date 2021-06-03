@@ -100,6 +100,7 @@ iDEPversion,
       #,conditionalPanel(" input.goButton == 0 "
       ,h4("Loading R packages, please wait ... ... ...")
       ,htmlOutput('fileFormat')
+     ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
       ,h3("New version 0.93 released on 5/23/2021  
           includes upgrades to R 4.05, Bioconductor 3.12, 
          larger database (5000+ species) from Ensembl Release 103 and STRING-db v11. 
@@ -1223,7 +1224,7 @@ iDEPversion,
        ,h5("3/29/2019: v0.85 Annotation database upgrade. Ensembl v 95. Ensembl plants v.42, and Ensembl Metazoa v.42.")
        ,h5("5/19/2019: v0.90 Annotation database upgrade. Ensembl v 96. Ensembl plants v.43, and Ensembl Metazoa v.43. STRING-db v10")
        ,h5("2/3/2020: v0.90 customizable PCA plot and scatter plot")
-       ,h5("5/10/2020: V0.93 updated to Ensembl Release 103 and String-DB v11.")
+       ,h5("5/10/2021: V0.93 updated to Ensembl Release 103 and String-DB v11.")
        ,br(),br()
        ,h5("In loving memory of my parents. X.G.")
 

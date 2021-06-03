@@ -58,6 +58,8 @@ shinyUI(
      ,h4("We recently hired Jenny Qi for database updates and user support.",a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP")) 
      ,h3("5/23/2021: V. 0.65 Annotation update to Ensembl Release 103 and STRING-db V11. Includes 5000 species and tens of thousands of 
          manually collected pathways for 20 model organisms.", style = "color:red")
+
+     ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
      
             ,h4("2/3/2020: Now published by", a("Bioinformatics.", href="https://doi.org/10.1093/bioinformatics/btz931",target="_blank"))
             ,h4("11/3/2019: V 0.61, Improve graphical visualization (thanks to reviewers). Interactive networks and much more.")
