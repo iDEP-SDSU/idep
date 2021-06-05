@@ -352,7 +352,7 @@ geneInfo <- function (converted,selectOrg){
  }
 
 # Main function. Find a query set of genes enriched with functional category
-FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms) {
+FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms, convertedB=NULL, gInfoB=NULL) {
   idNotRecognized = list(x=as.data.frame("ID not recognized!"),
                          groupings= as.data.frame("ID not recognized!")  )
   if(is.null(converted) ) return(idNotRecognized) # no ID
@@ -384,9 +384,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   names(categoryChoices)[ match("GOCC",categoryChoices)  ] <- "GO Cellular Component"
   names(categoryChoices)[ match("GOMF",categoryChoices)  ] <- "GO Molecular Function"
 
-  sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySet,collapse="', '"),"')" ,sep="")
-
-  #cat(paste0("HH",GO,"HH") )
+  sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySet, collapse="', '"),"')" ,sep="")
 
   if( GO != "All") sqlQuery = paste0(sqlQuery, " AND category ='",GO,"'")
   result <- dbGetQuery( pathway, sqlQuery  )
@@ -395,17 +393,18 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
    # given a pathway id, it finds the overlapped genes, symbol preferred
   sharedGenesPrefered <- function(pathwayID) {
     tem <- result[which(result[,2]== pathwayID ),1]
-	ix = match(tem, converted$conversionTable$ensembl_gene_id) # convert back to original
-	tem2 <- unique( converted$conversionTable$User_input[ix] )
-#    if(length(unique(gInfo$symbol) )/dim(gInfo)[1] >.7  ) # if 70% genes has symbol in geneInfo
-#	{ ix = match(tem, gInfo$ensembl_gene_id);
-#	  tem2 <- unique( gInfo$symbol[ix] )      }
-  return( paste( tem2 ,collapse=" ",sep="") )}
-
-
-
+    ix = match(tem, converted$conversionTable$ensembl_gene_id) # convert back to original
+    tem2 <- unique( converted$conversionTable$User_input[ix] )
+    #    if(length(unique(gInfo$symbol) )/dim(gInfo)[1] >.7  ) # if 70% genes has symbol in geneInfo
+    #	{ ix = match(tem, gInfo$ensembl_gene_id);
+    #	  tem2 <- unique( gInfo$symbol[ix] )      }
+    return( paste( tem2 ,collapse=" ",sep="") )
+	}
+  
   x0 = table(result$pathwayID)
+
   x0 = as.data.frame( x0[which(x0>=Min_overlap)] )# remove low overlaps
+
   errorMessage = list(x=as.data.frame("Too few genes."),
                          groupings= as.data.frame("Too few genes.")  )
   if(dim(x0)[1] <= 5 ) return(errorMessage) # no data
@@ -413,10 +412,46 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   pathwayInfo <- dbGetQuery( pathway, paste( " select distinct id,n,Description from pathwayInfo where id IN ('",
 						paste(x0$pathwayID,collapse="', '"),   "') ",sep="") )
   x = merge(x0,pathwayInfo, by.x='pathwayID', by.y='id')
-
-  x$Pval=phyper(x$overlap-1,length(querySet),totalGenes - length(querySet),as.numeric(x$n), lower.tail=FALSE );
-  x$FDR = p.adjust(x$Pval,method="fdr")
-  x <- x[ order( x$FDR)  ,]  # sort according to FDR
+  
+  
+  #Background genes----------------------------------------------------
+  if(!is.null(convertedB) && 
+     !is.null(gInfoB) && 
+     length( convertedB$IDs) < 30000) { # if more than 30k genes, ignore background genes.
+        querySetB <- convertedB$IDs;    
+        # if background and selected genes matches to different organisms, error
+        if( length( intersect( querySetB, querySet ) ) == 0 )    # if none of the selected genes are in background genes
+          return(list( x=as.data.frame("None of the selected genes are in the background genes!" )) )
+        
+        querySetB <- unique( c( querySetB, querySet ) )  # just to make sure the background set includes the query set
+        
+        sqlQueryB = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySetB, collapse="', '"),"')" ,sep="")    
+        
+        if( GO != "All") sqlQuery = paste0(sqlQuery, " AND category ='",GO,"'")
+        resultB <- dbGetQuery( pathway, sqlQueryB  )
+        if( dim(resultB)[1] ==0) {return(list( x=as.data.frame("No matching species or gene ID file!" )) )}    
+        xB = table(resultB$pathwayID)
+        rm(resultB)
+        xB = as.data.frame( xB)
+        colnames(xB)=c("pathwayID","overlapB")
+        x2 = merge(x, xB, by='pathwayID', all.x = TRUE)       
+        
+        x$Pval=phyper(x2$overlap - 1,
+                      length(querySet),
+                      length(querySetB) - length(querySet),   
+                      as.numeric(x2$overlapB), # use the number of genes in background set
+                      lower.tail=FALSE ); 
+        
+      }   else { # original version without background genes
+          x$Pval <- phyper(x$overlap - 1,
+                        length(querySet),
+                        totalGenes - length(querySet),   
+                        as.numeric(x$n), 
+                        lower.tail=FALSE );
+          }
+  
+  x$FDR <- p.adjust(x$Pval, method="fdr")
+  x <- x[order(x$FDR), ]  # sort according to FDR
 
 
   # Gene groups for high level GOBP terms

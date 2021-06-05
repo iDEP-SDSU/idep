@@ -29,11 +29,25 @@ converted <- reactive({
 
 	} )
 
+
 geneInfoLookup <- reactive({
 	  if (input$goButton == 0)    return()
 		geneInfo(converted(),input$selectOrg )   # uses converted gene ids thru converted() call
 
 	} )
+
+# this defines an reactive object that can be accessed from other rendering functions
+converted_background <- reactive({
+  if (input$goButton == 0 | is.null(input$input_text_b))    return()
+  
+  convertID(input$input_text_b,input$selectOrg );
+  
+} )
+geneInfoLookup_background <- reactive({
+  if (input$goButton == 0 | is.null(input$input_text_b))    return()
+  geneInfo(converted_background(),input$selectOrg )   # uses converted gene ids thru converted() call
+  
+} )
 
 significantOverlaps <- reactive({
 	  if (input$goButton == 0 | is.null( input$selectGO) ) return()
@@ -45,7 +59,9 @@ significantOverlaps <- reactive({
 	  withProgress(message= sample(quotes,1),detail="enrichment analysis", {
   	  #gene info is passed to enable lookup of gene symbols
   	  tem = geneInfoLookup(); tem <- tem[which( tem$Set == "List"),]
-  	  FindOverlap( converted(), tem, input$selectGO, input$selectOrg, input$minFDR, input$maxTerms )
+  	  temb = geneInfoLookup_background(); temb <- temb[which( temb$Set == "List"),]  	  
+  	  FindOverlap( converted(), tem, input$selectGO, input$selectOrg, input$minFDR, input$maxTerms, 
+  	               converted_background(), temb )
 	  })
 	})
 	})

@@ -8,10 +8,10 @@ shinyUI(
      sidebarLayout(
 	 
       sidebarPanel(
-	    titlePanel("ShinyGO v0.65: Gene Ontology Enrichment Analysis + more"),  
+	    titlePanel("ShinyGO v0.66: Gene Ontology Enrichment Analysis + more"),  
 	  	p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" )),					
       tags$style(type="text/css", "textarea {width:100%}"),
-      strong("1. Select or search for your species."),
+      strong("1. Optional: select or search for your species."),
 	  selectizeInput('selectOrg', 
 				  label    = NULL,
 				  choices  = " ",
@@ -26,10 +26,11 @@ shinyUI(
          column(6, strong("2. Paste genes") ),
          column(4, actionButton("useDemo", "Demo genes") )    
          ),  
-      tags$textarea(id = 'input_text', placeholder = 'Just paste gene lists and click Submit. Most types of gene IDs accepted. Double check the guessed species, and adjust if needed. ', rows = 8, ""),
-       #actionButton("goButton", "Submit"),
-       #actionButton("useDemo", "Use demo genes"),  
-
+      tags$textarea(id = 'input_text', placeholder = 'Just paste gene lists and click Submit. Most types of 
+                    gene IDs accepted. Double check the guessed species, and adjust if needed. ', rows = 8, ""),
+	     actionButton("backgroundGenes", "Optional: Customize background genes"),
+      br(), br(),
+	  
  actionButton("goButton", strong("3. Submit")),
       h6(" "),
       htmlOutput("selectGO1"),
@@ -62,9 +63,9 @@ shinyUI(
      ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
      
             ,h4("2/3/2020: Now published by", a("Bioinformatics.", href="https://doi.org/10.1093/bioinformatics/btz931",target="_blank"))
-            ,h4("11/3/2019: V 0.61, Improve graphical visualization (thanks to reviewers). Interactive networks and much more.")
-            ,h4("5/20/2019: V.0.60, Annotation database updated to Ensembl 96. New bacterial and fungal genomes based on STRING-db!")
-				    ,h4("Just paste your gene list to get enriched GO terms and othe pathways for over 315 plant and animal species, based on annotation from Ensembl (Release 96), Ensembl plants (R. 43) and Ensembl Metazoa (R. 43). An additional 2031 genomes (including bacteria and fungi) are   annotated based on STRING-db (v.10). In addition, it also produces
+				    ,h4("Just paste your gene list to get enriched GO terms and othe pathways for over 400 plant and animal species, 
+				    based on annotation from Ensembl , Ensembl plants and Ensembl Metazoa. An additional 5000 genomes 
+				    (including bacteria and fungi) are   annotated based on STRING-db (v.11). In addition, it also produces
 				    KEGG pathway diagrams with your genes highlighted, hierarchical clustering trees and networks summarizing 
 				    overlapping terms/pathways, protein-protein interaction networks, gene characterristics plots, and enriched promoter motifs. 
                  See example outputs below:")			
@@ -298,6 +299,21 @@ shinyUI(
        ,plotOutput('enrichmentNetworkPlot')              
    
      )# bsModal 2
+
+		,bsModal("BackgroundGenes", "Customized background genes (slow)", "backgroundGenes", size = "large"
+		         ,h4("By default, we compare your gene list with a background of all protein-coding genes in the genome.
+		         But in some studies, such as those based on certain DNA microarray or proteomics techniques, 
+		         we only measure a few hudred or thousand of genes. 
+		         When your genes are not derived from genome-wide data, customized background genes might yield more accurate 
+		             results for enrichment analysis. For most RNA-seq studies, it is unneccesary, as it is much slower and the results 
+		             would be similar. Currently only less than 30,000 genes are accepted.
+		              ")
+		         ,tags$textarea(id = 'input_text_b', 
+		         placeholder = 'Paste all genes from which the gene list is derived. These are all genes whose expression or other activity that you measured. This could be all the genes on a special DNA microarray or all the genes detected by a proteomics experiment. 
+                    ', rows = 15, "")    
+		         
+		)# bsModal 3		
+		
 
      ) # mainPanel
     ) #sidebarLayout
