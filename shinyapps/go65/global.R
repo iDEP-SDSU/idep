@@ -18,6 +18,7 @@ maxTerms =30 # max number of enriched terms; no longer used
 PvalGeneInfo = 0.05; minGenes = 10 # min number of genes for ploting
 PvalGeneInfo1 = 0.01
 PvalGeneInfo2 = 0.001
+maxGenesBackground = 30000
 pdf(NULL) # this prevents error Cannot open file 'Rplots.pdf'
 ExampleGeneList=
 "Hus1 Rad1 Tp63 Tp73 Usp28 Rad9b Fanci Hus1b 
@@ -417,7 +418,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   #Background genes----------------------------------------------------
   if(!is.null(convertedB) && 
      !is.null(gInfoB) && 
-     length( convertedB$IDs) < 30000) { # if more than 30k genes, ignore background genes.
+     length( convertedB$IDs) < maxGenesBackground + 1) { # if more than 30k genes, ignore background genes.
         querySetB <- convertedB$IDs;    
         # if background and selected genes matches to different organisms, error
         if( length( intersect( querySetB, querySet ) ) == 0 )    # if none of the selected genes are in background genes

@@ -9,44 +9,55 @@ shinyUI(
 	 
       sidebarPanel(
 	    titlePanel("ShinyGO v0.66: Gene Ontology Enrichment Analysis + more"),  
-	  	p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" )),					
-      tags$style(type="text/css", "textarea {width:100%}"),
-      strong("1. Optional: select or search for your species."),
-	  selectizeInput('selectOrg', 
-				  label    = NULL,
-				  choices  = " ",
-				  multiple = TRUE,
-				  options  = list( maxItems     = 1,               
-								   placeholder  = 'Best matching species',
-								   onInitialize = I('function() { this.setValue(""); }'))  
-				  #,selected = "Best matching species"                                                  
-		 ), 
-      #strong("2. Paste genes"),
-       fluidRow(
-         column(6, strong("2. Paste genes") ),
-         column(4, actionButton("useDemo", "Demo genes") )    
-         ),  
-      tags$textarea(id = 'input_text', placeholder = 'Just paste gene lists and click Submit. Most types of 
-                    gene IDs accepted. Double check the guessed species, and adjust if needed. ', rows = 8, ""),
-	     actionButton("backgroundGenes", "Optional: Customize background genes"),
-      br(), br(),
-	  
- actionButton("goButton", strong("3. Submit")),
-      h6(" "),
+
+	  	fluidRow(
+	  	  column(8,   actionButton("useDemo", "Use demo genes"),	  	  ),
+	  	  column(4,  p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))	  	  )
+	  	),
+	  	tags$style(type="text/css", "textarea {width:100%}"),	  	
+      
+	  	
+	  	
+      tags$textarea(id = 'input_text', placeholder = 'Just paste a list of genes and click Submit. More adjustments below. Most types of gene IDs accepted. Double check the guessed species, and adjust if needed. ', rows = 8, ""),
+
+
+	  	fluidRow(
+	  	  column(8,  actionButton("backgroundGenes", "Customize background")	),
+	  	  column(4,   actionButton("goButton", strong("Submit"))	  	  )
+	  	),
+	  	br(),
       htmlOutput("selectGO1"),
-      numericInput("minFDR", label = h5("P-value cutoff (FDR)"), value = 0.05),
-      #numericInput("maxTerms", label = h5("Max. # of GO terms"), value = 30),
-      selectInput("maxTerms", h5("# of most significant terms to show"),
-                choices = list("10" = 10,
-                  "20" = 20,
-                  "30" = 30,
-                  "40" = 40,
-                  "50" = 50,
-                  "100" = 100,
-                  "500" = 500),
-                  selected = "30"),
-     tags$style(type='text/css', "#minFDR { width:100%;   margin-top:-15px}"),  
+	  	
+	  	fluidRow(
+	  	  column(6,
+	  	         numericInput("minFDR", label = h5("P-value cutoff (FDR)"), value = 0.05)
+	  	  ),
+	  	  column(6,
+	  	         selectInput("maxTerms", h5("# of top pathways to show"),
+	  	                     choices = list("10" = 10,
+	  	                                    "20" = 20,
+	  	                                    "30" = 30,
+	  	                                    "40" = 40,
+	  	                                    "50" = 50,
+	  	                                    "100" = 100,
+	  	                                    "500" = 500),
+	  	                     selected = "30")
+	  	  )
+	  	),
+
+     #tags$style(type='text/css', "#minFDR { width:100%;   margin-top:-15px}"),  
      # selectInput("selectOrg", label = NULL,"Best matching species",width='100%'),  
+	  
+	  	h5("Select or search your species. Or use our best guess."),
+	  	selectizeInput('selectOrg', 
+	  	               label    = NULL,
+	  	               choices  = " ",
+	  	               multiple = TRUE,
+	  	               options  = list( maxItems     = 1,               
+	  	                                placeholder  = 'Best matching species',
+	  	                                onInitialize = I('function() { this.setValue(""); }'))  
+	  	               #,selected = "Best matching species"                                                  
+	  	), 
      tableOutput('species' )
       ), # sidebarPanel
      mainPanel(
@@ -56,7 +67,9 @@ shinyUI(
 			      # ,br(),br(),h2("Scheduled maintenance from 8am to 11am (US Central Standard Time) Wednesday Dec. 18, 2019. Service will be temporarily unavailable.",  style = "color:red"),br(),br()
 				    #,br(),br(),h3("We need your support! We are writing a grant proposal (due June 5th) to NIH to seek support for the development and maintenance of ShinyGO. A brief email on how this tool helped your research would go a long way to support our tiny team, even if you are a graduate student. ",a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=ShinyGO support letter"),  style = "color:blue")
 
-     ,h4("We recently hired Jenny Qi for database updates and user support.",a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP")) 
+     ,h4("We recently hired Jenny Qi for database updates and user support.",
+         a("Email Jenny ",href="mailto:gelabinfo@gmail.com?Subject=ShinyGO"),
+         "for questions, suggestions or data contributions.") 
      ,h3("5/23/2021: V. 0.65 Annotation update to Ensembl Release 103 and STRING-db V11. Includes 5000 species and tens of thousands of 
          manually collected pathways for 20 model organisms.", style = "color:red")
 
@@ -135,7 +148,7 @@ shinyUI(
         
         ,tabPanel("Plots"
           , h5("The characteristics of your genes are compared with the rest in the genome. Chi-squared and Student's 
-              t-tests are run to see if your genes are different from other genes.")
+              t-tests are run to see if your genes have special characteristics when compared with all the other genes or, if uploaded a customized background.")
           , plotOutput("genePlot", inline = TRUE,width='auto',height='auto')
 			    , plotOutput("genePlot2", inline = TRUE,width='auto',height='auto')  
         )
@@ -268,6 +281,9 @@ shinyUI(
 	 
 		 
 		 ,br(),h4("Changes:")
+		 ,h5("6/6/2021: V0.66 Adjusted interface. ")
+		 ,h5("6/2/2021: V0.66 add customized background genes.")
+		,h5("5/23/2021: V0.65 Database update to Ensembl 103 and STRING-db v11.")
      ,h5("11/3/2019: V 0.61 Improved visualization based on suggestions from reviewers. Interactive networks.")
 		 ,h5("5/20/2019: V0.60 Upgraded to Ensembl Biomart 96. Add annotation from STRING-db v10")
          ,h5("3/29/2019: V0.51 Update annotation to Ensembl release 95. Interface change. Demo gene lists. Error messages.")
@@ -300,17 +316,21 @@ shinyUI(
    
      )# bsModal 2
 
-		,bsModal("BackgroundGenes", "Customized background genes (slow)", "backgroundGenes", size = "large"
+		,bsModal("BackgroundGenes", "Customized background genes (Optional; It can takes 5 minutes)", "backgroundGenes", size = "large"
+		         ,tags$textarea(id = 'input_text_b', 
+		         placeholder = 'Paste all genes from which the gene list is derived. These are all genes whose expression or other activity that you measured. This could be all the genes on a special DNA microarray or all the genes detected by a proteomics experiment. 
+                    ', rows = 15, "")  
 		         ,h4("By default, we compare your gene list with a background of all protein-coding genes in the genome.
 		         But in some studies, such as those based on certain DNA microarray or proteomics techniques, 
 		         we only measure a few hudred or thousand of genes. 
 		         When your genes are not derived from genome-wide data, customized background genes might yield more accurate 
-		             results for enrichment analysis. For most RNA-seq studies, it is unneccesary, as it is much slower and the results 
+		             results for enrichment analysis. We can also customize background genes to overcome bias in selection. For example,
+		             relatively highly expressed genes in RNA-seq are more likely to be identified as differentially expressed. 
+		             Thus we could enter all the relatively highly expressed genes as background.
+		             It is unneccesary to paste large set of reference genes (like 20,000 genes or more),
+		             as it is much slower and the results 
 		             would be similar. Currently only less than 30,000 genes are accepted.
 		              ")
-		         ,tags$textarea(id = 'input_text_b', 
-		         placeholder = 'Paste all genes from which the gene list is derived. These are all genes whose expression or other activity that you measured. This could be all the genes on a special DNA microarray or all the genes detected by a proteomics experiment. 
-                    ', rows = 15, "")    
 		         
 		)# bsModal 3		
 		

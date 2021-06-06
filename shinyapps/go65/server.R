@@ -669,7 +669,7 @@ output$downloadGrouping <- downloadHandler(
 	  isolate( {
        x = geneInfoLookup()
        converted1 = converted()
-
+       
    	   #chromosomes
 	   if((sum(!is.na( x$chromosome_name) ) >= minGenes && length(unique(x$chromosome_name) ) > 2 ) && length(which(x$Set == "List") ) > minGenes )
 	   {
@@ -730,8 +730,26 @@ output$genePlot <- renderPlot({
 	  tem=input$selectOrg; 
 	isolate( {
 	  withProgress(message="Ploting gene characteristics", {
-       x = geneInfoLookup()
+     x = geneInfoLookup()
 	   x2 = x[which(x$gene_biotype == "protein_coding"),]  # only coding for some analyses
+	   
+	   
+     # background genes	--------------------------------------------------------------   
+     xB = geneInfoLookup_background()
+     convertedB = converted_background()	   
+	   if(!is.null(xB) && 
+	      !is.null(convertedB) && 
+	      length( convertedB$IDs) < maxGenesBackground + 1) { # if more than 30k genes, ignore background genes.
+	     
+	     x <- x[ x$Set == "List", ] # remove background from selected genes
+	     xB <- xB[ xB$Set == "Genome", ] # remove Genome genes from background
+	     xB$Set <- "Background"
+	     x <- rbind(x, xB)
+	     x2 <- x[which(x$gene_biotype == "protein_coding"),]  # only coding for some analyses
+	   }
+     # end background genes
+	   
+	   
      if(dim(x)[1]>=minGenes) # only making plots if more than 20 genes
        { # only plot when there 10 genes or more   # some columns have too many missing values
 	   par(mfrow=c(4,1))
@@ -740,7 +758,7 @@ output$genePlot <- renderPlot({
 	   if( sum(!is.na( x$chromosome_name) ) >= minGenes && length(unique(x$chromosome_name) ) > 2 && length(which(x$Set == "List") ) > minGenes )
 	   {
 		   freq = table( x$chromosome_name,x$Set );
-		   #freq <- as.matrix(freq[which(nchar(row.names(freq))<3   ),])# remove unmapped chromosomes
+		   freq <- as.matrix(freq[which(nchar(row.names(freq))<10   ),])# remove unmapped chromosomes
 		   if(dim(freq)[2] >1 && dim(freq)[1]>1 ) { # some organisms do not have fully seuqence genome: chr. names: scaffold_99816
 				Pval = chisq.test(freq)$p.value
 				sig = paste("Distribution of query genes on chromosomes \nChi-squared test P=",formatC(Pval, digits=2, format="G") )
@@ -861,8 +879,25 @@ output$genePlot2 <- renderPlot({
 	  tem=input$selectOrg; 
 	isolate( {
 		withProgress(message="Ploting gene characteristics", {
-       x = geneInfoLookup()
+     x = geneInfoLookup()
 	   x2 = x[which(x$gene_biotype == "protein_coding"),]  # only coding for some analyses
+	   
+	   # background genes	--------------------------------------------------------------   
+	   xB = geneInfoLookup_background()
+	   convertedB = converted_background()	   
+	   if(!is.null(xB) && 
+	      !is.null(convertedB) && 
+	      length( convertedB$IDs) < maxGenesBackground + 1) { # if more than 30k genes, ignore background genes.
+	     
+	     x <- x[ x$Set == "List", ] # remove background from selected genes
+	     xB <- xB[ xB$Set == "Genome", ] # remove Genome genes from background
+	     xB$Set <- "Background"
+	     x <- rbind(x, xB)
+	     x2 <- x[which(x$gene_biotype == "protein_coding"),]  # only coding for some analyses
+	   }
+	   # end background genes
+	   
+	   
      if(dim(x)[1]>=minGenes) # only making plots if more than 20 genes
        { # only plot when there 10 genes or more   # some columns have too many missing values
 	  # par(mfrow=c(10,1))
