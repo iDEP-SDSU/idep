@@ -1,3 +1,42 @@
+###################################################
+# Author: Steven Ge Xijin.Ge@sdstate.edu
+# co-author: Eric Tulowetzke, eric.tulowetzke@jacks.sdstate.edu
+# Lab: Ge Lab
+# R version 4.0.5
+# Project: ShinyGO v65
+# File: global.R
+# Purpose of file:global file for app (need more info here)
+# Start data: NA (mm-dd-yyyy)
+# Data last modified: 06-06-2021, 12:46 PM CST (mm-dd-yyyy,TIME) 
+# to help with github merge 
+#######################################################
+
+
+
+#################################################################
+# FUNCTION : checkPackages 
+# DESCRIPTION : checks and install all packages for iDEP
+# INPUT ARGS : 
+# OUTPUT ARGS : 
+# IN/OUT ARGS :
+# RETURN : 
+#################################################################
+checkPackages <- function() {
+  sysLib <- rownames(installed.packages())
+  ################################################################
+  # R packages
+  ################################################################
+  # R packages, installed by:
+  #auto install
+  Rlibs = c('shiny','RSQLite','ggplot2','gridExtra','plotly','igraph',
+            'feather','shinyjs','reactable','reshape2','visNetwork','dendextend')
+  notInstalled = setdiff(Rlibs, sysLib)
+  if(length(notInstalled)>0) {
+    install.packages(notInstalled, dependencies = T)
+  }
+}
+
+checkPackages()
 library(shiny)
 library(RSQLite)
 library(ggplot2)
@@ -8,7 +47,7 @@ library(reshape2)
 library(visNetwork)
 
 # relative path to data files
-datapath = "../../data/data103/"   # production server
+datapath <- "../../data103/"   # production server
 
 Min_overlap <- 2
 minSetSize = 3;
@@ -18,7 +57,6 @@ maxTerms =30 # max number of enriched terms; no longer used
 PvalGeneInfo = 0.05; minGenes = 10 # min number of genes for ploting
 PvalGeneInfo1 = 0.01
 PvalGeneInfo2 = 0.001
-maxGenesBackground = 30000
 pdf(NULL) # this prevents error Cannot open file 'Rplots.pdf'
 ExampleGeneList=
 "Hus1 Rad1 Tp63 Tp73 Usp28 Rad9b Fanci Hus1b 
@@ -418,7 +456,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   #Background genes----------------------------------------------------
   if(!is.null(convertedB) && 
      !is.null(gInfoB) && 
-     length( convertedB$IDs) < maxGenesBackground + 1) { # if more than 30k genes, ignore background genes.
+     length( convertedB$IDs) < 30000) { # if more than 30k genes, ignore background genes.
         querySetB <- convertedB$IDs;    
         # if background and selected genes matches to different organisms, error
         if( length( intersect( querySetB, querySet ) ) == 0 )    # if none of the selected genes are in background genes

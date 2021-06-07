@@ -1,11 +1,15 @@
 # iDEP user interface, By Steven Ge, Xijin.Ge@sdstate.edu
 # Integrated Differential Gene Expression and Pathway analysis
 # hosted at http://ge-lab.org/idep/
+# Last modified: 06-06-2021, 12:46 PM CST (mm-dd-yyyy,TIME) 
+# to help with github merge 
 
 library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
+library('shinyjs', verbose = FALSE)
+library('reactable', verbose = FALSE)
 iDEPversion = "iDEP.93"
 
 shinyUI(
@@ -100,7 +104,6 @@ iDEPversion,
       #,conditionalPanel(" input.goButton == 0 "
       ,h4("Loading R packages, please wait ... ... ...")
       ,htmlOutput('fileFormat')
-     ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
       ,h3("New version 0.93 released on 5/23/2021  
           includes upgrades to R 4.05, Bioconductor 3.12, 
          larger database (5000+ species) from Ensembl Release 103 and STRING-db v11. 
@@ -116,13 +119,56 @@ iDEPversion,
 
     ) # main panel
   ) #sidebarLayout
-) #tabPanel
-       
-     
+), #tabPanel
+
+#================================================================================================== 
+#   Gene ID Examples
+#==================================================================================================      
+tabPanel("Gene ID Examples",
+         fluidPage(shinyjs::useShinyjs(),
+           sidebarLayout(fluid = TRUE,
+             sidebarPanel(#Side panel
+               #see server updateSelectizeInput 
+               selectizeInput(inputId = "userSpecie",
+                              label = "What's your specie name?", choices = NULL),
+               shiny::tags$h5("Can erase and type in box"),
+               
+               #see server updateSelectizeInput
+               selectizeInput(inputId = "userIDtype",
+                              label = "What's your ID type? (Optional)", choices = NULL),
+               shiny::tags$h5("Can erase and type in box"),
+               actionButton(inputId = "submitIDPage", label = "submit"),
+               actionButton(inputId = "resetIDPage", label = "reset"),
+               downloadButton(outputId = "downloadIDPage", label = "Download.csv")
+             ),##End of side panel
+             mainPanel(reactable::reactableOutput(outputId = "tableResult"),
+               ##Instructions for the user
+               shiny::tags$div(
+                 shiny::tags$h1("Instructions for Usage"),
+                 shiny::tags$h4("This page purpose is to give the user some interactive tools to look at our database IDs.
+                               There are four different uses to this page depending on how you input the data, see explanation of the four below:"),
+                 shiny::tags$ul(
+                   shiny::tags$li(#Bullet point 1
+                     shiny::tags$h4("If you only pick a species,
+                                       you are receiving table with all the different IDs
+                                       related to that species. (Showen below)")
+                   ),#end of bullet point 1
+                   shiny::tags$li(#Bullet point 2
+                     shiny::tags$h4("If you pick a species and an ID type,
+                                       a table with all the IDs of the ID type you pick and how they map to ensembl IDs(our preferred ID database)
+                                       , and you can download a csv file of mapping of ID.")
+                   )#end of bullet point 2
+                 )#end of ul
+               ), ##End of instructions
+               reactable::reactableOutput(outputId = "tableDefault")
+             )##End of main panel
+           )#END of sidebarLayout
+)), #end of gene id ui
+
 #================================================================================================== 
 #   Pre-Process
 #================================================================================================== 
-  ,tabPanel("Pre-Process",
+  tabPanel("Pre-Process",
     sidebarLayout(
   # sidebar of pre-process -----------------------------------
       sidebarPanel(
@@ -1224,7 +1270,7 @@ iDEPversion,
        ,h5("3/29/2019: v0.85 Annotation database upgrade. Ensembl v 95. Ensembl plants v.42, and Ensembl Metazoa v.42.")
        ,h5("5/19/2019: v0.90 Annotation database upgrade. Ensembl v 96. Ensembl plants v.43, and Ensembl Metazoa v.43. STRING-db v10")
        ,h5("2/3/2020: v0.90 customizable PCA plot and scatter plot")
-       ,h5("5/10/2021: V0.93 updated to Ensembl Release 103 and String-DB v11.")
+       ,h5("5/10/2020: V0.93 updated to Ensembl Release 103 and String-DB v11.")
        ,br(),br()
        ,h5("In loving memory of my parents. X.G.")
 
