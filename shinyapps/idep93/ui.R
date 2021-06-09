@@ -139,14 +139,14 @@ tabPanel("Gene ID Examples",
                shiny::tags$h5("Can erase and type in box"),
                actionButton(inputId = "submitIDPage", label = "submit"),
                actionButton(inputId = "resetIDPage", label = "reset"),
-               downloadButton(outputId = "downloadIDPage", label = "Download.csv")
+               downloadButton(outputId = "downloadIDPage", label = "Download mapping.csv")
              ),##End of side panel
              mainPanel(reactable::reactableOutput(outputId = "tableResult"),
                ##Instructions for the user
                shiny::tags$div(
                  shiny::tags$h1("Instructions for Usage"),
                  shiny::tags$h4("This page purpose is to give the user some interactive tools to look at our database IDs.
-                               There are four different uses to this page depending on how you input the data, see explanation of the four below:"),
+                               There are two different uses to this page depending on how you input the data, see explanation of the four below:"),
                  shiny::tags$ul(
                    shiny::tags$li(#Bullet point 1
                      shiny::tags$h4("If you only pick a species,
