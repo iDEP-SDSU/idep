@@ -116,7 +116,7 @@ maxSamplesEDAplot = 100  # max number of samples for EDA plots
 ################################################################
 
 # relative path to data files
-datapath = "../../data103/"   # production server
+datapath = "../../data/data103/"   # production server
 sqlite  <- dbDriver("SQLite")
 convert <- dbConnect( sqlite, paste0(datapath, "convertIDs.db"), flags=SQLITE_RO)  #read only mode
 keggSpeciesID = read.csv(paste0(datapath, "data_go/KEGG_Species_ID.csv"))
