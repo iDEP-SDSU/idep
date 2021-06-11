@@ -1,11 +1,15 @@
 # iDEP user interface, By Steven Ge, Xijin.Ge@sdstate.edu
 # Integrated Differential Gene Expression and Pathway analysis
 # hosted at http://ge-lab.org/idep/
+# Last modified: 06-06-2021, 12:46 PM CST (mm-dd-yyyy,TIME) 
+# to help with github merge 
 
 library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
+library('shinyjs', verbose = FALSE)
+library('reactable', verbose = FALSE)
 iDEPversion = "iDEP.93"
 
 shinyUI(
@@ -88,7 +92,52 @@ iDEPversion,
                     '.tsv'          
                   )
       )
-      ,tableOutput('species' )
+      ,tableOutput('species' ),
+      actionButton(inputId = "geneIdButton",
+                   label =  "Optional: Gene ID Examples"),
+      h5("Check this out if you want example of our gene ids,
+           or download gene mapping."),
+      bsModal(id = "geneIDBs", title = "Gene ID Examples",
+              trigger = "geneIdButton", size = "large",
+              fluidPage(shinyjs::useShinyjs(),
+                        sidebarLayout(fluid = TRUE,
+                                      sidebarPanel(#Side panel
+                                        #see server updateSelectizeInput 
+                                        selectizeInput(inputId = "userSpecie",
+                                                       label = "What's your specie name?", choices = NULL),
+                                        shiny::tags$h5("Can erase and type in box"),
+                                        
+                                        #see server updateSelectizeInput
+                                        selectizeInput(inputId = "userIDtype",
+                                                       label = "What's your ID type? (Optional)", choices = NULL),
+                                        shiny::tags$h5("Can erase and type in box"),
+                                        actionButton(inputId = "submitIDPage", label = "submit"),
+                                        actionButton(inputId = "resetIDPage", label = "reset"),
+                                        downloadButton(outputId = "downloadIDPage", label = "Download mapping.csv")
+                                      ),##End of side panel
+                                      mainPanel(reactable::reactableOutput(outputId = "tableResult"),
+                                                ##Instructions for the user
+                                                shiny::tags$div(
+                                                  shiny::tags$h1("Instructions for Usage"),
+                                                  shiny::tags$h4("This page purpose is to give the user some interactive tools to look at our database IDs.
+                               There are two different uses to this page depending on how you input the data, see explanation of the four below:"),
+                                                  shiny::tags$ul(
+                                                    shiny::tags$li(#Bullet point 1
+                                                      shiny::tags$h4("If you only pick a species,
+                                       you are receiving table with all the different IDs
+                                       related to that species. (Showen below)")
+                                                    ),#end of bullet point 1
+                                                    shiny::tags$li(#Bullet point 2
+                                                      shiny::tags$h4("If you pick a species and an ID type,
+                                       a table with all the IDs of the ID type you pick and how they map to ensembl IDs(our preferred ID database)
+                                       , and you can download a csv file of mapping of ID.")
+                                                    )#end of bullet point 2
+                                                  )#end of ul
+                                                ), ##End of instructions
+                                                reactable::reactableOutput(outputId = "tableDefault")
+                                      )##End of main panel
+                        )#END of sidebarLayout
+              )) #end of gene id ui
       ,a( h5("?",align = "right"), href="https://idepsite.wordpress.com/data-format/",target="_blank")
                                                                                        # new window
     ), #sidebarPanel
@@ -100,19 +149,18 @@ iDEPversion,
       #,conditionalPanel(" input.goButton == 0 "
       ,h4("Loading R packages, please wait ... ... ...")
       ,htmlOutput('fileFormat')
-      ,h3("Meet the development team! We will have a open forum Zoom call with users 2pm (US central time) June 18th! After a brief update, 
+     ,h3("Meet the development team! We will have a open forum Zoom call with users 2pm (US central time) June 18th! After a brief update, 
           we will mostly listen to users' feedback as we are actively working on improving iDEP.",
           a("Email us",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), "for links to the Zoom call. You can also send us your suggestions or feature requests.")
       ,h4("Postdoc and GRA positions available!")
-     ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
-     
+      ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
       ,h3("New version 0.93 released on 5/23/2021  
           includes upgrades to R 4.05, Bioconductor 3.12, 
          larger database (5000+ species) from Ensembl Release 103 and STRING-db v11. 
          Massive, manually-collected pathway database for 20 model organisms.
           Fixed KEGG pathway chart and gene plot.", style = "color:red") 
-     ,h4("We recently hired Jenny Qi for database updates and user support.",
-         a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP")) 
+      ,h4("We recently hired Jenny Qi for database updates and user support.",
+          a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP")) 
 
       ,h5("iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
       ,h5("We will be happy to help prepare your data for iDEP.")
@@ -121,13 +169,12 @@ iDEPversion,
 
     ) # main panel
   ) #sidebarLayout
-) #tabPanel
-       
-     
+), #tabPanel
+
 #================================================================================================== 
 #   Pre-Process
 #================================================================================================== 
-  ,tabPanel("Pre-Process",
+  tabPanel("Pre-Process",
     sidebarLayout(
   # sidebar of pre-process -----------------------------------
       sidebarPanel(
@@ -1229,7 +1276,7 @@ iDEPversion,
        ,h5("3/29/2019: v0.85 Annotation database upgrade. Ensembl v 95. Ensembl plants v.42, and Ensembl Metazoa v.42.")
        ,h5("5/19/2019: v0.90 Annotation database upgrade. Ensembl v 96. Ensembl plants v.43, and Ensembl Metazoa v.43. STRING-db v10")
        ,h5("2/3/2020: v0.90 customizable PCA plot and scatter plot")
-       ,h5("5/10/2021: V0.93 updated to Ensembl Release 103 and String-DB v11.")
+       ,h5("5/10/2020: V0.93 updated to Ensembl Release 103 and String-DB v11.")
        ,br(),br()
        ,h5("In loving memory of my parents. X.G.")
 
