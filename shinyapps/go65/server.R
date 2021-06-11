@@ -162,9 +162,10 @@ output$downloadGeneInfo <- downloadHandler(
   
 output$EnrichmentTable <-renderTable({
       if (input$goButton == 0  )    return(NULL)
-
+     tem <- input$input_text_b; # just to make it re-calculate if user changes background
+     
 	  myMessage = "Those genes seem interesting! Let me see what I can do.
-	   I am comparing your query genes to all 150+ types of IDs across 111 species.
+	   I am comparing your query genes to all 1000+ types of IDs across 5000 species.
 	  This can take up to 3 years. "
 	  if(is.null(significantOverlaps() )  ) return(NULL)
 	  # this solves an error when there is no signficant enrichment
@@ -181,7 +182,8 @@ output$EnrichmentTable <-renderTable({
 
 significantOverlaps2 <- reactive({
     if (input$goButton == 0  )    return()
-
+    tem <- input$input_text_b; # just to make it re-calculate if user changes background
+    
     tem <- significantOverlaps();
     if(dim(tem$x)[2] ==1 ) return(NULL)
 	  tem <- tem$x;
@@ -193,7 +195,8 @@ significantOverlaps2 <- reactive({
 # duplicate of the above, with the word wrapping. This is for use in the network plot
 significantOverlaps3 <- reactive({
     if (input$goButton == 0  )    return()
-
+    tem <- input$input_text_b; # just to make it re-calculate if user changes background
+    
     tem <- significantOverlaps();
     if(dim(tem$x)[2] ==1 ) return(NULL)
 	  tem <- tem$x;
@@ -208,10 +211,10 @@ significantOverlaps3 <- reactive({
 # duplicate of the above for word wrapping in static networkplot
 significantOverlaps4 <- reactive({
     if (input$goButton == 0  )    return()
-
+    tem <- input$input_text_b; # just to make it re-calculate if user changes background
     tem <- significantOverlaps();
     if(dim(tem$x)[2] ==1 ) return(NULL)
-	tem <- tem$x;
+	 tem <- tem$x;
     colnames(tem) = c("adj.Pval","nGenesList","nGenesCategor","Pathways","Genes")
     if(input$wrapTextNetworkStatic)
        tem$Pathways <- wrap_strings( tem$Pathways ) # wrap long pathway names using default width of 30 10/21/19
@@ -628,14 +631,19 @@ output$stringDB_network_link <- renderUI({
 output$selectGO1 <- renderUI({   # gene set for pathway analysis
 	  if(input$goButton == 0 ) return(NULL)
 	  
+    choices=gmtCategory(converted(), input$selectOrg)
+    if(length(choices) > 12) {   # more than 12 categories in human and mouse, we default to GOBP
+      selected = "GOBP" } else { # otherwise all gene sets
+        selected = "All"
+      }
+        
 	  selectInput("selectGO", label=NULL,
-		choices=gmtCategory(converted(), input$selectOrg),
-	    selected = "GOBP" )    	
-		
-
+		         choices = choices,
+	           selected = selected )    	
 		
 		
 	})	
+
 output$tableDetail <-renderTable({
       if (input$goButton == 0)    return()
 

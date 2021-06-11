@@ -10,12 +10,12 @@ library(visNetwork)
 # relative path to data files
 datapath = "../../data/data103/"   # production server
 
-Min_overlap <- 2
+Min_overlap <- 1
 minSetSize = 3;
 mappingCoverage = 0.60 # 60% percent genes has to be mapped for confident mapping
 mappingEdge = 0.5  # Top species has 50% more genes mapped
 maxTerms =30 # max number of enriched terms; no longer used
-PvalGeneInfo = 0.05; minGenes = 10 # min number of genes for ploting
+PvalGeneInfo = 0.05; minGenes = 10 # min number of genes for plotting
 PvalGeneInfo1 = 0.01
 PvalGeneInfo2 = 0.001
 maxGenesBackground = 30000
@@ -262,8 +262,9 @@ matchedSpeciesInfo <- function (x) {
     ) }
   return(a )
 }
+
 # convert gene IDs to ensembl gene ids and find species
-convertID <- function (query,selectOrg) {
+convertID <- function (query, selectOrg) {
  query <- gsub("\"|\'","",query) 
  	# remove " in gene ids, mess up SQL query				
 	# remove ' in gene ids				
@@ -272,44 +273,50 @@ convertID <- function (query,selectOrg) {
 	
   querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,' )  ) )
  	
-    if( selectOrg == "BestMatch") { # query all species
-	  querySTMT <- paste( "select distinct id,ens,species from mapping where id IN ('", paste(querySet,collapse="', '"),"')",sep="")
+  if( selectOrg == "BestMatch") { # query all species
+	  querySTMT <- paste( "select distinct id,ens,species,idType from mapping where id IN ('", paste(querySet,collapse="', '"),"')",sep="")
     } else {  # organism has been selected query specific one
- 	  querySTMT <- paste( "select distinct id,ens,species from mapping where species = '",selectOrg,
+ 	  querySTMT <- paste( "select distinct id,ens,species,idType from mapping where species = '",selectOrg,
                           "' AND id IN ('", paste(querySet,collapse="', '"),"')",sep="")    
     }
+  
 	result <- dbGetQuery(convert, querySTMT)
   if( dim(result)[1] == 0  ) return(NULL)
+
+  if(selectOrg == speciesChoice[[1]]) { # if best match species
+      comb = paste(result$species, result$idType)
+      sortedCounts = sort( table(comb ),decreasing=T)
+      
+      # Try to use Ensembl instead of STRING-db genome annotation
+      if(class(sortedCounts) != "integer") # when  one species matched, it is a number, not a vector
+        if( sortedCounts[1] <= sortedCounts[2] *1.1  # if the #1 species and #2 are close
+             && as.numeric( gsub(" .*", "", names(sortedCounts[1]))) > sum( annotatedSpeciesCounts[1:3])  # 1:3 are Ensembl species
+             && as.numeric( gsub(" .*", "", names(sortedCounts[2]))) < sum( annotatedSpeciesCounts[1:3])    ) 
+          { # and #2 come earlier (ensembl) than #1
+            tem <- sortedCounts[2]
+            sortedCounts[2] <- sortedCounts[1]
+            names(sortedCounts)[2] <- names(sortedCounts)[1]
+            sortedCounts[1] <- tem
+            names(sortedCounts)[1] <- names(tem)    
+        } 
+      
+      
+      recognized = names(sortedCounts[1]) 
+      result <- result[which(comb == recognized )  , ]
   
-
-  if(selectOrg == speciesChoice[[1]]) {
-    comb = paste( result$species,result$idType)
-    sortedCounts = sort( table(comb ),decreasing=T)
-    # Try to use Ensembl instead of STRING-db genome annotation
-    if( sortedCounts[1] <= sortedCounts[2] *1.1  # if the #1 species and #2 are close
-         && as.numeric(names(sortedCounts[1])) > sum( annotatedSpeciesCounts[1:3])  # 1:3 are Ensembl species
-         && as.numeric(names( sortedCounts[2] )) < sum( annotatedSpeciesCounts[1:3])    ) { # and #2 come earlier (ensembl) than #1
-      tem <- sortedCounts[2]
-      sortedCounts[2] <- sortedCounts[1]
-      names(sortedCounts)[2] <- names(sortedCounts)[1]
-       sortedCounts[1] <- tem
-      names(sortedCounts)[1] <- names(tem)    
-    } 
-    recognized =names(sortedCounts[1]  )
-    result <- result[which(comb == recognized )  , ]
-
-	speciesMatched=sortedCounts
-    names(speciesMatched )= sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  )
-    speciesMatched <- as.data.frame( speciesMatched )
-
-	if(length(sortedCounts) == 1) { # if only  one species matched
-	  speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
-	 } else {# if more than one species matched
-		speciesMatched[,1] <- as.character(speciesMatched[,1])
-		speciesMatched[,1] <- paste( speciesMatched[,1]," (",speciesMatched[,2], ")", sep="")
-		speciesMatched[1,1] <- paste( speciesMatched[1,1],"   ***Used in mapping***  To change, select from above and resubmit query.")
-		speciesMatched <- as.data.frame(speciesMatched[,1])
-	}
+      
+  	  speciesMatched=sortedCounts
+      names(speciesMatched )= sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  )
+      speciesMatched <- as.data.frame( speciesMatched )
+  
+  	  if(length(sortedCounts) == 1) { # if only  one species matched
+  	     speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
+  	   } else {# if more than one species matched
+  		   speciesMatched[,1] <- as.character(speciesMatched[,1])
+  		   speciesMatched[,1] <- paste( speciesMatched[,1]," (",speciesMatched[,2], ")", sep="")
+  		   speciesMatched[1,1] <- paste( speciesMatched[1,1],"   ***Used in mapping***  To change, select from above and resubmit query.")
+  		   speciesMatched <- as.data.frame(speciesMatched[,1])
+  	   }
 
   } else { # if species is selected
     result <- result[which(result$species == selectOrg ) ,]
@@ -353,6 +360,7 @@ geneInfo <- function (converted,selectOrg){
  }
 
 # Main function. Find a query set of genes enriched with functional category
+# For debug:  converted = converted(); gInfo = tem;  GO=input$selectGO; selectOrg=input$selectOrg;  minFDR=input$minFDR; input_maxTerms=input$maxTerms
 FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms, convertedB=NULL, gInfoB=NULL) {
   idNotRecognized = list(x=as.data.frame("ID not recognized!"),
                          groupings= as.data.frame("ID not recognized!")  )
@@ -370,8 +378,8 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   # If selected species is not the default "bestMatch", use that species directly
   if(selectOrg != speciesChoice[[1]]) {
     ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
-	if (length(ix) == 0 ) {return(idNotRecognized )}
-	totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
+	  if (length(ix) == 0 ) {return(idNotRecognized )}
+	  totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
   }
   pathway <- dbConnect(sqlite,gmtFiles[ix])
 
@@ -388,8 +396,10 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySet, collapse="', '"),"')" ,sep="")
 
   if( GO != "All") sqlQuery = paste0(sqlQuery, " AND category ='",GO,"'")
+  
   result <- dbGetQuery( pathway, sqlQuery  )
-  if( dim(result)[1] ==0) {return(list( x=as.data.frame("No matching species or gene ID file!" )) )}
+  
+  if( dim(result)[1] ==0) {return(list( x=as.data.frame("No matching pathway data find!" )) )}
 
    # given a pathway id, it finds the overlapped genes, symbol preferred
   sharedGenesPrefered <- function(pathwayID) {
@@ -408,7 +418,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
 
   errorMessage = list(x=as.data.frame("Too few genes."),
                          groupings= as.data.frame("Too few genes.")  )
-  if(dim(x0)[1] <= 5 ) return(errorMessage) # no data
+  if(dim(x0)[1] <= 2 ) return(errorMessage) # no data
   colnames(x0)=c("pathwayID","overlap")
   pathwayInfo <- dbGetQuery( pathway, paste( " select distinct id,n,Description from pathwayInfo where id IN ('",
 						paste(x0$pathwayID,collapse="', '"),   "') ",sep="") )
@@ -451,6 +461,8 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
                         lower.tail=FALSE );
           }
   
+  # end background genes------------------------------------------------------------
+  
   x$FDR <- p.adjust(x$Pval, method="fdr")
   x <- x[order(x$FDR), ]  # sort according to FDR
 
@@ -473,7 +485,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
 	 colnames(groups) = c("N","High level GO category", "Genes")
 	}
 
-  if(min(x$FDR) > minFDR) x=as.data.frame("No significant enrichment found!") else {
+  if(min(x$FDR, na.rm = TRUE) > minFDR) x=as.data.frame("No significant enrichment found!") else {
   x <- x[which(x$FDR < minFDR),]
   if(dim(x)[1] > as.integer(input_maxTerms) ) x = x[ 1:as.integer(input_maxTerms), ]
   x= cbind(x,sapply( x$pathwayID, sharedGenesPrefered ) )
