@@ -175,8 +175,6 @@ idIndex <- dbGetQuery(convert, paste("select distinct * from idIndex " ))
 quotes <- dbGetQuery(convert, " select * from quotes")
 quotes = paste0("\"",quotes$quotes,"\"", " -- ",quotes$author,".       ")
 
-
-
 ################################################################
 #   Main functions
 ################################################################

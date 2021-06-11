@@ -11,6 +11,10 @@
 # to help with github merge 
 #######################################################
 
+################################################################
+#   Utility functions
+################################################################
+
 # Functions for hierarchical clustering
 hclust2 <- function(x, method="average", ...)  # average linkage
   hclust(x, method=method, ...)
@@ -92,7 +96,7 @@ detectGroups <- function (x, sampleInfo = NULL){  # x are col names
     
     # the orders of samples might not be the same.The total number of samples might also differ
     iy = match(x, row.names(sampleInfo))
-    sampleInfo2 = sampleInfo[iy,]
+    sampleInfo2 = sampleInfo[iy, , drop = FALSE]
     
     if(ncol(sampleInfo2) == 1) {  # if there's only one factor
       g = sampleInfo2[, 1] 
