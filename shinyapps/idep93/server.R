@@ -26,7 +26,7 @@ source('gene_id_page_ser.R') #load server logic and functions for Gene ID popup
 
 # Bioconductor packages
 #source("https://bioconductor.org/biocLite.R")
-#biocLite(c( "limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata","sfsmisc","lokern","multtest" ))
+#biocLite(c( "limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata","sfsmisc","lokern","multtest","feather","shinyjs","reactable" ))
 # annotation packages needed by pathview; will be installed automatically if runing on Windows
 #biocLite( c( "org.Ag.eg.db","org.At.tair.db","org.Bt.eg.db","org.Ce.eg.db",
 #"org.Cf.eg.db","org.Dm.eg.db","org.Dr.eg.db","org.EcK12.eg.db","org.EcSakai.eg.db",
