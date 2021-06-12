@@ -1,4 +1,16 @@
-
+####################################################
+# Author: Steven Ge Xijin.Ge@sdstate.edu
+# co-author: Eric Tulowetzke, eric.tulowetzke@jacks.sdstate.edu
+# Lab: Ge Lab
+# R version 4.0.5
+# Project: ShinyGO v65
+# File: server.R
+# Purpose of file:main server logic of app
+# Start data: NA (mm-dd-yyyy)
+# Data last modified: 06-11-2021, 16:12 CST (mm-dd-yyyy,TIME) 
+# to help with github merge 
+#######################################################
+source('gene_id_page_ser.R') #load server logic and functions for Gene ID popup
 shinyServer(
   function(input, output,session){
     options(warn=-1)
@@ -1640,5 +1652,12 @@ attributes(my.keggview.native) <- attributes(tmpfun)  # don't know if this is re
 		}) 
 	})
   }, deleteFile = TRUE)
+
+############################################
+#Purpose: this logic for second tab i.e. Gene ID Examples
+#File: gene_id_page_ser.R
+############################################
+geneIDPage(input = input, output = output,
+           session = session, orgInfo = orgInfo, path = datapath)
 	
 })

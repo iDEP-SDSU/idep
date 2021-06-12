@@ -1,7 +1,21 @@
+###################################################
+# Author: Steven Ge Xijin.Ge@sdstate.edu
+# co-author: Eric Tulowetzke, eric.tulowetzke@jacks.sdstate.edu
+# Lab: Ge Lab
+# R version 4.0.5
+# Project: ShinyGO v65
+# File: ui.R
+# Purpose of file:ui logic of app
+# Start data: NA (mm-dd-yyyy)
+# Data last modified: 06-11-2021, 16:12 CST (mm-dd-yyyy,TIME) 
+# to help with github merge 
+#######################################################
 library(shiny,verbose=FALSE)
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly) # interactive network plot
 library(visNetwork)
+library('shinyjs', verbose = FALSE)
+library('reactable', verbose = FALSE)
 shinyUI(
   fluidPage(
     # Application title
@@ -58,7 +72,11 @@ shinyUI(
 	  	                                onInitialize = I('function() { this.setValue(""); }'))  
 	  	               #,selected = "Best matching species"                                                  
 	  	), 
-     tableOutput('species' )
+     tableOutput('species' ),
+	   h5("Check this out if you want example of our gene ids,
+           or download gene mapping."),
+	   actionButton(inputId = "geneIdButton",
+	  	             label =  "Optional: Gene ID Examples")
       ), # sidebarPanel
      mainPanel(
        tabsetPanel(
@@ -332,8 +350,49 @@ shinyUI(
 		             would be similar. Currently only less than 30,000 genes are accepted.
 		              ")
 		         
-		)# bsModal 3		
+		),# bsModal 3	
 		
+		bsModal(id = "geneIDBs", title = "Gene ID Examples",
+		        trigger = "geneIdButton", size = "large",
+		        fluidPage(shinyjs::useShinyjs(),
+		                  sidebarLayout(fluid = TRUE,
+		                                sidebarPanel(#Side panel
+		                                  #see server updateSelectizeInput 
+		                                  selectizeInput(inputId = "userSpecie",
+		                                                 label = "What's your specie name?", choices = NULL),
+		                                  shiny::tags$h5("Can erase and type in box"),
+		                                  
+		                                  #see server updateSelectizeInput
+		                                  selectizeInput(inputId = "userIDtype",
+		                                                 label = "What's your ID type? (Optional)", choices = NULL),
+		                                  shiny::tags$h5("Can erase and type in box"),
+		                                  actionButton(inputId = "submitIDPage", label = "submit"),
+		                                  actionButton(inputId = "resetIDPage", label = "reset"),
+		                                  downloadButton(outputId = "downloadIDPage", label = "Download mapping.csv")
+		                                ),##End of side panel
+		                                mainPanel(reactable::reactableOutput(outputId = "tableResult"),
+		                                          ##Instructions for the user
+		                                          shiny::tags$div(
+		                                            shiny::tags$h1("Instructions for Usage"),
+		                                            shiny::tags$h4("This page's purpose is to give the user some interactive tools to look at our database IDs.
+                               There are two different uses for this page, see explanation below:"),
+		                                            shiny::tags$ul(
+		                                              shiny::tags$li(#Bullet point 1
+		                                                shiny::tags$h4("If you only pick a species,
+                                       you are receiving table with all the different IDs
+                                       related to that species. (Showen below)")
+		                                              ),#end of bullet point 1
+		                                              shiny::tags$li(#Bullet point 2
+		                                                shiny::tags$h4("If you pick a species and an ID type,
+                                       a table with all the IDs of the ID type you pick and how they map to ensembl IDs(our preferred ID database)
+                                       , and you can download a csv file of the mapping ID.")
+		                                              )#end of bullet point 2
+		                                            )#end of ul
+		                                          ), ##End of instructions
+		                                          reactable::reactableOutput(outputId = "tableDefault")
+		                                )##End of main panel
+		                  )#END of sidebarLayout
+		        )) #end of gene id ui
 
      ) # mainPanel
     ) #sidebarLayout

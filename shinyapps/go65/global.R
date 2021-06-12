@@ -1,3 +1,42 @@
+###################################################
+# Author: Steven Ge Xijin.Ge@sdstate.edu
+# co-author: Eric Tulowetzke, eric.tulowetzke@jacks.sdstate.edu
+# Lab: Ge Lab
+# R version 4.0.5
+# Project: ShinyGO v65
+# File: global.R
+# Purpose of file:global file for app (need more info here)
+# Start data: NA (mm-dd-yyyy)
+# Data last modified: 06-06-2021, 12:46 PM CST (mm-dd-yyyy,TIME) 
+# to help with github merge 
+#######################################################
+
+
+
+#################################################################
+# FUNCTION : checkPackages 
+# DESCRIPTION : checks and install all packages for iDEP
+# INPUT ARGS : 
+# OUTPUT ARGS : 
+# IN/OUT ARGS :
+# RETURN : 
+#################################################################
+checkPackages <- function() {
+  sysLib <- rownames(installed.packages())
+  ################################################################
+  # R packages
+  ################################################################
+  # R packages, installed by:
+  #auto install
+  Rlibs = c('shiny','RSQLite','ggplot2','gridExtra','plotly','igraph',
+            'feather','shinyjs','reactable','reshape2','visNetwork','dendextend')
+  notInstalled = setdiff(Rlibs, sysLib)
+  if(length(notInstalled)>0) {
+    install.packages(notInstalled, dependencies = T)
+  }
+}
+
+checkPackages()
 library(shiny)
 library(RSQLite)
 library(ggplot2)

@@ -88,7 +88,52 @@ iDEPversion,
                     '.tsv'          
                   )
       )
-      ,tableOutput('species' )
+      ,tableOutput('species' ),
+      h5("Check this out if you want example of our gene ids,
+           or download gene mapping."),
+      actionButton(inputId = "geneIdButton",
+                   label =  "Optional: Gene ID Examples"),
+      bsModal(id = "geneIDBs", title = "Gene ID Examples",
+              trigger = "geneIdButton", size = "large",
+              fluidPage(shinyjs::useShinyjs(),
+                        sidebarLayout(fluid = TRUE,
+                                      sidebarPanel(#Side panel
+                                        #see server updateSelectizeInput 
+                                        selectizeInput(inputId = "userSpecie",
+                                                       label = "What's your specie name?", choices = NULL),
+                                        shiny::tags$h5("Can erase and type in box"),
+                                        
+                                        #see server updateSelectizeInput
+                                        selectizeInput(inputId = "userIDtype",
+                                                       label = "What's your ID type? (Optional)", choices = NULL),
+                                        shiny::tags$h5("Can erase and type in box"),
+                                        actionButton(inputId = "submitIDPage", label = "submit"),
+                                        actionButton(inputId = "resetIDPage", label = "reset"),
+                                        downloadButton(outputId = "downloadIDPage", label = "Download mapping.csv")
+                                      ),##End of side panel
+                                      mainPanel(reactable::reactableOutput(outputId = "tableResult"),
+                                                ##Instructions for the user
+                                                shiny::tags$div(
+                                                  shiny::tags$h1("Instructions for Usage"),
+                                                  shiny::tags$h4("This page's purpose is to give the user some interactive tools to look at our database IDs.
+                               There are two different uses for this page, see explanation below:"),
+                                                  shiny::tags$ul(
+                                                    shiny::tags$li(#Bullet point 1
+                                                      shiny::tags$h4("If you only pick a species,
+                                       you are receiving table with all the different IDs
+                                       related to that species. (Showen below)")
+                                                    ),#end of bullet point 1
+                                                    shiny::tags$li(#Bullet point 2
+                                                      shiny::tags$h4("If you pick a species and an ID type,
+                                       a table with all the IDs of the ID type you pick and how they map to ensembl IDs(our preferred ID database)
+                                       , and you can download a csv file of the mapping ID.")
+                                                    )#end of bullet point 2
+                                                  )#end of ul
+                                                ), ##End of instructions
+                                                reactable::reactableOutput(outputId = "tableDefault")
+                                      )##End of main panel
+                        )#END of sidebarLayout
+              )) #end of gene id ui
       ,a( h5("?",align = "right"), href="https://idepsite.wordpress.com/data-format/",target="_blank")
                                                                                        # new window
     ), #sidebarPanel
@@ -100,9 +145,9 @@ iDEPversion,
       #,conditionalPanel(" input.goButton == 0 "
       ,h4("Loading R packages, please wait ... ... ...")
       ,htmlOutput('fileFormat')
-      ,h3("Meet the development team! We will have a open forum meeting with users 2pm (US central time) June 18th! After a brief update, 
+      ,h3("Meet the development team! We will have a open forum Zoom call with users 2pm (US central time) June 18th! After a brief update, 
           we will mostly listen to users' feedback as we are actively working on improving iDEP.",
-          a("Zoom link.",href="https://sdstate.zoom.us/j/94066063700"))
+          a("Email us",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), "for links to the Zoom call. You can also send us your suggestions or feature requests.")
       ,h4("Postdoc and GRA positions available!")
      ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
      

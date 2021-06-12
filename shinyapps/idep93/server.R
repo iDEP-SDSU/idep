@@ -22,6 +22,7 @@ library(e1071,verbose=FALSE) 		# computing kurtosis
 library(DT,verbose=FALSE) 		# for renderDataTable
 library(plotly,verbose=FALSE) 	# for interactive heatmap
 library(reshape2,verbose=FALSE) 	# for melt correlation matrix in heatmap
+source('gene_id_page_ser.R') #load server logic and functions for Gene ID popup
 
 # Bioconductor packages
 #source("https://bioconductor.org/biocLite.R")
@@ -2885,6 +2886,13 @@ readSampleInfo <- reactive ({
 				
 		})
 	})
+
+############################################
+#Purpose: this logic for second tab i.e. Gene ID Examples
+#File: gene_id_page_ser.R
+############################################
+geneIDPage(input = input, output = output,
+           session = session, orgInfo = orgInfo, path = datapath)
 	
 output$sampleInfoTable <- renderTable({
 
