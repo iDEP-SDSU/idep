@@ -13,6 +13,7 @@
 
 firstTime <- TRUE #Initialize the page at start up in sever logic
 MAX_WIDTH_COL <- 150 #Determine the starting with of table columns
+EXAMPLE_GENES_WCOL <- 800
 
 #################################################################
 # FUNCTION : getExample 
@@ -82,11 +83,11 @@ geneIDPage <- function(input, output, session, orgInfo, path) {
     
     output$tableDefault <- renderReactable({
       reactable::reactable(data = default,
-                           columns = list(
-                             Database = colDef(maxWidth = MAX_WIDTH_COL)
-                           ),
-                           searchable = TRUE, bordered = TRUE,
-                           highlight = TRUE, resizable = TRUE, minRows = 5)
+                           columns = list(Database = colDef(maxWidth = MAX_WIDTH_COL),
+                                     Example_genes = colDef(maxWidth = EXAMPLE_GENES_WCOL)),
+                           searchable = TRUE, bordered = TRUE, defaultPageSize = 4,
+                           highlight = TRUE, resizable = TRUE, minRows = 5, showPageSizeOptions = TRUE,
+                           pageSizeOptions = c(4, 10, 25, 50, 100))
     })#end of tableDefault
     shinyjs::hide(id = "downloadIDPage")
     firstTime <- FALSE
@@ -112,7 +113,8 @@ geneIDPage <- function(input, output, session, orgInfo, path) {
         })#end of withProgress
         return(result)
       })#end of reactive
-      col <- list(Database = colDef(maxWidth = MAX_WIDTH_COL))
+      col <- list(Database = colDef(maxWidth = MAX_WIDTH_COL), 
+                  Example_genes = colDef(maxWidth = EXAMPLE_GENES_WCOL))
     } else if (input$userIDtype != "None") { #if user doesn't give genelist
       ## and give id type
       getExampleSer <- shiny::reactive({
@@ -146,16 +148,15 @@ geneIDPage <- function(input, output, session, orgInfo, path) {
     output$tableResult <- renderReactable({
       reactable::reactable(data = res,
                            columns = col,
-                           searchable = TRUE, bordered = TRUE,
-                           highlight = TRUE, resizable = TRUE, minRows = 5)
+                           searchable = TRUE, defaultPageSize = 4,
+                           highlight = TRUE, resizable = TRUE, minRows = 5, showPageSizeOptions = TRUE,
+                           pageSizeOptions = c(4, 10, 25, 50, 100))
     })#end of tableResult
     shinyjs::show(id = "tableResult")
-    shinyjs::reset(id = "submitIDPage", asis = F)
   }) #end of observeEvent
   
   observeEvent(input$resetIDPage, {
     shinyjs::hide(id = "tableResult")
     shinyjs::hide(id = "downloadIDPage")
-    shinyjs::reset(id = "resetIDPage", asis = FALSE)
   }) #end of observeEvent
 }# end of GeneIDPage 
