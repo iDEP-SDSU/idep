@@ -3,7 +3,7 @@
 # hosted at http://ge-lab.org/idep/
 # manuscript: https://www.biorxiv.org/content/early/2018/04/20/148411 
 
-iDEPversion = "iDEP 0.91"
+iDEPversion = "iDEP 0.93"
 
 ################################################################
 # R packages
@@ -22,10 +22,11 @@ library(e1071,verbose=FALSE) 		# computing kurtosis
 library(DT,verbose=FALSE) 		# for renderDataTable
 library(plotly,verbose=FALSE) 	# for interactive heatmap
 library(reshape2,verbose=FALSE) 	# for melt correlation matrix in heatmap
+source('gene_id_page_ser.R') #load server logic and functions for Gene ID popup
 
 # Bioconductor packages
 #source("https://bioconductor.org/biocLite.R")
-#biocLite(c( "limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata","sfsmisc","lokern","multtest" ))
+#biocLite(c( "limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata","sfsmisc","lokern","multtest","feather","shinyjs","reactable" ))
 # annotation packages needed by pathview; will be installed automatically if runing on Windows
 #biocLite( c( "org.Ag.eg.db","org.At.tair.db","org.Bt.eg.db","org.Ce.eg.db",
 #"org.Cf.eg.db","org.Dm.eg.db","org.Dr.eg.db","org.EcK12.eg.db","org.EcSakai.eg.db",
@@ -84,13 +85,14 @@ rownames(heatColors) = c("Green-Black-Red", "Blue-White-Red", "Green-Black-Magen
                          "Blue-Yellow-Red", "Blue-white-brown")
 colorChoices = setNames(1:dim(heatColors)[1], rownames(heatColors)) # for pull down menu
 maxSamplesEDAplot = 100  # max number of samples for EDA plots
+STRING_DB_VERSION <- "11.0" # what version of STRINGdb needs to be used 
 
 ################################################################
 #   Input files
 ################################################################
 
 # relative path to data files
-datapath = "../../data/data96/"   # production server
+datapath = "../../data/data103/"   # production server
 
 sqlite  <- dbDriver("SQLite")
 convert <- dbConnect( sqlite, paste0(datapath, "convertIDs.db"), flags=SQLITE_RO)  #read only mode
@@ -238,19 +240,124 @@ dynamicRange <- function( x ) {
     g <- gsub("_REP$", "", g)  # remove "_REP" from end
     return( g ) 
   } else {
-   if(ncol(sampleInfo) == 1) {  # if there's only one factor
-     g = sampleInfo[, 1] 
+    
+    # the orders of samples might not be the same.The total number of samples might also differ
+    iy = match(x, row.names(sampleInfo))
+    sampleInfo2 = sampleInfo[iy, , drop = FALSE]
+    
+   if(ncol(sampleInfo2) == 1) {  # if there's only one factor
+     g = sampleInfo2[, 1] 
+     
      } else {   # multiple columns/factors
-       g = sampleInfo[, 1] 
-      # This does not work as sometimes there is no replicates wt vs mt, 1, 2, 3 paired replicates as factors 
-      #g = unlist( apply(sampleInfo, 1, function (y) paste(y, collapse = "_")) )
+
+      #old comments: This does not work as sometimes there is no replicates wt vs mt, 1, 2, 3 paired replicates as factors 
+      g = unlist( apply(sampleInfo2, 1, function (y) paste(y, collapse = "_")) )
+      names(g) = row.names(sampleInfo2)
+      
+      if( min( table(g) ) ==  1 ) # no replicates? 
+         g = sampleInfo2[, 1]        
 
      }
    }
    
-  return( as.character( g) )
+  return( as.character(g) )
  }
 
+ plotGenes <- function(convertedData, allGeneInfo, readSampleInfo, geneSearch, genePlotBox, useSD, selectOrg){
+   # plot the expression of one or more genes in the preprocess tab
+   x <- convertedData
+   
+   Symbols <- rownames(x)
+   
+   if( selectOrg != "NEW" &&  ncol(allGeneInfo) != 1 ) {
+     ix = match( rownames(x), allGeneInfo[,1])
+     if( sum( is.na(allGeneInfo$symbol )) != dim(allGeneInfo )[1] ) {  # symbol really exists? 
+       Symbols = as.character( allGeneInfo$symbol[ix] )
+       Symbols[which( nchar(Symbols) <= 2 ) ] <- rownames(x) [which( nchar(Symbols) <= 2 ) ] 
+     }
+   }
+   x = as.data.frame(x)
+   x$Genes = Symbols
+   
+   # matching from the beginning of symbol
+   searchWord = gsub("^ ", "", geneSearch )
+   ix = which(regexpr(  paste("^" , toupper(searchWord),sep="")   ,toupper(x$Genes)) > 0)
+   if(grepl(" $", searchWord)  )  # if there is space character at the end, do exact match
+     ix = match(gsub(" ","", toupper(searchWord)), toupper(x$Genes) )
+   
+   if(grepl(",|;", searchWord)  ) { # if there is comma or semicolon, split into multiple words
+     Words <- unlist( strsplit(searchWord,",|;") ) # split words
+     Words <- gsub(" ", "", Words)
+     ix = match( toupper(Words), toupper(x$Genes) )
+   }
+   ix = ix[!is.na(ix)] # remove NAs
+   # too few or too many genes found
+   if(length(ix) == 0 | length(ix) > 50 ) return(NULL)
+   # no genes found
+   
+   mdf = melt(x[ix,],id.vars="Genes", value.name="value", variable.name="samples")
+   # bar plot of individual samples
+   p1 <- ggplot(data=mdf, aes(x=samples, y=value, group = Genes, shape=Genes, colour = Genes)) +
+     geom_line() +
+     geom_point( size=5,  fill="white")+ #shape=21  circle
+     #theme(axis.text.x = element_text(size=16,angle = 45, hjust = 1)) +
+     labs(y="Transformed expression level") +
+     coord_cartesian(ylim = c(0, max(mdf$value)))
+   p1 <- p1 + theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
+     theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
+           axis.text.y = element_text( size = 16),
+           axis.title.x = element_blank(),
+           axis.title.y = element_text( size = 16) ) +
+     theme(legend.text=element_text(size=12))	
+   
+   
+   #ggplotly(p) %>% layout(margin = list(b = 250,l=100))  # prevent cutoff of sample names
+   
+   # Barplot with error bars
+   mdf$count = 1
+   g = detectGroups(mdf$samples, readSampleInfo)
+   mdf$g = g	
+   
+   options(dplyr.summarise.inform = FALSE)
+   #calculate mean, SD, N, per gene per condition
+   summarized <- mdf %>% 
+     group_by(g, Genes) %>%  
+     summarise(Mean = mean(value), SD = sd(value), N = sum(count))
+   colnames(summarized)= c("Samples","Genes","Mean","SD","N")
+   summarized$SE = summarized$SD / sqrt(summarized$N)	
+   
+   if(grepl(",|;", searchWord)  ) { # re-order according to user input, not alphabetically
+     levels <- unique(summarized$Genes)
+     iy <- match(toupper(Words), toupper(levels) )
+     levels <- levels[iy]
+     summarized$Genes <- factor( summarized$Genes, levels = levels) 
+   }
+   
+   #http://www.sthda.com/english/wiki/ggplot2-barplots-quick-start-guide-r-software-and-data-visualization
+   p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
+     geom_bar(stat="identity", position=position_dodge()) + # bars represent average
+     geom_errorbar(aes(ymin=Mean-SE, ymax=Mean+SE), width=0.2,position=position_dodge(.9)) +
+     labs(y="Expression Level") 
+   if(useSD == 1) { 
+     p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
+       geom_bar(stat="identity", position=position_dodge()) + # bars represent average
+       geom_errorbar(aes(ymin=Mean-SD, ymax=Mean+SD), width=0.2,position=position_dodge(.9)) +
+       labs(y="Expression Level") 
+   }
+   
+   p2 <- p2 +  theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
+     theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
+           axis.text.y = element_text( size = 16),
+           axis.title.x = element_blank(),
+           axis.title.y = element_text( size = 16) ) +
+     theme(legend.text=element_text(size=16))
+   
+   if( genePlotBox == 1)  
+     return(p1) else 
+     return(p2)
+   
+ }
+ 
 # heatmap with color bar define gene groups
 myheatmap2 <- function (x,bar=NULL,n=-1,mycolor=1,clusterNames=NULL,sideColors=NULL ) {
 	# number of genes to show
@@ -617,8 +724,8 @@ convertID <- function (query,selectOrg, selectGO) {
 				) )
 }
 
-# finds id index corresponding to entrez gene and KEGG for id conversion
-idType_Entrez <- dbGetQuery(convert, paste("select distinct * from idIndex where idType = 'entrezgene'" ))
+# finds id index corresponding to entrez gene and KEGG for id conversion ; from ensembl 100 changed from 'entrezgene' to 'entrezgene_id'
+idType_Entrez <- dbGetQuery(convert, paste("select distinct * from idIndex where idType = 'entrezgene_id'" ))
 if(dim(idType_Entrez)[1] != 1) {cat("Warning! entrezgene ID not found!")}
 idType_Entrez = as.numeric( idType_Entrez[1,1])
 idType_KEGG <- dbGetQuery(convert, paste("select distinct * from idIndex where idType = 'kegg'" ))
@@ -1651,7 +1758,36 @@ promoter <- function (converted,selectOrg, radio){
 # find sample index for selected comparisons
 findContrastSamples <- function(selectContrast, allSampleNames,sampleInfo=NULL, selectFactorsModel=NULL,selectModelComprions =NULL , referenceLevels=NULL, countsDEGMethod=NULL, dataFileFormat=NULL ){
 	iz= match( detectGroups(allSampleNames), unlist(strsplit( selectContrast, "-"))	  )
-	iz = which(!is.na(iz))		 
+	iz = which(!is.na(iz))
+	
+	# has design file, but didn't select factors
+	if ( !is.null(sampleInfo) & is.null(selectFactorsModel) & length(selectModelComprions)==0 ) {
+	  
+	  findSamples <- function( factorLevel ) { 
+	    # given a factor level such as "wt", return a vector indicating the samples with TRUE FALST
+	    #  p53_mock_1  p53_mock_2  p53_mock_3  p53_mock_4    p53_IR_1    p53_IR_2    p53_IR_3    p53_IR_4 null_mock_1 null_mock_2 
+	    #  TRUE        TRUE        TRUE        TRUE        TRUE        TRUE        TRUE        TRUE       FALSE       FALSE 
+  	  tem = apply(sampleInfo, 2, function(y) y == factorLevel )
+  	  colSums(tem) > 0
+  	  tem <- tem[, colSums(tem) > 0]
+  	  return(tem)
+	  }
+	  
+	  
+	  sample1 <- gsub("-.*","",selectContrast)
+	  level1 <- gsub("_.*","",sample1)
+	  level2 <- gsub(".*_","",sample1)
+	  iz <- which( findSamples( level1 ) & findSamples( level2 ) )
+	  
+	  sample2 <- gsub(".*-","",selectContrast)
+	  level1 <- gsub("_.*","",sample2)
+	  level2 <- gsub(".*_","",sample2)
+	  iz <- c(iz, which( findSamples( level1 ) & findSamples( level2 ) ))	
+	  
+	  
+	}
+	
+	#Has design file and chose factors
 	if ( !is.null(sampleInfo) & !is.null(selectFactorsModel) & length(selectModelComprions)>0 ) {
 
 		comparisons = gsub(".*: ","",selectModelComprions)   # strings like: "groups: mutant vs. control"
@@ -2509,7 +2645,8 @@ readData <- reactive ({
 				dataSizeOriginal = dim(x); dataSizeOriginal[2] = dataSizeOriginal[2] -1
 				
 				x[,1] <- toupper(x[,1])
-				x[,1] <- gsub(" |\"|\'|\\.[0-9]{1,2}$", "", x[ , 1]) 
+				#x[,1] <- gsub(" |\"|\'|\\.[0-9]{1,2}$", "", x[ , 1]) 
+                 x[,1] <- gsub(" |\"|\'", "", x[ , 1]) 
 				             # remove spaces in gene ids
 				                 # remove " in gene ids, mess up SQL query				
 				                      # remove ' in gene ids		
@@ -2750,6 +2887,13 @@ readSampleInfo <- reactive ({
 				
 		})
 	})
+
+############################################
+#Purpose: this logic for second tab i.e. Gene ID Examples
+#File: gene_id_page_ser.R
+############################################
+geneIDPage(input = input, output = output,
+           session = session, orgInfo = orgInfo, path = datapath)
 	
 output$sampleInfoTable <- renderTable({
 
@@ -3233,85 +3377,12 @@ output$genePlot <- renderPlot({
 	
 	tem = input$geneSearch ; tem = input$genePlotBox; tem = input$useSD
 	isolate({
-    x <- convertedData()
-	
-	Symbols <- rownames(x)
-	
-	if( input$selectOrg != "NEW" &&  ncol(allGeneInfo()) != 1 ) {
-	ix = match( rownames(x), allGeneInfo()[,1])
-		if( sum( is.na(allGeneInfo()$symbol )) != dim(allGeneInfo() )[1] ) {  # symbol really exists? 
-			Symbols = as.character( allGeneInfo()$symbol[ix] )
-			Symbols[which( nchar(Symbols) <= 2 ) ] <- rownames(x) [which( nchar(Symbols) <= 2 ) ] 
-			}
-	   }
-	x = as.data.frame(x)
-	x$Genes = Symbols
-    #write.csv(x,"tem.csv")
-	# Search for genes
-	#ix = grep("HOXA",toupper(x$Genes) )
-	# ix = grep(toupper(input$geneSearch),toupper(x$Genes))  # sox --> Tsox  
-	# matching from the beginning of symbol
-	searchWord = gsub("^ ","",input$geneSearch )
-	ix = which(regexpr(  paste("^" , toupper(searchWord),sep="")   ,toupper(x$Genes)) > 0)
-	if(grepl(" $", searchWord)  )  # if there is space character, do exact match
-		ix = match(gsub(" ","", toupper(searchWord)), toupper(x$Genes) )
-	
-	# too few or too many genes found
-	if(length(ix) == 0 | length(ix) > 50 ) return(NULL)
-	  # no genes found
-	 	 
-	mdf = melt(x[ix,],id.vars="Genes", value.name="value", variable.name="samples")
-	# bar plot of individual samples
-	p1 <- ggplot(data=mdf, aes(x=samples, y=value, group = Genes, shape=Genes, colour = Genes)) +
-		geom_line() +
-		geom_point( size=5,  fill="white")+ #shape=21  circle
-		#theme(axis.text.x = element_text(size=16,angle = 45, hjust = 1)) +
-		labs(y="Transformed expression level") +
-		coord_cartesian(ylim = c(0, max(mdf$value)))
-	p1 <- p1 + theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
-	 theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
-	       axis.text.y = element_text( size = 16),
-		   axis.title.x = element_blank(),
-		   axis.title.y = element_text( size = 16) ) +
-	theme(legend.text=element_text(size=12))	
-		
-		
-	#ggplotly(p) %>% layout(margin = list(b = 250,l=100))  # prevent cutoff of sample names
+	  
+	  plotGenes( convertedData(), allGeneInfo(), readSampleInfo(), input$geneSearch, input$genePlotBox, input$useSD, input$selectOrg)
 
-	# Barplot with error bars
-	mdf$count = 1
-	g = detectGroups(mdf$samples, readSampleInfo())
-	mdf$g = g	
-	Means <- mdf %>% group_by(g, Genes) %>%  summarise(mean(value))
-	SDs <- mdf %>% group_by(g, Genes) %>%  summarise(sd(value))
-	Ns <- mdf %>% group_by(g, Genes) %>%  summarise(sum(value))
-	summarized = cbind(Means,SDs[,3],Ns[,3])
-	colnames(summarized)= c("Samples","Genes","Mean","SD","N")
-	summarized$SE = summarized$SD / sqrt(summarized$N)	
-		
-	#http://www.sthda.com/english/wiki/ggplot2-barplots-quick-start-guide-r-software-and-data-visualization
-	p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
-		geom_bar(stat="identity", position=position_dodge()) + # bars represent average
-		geom_errorbar(aes(ymin=Mean-SE, ymax=Mean+SE), width=0.2,position=position_dodge(.9)) +
-		labs(y="Expression Level") 
-	if(input$useSD == 1) { 
-	p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
-		geom_bar(stat="identity", position=position_dodge()) + # bars represent average
-		geom_errorbar(aes(ymin=Mean-SD, ymax=Mean+SD), width=0.2,position=position_dodge(.9)) +
-		labs(y="Expression Level") 
-	}
-	
-	p2 <- p2 +  theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
-	 theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
-	       axis.text.y = element_text( size = 16),
-		   axis.title.x = element_blank(),
-		   axis.title.y = element_text( size = 16) ) +
-	theme(legend.text=element_text(size=16))
-	
-	if( input$genePlotBox == 1)  p1 else p2
-	
 	})
    })
+
 genePlot4Download <- reactive({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
 	
@@ -3327,82 +3398,9 @@ genePlot4Download <- reactive({
 	
 	tem = input$geneSearch ; tem = input$genePlotBox; tem = input$useSD
 	isolate({
-    x <- convertedData()
-	
-	Symbols <- rownames(x)
-	
-	if( input$selectOrg != "NEW" &&  ncol(allGeneInfo()) != 1 ) {
-	ix = match( rownames(x), allGeneInfo()[,1])
-		if( sum( is.na(allGeneInfo()$symbol )) != dim(allGeneInfo() )[1] ) {  # symbol really exists? 
-			Symbols = as.character( allGeneInfo()$symbol[ix] )
-			Symbols[which( nchar(Symbols) <= 2 ) ] <- rownames(x) [which( nchar(Symbols) <= 2 ) ] 
-			}
-	   }
-	x = as.data.frame(x)
-	x$Genes = Symbols
-    #write.csv(x,"tem.csv")
-	# Search for genes
-	#ix = grep("HOXA",toupper(x$Genes) )
-	# ix = grep(toupper(input$geneSearch),toupper(x$Genes))  # sox --> Tsox  
-	# matching from the beginning of symbol
-	searchWord = gsub("^ ","",input$geneSearch )
-	ix = which(regexpr(  paste("^" , toupper(searchWord),sep="")   ,toupper(x$Genes)) > 0)
-	if(grepl(" $", searchWord)  )  # if there is space character, do exact match
-		ix = match(gsub(" ","", toupper(searchWord)), toupper(x$Genes) )
-	
-	# too few or too many genes found
-	if(length(ix) == 0 | length(ix) > 50 ) return(NULL)
-	  # no genes found
-	 	 
-	mdf = melt(x[ix,],id.vars="Genes", value.name="value", variable.name="samples")
-	# bar plot of individual samples
-	p1 <- ggplot(data=mdf, aes(x=samples, y=value, group = Genes, shape=Genes, colour = Genes)) +
-		geom_line() +
-		geom_point( size=5,  fill="white")+ #shape=21  circle
-		#theme(axis.text.x = element_text(size=16,angle = 45, hjust = 1)) +
-		labs(y="Transformed expression level") +
-		coord_cartesian(ylim = c(0, max(mdf$value)))
-	p1 <- p1 + theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
-	 theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
-	       axis.text.y = element_text( size = 16),
-		   axis.title.x = element_blank(),
-		   axis.title.y = element_text( size = 16) ) +
-	theme(legend.text=element_text(size=12))	
-		
-		
-	#ggplotly(p) %>% layout(margin = list(b = 250,l=100))  # prevent cutoff of sample names
-
-	# Barplot with error bars
-	mdf$count = 1
-	g = detectGroups(mdf$samples, readSampleInfo())
-	Means = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = mean, na.rm=TRUE  )
-	SDs = aggregate(mdf$value,by=list( g, mdf$Genes ), FUN = sd, na.rm=TRUE  )
-	Ns = aggregate(mdf$count, by= list(g, mdf$Genes) , FUN = sum  )
-	summarized = cbind(Means,SDs[,3],Ns[,3])
-	colnames(summarized)= c("Samples","Genes","Mean","SD","N")
-	summarized$SE = summarized$SD / sqrt(summarized$N)	
-		
-	#http://www.sthda.com/english/wiki/ggplot2-barplots-quick-start-guide-r-software-and-data-visualization
-	p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
-		geom_bar(stat="identity", position=position_dodge()) + # bars represent average
-		geom_errorbar(aes(ymin=Mean-SE, ymax=Mean+SE), width=0.2,position=position_dodge(.9)) +
-		labs(y="Expression Level") 
-	if(input$useSD == 1) { 
-	p2 <- ggplot(summarized, aes(x=Genes, y=Mean,fill=Samples) ) + # data & aesthetic mapping
-		geom_bar(stat="identity", position=position_dodge()) + # bars represent average
-		geom_errorbar(aes(ymin=Mean-SD, ymax=Mean+SD), width=0.2,position=position_dodge(.9)) +
-		labs(y="Expression Level") 
-	}
-	
-	p2 <- p2 +  theme(plot.title = element_text(size = 16,hjust = 0.5)) + # theme(aspect.ratio=1) +
-	 theme(axis.text.x = element_text(angle=45, size = 16, hjust=1),
-	       axis.text.y = element_text( size = 16),
-		   axis.title.x = element_blank(),
-		   axis.title.y = element_text( size = 16) ) +
-	theme(legend.text=element_text(size=16))
-	
-	if( input$genePlotBox == 1)  print(p1) else print(p2)
-	
+	  
+	  plotGenes( convertedData(), allGeneInfo(), readSampleInfo(), input$geneSearch, input$genePlotBox, input$useSD, input$selectOrg)
+	  
 	})
    })
 
@@ -3733,7 +3731,7 @@ output$heatmap1 <- renderPlot({
 		,hclustfun=hclustFuns[[as.integer(input$hclustFunctions)]]
 		,Colv=!input$noSampleClustering		
 		,col= heatColors[as.integer(input$heatColors1),], density.info="none", trace="none", scale="none", keysize=.5
-		,key=T, symkey=F,
+		,key=T, symkey=F
 		#,labRow=labRow
 		,ColSideColors=groups.colors[ as.factor(groups)]
 		,margins=c(18,12)
@@ -6274,7 +6272,7 @@ selectedHeatmap.data <- reactive({
 		  iy = match(query, rownames(convertedData()  ) )
 		  
 
-		 iz = findContrastSamples(	input$selectContrast, 
+		 iz = findContrastSamples( input$selectContrast, 
 									colnames(convertedData()),
 									readSampleInfo(),
 									input$selectFactorsModel,
@@ -6287,7 +6285,6 @@ selectedHeatmap.data <- reactive({
 		# color bar
 		 bar = as.vector( genes[,ix]  ); # new R versions stopped autoconvert single column data frames to vectors.
 		 names(bar) = row.names( genes[,ix] )
-		 bar = bar[bar!=0]
 		 bar = bar[bar!=0]
 
 		 # retreive related data		 
@@ -6411,17 +6408,28 @@ geneListData <- reactive({
 		  top1 <- top1[which(abs(top1$Fold)  >= log2( input$limmaFC)) ,]
 		  top1$Top_Genes <- rownames(top1)
 		  top1 <- top1[,c(3,1,2)]
-		  
+		        
 		  # if new species
-		  if( input$selectGO2 == "ID not recognized!" | input$selectOrg == "NEW") return (top1); 
+		  if( input$selectGO2 == "ID not recognized!" 
+		      | input$selectOrg == "NEW" 
+		      | dim(allGeneInfo())[1] == 1)  # stringDB species
+		    return (top1); 
 		  
 		  #convertedID = convertID(top1[,1],input$selectOrg, "GOBP" );#"gmax_eg_gene"
 		  # tem <- geneInfo(convertedID,input$selectOrg) #input$selectOrg ) ;
 		 #  tem <- geneInfo(converted(),input$selectOrg)
+		  if(dim(allGeneInfo())[1] >1) { # Has geneInfo? 
 		  top1 <- merge(top1, allGeneInfo(), by.x ="Top_Genes", by.y="ensembl_gene_id",all.x=T )
+		  } else {  #StringDB species does not have gene info.
+		   top1$symbol = top1$Top_Genes
+		   top1$chr = NA		   
+		   top1$gene_biotype = NA	
+		   top1$band = NA
+		   top1$chromosome_name = NA
+		  }
 		  
 		  if ( sum( is.na(top1$band)) == dim(top1)[1] ) top1$chr = top1$chromosome_name else
-			top1$chr = paste( top1$chromosome_name, top1$band,sep="")
+			top1$chr = paste( top1$chromosome_name, top1$band, sep="")
 		  
 		  top1 <- top1[,c('Top_Genes','Fold','FDR','symbol','chr','gene_biotype')]
 		  
@@ -6434,7 +6442,8 @@ geneListData <- reactive({
 		  colnames(top1) <- c("Ensembl ID", "log2 Fold Change", "Adj.Pval", "Symbol","Chr","Type")
 		  if ( sum( is.na(top1$Symbol)) == dim(top1)[1] ) top1 <- top1[,-4] 
 
-		  return(top1)
+		  return(top1)  
+		  
 	
   })
 
@@ -7341,7 +7350,7 @@ STRINGdb_geneList <- reactive({
 		withProgress(message=sample(quotes,1), detail ="Mapping gene ids (5 minutes)", {
 		
 		#Intialization
-		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+		string_db <- STRINGdb$new( version=STRING_DB_VERSION, species=taxonomyID,
 							   score_threshold=0, input_directory="" )
 				
 		# using expression data
@@ -7424,7 +7433,7 @@ stringDB_GO_enrichmentData <- reactive({
 		isolate({
 		withProgress(message=sample(quotes,1), detail ="Enrichment analysis", {
 		#Intialization
-		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+		string_db <- STRINGdb$new( version=STRING_DB_VERSION, species=taxonomyID,
 							   score_threshold=0, input_directory="" )
 				
 		# using expression data
@@ -7525,7 +7534,7 @@ output$stringDB_network1 <- renderPlot({
 		isolate({
 		withProgress(message=sample(quotes,1), detail ="Enrichment analysis", {
 		#Intialization
-		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+		string_db <- STRINGdb$new( version=STRING_DB_VERSION, species=taxonomyID,
 							   score_threshold=0, input_directory="" )
 		# only up regulated is ploted		
 		for( i in c(1:1) ) {
@@ -7574,7 +7583,7 @@ output$stringDB_network_link <- renderUI({
 		isolate({
 		withProgress(message=sample(quotes,1), detail ="PPI Enrichment and link", {
 		#Intialization
-		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+		string_db <- STRINGdb$new( version=STRING_DB_VERSION, species=taxonomyID,
 							   score_threshold=0, input_directory="" )
 			# upregulated
 		   ids = STRINGdb_geneList()[[1]]
@@ -9447,7 +9456,7 @@ output$genomePlotly <- renderPlotly({
 	 
 			 tem = sort( table( x$chromosome_name), decreasing=T)
 
-			 chromosomes <- names( tem[tem >= 5 ] )  # chromosomes with less than 100 genes are excluded
+			 chromosomes <- names( tem[tem >= 1 ] )  # chromosomes with less than 100 genes are excluded
 			 if(length(chromosomes) > 50) chromosomes <- chromosomes[1:50]  # at most 50 chromosomes
 			 chromosomes <- chromosomes[ nchar(chromosomes)<=12] # chr. name less than 10 characters
 			 chromosomes = chromosomes[order(as.numeric(chromosomes) ) ]
@@ -9491,15 +9500,16 @@ output$genomePlotly <- renderPlotly({
 			#x = x[which(x$FDR<input$limmaPval),]
 			# x = x[which(abs(x$Fold) > log2( input$limmaFC)),]
 			
-			ix = which( (x$FDR< as.numeric(input$limmaPvalViz)) & (abs(x$Fold) > as.numeric(input$limmaFCViz) ) )
+			ix = which( (x$FDR< as.numeric(input$limmaPvalViz)) &
+			              (abs(x$Fold) > as.numeric(input$limmaFCViz) ) )
 			
 			if (length(ix) > 5) { 
 
 				x = x[ix,]		
 				
 				x$start_position = x$start_position/1000000 # Mbp
-				chrD = 20 # distance between chrs.
-				foldCutoff = 3   # max log2 fold 
+				chrD = 30 # distance between chrs.
+				foldCutoff = 4   # max log2 fold 
 				
 				x$Fold = x$Fold / sd(x$Fold)  # standardize fold change
 				
@@ -9519,15 +9529,16 @@ output$genomePlotly <- renderPlotly({
 				p= ggplot(x, aes(x = x, y = y, colour = R, text = symbol ) ) + geom_point(shape = 20, size = .2)
 				
 					#label y with chr names
-				p <- p +  scale_y_continuous(labels = paste("chr",chromosomes[chrLengthTable$chrNum],sep=""), breaks = chrD* (1:chrTotal), limits = c(0, 
-					chrD*chrTotal + 5) )
+				p <- p +  scale_y_continuous(labels = paste("chr",chromosomes[chrLengthTable$chrNum],sep=""), 
+				                             breaks = chrD* (1:chrTotal), 
+				                             limits = c(0, chrD*chrTotal + 5) )
 				# draw horizontal lines for each chr.
 				for( i in 1:dim(chrLengthTable)[1] )
 					p = p+ annotate( "segment",x = 0, xend = chrLengthTable$start_position[i],
 						y = chrLengthTable$chrNum[i]*chrD, yend = chrLengthTable$chrNum[i]*chrD)
 				# change legend		http://ggplot2.tidyverse.org/reference/scale_manual.html
 				p=p+scale_colour_manual(name="",   # customize legend text
-					values=c("blue", "red"),
+					values=c("red", "blue"),
 					breaks=c("1","-1"),
 					labels=c("Up", "Dn"))	
 				p = p + xlab("Position on chrs. (Mbp)") +	 theme(axis.title.y=element_blank())					 
@@ -10198,10 +10209,13 @@ output$geneListBicluster <- renderTable({
 		top1 = biclust::bicluster(biclustering()$x, res, as.numeric( input$selectBicluster)  )[[1]]	
 		top2 = top1  
 		  # if  new species
-		if(  input$selectGO4 == "ID not recognized!" | input$selectOrg == "NEW") {
+		if(  input$selectGO4 == "ID not recognized!" | 
+		     input$selectOrg == "NEW" | 
+		     dim(allGeneInfo())[1] == 1) {
 			top1 = as.data.frame(rownames(top1))
 			colnames(top1)="Genes"
-		} else {	# add gene info			  
+		} else {	# add gene info	
+		  
 		  top1 <- merge(top1, allGeneInfo(), by.x ="row.names", by.y="ensembl_gene_id",all.x=T )
 		  
 		  if ( sum( is.na(top1$band)) == dim(top1)[1] ) top1$chr = top1$chromosome_name else
@@ -10793,7 +10807,9 @@ output$moduleNetwork <- renderPlot({
 		
 		# adding symbols 
 		probeToGene = NULL
-		if( input$selectGO5 != "ID not recognized!" & input$selectOrg != "NEW")
+		if( input$selectGO5 != "ID not recognized!" 
+		    & input$selectOrg != "NEW"
+		    & dim(allGeneInfo())[1] > 1)
 	    if(sum(is.na( allGeneInfo()$symbol ) )/ dim( allGeneInfo() )[1] <.5 ) { # if more than 50% genes has symbol
 			probeToGene = allGeneInfo()[,c("ensembl_gene_id","symbol")]
 			probeToGene$symbol = gsub(" ","",probeToGene$symbol)

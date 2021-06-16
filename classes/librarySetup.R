@@ -8,11 +8,11 @@ list.of.packages <- c(
   "plotly",
   "e1071", "reshape2", "DT",
   "data.table", "Rcpp","WGCNA","flashClust","statmod","biclust","igraph","Rtsne",
-  "visNetwork", "BiocManager"
+  "visNetwork", "BiocManager","feather","shinyjs","reactable"
 )
 
 list.of.bio.packages  <- c(
-  "limma", "DESeq2", "edgeR", "gage", "PGSEA", "fgsea", "ReactomePA", "pathview", "PREDA",
+  "limma", "DESeq2", "edgeR", "gage", "fgsea", "ReactomePA", "pathview", "PREDA",
   "impute", "runibic","QUBIC","rhdf5", "STRINGdb",
   "PREDAsampledata", "sfsmisc", "lokern", "multtest", "hgu133plus2.db", 
    "org.Ag.eg.db","org.At.tair.db","org.Bt.eg.db","org.Ce.eg.db","org.Cf.eg.db",
@@ -61,6 +61,12 @@ while(notInstalledPackageCount != 0){
 	   notInstalledPackageCount = length(new.packages) + length(new.bio.packages)
 	}
 }
+
+#PGSEA is deprecated since Bioconductor 3.12. So we have to install manually from source.
+BiocManager::install(c("GO.db","KEGG.db", "annaffy")) # required y PGSEA
+install.packages("https://bioconductor.org/packages/3.10/bioc/src/contrib/PGSEA_1.60.0.tar.gz", 
+                 repos=NULL, type="source")
+list.of.bio.packages = c(list.of.bio.packages, "PGSEA") # add package for testing
 
 #Load Packages
 suc = unlist ( lapply(list.of.packages, require, character.only = TRUE) )

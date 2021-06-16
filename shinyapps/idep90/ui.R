@@ -100,27 +100,12 @@ iDEPversion,
       #,conditionalPanel(" input.goButton == 0 "
       ,h3("Loading R packages ... ... ...")
       ,htmlOutput('fileFormat')
-      #,br(),br(),h3("Service will not be available from 8am (US central time) on December 18 (Wednesday), 2019  
-      # due to scheduled maintenance. It should take about 3 hours. ",  style = "color:red"),br(),br()
-      #,h3("Send your letters before July 12th so we can include them in our proposal!  谢谢大家帮忙！ ご声援に感謝します！ 감사합니다. ", style = "color:blue")
-     # ,h3("Less than 5% users sent us emails of support. 
-     #     We are struggling to get funding to maintain and improve iDEP. 
-     #     Reviewers said iDEP is not useful and other tools exist. 
-     #      iDEP is designed to help small labs make sense of transcriptomes. 
-     #      Please send us a brief email today to support our grant proposal, indicating  your 
-     #     broad area of research and how iDEP helps your work. 
-     #    All letters count, even from graduate students in another country. Thanks!"
-     # ,a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP letter of support"), style = "color:red")
-      #,h3("We are working on a plan to improve iDEP. Any new functionality or feature you like to be added? Please "
-      #,a("send us",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP suggestions"), "your suggestions!",style = "color:red")      
-      #,h3("Thank you for your support letters!", style = "color:red")
-     ,h4("Run iDEP ", a("locally on your laptop, lab computer, HPC, or in the cloud.",href="https://idepsite.wordpress.com/local/", target="_blank") )
-      ,h4("New 5/24/2020! Try out our new version 0.92, which is still in testing mode. While the code is not changed, the new version is based on Ensembl release 100 with more (392) species, updated annotaton, and many  manually collected pathways for 20 model organisms.", a("iDEP 0.92",href="http://bioinformatics.sdstate.edu/idep92/") )
-      ,h4("Massively upgraded annotation database! V0.90 includes 315 organisms in Ensembl release 96, 
-          plus all species from STRINGdb (v10):115 archaeal, 1678 bacterial, and 238 eukaryotic species ")  
-      ,h5("Now published on", a("BMC Bioinformatics!",href="https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6", target="_blank") )
-      ,h5("Due to lack of funding, iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
-      ,h5("We are happy to help prepare your data for iDEP. Dr. Ge is also open to bioinformatics consulting during the summer.")
+     ,h3("New version 5/13/2021 in testing mode! ",a("iDEP v0.93beta",href="http://bioinformatics.sdstate.edu/idep93/", target="_blank"),
+         "includes upgrades to R 4.05, Bioconductor 3.12, 
+         larger database from Ensembl Release 103 and STRING-db v11. Fixed KEGG pathway chart and gene plot.") 
+
+     ,h3("We recently hired Jenny Qi for database updates and user support. She and Dr Ge are happy to help prepare your data for iDEP. ",a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), style = "color:red") 
+
       ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
      # ) # conditionalPanel
 
@@ -1126,7 +1111,7 @@ iDEPversion,
   ,tabPanel("R",
     fluidRow(    
       column(12,
-        h4( a("Email us", href= "mailto:Xijin.Ge@SDSTATE.EDU?Subject=iDEP", target="_top") , 
+        h4( a("Email us", href= "mailto:gelabinfo@gmail.com?Subject=iDEP", target="_top") , 
            " for questions, suggestions, or data contributions. Stay connected via ", 
            a("user group", href="https://groups.google.com/d/forum/idep",target="_blank"),
            " or ",a("Twitter.", href="https://twitter.com/StevenXGe", target="_blank"),
