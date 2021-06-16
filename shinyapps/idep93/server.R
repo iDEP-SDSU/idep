@@ -85,7 +85,7 @@ rownames(heatColors) = c("Green-Black-Red", "Blue-White-Red", "Green-Black-Magen
                          "Blue-Yellow-Red", "Blue-white-brown")
 colorChoices = setNames(1:dim(heatColors)[1], rownames(heatColors)) # for pull down menu
 maxSamplesEDAplot = 100  # max number of samples for EDA plots
-STRING_DB_VERSION <- "11.0"
+STRING_DB_VERSION <- "11.0" # what version of STRINGdb needs to be used 
 
 ################################################################
 #   Input files

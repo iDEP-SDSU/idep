@@ -7,7 +7,7 @@
 # File: global.R
 # Purpose of file:global file for app (need more info here)
 # Start data: NA (mm-dd-yyyy)
-# Data last modified: 06-06-2021, 12:46 PM CST (mm-dd-yyyy,TIME) 
+# Data last modified: 06-16-2021, 11:46 PM CST (mm-dd-yyyy,TIME) 
 # to help with github merge 
 #######################################################
 
@@ -48,7 +48,7 @@ library(visNetwork)
 
 # relative path to data files
 datapath = "../../data/data103/"   # production server
-
+STRING_DB_VERSION <- "11.0" # what version of STRINGdb needs to be used 
 Min_overlap <- 1
 minSetSize = 3;
 mappingCoverage = 0.60 # 60% percent genes has to be mapped for confident mapping
