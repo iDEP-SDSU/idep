@@ -85,6 +85,7 @@ rownames(heatColors) = c("Green-Black-Red", "Blue-White-Red", "Green-Black-Magen
                          "Blue-Yellow-Red", "Blue-white-brown")
 colorChoices = setNames(1:dim(heatColors)[1], rownames(heatColors)) # for pull down menu
 maxSamplesEDAplot = 100  # max number of samples for EDA plots
+STRING_DB_VERSION <- "11.0"
 
 ################################################################
 #   Input files
@@ -7349,7 +7350,7 @@ STRINGdb_geneList <- reactive({
 		withProgress(message=sample(quotes,1), detail ="Mapping gene ids (5 minutes)", {
 		
 		#Intialization
-		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+		string_db <- STRINGdb$new( version=STRING_DB_VERSION, species=taxonomyID,
 							   score_threshold=0, input_directory="" )
 				
 		# using expression data
@@ -7432,7 +7433,7 @@ stringDB_GO_enrichmentData <- reactive({
 		isolate({
 		withProgress(message=sample(quotes,1), detail ="Enrichment analysis", {
 		#Intialization
-		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+		string_db <- STRINGdb$new( version=STRING_DB_VERSION, species=taxonomyID,
 							   score_threshold=0, input_directory="" )
 				
 		# using expression data
@@ -7533,7 +7534,7 @@ output$stringDB_network1 <- renderPlot({
 		isolate({
 		withProgress(message=sample(quotes,1), detail ="Enrichment analysis", {
 		#Intialization
-		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+		string_db <- STRINGdb$new( version=STRING_DB_VERSION, species=taxonomyID,
 							   score_threshold=0, input_directory="" )
 		# only up regulated is ploted		
 		for( i in c(1:1) ) {
@@ -7582,7 +7583,7 @@ output$stringDB_network_link <- renderUI({
 		isolate({
 		withProgress(message=sample(quotes,1), detail ="PPI Enrichment and link", {
 		#Intialization
-		string_db <- STRINGdb$new( version="10", species=taxonomyID,
+		string_db <- STRINGdb$new( version=STRING_DB_VERSION, species=taxonomyID,
 							   score_threshold=0, input_directory="" )
 			# upregulated
 		   ids = STRINGdb_geneList()[[1]]
