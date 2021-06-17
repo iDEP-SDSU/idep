@@ -139,11 +139,12 @@ iDEPversion,
     ), #sidebarPanel
   
   # Main Panel -------------------------------------
-    mainPanel(  
+    mainPanel(
+      shinyjs::useShinyjs(),
       tableOutput('sampleInfoTable')
       ,tableOutput('contents')
       #,conditionalPanel(" input.goButton == 0 "
-      ,h4("Loading R packages, please wait ... ... ...")
+      ,div(id='loadMessage',h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
       ,h3("Meet the development team! We will have a open forum Zoom call with users 2pm (US central time) June 18th! After a brief update, 
           we will mostly listen to users' feedback as we are actively working on improving iDEP.",

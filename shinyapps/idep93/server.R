@@ -2581,7 +2581,6 @@ function(input, output,session) {
                #,converted()$species,   converted()$speciesMatched,  converted()$conversionTable
  # allGeneInfo(): returns all information in the geneInfo file for each gene
  # geneSets(): gene set as a list for pathway analysis
-  
 options(shiny.maxRequestSize = 200*1024^2) # 200MB file max for upload
 observe({  updateSelectizeInput(session, "selectOrg", choices = speciesChoice, selected = speciesChoice[1] )      })
 observe({  updateSelectInput(session, "heatColors1", choices = colorChoices )      })
@@ -2944,6 +2943,7 @@ output$nGenesFilter <- renderText({
 
 	# Show info on file format	
 output$fileFormat <- renderUI({
+  shinyjs::hideElement(id = 'loadMessage')
 		i = "<h3>Done. Ready to load data files.</h3>"
 #		i = c(i,"Users can upload a CSV or tab-delimited text file with the first column as gene IDs. 
 #		For RNA-seq data, read count per gene is recommended.
