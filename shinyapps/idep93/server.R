@@ -10,7 +10,7 @@ iDEPversion = "iDEP 0.93"
 ################################################################
 # R packages, installed by:
 #auto install
-# Rlibs = c("shiny","RSQLite","gplots","ggplot2","e1071","shinyAce","shinyBS","reshape2","DT","plotly","statmod","biclust","WGCNA","Rtsne")
+#Rlibs = c("shiny","RSQLite","gplots","ggplot2","e1071","shinyAce","shinyBS","reshape2","DT","plotly","statmod","biclust","WGCNA","Rtsne","feather","shinyjs","reactable")
 # notInstalled = setdiff(Rlibs, rownames(installed.packages()))
 # if(length(notInstalled)>0)
 # 	install.packages(notInstalled)
@@ -26,7 +26,7 @@ source('gene_id_page_ser.R') #load server logic and functions for Gene ID popup
 
 # Bioconductor packages
 #source("https://bioconductor.org/biocLite.R")
-#biocLite(c( "limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata","sfsmisc","lokern","multtest","feather","shinyjs","reactable" ))
+#biocLite(c( "limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata","sfsmisc","lokern","multtest" ))
 # annotation packages needed by pathview; will be installed automatically if runing on Windows
 #biocLite( c( "org.Ag.eg.db","org.At.tair.db","org.Bt.eg.db","org.Ce.eg.db",
 #"org.Cf.eg.db","org.Dm.eg.db","org.Dr.eg.db","org.EcK12.eg.db","org.EcSakai.eg.db",
@@ -7431,62 +7431,83 @@ stringDB_GO_enrichmentData <- reactive({
 		if(is.null(STRINGdb_geneList() ) ) return(NULL)
 		
 		isolate({
-		withProgress(message=sample(quotes,1), detail ="Enrichment analysis", {
-		#Intialization
-		string_db <- STRINGdb$new( version=STRING_DB_VERSION, species=taxonomyID,
-							   score_threshold=0, input_directory="" )
-				
-		# using expression data
-		genes <- selectedHeatmap.data()$genes
-		if(is.null(genes) ) return(NULL) 
-		if(dim(genes)[1] <= minGenesEnrichment ) return(NoSig) # if has only few genes
-		
-		fc = selectedHeatmap.data()$bar		
-		# GO
-		results1 <- NULL; result <- NULL
-		pp <- 0
-		for( i in c(1:2) ) {
-			#incProgress(1/2,detail = paste("Mapping gene ids")  )
-			
-			if( length(which(fc*i<0)) <= minGenesEnrichment) next; 
-			query = rownames(genes)[which(fc*i<0)]
-			
-			if( length(query) <= minGenesEnrichment) next; 	
-			
-			ids = STRINGdb_geneList()[[i]]
-			
-			incProgress(1/3  )
-			result <- string_db$get_enrichment( ids, category = input$STRINGdbGO, methodMT = "fdr", iea = TRUE )
-			if(nrow(result) == 0 ) next; 
-			if(nrow(result) > 15)  result <- result[1:15,]
-
-			if( dim(result)[2] ==1) next;   # result could be NULL
-			if(i == 1) result$direction = "Up regulated"  else result$direction = "Down regulated"
-			if (pp==0 ) { results1 <- result; pp = 1;} else  results1 = rbind(results1,result)
-		}
-
-		if ( pp == 0 ) return (NoSig)
-		if ( is.null( results1) ) return (NoSig)
-		if( dim(results1)[2] == 1 ) return(NoSig)  # Returns a data frame: "No significant results found!"
-		
-		results1= results1[,c(7,5,3, 6)]
-		colnames(results1)= c("List","FDR","nGenes","GO terms or pathways")
-		minFDR = 0.01
-		if(min(results1$FDR) > minFDR ) results1 = as.data.frame("No signficant enrichment found.") else
-		results1 = results1[which(results1$FDR < minFDR),]
-		
-		incProgress(1, detail = paste("Done")) 
-		
-		if(dim(results1)[2] != 4) return(NoSig)
-		colnames(results1)= c("Direction","adj.Pval","nGenes","Pathways")
-		results1$adj.Pval <- sprintf("%-2.1e",as.numeric(results1$adj.Pval) )	
-		rownames(results1)=1:nrow(results1)
-		results1[ duplicated (results1[,1] ),1 ] <- ""  
-		
-		return( results1 )
-		 })#progress
+		  withProgress(message=sample(quotes,1), detail ="Enrichment analysis", {
+		    #Intialization
+		    string_db <- STRINGdb$new( version=STRING_DB_VERSION, species=taxonomyID,
+		                               score_threshold=0, input_directory="" )
+		    
+		    # using expression data
+		    genes <- selectedHeatmap.data()$genes
+		    fc = selectedHeatmap.data()$bar 
+		    resultFilter <- NULL; result <- NULL
+		    minGenesEnrichment <- 1
+		    if(is.null(genes)) {
+		      return(NULL) 
+		    } else if (dim(genes)[1] <= minGenesEnrichment ) {
+		      return(NoSig) # if has only few genes
+		    } else {
+		      pp <- 0
+		      for( i in c(1:2) ) {
+		        if( length(which(fc*i<0)) <= minGenesEnrichment) {
+		          next
+		        }
+		        query = rownames(genes)[which(fc*i<0)]
+		        if( length(query) <= minGenesEnrichment) {
+		          next 
+		        }
+		        
+		        ids = STRINGdb_geneList()[[i]]
+		        
+		        if( length(ids) <= minGenesEnrichment) {
+		          return(NoSig)
+		        } 
+		        incProgress(1/3  )
+		        result <- string_db$get_enrichment( ids, category = input$STRINGdbGO, methodMT = "fdr", iea = TRUE )
+		        if(nrow(result) == 0 || is.null(result)) {
+		          next
+		        } 
+		        
+		        if (i == 1) {
+		          result$direction = "Up regulated"
+		        } else {
+		          result$direction = "Down regulated"
+		        }
+		        
+		        if (pp == 0) {
+		          resultFilter <- result
+		          pp = 1
+		        } else {
+		          resultFilter = rbind(resultFilter, result)
+		        }
+		      } #end of for 
+		      
+		      if(nrow(result) == 0 || is.null(result) || pp == 0) {
+		        return(NoSig)
+		      } else {
+		        incProgress(1/3)
+		        #formatting 
+		        resultFilter <- dplyr::select(resultFilter,
+		                                      c('direction','fdr','p_value','number_of_genes','term',
+		                                        'description','preferredNames'))
+		        resultFilter$p_value <- sprintf("%-2.1e",as.numeric(result$p_value))
+		        colnames(resultFilter) <- c('Direction','FDR','p values','nGenes','GO terms or pathways',
+		                                    'Description','Preferred Names')
+		        minFDR = 0.01
+		        if(min(resultFilter$FDR) > minFDR ) {
+		          return (NoSig)
+		        } else {
+		          resultFilter <- resultFilter[which(resultFilter$FDR < minFDR),]
+		          incProgress(1, detail = paste("Done")) 
+		          if(nrow(resultFilter) > 30)  {
+		            resultFilter <- resultFilter[1:30,] 
+		          }
+		          return(resultFilter)
+		        } #end of check minFDR
+		      }# check results 
+		    } # end of check genes if 
+		  })#progress
 		}) #isolate						   
-
+		
 }) 
 
 output$stringDB_GO_enrichment <- renderTable({

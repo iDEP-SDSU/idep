@@ -149,7 +149,8 @@ geneIDPage <- function(input, output, session, orgInfo, path) {
       reactable::reactable(data = res,
                            columns = col,
                            searchable = TRUE, defaultPageSize = 4,
-                           highlight = TRUE, resizable = TRUE, minRows = 5, showPageSizeOptions = TRUE,
+                           highlight = TRUE, resizable = TRUE, minRows = 5,
+                           showPageSizeOptions = TRUE,
                            pageSizeOptions = c(4, 10, 25, 50, 100))
     })#end of tableResult
     shinyjs::show(id = "tableResult")
