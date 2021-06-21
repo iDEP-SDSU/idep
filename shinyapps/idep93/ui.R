@@ -6,6 +6,7 @@ library(shiny,verbose=FALSE)
 library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
+library('shinyjs', verbose = FALSE)
 iDEPversion = "iDEP.93"
 
 shinyUI(
@@ -144,7 +145,8 @@ iDEPversion,
       tableOutput('sampleInfoTable')
       ,tableOutput('contents')
       #,conditionalPanel(" input.goButton == 0 "
-      ,div(id='loadMessage',h4('Loading R packages, please wait ... ... ...'))
+      ,div(id='loadMessage',
+           h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
       ,h3("Meet the development team! We will have a open forum Zoom call with users 2pm (US central time) June 18th! After a brief update, 
           we will mostly listen to users' feedback as we are actively working on improving iDEP.",
@@ -755,8 +757,13 @@ iDEPversion,
                                               ,"KEGG"                  = "KEGG"
                                               ,"Pfam"                  = "Pfam"
                                               ,"InterPro"              = "InterPro")
-                                ,selected = "Process")              
-                  ,downloadButton("STRING_enrichmentDownload")
+                                ,selected = "Process"),
+                 numericInput(inputId = "STRINGFDR",
+                              label = "FDR cutoff",
+                              value = 0.01,
+                              step = 0.01),
+                 actionButton("submit2STRINGdb", "Submit"),
+                 downloadButton("STRING_enrichmentDownload")
                   ,tableOutput("stringDB_GO_enrichment")
         ) #bsModal
     

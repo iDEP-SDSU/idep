@@ -10,7 +10,6 @@
 # Data last modified: 06-16-2021, 11:49 CST (mm-dd-yyyy,TIME) 
 # to help with github merge 
 #######################################################
-source('gene_id_page_ser.R') #load server logic and functions for Gene ID popup
 server <- function(input, output, session){
   options(warn=-1)
   
@@ -467,22 +466,12 @@ server <- function(input, output, session){
     }
   }) 
   
-  stringDB_GO_enrichmentData <- reactive({
-    if (input$goButton == 0  )    return(NULL)
-    
+  stringDB_GO_enrichmentData <- function(input, output, taxonomyID) {
     library(STRINGdb,verbose=FALSE)
-    
-    tem = input$STRINGdbGO
-    taxonomyID = findTaxonomyID(  )
-    if(is.null( taxonomyID ) ) return(NULL)		
-    ####################################
-    
-    #if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
     NoSig = as.data.frame("No significant enrichment found.")
-    if(is.null(STRINGdb_geneList() ) ) return(NULL)
-    
-    isolate({
+    stringDB_GO_enrichmentDataR <- reactive({
       withProgress(message=sample(quotes,1), detail ="Enrichment analysis", {
+        tem = input$STRINGdbGO
         #Intialization
         string_db <- STRINGdb$new( version=STRING_DB_VERSION, species=taxonomyID,
                                    score_threshold=0, input_directory="" )
@@ -496,8 +485,8 @@ server <- function(input, output, session){
           return(NoSig) # if has only few genes
         } else {
           # GO
-          ids = STRINGdb_geneList()[[1]]
-          if( length(ids) <= minGenesEnrichment) {
+          ids = STRINGdb_geneList()$up
+          if( length(ids) <= minGenesEnrichment || is.null(ids)) {
             return(NoSig)
           }	
           incProgress(1/3)
@@ -508,16 +497,13 @@ server <- function(input, output, session){
             result <- dplyr::select(result,
                                     c('fdr','p_value','number_of_genes','term',
                                       'description','preferredNames'))
-            
-            result$p_value <- sprintf("%-2.1e",as.numeric(result$p_value))
             colnames(result) <- c('FDR','p values','nGenes','GO terms or pathways',
                                   'Description','Preferred Names')
             
-            minFDR = 0.01
-            if(min(result$FDR) > minFDR ) {
+            if(min(result$FDR) > input$STRINGFDR) {
               return (NoSig)
             }  else {
-              result <- result[which(result$FDR < minFDR),]
+              result <- result[which(result$FDR < input$STRINGFDR),]
               incProgress(1, detail = paste("Done")) 
               if(nrow(result) > 30) {
                 result <- result[1:30,] 
@@ -527,25 +513,39 @@ server <- function(input, output, session){
           }# check results 
         }# end of check genes if 
       })#progress
-    }) #isolate						   
+    }) #reactive					   
+    result <- stringDB_GO_enrichmentDataR()
+    output$stringDB_GO_enrichment <- renderTable(result,
+                                                 digits = 4,
+                                                 spacing="s",
+                                                 include.rownames=F,
+                                                 striped=TRUE,
+                                                 bordered = TRUE,
+                                                 width = "auto",
+                                                 hover=T) #renderTable
     
-  }) 
-  
-  output$stringDB_GO_enrichment <- renderTable({
-    if(is.null(stringDB_GO_enrichmentData() ) ) return(NULL)
+    output$STRING_enrichmentDownload <- downloadHandler(
+      filename = function() {
+        paste0("STRING_enrichment",input$STRINGdbGO,".csv")
+        },
+      content = function(file) {
+        write.csv(result, file)
+      }
+    ) #downloadHandler
     
-    stringDB_GO_enrichmentData()	   
-    
-  }, digits = 0,spacing="s",include.rownames=F,striped=TRUE,bordered = TRUE, width = "auto",hover=T) 
+  }#end of stringDB_GO_enrichmentData
   
-  output$STRING_enrichmentDownload <- downloadHandler(
-    filename = function() {paste0("STRING_enrichment",input$STRINGdbGO,".csv")},
-    content = function(file) {
-      write.csv(stringDB_GO_enrichmentData(), file)
-    }
-  ) 
-  
-  
+  observeEvent(input$submit2STRINGdb, {
+    taxonomyID = findTaxonomyID()
+    if(is.null(taxonomyID)) {
+      return(NULL)		
+    } else {
+      stringDB_GO_enrichmentData(input = input, 
+                                 output = output,
+                                 taxonomyID = taxonomyID) 
+    } #end of if else 
+  })# end of observeEvent
+
   
   output$stringDB_network1 <- renderPlot({
     library(STRINGdb)
@@ -1646,7 +1646,10 @@ server <- function(input, output, session){
   #Purpose: this logic for second tab i.e. Gene ID Examples
   #File: gene_id_page_ser.R
   ############################################
-  geneIDPage(input = input, output = output,
-             session = session, orgInfo = orgInfo, path = datapath)
+  observeEvent(input$geneIdButton, {
+    source('gene_id_page_ser.R') #load server logic and functions for Gene ID popup
+    geneIDPage(input = input, output = output,
+               session = session, orgInfo = orgInfo, path = datapath)
+  })
   
 }

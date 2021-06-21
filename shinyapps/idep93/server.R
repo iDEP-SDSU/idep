@@ -22,7 +22,6 @@ library(e1071,verbose=FALSE) 		# computing kurtosis
 library(DT,verbose=FALSE) 		# for renderDataTable
 library(plotly,verbose=FALSE) 	# for interactive heatmap
 library(reshape2,verbose=FALSE) 	# for melt correlation matrix in heatmap
-source('gene_id_page_ser.R') #load server logic and functions for Gene ID popup
 
 # Bioconductor packages
 #source("https://bioconductor.org/biocLite.R")
@@ -851,8 +850,12 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE) 
 							paste(x0$pathwayID,collapse="', '"),   "') ",sep="") )
 	
 	x = merge(x0,pathwayInfo, by.x='pathwayID', by.y='id')
-	
-	x$Pval=phyper(x$overlap-1,length(querySet),totalGenes - length(querySet),as.numeric(x$n), lower.tail=FALSE );
+	#browser() 
+	test <- totalGenes - length(querySet)
+	if (test < 0) {
+	  test <- 0
+	}
+	x$Pval=phyper(x$overlap-1,length(querySet),test,as.numeric(x$n), lower.tail=FALSE )
 	x$FDR = p.adjust(x$Pval,method="fdr")
 	x <- x[ order( x$FDR)  ,]  # sort according to FDR
 	
@@ -2891,8 +2894,11 @@ readSampleInfo <- reactive ({
 #Purpose: this logic for second tab i.e. Gene ID Examples
 #File: gene_id_page_ser.R
 ############################################
-geneIDPage(input = input, output = output,
-           session = session, orgInfo = orgInfo, path = datapath)
+observeEvent(input$geneIdButton, {
+  source('gene_id_page_ser.R') #load server logic and functions for Gene ID popup
+  geneIDPage(input = input, output = output,
+             session = session, orgInfo = orgInfo, path = datapath)
+})
 	
 output$sampleInfoTable <- renderTable({
 
@@ -7405,7 +7411,7 @@ output$STRINGDB_mapping_stat <- renderText({
 		}
 }) 
 
-stringDB_GO_enrichmentData <- reactive({
+stringDB_GO_enrichmentData <- function(input, output) {
 	library(STRINGdb,verbose=FALSE)
 						   
 		if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -7430,7 +7436,7 @@ stringDB_GO_enrichmentData <- reactive({
 		NoSig = as.data.frame("No significant enrichment found.")
 		if(is.null(STRINGdb_geneList() ) ) return(NULL)
 		
-		isolate({
+		stringDB_GO_enrichmentDataR <- reactive({
 		  withProgress(message=sample(quotes,1), detail ="Enrichment analysis", {
 		    #Intialization
 		    string_db <- STRINGdb$new( version=STRING_DB_VERSION, species=taxonomyID,
@@ -7459,7 +7465,7 @@ stringDB_GO_enrichmentData <- reactive({
 		        ids = STRINGdb_geneList()[[i]]
 		        
 		        if( length(ids) <= minGenesEnrichment) {
-		          return(NoSig)
+		          next
 		        } 
 		        incProgress(1/3  )
 		        result <- string_db$get_enrichment( ids, category = input$STRINGdbGO, methodMT = "fdr", iea = TRUE )
@@ -7477,11 +7483,11 @@ stringDB_GO_enrichmentData <- reactive({
 		          resultFilter <- result
 		          pp = 1
 		        } else {
-		          resultFilter = rbind(resultFilter, result)
+		          resultFilter <- rbind(resultFilter, result)
 		        }
-		      } #end of for 
+		      } #end of for
 		      
-		      if(nrow(result) == 0 || is.null(result) || pp == 0) {
+		      if(nrow(resultFilter) == 0 || is.null(resultFilter) || pp == 0) {
 		        return(NoSig)
 		      } else {
 		        incProgress(1/3)
@@ -7489,14 +7495,13 @@ stringDB_GO_enrichmentData <- reactive({
 		        resultFilter <- dplyr::select(resultFilter,
 		                                      c('direction','fdr','p_value','number_of_genes','term',
 		                                        'description','preferredNames'))
-		        resultFilter$p_value <- sprintf("%-2.1e",as.numeric(result$p_value))
+		        
 		        colnames(resultFilter) <- c('Direction','FDR','p values','nGenes','GO terms or pathways',
 		                                    'Description','Preferred Names')
-		        minFDR = 0.01
-		        if(min(resultFilter$FDR) > minFDR ) {
+		        if(min(resultFilter$FDR) > input$STRINGFDR) {
 		          return (NoSig)
 		        } else {
-		          resultFilter <- resultFilter[which(resultFilter$FDR < minFDR),]
+		          resultFilter <- resultFilter[which(resultFilter$FDR < input$STRINGFDR),]
 		          incProgress(1, detail = paste("Done")) 
 		          if(nrow(resultFilter) > 30)  {
 		            resultFilter <- resultFilter[1:30,] 
@@ -7506,25 +7511,33 @@ stringDB_GO_enrichmentData <- reactive({
 		      }# check results 
 		    } # end of check genes if 
 		  })#progress
-		}) #isolate						   
+		}) #reactive
 		
-}) 
-
-output$stringDB_GO_enrichment <- renderTable({
-		if(is.null(stringDB_GO_enrichmentData() ) ) return(NULL)
-
-		 stringDB_GO_enrichmentData()	   
-
+		result <- stringDB_GO_enrichmentDataR()
+		output$stringDB_GO_enrichment <- renderTable(result,
+		                                             digits = 4,
+		                                             spacing="s",
+		                                             include.rownames=F,
+		                                             striped=TRUE,
+		                                             bordered = TRUE,
+		                                             width = "auto",
+		                                             hover=T) #renderTable
 		
+		output$STRING_enrichmentDownload <- downloadHandler(
+		  filename = function() {
+		    paste0("STRING_enrichment",input$STRINGdbGO,".csv")
+		    },
+		  content = function(file) {
+		    write.csv(result, file)
+		  }
+		) #downloadHandler
+		
+} #end of stringDB_GO_enrichmentData
 
-}, digits = 0,spacing="s",include.rownames=F,striped=TRUE,bordered = TRUE, width = "auto",hover=T) 
-
-output$STRING_enrichmentDownload <- downloadHandler(
-		filename = function() {paste0("STRING_enrichment",input$STRINGdbGO,".csv")},
-		content = function(file) {
-			write.csv(stringDB_GO_enrichmentData(), file)
-	    }
-	)
+observeEvent(input$submit2STRINGdb, {
+    stringDB_GO_enrichmentData(input = input, 
+                               output = output) 
+}) # end of observeEvent
    
 output$stringDB_network1 <- renderPlot({
 	library(STRINGdb)

@@ -207,14 +207,20 @@ ui <- fluidPage(
                   ,tags$head(tags$style("#STRINGDB_mapping_stat{color: blue;font-size: 15px;}"))
                   ,br()
                   ,actionButton("ModalPPI","PPI network of DEGs"),br(),br()
-                  ,selectInput("STRINGdbGO", label="Functional Enrichment", choices = list("GO Biological Process"= "Process"
-                                                                                           ,"GO Cellular Component"= "Component"
-                                                                                           ,"GO Molecular Function"= "Function"
-                                                                                           ,"KEGG" = "KEGG"
-                                                                                           ,"Pfam" = "Pfam"
-                                                                                           ,"InterPro" = "InterPro")
-                               , selected = "Process")							
-                  #,actionButton("submit2STRINGdb", "Submit")
+                  ,selectInput("STRINGdbGO",
+                               label="Functional Enrichment",
+                               choices = list("GO Biological Process"= "Process",
+                                            "GO Cellular Component"= "Component",
+                                            "GO Molecular Function"= "Function",
+                                            "KEGG" = "KEGG",
+                                            "Pfam" = "Pfam",
+                                            "InterPro" = "InterPro")
+                               , selected = "Process"),
+                  numericInput(inputId = "STRINGFDR",
+                               label = "FDR cutoff",
+                               value = 0.01,
+                               step = 0.01),
+                  actionButton("submit2STRINGdb", "Submit")
                   ,downloadButton("STRING_enrichmentDownload")
                   ,tableOutput("stringDB_GO_enrichment")		
                   

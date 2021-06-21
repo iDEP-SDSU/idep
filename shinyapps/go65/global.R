@@ -29,12 +29,12 @@ checkPackages <- function() {
   # R packages, installed by:
   #auto install
   Rlibs = c('shiny','RSQLite','ggplot2','gridExtra','plotly','igraph',
-            'feather','shinyjs','reactable','reshape2','visNetwork','dendextend')
+            'feather','shinyjs','reactable','reshape2','visNetwork','dendextend','dplyr')
   notInstalled = setdiff(Rlibs, sysLib)
   if(length(notInstalled)>0) {
     install.packages(notInstalled, dependencies = T)
   }
-}
+}# end of checkPackages
 
 checkPackages()
 library(shiny)
