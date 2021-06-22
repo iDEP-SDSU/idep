@@ -7,8 +7,7 @@
 # File: ui.R
 # Purpose of file:ui logic of app
 # Start data: NA (mm-dd-yyyy)
-# Data last modified: 06-16-2021, 11:46 (mm-dd-yyyy,TIME) 
-# to help with github merge 
+# Data last modified: 06-22-2021
 #######################################################
 library(shiny,verbose=FALSE)
 library(shinyBS,verbose=FALSE) # for popup figures
@@ -43,7 +42,9 @@ ui <- fluidPage(
       
       fluidRow(
         column(6,
-               numericInput("minFDR", label = h5("P-value cutoff (FDR)"), value = 0.05)
+               numericInput(inputId = "minFDR",
+                            label = h5("P-value cutoff (FDR)"),
+                            value = 0.05, step = 0.01)
         ),
         column(6,
                selectInput("maxTerms", h5("# of top pathways to show"),
@@ -191,10 +192,10 @@ ui <- fluidPage(
         ,tabPanel("STRING", 
                   h5("Your genes are sent to STRING-db website for enrichment analysis 
             and retrieval of a protein-protein network. We tries 
-            to match your species with the 115 archaeal, 1678 bacterial, 
-						and 238 eukaryotic species in the",
+            to match your species with the archaeal, bacterial, 
+						and eukaryotic species in the",
                      a(" STRING server", href="https://string-db.org/",target="_blank"),
-                     " and send the genes. If it is running, please wait until it finishes. This can take 5 minutes, especially for the first time when iDEP downloads large annotation files.")
+                     " and send the genes. If it is running, please wait until it finishes. This can take 5 minutes, especially for the first time when shinyGO downloads large annotation files.")
                   ,htmlOutput("STRINGDB_species_stat") 
                   ,tags$head(tags$style("#STRINGDB_species_stat{color: blue;font-size: 15px;}"))						
                   , selectizeInput('speciesName', label=NULL,choices = " ",
@@ -215,12 +216,7 @@ ui <- fluidPage(
                                             "KEGG" = "KEGG",
                                             "Pfam" = "Pfam",
                                             "InterPro" = "InterPro")
-                               , selected = "Process"),
-                  numericInput(inputId = "STRINGFDR",
-                               label = "FDR cutoff",
-                               value = 0.01,
-                               step = 0.01),
-                  actionButton("submit2STRINGdb", "Submit")
+                               , selected = "Process")
                   ,downloadButton("STRING_enrichmentDownload")
                   ,tableOutput("stringDB_GO_enrichment")		
                   

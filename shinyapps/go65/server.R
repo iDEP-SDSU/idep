@@ -7,8 +7,7 @@
 # File: server.R
 # Purpose of file:main server logic of app
 # Start data: NA (mm-dd-yyyy)
-# Data last modified: 06-16-2021, 11:49 CST (mm-dd-yyyy,TIME) 
-# to help with github merge 
+# Data last modified: 06-22-2021
 #######################################################
 server <- function(input, output, session){
   options(warn=-1)
@@ -466,10 +465,11 @@ server <- function(input, output, session){
     }
   }) 
   
-  stringDB_GO_enrichmentData <- function(input, output, taxonomyID) {
+  stringDB_GO_enrichmentData <- reactive({
+    if (input$goButton == 0  ) return(-1)
+    taxonomyID = findTaxonomyID()
+    if(is.null(taxonomyID)) return(NULL)
     library(STRINGdb,verbose=FALSE)
-    NoSig = as.data.frame("No significant enrichment found.")
-    stringDB_GO_enrichmentDataR <- reactive({
       withProgress(message=sample(quotes,1), detail ="Enrichment analysis", {
         tem = input$STRINGdbGO
         #Intialization
@@ -480,71 +480,77 @@ server <- function(input, output, session){
         genes <- conversionTableData()
         minGenesEnrichment <- 1
         if(is.null(genes) ) {
-          return(NULL) 
+          return(-2) 
         } else if(dim(genes)[1] <= minGenesEnrichment ) {
-          return(NoSig) # if has only few genes
+          return(-2) # if has only few genes
         } else {
           # GO
           ids = STRINGdb_geneList()$up
           if( length(ids) <= minGenesEnrichment || is.null(ids)) {
-            return(NoSig)
+            return(-2)
           }	
           incProgress(1/3)
           result <- string_db$get_enrichment(ids, category = input$STRINGdbGO, methodMT = "fdr", iea = TRUE)
           if(nrow(result) == 0 || is.null(result)) {
-            return (NoSig)
+            return (-2)
           } else {
-            result <- dplyr::select(result,
-                                    c('fdr','p_value','number_of_genes','term',
-                                      'description','preferredNames'))
-            colnames(result) <- c('FDR','p values','nGenes','GO terms or pathways',
-                                  'Description','Preferred Names')
-            
-            if(min(result$FDR) > input$STRINGFDR) {
-              return (NoSig)
+            if(min(result$fdr) > input$minFDR) {
+              return (-2)
             }  else {
-              result <- result[which(result$FDR < input$STRINGFDR),]
+              result <- result[which(result$fdr < input$minFDR),]
               incProgress(1, detail = paste("Done")) 
-              if(nrow(result) > 30) {
-                result <- result[1:30,] 
-              }
               return(result)
             }#end of check minFDR
           }# check results 
         }# end of check genes if 
       })#progress
-    }) #reactive					   
-    result <- stringDB_GO_enrichmentDataR()
-    output$stringDB_GO_enrichment <- renderTable(result,
-                                                 digits = 4,
-                                                 spacing="s",
-                                                 include.rownames=F,
-                                                 striped=TRUE,
-                                                 bordered = TRUE,
-                                                 width = "auto",
-                                                 hover=T) #renderTable
-    
-    output$STRING_enrichmentDownload <- downloadHandler(
-      filename = function() {
-        paste0("STRING_enrichment",input$STRINGdbGO,".csv")
-        },
-      content = function(file) {
-        write.csv(result, file)
-      }
-    ) #downloadHandler
-    
-  }#end of stringDB_GO_enrichmentData
+  })#end of stringDB_GO_enrichmentData
   
-  observeEvent(input$submit2STRINGdb, {
-    taxonomyID = findTaxonomyID()
-    if(is.null(taxonomyID)) {
-      return(NULL)		
+  output$stringDB_GO_enrichment <- renderTable({
+    result <- stringDB_GO_enrichmentData()
+    if (result == -1) {
+      return(NULL)
+    } else if(result == -2) {
+      return(as.data.frame("No significant enrichment found."))
     } else {
-      stringDB_GO_enrichmentData(input = input, 
-                                 output = output,
-                                 taxonomyID = taxonomyID) 
-    } #end of if else 
-  })# end of observeEvent
+      result <- dplyr::select(result,
+                              c('fdr','number_of_genes','term',
+                                'description'))
+      colnames(result) <- c('FDR','nGenes','GO terms or pathways',
+                            'Description')
+      if(nrow(result) > 30) {
+        result <- result[1:30,] 
+      }
+      return(result)
+    } # end of if else 
+  },
+  digits = 4,
+  spacing="s",
+  include.rownames=F,
+  striped=TRUE,
+  bordered = TRUE,
+  width = "auto",
+  hover=T) #renderTable
+  
+  output$STRING_enrichmentDownload <- downloadHandler(
+    filename = function() {
+      paste0("STRING_enrichment",input$STRINGdbGO,".csv")
+    },
+    content = function(file) {
+      write.csv(stringDB_GO_enrichmentData(), file)
+    }
+  ) #downloadHandler
+  
+  # observeEvent(input$STRING, {
+  #   taxonomyID = findTaxonomyID()
+  #   if(is.null(taxonomyID)) {
+  #     return(NULL)		
+  #   } else {
+  #     stringDB_GO_enrichmentData(input = input, 
+  #                                output = output,
+  #                                taxonomyID = taxonomyID) 
+  #   } #end of if else 
+  # })# end of observeEvent
 
   
   output$stringDB_network1 <- renderPlot({

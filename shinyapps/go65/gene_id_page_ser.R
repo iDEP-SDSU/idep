@@ -2,7 +2,7 @@
 # Author: Eric Tulowetzke, eric.tulowetzke@jacks.sdstate.edu
 # Lab: Ge Lab
 # R version 4.0.5
-# Project: iDEP v93
+# Project: ShinyGO v65
 # File: gene_id_page_ser.R
 # Purpose of file:server logic for second tab i.e. Gene ID Examples
 #  Allow users view example of database

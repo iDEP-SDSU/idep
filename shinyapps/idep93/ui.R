@@ -729,8 +729,8 @@ iDEPversion,
       # STRING API
         ,bsModal("modalExampleSTRING", "Enrichment and network visualization using STRING API", 
                  "STRINGdb_GO", size = "large"
-                 ,h5("iDEP tries to match your species with the 115 archaeal, 
-                     1678 bacterial, and 238 eukaryotic species in the",
+                 ,h5("iDEP tries to match your species with the archaeal, 
+                     bacterial, and eukaryotic species in the",
                      a(" STRING server", 
                        href="https://www.bioconductor.org/packages/release/bioc/html/STRINGdb.html",target="_blank"),
                      " and send the DEGs. If it is running, please wait until it finishes. This can take 5 minutes", 

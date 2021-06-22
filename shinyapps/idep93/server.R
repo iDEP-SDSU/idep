@@ -7433,7 +7433,6 @@ stringDB_GO_enrichmentData <- function(input, output) {
 		if( is.null(limma()$results) ) return(NULL)
 		if( is.null(geneListData()) ) return(NULL) # this has to be outside of isolate() !!!
 		#if(input$selectOrg == "NEW" && is.null( input$gmtFile) ) return(NULL) # new but without gmtFile
-		NoSig = as.data.frame("No significant enrichment found.")
 		if(is.null(STRINGdb_geneList() ) ) return(NULL)
 		
 		stringDB_GO_enrichmentDataR <- reactive({
@@ -7450,7 +7449,7 @@ stringDB_GO_enrichmentData <- function(input, output) {
 		    if(is.null(genes)) {
 		      return(NULL) 
 		    } else if (dim(genes)[1] <= minGenesEnrichment ) {
-		      return(NoSig) # if has only few genes
+		      return(NULL) # if has only few genes
 		    } else {
 		      pp <- 0
 		      for( i in c(1:2) ) {
@@ -7488,24 +7487,14 @@ stringDB_GO_enrichmentData <- function(input, output) {
 		      } #end of for
 		      
 		      if(nrow(resultFilter) == 0 || is.null(resultFilter) || pp == 0) {
-		        return(NoSig)
+		        return(NULL)
 		      } else {
 		        incProgress(1/3)
-		        #formatting 
-		        resultFilter <- dplyr::select(resultFilter,
-		                                      c('direction','fdr','p_value','number_of_genes','term',
-		                                        'description','preferredNames'))
-		        
-		        colnames(resultFilter) <- c('Direction','FDR','p values','nGenes','GO terms or pathways',
-		                                    'Description','Preferred Names')
-		        if(min(resultFilter$FDR) > input$STRINGFDR) {
-		          return (NoSig)
+		        if(min(resultFilter$fdr) > input$STRINGFDR) {
+		          return (NULL)
 		        } else {
-		          resultFilter <- resultFilter[which(resultFilter$FDR < input$STRINGFDR),]
+		          resultFilter <- resultFilter[which(resultFilter$fdr < input$STRINGFDR),]
 		          incProgress(1, detail = paste("Done")) 
-		          if(nrow(resultFilter) > 30)  {
-		            resultFilter <- resultFilter[1:30,] 
-		          }
 		          return(resultFilter)
 		        } #end of check minFDR
 		      }# check results 
@@ -7514,6 +7503,19 @@ stringDB_GO_enrichmentData <- function(input, output) {
 		}) #reactive
 		
 		result <- stringDB_GO_enrichmentDataR()
+		if (is.null(result)) {
+		  result <- as.data.frame("No significant enrichment found.")
+		} else {
+		  resultDownload <- result
+		  result <- dplyr::select(result,
+		                          c('fdr','number_of_genes','term',
+		                            'description'))
+		  colnames(result) <- c('FDR','nGenes','GO terms or pathways',
+		                        'Description')
+		  if(nrow(result) > 30) {
+		    result <- result[1:30,] 
+		  }
+		} #end of if else 
 		output$stringDB_GO_enrichment <- renderTable(result,
 		                                             digits = 4,
 		                                             spacing="s",
@@ -7528,7 +7530,7 @@ stringDB_GO_enrichmentData <- function(input, output) {
 		    paste0("STRING_enrichment",input$STRINGdbGO,".csv")
 		    },
 		  content = function(file) {
-		    write.csv(result, file)
+		    write.csv(resultDownload, file)
 		  }
 		) #downloadHandler
 		
