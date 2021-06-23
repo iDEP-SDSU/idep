@@ -7,6 +7,8 @@ library("shinyAce",verbose=FALSE) # for showing text files, code
 library(shinyBS,verbose=FALSE) # for popup figures
 library(plotly,verbose=FALSE)
 library('shinyjs', verbose = FALSE)
+library('shinyjs', verbose = FALSE)
+library('reactable', verbose = FALSE)
 iDEPversion = "iDEP.93"
 
 shinyUI(
