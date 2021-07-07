@@ -1,18 +1,26 @@
 # download public RNA-Seq data from ARCHS4
 # needs to run GSEinfo.R script to generate GSE info file
+
+
+#runApp('~/Bioinformatics/ben_test/shinyapps/reads',display.mode = "showcase")
+
+
 library(shiny)
 library(DT) # for renderDataTable
 library("rhdf5")
 library(RSQLite)
-#library(getDEE2)
+library(getDEE2)
+library(dplyr)
+setwd("~/idep-master/idep-master/shinyapps/reads")
 
 dataPath = "../../data/readCounts/"
-destination_fileH = "../../data/readCounts/human_matrix.h5"
-destination_fileM = "../../data/readCounts/mouse_matrix.h5"
-destination_fileH_transcript = "../../data/readCounts/human_transcript.h5"
-destination_fileM_transcript = "../../data/readCounts/mouse_transcript.h5"
+destination_fileH = "../../data/readCounts/human_matrix_v10.h5"
+destination_fileM = "../../data/readCounts/mouse_matrix_v10.h5"
+destination_fileH_transcript = "../../data/readCounts/human_transcript_v10.h5"
+destination_fileM_transcript = "../../data/readCounts/mouse_transcript_v10.h5"
+destination_file_transcript=""
 GEOdbFile = "../../data/readCounts/GEO.db"
-source("getDEE2_v2.r")
+#source("getDEE2_v2.r")
 
 DEE2Species = c("athaliana"
 				,"celegans"
@@ -44,8 +52,10 @@ speciesChoice <- setNames(as.list( orgInfo ), orgInfo )
 # Define server logic ----
 server <- function(input, output, session) {
   # populate species
-  observe({  updateSelectInput(session, "selectedSpecies", choices = speciesChoice )      })
+  #observe({  updateSelectInput(session, "selectedSpecies", choices = speciesChoice )      })
 
+  observe({  updateSelectInput(session, "selectedSpecies", choices = c(" ", speciesChoice))      })
+  
   dataset.info <- reactive({
     dataset.info <- dbGetQuery(convert, "select * from GSEinfo")
     dataset.info$GSEID = as.character(dataset.info$GSEID)
@@ -66,16 +76,19 @@ server <- function(input, output, session) {
     GSEID = gsub(" ","",GSEID)
 
  	querySTMT <- paste( "select * from sampleInfo where sample_series_id = '",
-                         GSEID, "' AND species = '", input$selectedSpecies, "'", sep="")     
+                         GSEID, "' AND species = '", input$selectedSpecies, "'", 
+ 	                    sep="")     
 
 	results <- dbGetQuery(convert, querySTMT)
 
     selectedSpecies <- names(sort(table(results[,5]),decreasing=T))[1]
 
-	if( dim(results)[1] == 0  ) 
-       return(NULL)
+	if( dim(results)[1] == 0  ){ 
+       return(NULL)}
     else if ( grepl("ARCHS4", selectedSpecies ) ) {    # ARCHS4
     #sample ids
+      
+      cat("archs4 selected")
     withProgress(message = "Parsing ARCHS4 file ...", {
     samp = results[,1]   # c("GSM1532588", "GSM1532592" )
     if( selectedSpecies == "ARCHS4_Human" ) {
@@ -86,75 +99,108 @@ server <- function(input, output, session) {
        destination_file_transcript = destination_fileM_transcript
     }
     # Identify columns to be extracted
-    samples = h5read(destination_file, "meta/Sample_geo_accession")
+    #samples = h5read(destination_file, "meta/Sample_geo_accession")
+   
+     samples = h5read(destination_file, "meta/samples/geo_accession")
     sample_locations = which(samples %in% samp)
 
     # extract gene expression from compressed data
     genes = h5read(destination_file, "meta/genes")
-    expression = h5read(destination_file, "data/expression", index=list(1:length(genes), sample_locations))
-    #tissue = h5read(destination_file, "meta/Sample_source_name_ch1")
-    sample_title = h5read(destination_file, "meta/Sample_title")[sample_locations]
+    #*************PROBLEM LINE*********
+    #Original Line: 
+    #expression = h5read(destination_file, "data/expression", index=list(1:length(genes), sample_locations))
+    
+    expression = h5read(destination_file, "data/expression", index=list(sample_locations, 1:length(genes$genes) ))
+    expression <- t(expression)
+    #expression <- as.data.frame(expression)
+   #a=  h5read(destination_file, "data/expression")
+    
+    #**********************************348184 x 35238
+    
+    #tissue = h5read(destination_file, "meta/samples/source_name_ch1")
+    sample_title = h5read(destination_file, "meta/samples/title")[sample_locations]
     H5close()
     incProgress(.2)
-    rownames(expression) <-paste(" ",genes)
+    rownames(expression) <-paste(" ",genes$genes)
     colnames(expression) <- paste( samples[sample_locations], sample_title, sep=" ")
     expression <- expression[,order(colnames(expression))]
     incProgress(.3)
     
     # extract transcript level expression    
     if( file.exists(destination_file_transcript) ) { 
-    
-    samples = h5read(destination_file_transcript, "meta/Sample_geo_accession")
+      cat("archs4 transcript exists ")
+    samples = h5read(destination_file_transcript, "meta/samples/geo_accession")
     sample_locations = which(samples %in% samp)
     transcripts = h5read(destination_file_transcript, "meta/transcripts")
     incProgress(.1)  
-    transcriptCounts = h5read(destination_file_transcript, "data/expression", index=list(1:length(transcripts), sample_locations))
-    rownames(transcriptCounts) <-paste(" ",transcripts)
+    transcriptCounts = h5read(destination_file_transcript, "data/expression", index=list(1:length(transcripts$transcripts), sample_locations))
+    rownames(transcriptCounts) <-paste(" ",transcripts$transcripts)
     colnames(transcriptCounts) <- paste( samples[sample_locations], sample_title, sep=" ")
     transcriptCounts <- transcriptCounts[,order(colnames(transcriptCounts))]
     } else {
+      cat("no archs4 transcript")
       transcriptCounts = NULL
     }
     #sample information table
-    results = results[ ,c(4,1:3)]
-
+    #results = results[ ,c(4,1:3)]
+    a= results %>% select(sample_series_id, GSMs, tissue, sample_title) ##keep sample series id as GEO_ID???
+    results<-a
+    remove(a)
+    
     results = results[order(results[,2]),]
     colnames(results) <- c( "GEO ID","Sample ID","Tissue","Sample Title")
     results = results[, -1] # Remove GSE number
     incProgress(1)
-    if(dim(results)[1]>100) results = results[1:100,]
+    if(dim(results)[1]>100) results = results[1:100,] #only show 100 results
     })
     return( list(info = results, 
                  counts = expression, 
                  transcriptCounts = transcriptCounts ) )
 
-    } else  {   # DEE2 data
+    } else {   # DEE2 data
 
-     withProgress(message = "Downloading expression data from DEE2 server ... This can take 5 minutes. ", {   
+      if (grepl("DEE2_", selectedSpecies)){
+      
+        cat("DEE2 selected")
+        withProgress(message = "Downloading expression data from DEE2 server ... This can take 5 minutes. ", {   
 
-     selectedSpecies <- gsub("DEE2_", "", selectedSpecies )
-     selectedSpecies <- DEE2Species[ selectedSpecies ] # species code
-     SRRlist <- results$SRR_accession
-     # download data using DEE2 API
-     data1 <- getDEE2(selectedSpecies, SRRlist )
-     incProgress(.5)
-     geneCounts <- data1$GeneCounts
-     ix = match( colnames(geneCounts), results$SRR_accession )
-     colnames(geneCounts) = paste( colnames(geneCounts),  results$sample_title[ix] )
-     
-     transcriptCounts <- data1$TxCounts
-     ix = match( colnames(transcriptCounts), results$SRR_accession )
-     colnames(transcriptCounts) = paste( colnames(transcriptCounts),  results$sample_title[ix] )
-     
-     results <- results[ , c(-4,-5)]
-     incProgress(1)
+        selectedSpecies <- gsub("DEE2_", "", selectedSpecies )
+        selectedSpecies <- DEE2Species[ selectedSpecies ] # species code
+        SRRlist <- results$SRR_accession
+        # download data using DEE2 API
+        data1 <- getDEE2(selectedSpecies, SRRlist )
+        incProgress(.5)
+        #geneCounts <- data1$GeneCounts
+        geneCounts <- as.data.frame(data1@assays@data@listData$counts)
+        ix = match( colnames(geneCounts), results$SRR_accession )
+        colnames(geneCounts) = paste( colnames(geneCounts),  results$sample_title[ix] )
+        
+    #    transcriptCounts <- data1$TxCounts
+    #    ix = match( colnames(transcriptCounts), results$SRR_accession )
+     #   colnames(transcriptCounts) = paste( colnames(transcriptCounts),  results$sample_title[ix] )
+         #   transcriptCounts <- ""
+        tc <-getDEE2(selectedSpecies,SRRlist, counts="TxCounts")
+        
+        
+        
+        transcriptCounts <- tc@assays@data@listData$counts
+        ix = match( colnames(transcriptCounts), results$SRR_accession )
+        colnames(transcriptCounts) = paste( colnames(transcriptCounts),  results$sample_title[ix] )
+        
+        results <- results[ , c(-4,-5)]
+        incProgress(1)
+        
+        })
+        
+        return( list(info = results, 
+                     counts = geneCounts, 
+                     transcriptCounts = transcriptCounts, 
+                     geneInfo = data1$GeneInfo, 
+                     #transcriptInfo = data1$TxInfo 
+                     transcriptInfo =  transcriptCounts
+                     ) )
+      }
 
-    })
-     return( list(info = results, 
-                  counts = geneCounts, 
-                  transcriptCounts = transcriptCounts, 
-                  geneInfo = data1$GeneInfo, 
-                  transcriptInfo = data1$TxInfo  ) )
     }
 
  })
@@ -243,5 +289,6 @@ output$DoneLoading <- renderUI({
   HTML(paste(i, collapse='<br/>') )
 })
 
+#dbDisconnect(convert)
 
 }

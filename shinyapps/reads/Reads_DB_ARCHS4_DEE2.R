@@ -19,12 +19,14 @@
     library(dplyr)
     setwd("~/idep-master/idep-master/shinyapps/reads")
  
+
+ 
     
     #######################################################
     # extract series and sample information for ARCHRS4
     #######################################################
     
-    
+
     # Human and mouse matrices downloaded from https://maayanlab.cloud/archs4/download.html
     destination_fileH = "../../data/readCounts/human_matrix_v10.h5"
     destination_fileM = "../../data/readCounts/mouse_matrix_v10.h5"
@@ -51,6 +53,9 @@
 
     #Human meta data
     destination_file = destination_fileH 
+    
+    #View contents of .h5 file
+    #h5ls(destination_file)
     
     # Retrieve information from compressed data
     GSMs = h5read(destination_file, "meta/samples/geo_accession")
@@ -154,7 +159,7 @@
     #---------------------------
     # sample level information table:          
     #GSMs        tissue    sample_title     sample_series_id species
-   # sample_info_DEE2 = metaAll[, c("GSM_accession", "experiment_title","GSE_accession","species","SRR_accession","QC_summary" )]
+    # sample_info_DEE2 = metaAll[, c("GSM_accession", "experiment_title","GSE_accession","species","SRR_accession","QC_summary" )]
     sample_info_DEE2 = metaAll#[, c("GEO_series","species","SRR_accession","QC_summary", "Sample_name", "Library_name" )]
 
     # clean up missing GSE info; this removes some samples from DEE2  588,140 --> 419,814
@@ -185,9 +190,12 @@
     dbListTables(con)
     dbListFields(con,'gse')
 	 
-	 
+
     colnames(GSEinfo)[1] = "GSEID"
 	 
+
+	 
+
     #get gse and title fields from gse table
     rs <- dbGetQuery(con,paste("select gse,title from gse where gse IN ('",
                            paste(GSEinfo$GSEID,collapse="','"),   "')",sep=""))
@@ -225,6 +233,7 @@
     sampleInfo_dee2 <- merge(sample_info_DEE2, rs1, by.x ="Sample_name", by.y = "gsm" )
     #sampleInfo_dee2 <- sampleInfo_dee2[ , c(1,7, 2:6)] #What? select entire table?
     remove(sample_info_DEE2)
+
     
     #colnames(sampleInfo_dee2)  <- colnames(sample_info)
     colnames(sample_info_ARCHRS4)
@@ -237,16 +246,28 @@
     sample_info_ARCHRS4$title<- ''
     #arrange columns of dee2 to match archs4
     a=sampleInfo_dee2 %>% select(Sample_name, Library_name, source_name_ch1, GEO_series, species, SRR_accession, QC_summary, title)
+
+    #colnames(sampleInfo_dee2)  <- colnames(sample_info)
+    colnames(sample_info_ARCHRS4)
+    colnames(sampleInfo_dee2)
+    #arrange columns 
+    library(dplyr)
+    
+    #arrange columns of dee2 to match archs4
+    a=sampleInfo_dee2 %>% select(Sample_name, Library_name, source_name_ch1, GEO_series, species, SRR_accession, QC_summary)
+
     sampleInfo_dee2 = as.data.frame(a)
     remove(a)
     
     #change column names for each sampleINfo to match
+
     colnames(sample_info_ARCHRS4)
     colnames(sampleInfo_dee2)
     
     colnames(sampleInfo_dee2) = colnames(sample_info_ARCHRS4)
     colnames(sampleInfo_dee2)
     
+
     #combine sample infos
     sampleInfoFinal <- rbind(sample_info_ARCHRS4, sampleInfo_dee2)
     
@@ -262,15 +283,17 @@
     convert <- dbConnect(sqlite,"GEO.db")
     
     #Write  GSEinfo.txt
+
     dbWriteTable(convert,"GSEinfo",GSEinfo, overwrite=TRUE)
-    
+
     #add index to GSEinfo.txt
     dbSendQuery( convert,
     "CREATE INDEX index2 ON GSEinfo (GSEID, Species);")
     
     #Write sampleInfo.txt
+
     dbWriteTable(convert,"sampleInfo",sampleInfoFinal, overwrite=TRUE)
-    
+
     
     #Create index on idType
     dbSendQuery( convert,
