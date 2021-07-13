@@ -77,7 +77,7 @@ geneIDPage <- function(input, output, session, orgInfo, path) {
     updateSelectizeInput(session = session, inputId = "userSpecie",
                          choices = SPECIE_LIST, server = TRUE)
     PATH <- paste0(path, 'convertIDs.db')
-    PATH2 <- paste0(path, '/feather/example_of_id.feather')
+    PATH2 <- paste0(path, 'feather/example_of_id.feather')
     default <- getExampleDfID(userSpecie = SPECIE_LIST[1],
                               path2Database = PATH2)
     
