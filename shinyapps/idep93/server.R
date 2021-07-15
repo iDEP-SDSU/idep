@@ -2950,7 +2950,7 @@ output$nGenesFilter <- renderText({
 	# Show info on file format	
 output$fileFormat <- renderUI({
   shinyjs::hideElement(id = 'loadMessage')
-		i = "<h3>Done. Ready to load data files.</h3>"
+		i = "<h3>Ready to load data files.</h3>"
 #		i = c(i,"Users can upload a CSV or tab-delimited text file with the first column as gene IDs. 
 #		For RNA-seq data, read count per gene is recommended.
 #		Also accepted are normalized expression data based on FPKM, RPKM, or DNA microarray data. iDEP can convert most types of common gene IDs to Ensembl gene IDs, which is used 

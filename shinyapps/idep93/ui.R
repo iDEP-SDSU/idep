@@ -146,13 +146,10 @@ iDEPversion,
       shinyjs::useShinyjs(),
       tableOutput('sampleInfoTable')
       ,tableOutput('contents')
-      #,conditionalPanel(" input.goButton == 0 "
+
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
-      ,h3("Meet the development team! We will have a open forum Zoom call with users 2pm (US central time) June 18th! After a brief update, 
-          we will mostly listen to users' feedback as we are actively working on improving iDEP.",
-          a("Email us",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), "for links to the Zoom call. You can also send us your suggestions or feature requests.")
       ,h4("Postdoc and GRA positions available!")
      ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
      
