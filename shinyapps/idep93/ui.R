@@ -9,7 +9,7 @@ library(plotly,verbose=FALSE)
 library('shinyjs', verbose = FALSE)
 library('shinyjs', verbose = FALSE)
 library('reactable', verbose = FALSE)
-iDEPversion = "iDEP.93"
+iDEPversion = "iDEP.92"
 
 shinyUI(
 navbarPage(
@@ -150,6 +150,8 @@ iDEPversion,
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
+      ,h3("We found an issue with the Gene Onotology database derived from Ensembl Release 103, which is used in iDEP 0.93.
+          While we are fixing this issue, we have reverted the database to a previous version used in iDEP 0.92. ")
       ,h4("Postdoc and GRA positions available!")
      ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
      
