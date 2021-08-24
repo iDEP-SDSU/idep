@@ -91,7 +91,7 @@ STRING_DB_VERSION <- "11.0" # what version of STRINGdb needs to be used
 ################################################################
 
 # relative path to data files
-datapath = "../../data/data100/"   # production server
+datapath = Sys.getenv("IDEP_DATA", "../../data/data100/")   # production server
 
 sqlite  <- dbDriver("SQLite")
 convert <- dbConnect( sqlite, paste0(datapath, "convertIDs.db"), flags=SQLITE_RO)  #read only mode
