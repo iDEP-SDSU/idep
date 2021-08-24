@@ -64,6 +64,9 @@ rm data.go.tar.gz
 wget https://sdsu.box.com/shared/static/sorewt7w6iypmhg2k2xhyi8myeit156o.gz -O convertIDs.db.tar.gz
 tar xvzf convertIDs.db.tar.gz
 rm convertIDs.db.tar.gz
+
+cd $IDEP_DATA/data_go
+wget https://raw.githubusercontent.com/villegar/idep/master/data/STRING11_species.csv
 ```
 
 5.  Deploy a local container
