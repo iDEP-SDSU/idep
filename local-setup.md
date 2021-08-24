@@ -1,15 +1,15 @@
 Set up iDEP locally
 ================
 
-1.  (Optional) Download and install docker on your workstation
+1.  (Optional) Download and install Docker on your workstation
 
 <https://docs.docker.com/get-docker/>
 
-2.  Pull the docker image
+2.  Pull the Docker image
 
 <!-- end list -->
 
-  - Download the latest version od the image
+  - Download the latest version of the image
 
 <!-- end list -->
 
@@ -73,8 +73,7 @@ rm convertIDs.db.tar.gz
 ``` bash
 LOCAL_PORT=3838
 docker run -dp $LOCAL_PORT:3838 \
-  -v $IDEP_DATA:/srv/shiny-server/data \
-  -v $IDEP_PATH:/srv/shiny-server/ \
+  -v $IDEP_DATA:/srv/data \
   villegar/idep:latest
 ```
 

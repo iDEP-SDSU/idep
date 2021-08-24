@@ -12,13 +12,13 @@ idep_version <- 93
 port <- 3838
 ```
 
-1. (Optional) Download and install docker on your workstation
+1. (Optional) Download and install Docker on your workstation
 
 https://docs.docker.com/get-docker/
 
-2. Pull the docker image
+2. Pull the Docker image
 
-- Download the latest version od the image
+- Download the latest version of the image
 ```bash
 docker pull villegar/idep:latest
 ```
