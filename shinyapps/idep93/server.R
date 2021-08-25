@@ -91,7 +91,7 @@ STRING_DB_VERSION <- "11.0" # what version of STRINGdb needs to be used
 ################################################################
 
 # relative path to data files
-datapath = Sys.getenv("IDEP_DATA", "/srv/data")   # production server
+datapath = Sys.getenv("IDEP_DATA", "/srv/data/latest")   # production server
 
 
 sqlite  <- dbDriver("SQLite")
