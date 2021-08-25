@@ -29,8 +29,10 @@ docker pull villegar/idep:R-4.0.5
 
 ``` bash
 IDEP_PATH=/path/to/idep
-IDEP_DATA=/path/to/idep/data
-mkdir -p $IDEP_DATA
+IDEP_DATA=/path/to/idep/data/
+LOCAL_PORT=3838
+
+mkdir -p $IDEP_DATA/latest
 ```
 
 <!-- 4. Download the latest version of iDEP from Github -->
@@ -48,7 +50,7 @@ mkdir -p $IDEP_DATA
 <!-- end list -->
 
 ``` bash
-cd $IDEP_DATA
+cd $IDEP_DATA/latest
 wget https://sdsu.box.com/shared/static/c24f792ojoikpzu0lkpng8uuf9ychwm7.gz -O pathwayDB.tar.gz
 tar xvzf pathwayDB.tar.gz
 rm pathwayDB.tar.gz
@@ -74,7 +76,6 @@ wget https://raw.githubusercontent.com/villegar/idep/master/data/STRING11_specie
 <!-- end list -->
 
 ``` bash
-LOCAL_PORT=3838
 docker run -dp $LOCAL_PORT:3838 \
   -v $IDEP_DATA:/srv/data \
   villegar/idep:latest

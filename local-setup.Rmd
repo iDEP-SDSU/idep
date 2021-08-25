@@ -8,8 +8,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r, echo = FALSE}
-idep_version <- 93
-port <- 3838
+IDEP_VERSION <- 93
+DATA_VERSION <- "latest"
+LOCAL_PORT <- 3838
 ```
 
 1. (Optional) Download and install Docker on your workstation
@@ -31,8 +32,10 @@ docker pull villegar/idep:R-4.0.5
 3. Set up global variables and create local directories
 ```bash
 IDEP_PATH=/path/to/idep
-IDEP_DATA=/path/to/idep/data
-mkdir -p $IDEP_DATA
+IDEP_DATA=/path/to/idep/data/
+LOCAL_PORT=`r LOCAL_PORT`
+
+mkdir -p $IDEP_DATA/`r DATA_VERSION`
 ```
 
 <!-- 4. Download the latest version of iDEP from Github -->
@@ -43,7 +46,7 @@ mkdir -p $IDEP_DATA
 
 4. Download the database
 ```bash
-cd $IDEP_DATA
+cd $IDEP_DATA/`r DATA_VERSION`
 wget https://sdsu.box.com/shared/static/c24f792ojoikpzu0lkpng8uuf9ychwm7.gz -O pathwayDB.tar.gz
 tar xvzf pathwayDB.tar.gz
 rm pathwayDB.tar.gz
@@ -66,7 +69,6 @@ wget https://raw.githubusercontent.com/villegar/idep/master/data/STRING11_specie
 
 5. Deploy a local container
 ```bash
-LOCAL_PORT=`r port`
 docker run -dp $LOCAL_PORT:3838 \
   -v $IDEP_DATA:/srv/data \
   villegar/idep:latest
@@ -74,7 +76,7 @@ docker run -dp $LOCAL_PORT:3838 \
 
 
 <!-- ```bash -->
-<!-- LOCAL_PORT=`r port` -->
+<!-- LOCAL_PORT=`r LOCAL_PORT` -->
 <!-- docker run -dp $LOCAL_PORT:3838 \ -->
 <!--   -v $IDEP_DATA:/srv/shiny-server/data \ -->
 <!--   -v $IDEP_PATH:/srv/shiny-server/ \ -->
@@ -83,4 +85,4 @@ docker run -dp $LOCAL_PORT:3838 \
 
 6. Open a web browser and navigate to the following URL
 
-http://localhost:`r port`/idep`r idep_version`
+http://localhost:`r LOCAL_PORT`/idep`r IDEP_VERSION`
