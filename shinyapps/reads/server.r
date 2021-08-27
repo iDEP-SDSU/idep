@@ -1,10 +1,8 @@
 # download public RNA-Seq data from ARCHS4
-# needs to run GSEinfo.R script to generate GSE info file
+# need to run Reads_DB_ARCHS4_DEE2.R to create GEO.db
 
-
-# runApp('~/Bioinformatics/ben_test/shinyapps/reads', display.mode = "showcase")
-
-library(shinyjs)
+# run in showcase mode
+# runApp('~/shinyapps/reads', display.mode = "showcase")
 
 library(shiny)
 library(DT) # for renderDataTable
@@ -21,9 +19,6 @@ destination_fileH_transcript <- "../../data/readCounts/human_transcript_v10.h5"
 destination_fileM_transcript <- "../../data/readCounts/mouse_transcript_v10.h5"
 destination_file_transcript <- ""
 GEOdbFile <- "GEO.db" # ~/idep-master/idep-master/shinyapps/reads
-
-
-# source("getDEE2_v2.r")
 
 
 DEE2Species <- c(
@@ -62,10 +57,8 @@ speciesChoice <- setNames(as.list(orgInfo), orgInfo)
 # Define server logic ----
 server <- function(input, output, session) {
   # populate species
-  # observe{  updateSelectInput(session, "selectedSpecies", choices = speciesChoice )      })
-  
+
   # adds empty space so nothing is selected by default
-  # observe({  updateSelectInput(session, "selectedSpecies", choices = c(" ", speciesChoice))      })
   observe({
     updateRadioButtons(session, "selectedSpecies", choices = speciesChoice, selected = character(0))
   })
@@ -73,7 +66,6 @@ server <- function(input, output, session) {
   dataset.info <- reactive({
     dataset.info <- dbGetQuery(convert, "select * from GSEinfo")
     dataset.info$GSEID <- as.character(dataset.info$GSEID)
-    # dataset.info$Summary = strtrim(dataset.info$Summary, 1100) # shorten summary length
     return(dataset.info)
   })
   

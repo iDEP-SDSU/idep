@@ -59,7 +59,6 @@ shinyUI(
     ),
     
     # GSEinfo table
-    #DT::dataTableOutput("SearchData"),
     HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />'), # a solid line
     
     
