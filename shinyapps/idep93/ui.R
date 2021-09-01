@@ -9,7 +9,7 @@ library(plotly,verbose=FALSE)
 library('shinyjs', verbose = FALSE)
 library('shinyjs', verbose = FALSE)
 library('reactable', verbose = FALSE)
-iDEPversion = "iDEP.92"
+iDEPversion = "iDEP.93"
 
 shinyUI(
 navbarPage(
@@ -150,9 +150,10 @@ iDEPversion,
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
-      ,h3("We found an issue with the Gene Onotology database derived from Ensembl Release 103, which is used in iDEP 0.93.
-          While we are fixing this issue, we have reverted the database to a previous version used in iDEP 0.92. ")
-      ,h4("Postdoc and GRA positions available!")
+      ,h3("We have switched back to Ensembl Release 103, which is used in iDEP 0.93. The previous database issue only 
+          affects pathway analysis in the mouse. So we replaced the mouse pathway data with that derived from Release 100. 
+          This is a temporary fix. We are working hard to update all databases soon. Note that old versions of iDEP can still be used. See the R tab.")
+
      ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
      
       ,h3("New version 0.93 released on 5/23/2021  
