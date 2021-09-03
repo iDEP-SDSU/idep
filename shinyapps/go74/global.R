@@ -47,7 +47,7 @@ library(reshape2)
 library(visNetwork)
 
 # relative path to data files
-datapath = "../../data/data103/"   # production server
+datapath = "../../data/data104/"   # production server
 STRING_DB_VERSION <- "11.0" # what version of STRINGdb needs to be used 
 Min_overlap <- 1
 minSetSize = 3;
