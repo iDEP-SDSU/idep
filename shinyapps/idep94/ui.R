@@ -150,9 +150,7 @@ iDEPversion,
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
-      ,h3("We have switched back to Ensembl Release 103, which is used in iDEP 0.93. The previous database issue only 
-          affects pathway analysis in the mouse. So we replaced the mouse pathway data with that derived from Release 100. 
-          This is a temporary fix. We are working hard to update all databases soon. Note that old versions of iDEP can still be used. See the R tab.")
+      ,h3("iDEP v.0.94 based on Ensebl Release 104 and STRING-db V11. 9/3/2021")
 
      ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
      

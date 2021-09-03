@@ -152,8 +152,9 @@ iDEPversion,
       ,htmlOutput('fileFormat')
       ,h3("We have switched back to Ensembl Release 103, which is used in iDEP 0.93. The previous database issue only 
           affects pathway analysis in the mouse. So we replaced the mouse pathway data with that derived from Release 100. 
-          This is a temporary fix. We are working hard to update all databases soon. Note that old versions of iDEP can still be used. See the R tab.")
-
+          This is a temporary fix. Old versions of iDEP can still be used. See the R tab.")
+     ,h3("NEW 9/3/21: Live in testing mode",
+         a("iDEP v0.94",href="http://bioinformatics.sdstate.edu/idep94/"), "based on Ensembl Release 104 and STRING-db v11.") 
      ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
      
       ,h3("New version 0.93 released on 5/23/2021  

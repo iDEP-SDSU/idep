@@ -84,7 +84,8 @@ ui <- fluidPage(
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen
                                    # ,br(),br(),h2("Scheduled maintenance from 8am to 11am (US Central Standard Time) Wednesday Dec. 18, 2019. Service will be temporarily unavailable.",  style = "color:red"),br(),br()
                                    #,br(),br(),h3("We need your support! We are writing a grant proposal (due June 5th) to NIH to seek support for the development and maintenance of ShinyGO. A brief email on how this tool helped your research would go a long way to support our tiny team, even if you are a graduate student. ",a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=ShinyGO support letter"),  style = "color:blue")
-                                   
+                                        ,h3("NEW 9/3/21: Live in testing mode",
+         a("ShinyGO v0.74",href="http://bioinformatics.sdstate.edu/go74/"), "based on Ensembl Release 104 and STRING-db v11.") 
                                    ,h4("We recently hired Jenny Qi for database updates and user support.",
                                        a("Email Jenny ",href="mailto:gelabinfo@gmail.com?Subject=ShinyGO"),
                                        "for questions, suggestions or data contributions.") 
