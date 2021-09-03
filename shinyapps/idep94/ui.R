@@ -150,7 +150,7 @@ iDEPversion,
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
-      ,h3("iDEP v.0.94 based on Ensebl Release 104 and STRING-db V11. 9/3/2021")
+      ,h3("iDEP v.0.94 based on Ensembl Release 104 and STRING-db V11. 9/3/2021")
 
      ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
      
