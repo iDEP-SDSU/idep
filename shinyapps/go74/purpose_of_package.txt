@@ -1,0 +1,27 @@
+This file explains the purpose for each package that is used, I figured this would be a useful file once multiple packages are used.
+
+Start data: 06-06-2022 (mm-dd-yyyy)
+Data last modified: 06-06-2021, 12:46 PM CST (mm-dd-yyyy,TIME) to help with github merge
+
+Note: I will use package::function either when it's needed, or making it easier to tell where some functions come from.
+
+
+Universal:
+RSQLite This package is used to interact with a database
+
+shiny This package is used to make the shiny app
+
+shinyjs this is used for reset feature
+
+
+gene_id_page_ser.R
+
+feather This package allows for fast read and write of dataframe format files
+
+
+server.R:
+reactable This package improves on table output see: https://glin.github.io/reactable/index.html
+
+
+ui.R
+No new packages for now
