@@ -12,7 +12,7 @@ list.of.packages <- c(
 )
 
 list.of.bio.packages  <- c(
-  "limma", "DESeq2", "edgeR", "gage", "fgsea", "ReactomePA", "pathview", "PREDA",
+  "getDEE2", "limma", "DESeq2", "edgeR", "gage", "fgsea", "ReactomePA", "pathview", "PREDA",
   "impute", "runibic","QUBIC","rhdf5", "STRINGdb",
   "PREDAsampledata", "sfsmisc", "lokern", "multtest", "hgu133plus2.db", 
    "org.Ag.eg.db","org.At.tair.db","org.Bt.eg.db","org.Ce.eg.db","org.Cf.eg.db",
