@@ -3,6 +3,7 @@
 
 # run in showcase mode
 # runApp('~/shinyapps/reads', display.mode = "showcase")
+options(shiny.maxRequestSize = 100 * 1024^2)
 
 library(shiny)
 library(DT) # for renderDataTable
@@ -10,60 +11,88 @@ library("rhdf5")
 library(RSQLite)
 library(getDEE2)
 library(dplyr)
-setwd("~/idep-master/idep-master/shinyapps/reads")
-
-dataPath <- "../../data/readCounts/"
-destination_fileH <- "../../data/readCounts/human_matrix_v10.h5"
-destination_fileM <- "../../data/readCounts/mouse_matrix_v10.h5"
-destination_fileH_transcript <- "../../data/readCounts/human_transcript_v10.h5"
-destination_fileM_transcript <- "../../data/readCounts/mouse_transcript_v10.h5"
-destination_file_transcript <- ""
-GEOdbFile <- "GEO.db" # ~/idep-master/idep-master/shinyapps/reads
 
 
-DEE2Species <- c(
-  "athaliana",
-  "celegans",
-  "dmelanogaster",
-  "drerio",
-  "ecoli",
-  "hsapiens",
-  "mmusculus",
-  "rnorvegicus",
-  "scerevisiae"
-)
-names(DEE2Species) <- c(
-  "Arabidopsis",
-  "Worm",
-  "Fly",
-  "Zebrafish",
-  "E coli",
-  "Human",
-  "Mouse",
-  "Rat",
-  "Yeast"
-)
 
-sqlite <- dbDriver("SQLite")
-convert <- dbConnect(sqlite, GEOdbFile, flags = SQLITE_RO) # read only mode
-
-# dbListTables(convert)
-# dbListFields(convert, 'GSEinfo')
-# get a list of species
-orgInfo <- dbGetQuery(convert, paste("select distinct species from GSEinfo "))
-orgInfo <- sort(orgInfo[, 1]) # convert data frame to vector, and sort
-speciesChoice <- setNames(as.list(orgInfo), orgInfo)
 
 # Define server logic ----
 server <- function(input, output, session) {
-  # populate species
+  
+  
+  dataPath <- "C:/Users/bdere/OneDrive/Documents/idep-master/idep-master/data/readCounts"
+  destination_fileH <- paste(dataPath, "/human_matrix_v10.h5", sep="")
+  destination_fileM <- paste(dataPath, "/mouse_matrix_v10.h5", sep="")
+  destination_fileH_transcript <- paste(dataPath, "/human_transcript_v10.h5", sep="")
+  destination_fileM_transcript <- paste(dataPath, "/mouse_transcript_v10.h5", sep="")
+  destination_file_transcript <- ""
+  GEOdbFile <- paste(dataPath, "/GEO.db", sep="") # ~/idep-master/idep-master/shinyapps/reads
+  
+  
+  sqlite <- dbDriver("SQLite")
+  convert <- dbConnect(sqlite, GEOdbFile, flags = SQLITE_RO) # read only mode
+  
+  #dbListTables(convert)
+  # dbListFields(convert, 'GSEinfo')
+  DEE2Species <- c(
+    "athaliana",
+    "celegans",
+    "dmelanogaster",
+    "drerio",
+    "ecoli",
+    "hsapiens",
+    "mmusculus",
+    "rnorvegicus",
+    "scerevisiae"
+  )
+  
+  
+  names(DEE2Species) <- c(
+    "Arabidopsis",
+    "Worm",
+    "Fly",
+    "Zebrafish",
+    "E coli",
+    "Human",
+    "Mouse",
+    "Rat",
+    "Yeast"
+  )
+  
+  # get a list of species
+  orgInfo <- dbGetQuery(convert, paste("select distinct species from GSEinfo "))
+  orgInfo <- sort(orgInfo[, 1]) # convert data frame to vector, and sort
+  speciesChoice <- setNames(as.list(orgInfo), orgInfo)
 
-  # adds empty space so nothing is selected by default
-  observe({
-    updateRadioButtons(session, "selectedSpecies", choices = speciesChoice, selected = character(0))
+
+
+  GSEID <- "null"
+  
+  #updattes species botton selection
+  reactive(input$selectedSpecies,{
+     updateRadioButtons(session, "selectedSpecies", choices = speciesChoice, selected = "ARCHS4_Mouse")
+    })
+  #disables downlaod button when species changes
+  observeEvent(input$selectedSpecies,{
+    shinyjs::disable("downloadSearchedData")
+    shinyjs::disable("downloadSearchedDataTranscript") 
+    shinyjs::disable("downloadSearchedDataTxInfo")
+    shinyjs::disable("downloadSearchedDataGeneInfo") 
+    shinyjs::disable("downloadSearchedDataQCmat")
+    shinyjs::disable("downloadSearchedDataSummaryMeta")
   })
+ 
+  #enables download buttons after row is selected
+  observeEvent(input$SearchData_rows_selected,{
+    shinyjs::enable("downloadSearchedData")
+    shinyjs::enable("downloadSearchedDataTranscript") 
+    shinyjs::enable("downloadSearchedDataTxInfo")
+    shinyjs::enable("downloadSearchedDataGeneInfo") 
+    shinyjs::enable("downloadSearchedDataQCmat")
+    shinyjs::enable("downloadSearchedDataSummaryMeta")  
+  }) 
   
   dataset.info <- reactive({
+
     dataset.info <- dbGetQuery(convert, "select * from GSEinfo")
     dataset.info$GSEID <- as.character(dataset.info$GSEID)
     return(dataset.info)
@@ -71,16 +100,17 @@ server <- function(input, output, session) {
   
   # retrieve sample info and counts data
   Search <- reactive({
+
     if (is.null(input$SearchData_rows_selected)) {
       return(NULL)
     }
-    
+
     # row selected by clicking
     iy <- which(dataset.info()$Species == input$selectedSpecies)
     ix <- iy[input$SearchData_rows_selected]
     
     GSEID <- dataset.info()$GSEID[ix]
-    
+
     GSEID <- gsub(" ", "", GSEID)
     
     querySTMT <- paste("select * from sampleInfo where gse = '",
@@ -91,13 +121,14 @@ server <- function(input, output, session) {
     results <- dbGetQuery(convert, querySTMT)
     
     selectedSpecies <- names(sort(table(results[, 5]), decreasing = T))[1]
-    
+
     if (dim(results)[1] == 0) {
       return(NULL)
     } else if (grepl("ARCHS4", selectedSpecies)) {
       cat("archs4 selected")
+
       withProgress(message = "Parsing ARCHS4 file ...", {
-        samp <- results[, 1] # c("GSM1532588", "GSM1532592" )
+        samp <- results[, 1]
         if (selectedSpecies == "ARCHS4_Human") {
           destination_file <- destination_fileH
           destination_file_transcript <- destination_fileH_transcript
@@ -185,14 +216,16 @@ server <- function(input, output, session) {
           # download data using DEE2 API
           len <- length(SRRlist)
           if (len <= 500) {
-            data1 <- getDEE2(selectedSpecies, SRRlist, outfile = "myfile.zip")
+            data1 <- getDEE2(selectedSpecies, SRRvec=SRRlist, outfile = "myfile.zip")
             geneCounts <- as.data.frame(data1@assays@data@listData$counts)
             geneInfo <- loadGeneInfo("myfile.zip")
             TranscriptInfo <- loadTxInfo("myfile.zip")
-            QCmat <- loadQcMx("mydata.zip")
-            SummaryMeta <- loadSummaryMeta("mydata.zip")
+            # These stopped working for some reason
+            QCmat <- loadQcMx("myfile.zip")
+            SummaryMeta <- loadSummaryMeta("myfile.zip")
             
-          } else if (len > 500) {
+          } else {
+            if (len > 500) {
             # for large samples, we can only read 500 at a time
             iter <- floor(len / 500) + 1
             start <- 1
@@ -201,13 +234,15 @@ server <- function(input, output, session) {
               data1_prime <- getDEE2(selectedSpecies, SRRvec = SRRlist[start:end], outfile = "myfile.zip")
               geneInfo <- loadGeneInfo("myfile.zip")
               
-              data_chunk < -as.data.frame(data1_prime@assays@data@listData$counts)
+              data_chunk <- as.data.frame(data1_prime@assays@data@listData$counts)
               
               if (i == 1) {
                 # initiale data frame with data_chunk dimensions
                 df <- data.frame(matrix(nrow = dim(data_chunk[1]), ncol = 0))
                 geneInfo <- loadGeneInfo("myfile.zip")
                 TranscriptInfo <- loadTxInfo("myfile.zip")
+                QCmat <- loadQcMx("myfile.zip")
+                SummaryMeta <- loadSummaryMeta("myfile.zip")
               }
               df <- cbind(df, data_chunk)
               
@@ -223,6 +258,7 @@ server <- function(input, output, session) {
             
             # rename df
             geneCounts <- df
+            }
           }
           
           ##### Transcript Counts for large number of samples
@@ -371,6 +407,7 @@ server <- function(input, output, session) {
     # indices for a certain species
     iy <- which(dataset.info()$Species == input$selectedSpecies)
     ix <- iy[input$SearchData_rows_selected]
+    
     return(dataset.info()$GSEID[ix])
   })
   

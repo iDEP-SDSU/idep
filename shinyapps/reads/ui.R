@@ -8,6 +8,7 @@ library(shinyjs)
 # Define UI ----
 shinyUI(
   fluidPage(
+    shinyjs::useShinyjs(),
     fluidRow(
       column(12,
              offset = 0,
@@ -46,9 +47,22 @@ shinyUI(
                       
                       column(12, offset = 0, 
                              downloadButton("downloadSearchedData", "Download Gene-Level Counts")),
-                      column(2, downloadButton("downloadSearchedDataTranscript", "Download Transcript-Level Counts")),
+                      column(1, downloadButton("downloadSearchedDataTranscript", "Download Transcript-Level Counts")),
                       
                     ),
+                    #bottom of sidebar
+                    fluidRow(
+                      conditionalPanel("input.selectedSpecies != 'ARCHS4_Human' & input.selectedSpecies != 'ARCHS4_Mouse'",
+
+                      column(12,br(), textOutput("selected_selectedSpecies")),
+                      
+                      column(12, downloadButton("downloadSearchedDataGeneInfo", "Gene info")),
+                      column(12, downloadButton("downloadSearchedDataTxInfo", "Transcript info")),
+                      column(12, downloadButton("downloadSearchedDataSummaryMeta", "Summary MetaData")),
+                      column(11, downloadButton("downloadSearchedDataQCmat", "QC Matrix"))
+                      
+                      )
+                    )
       ),
       
       # Show a plot of the generated distribution
@@ -67,14 +81,14 @@ shinyUI(
       
     ),
     conditionalPanel(
-      "input.selectedSpecies != 'ARCHS4_Human' & input.selectedSpecies != 'ARCHS4_Mouse'", #& !is.null(input.selectedDataset)",
-      fluidRow(column(3, offset = 9, textOutput("selected_selectedSpecies"), )),
+      "input.selectedSpecies != 'ARCHS4_Human' & input.selectedSpecies != 'ARCHS4_Mouse' & input.GSEID != 'null'",
+      #fluidRow(column(3, offset = 9, textOutput("selected_selectedSpecies"), )),
       fluidRow(
         conditionalPanel(
-          "input.selectedSpecies != 'ARCHS4_Human' & input.selectedSpecies != 'ARCHS4_Mouse'",
+          "input.selectedSpecies != 'ARCHS4_Human' & input.selectedSpecies != 'ARCHS4_Mouse'& input.GSEID != 'null'",
           column(8, ""),
-          column(1, offset = 1, downloadButton("downloadSearchedDataGeneInfo", "Gene info")),
-          column(1, downloadButton("downloadSearchedDataQCmat", "QC Matrix")),
+       #   column(1, offset = 1, downloadButton("downloadSearchedDataGeneInfo", "Gene info")),
+         # column(1, downloadButton("downloadSearchedDataQCmat", "QC Matrix")),
           
         )
       ),
@@ -87,9 +101,8 @@ shinyUI(
         # ,htmlOutput('DoneLoading')
       ),
       conditionalPanel(
-        "input.selectedSpecies != 'ARCHS4_Human' & input.selectedSpecies != 'ARCHS4_Mouse'",
-        column(1, offset = 4, downloadButton("downloadSearchedDataTxInfo", "Transcript info")),
-        column(2, downloadButton("downloadSearchedDataSummaryMeta", "Summary MetaData"))
+        "input.selectedSpecies != 'ARCHS4_Human' & input.selectedSpecies != 'ARCHS4_Mouse' & input.GSEID != 'null'",
+        #column(2, downloadButton("downloadSearchedDataSummaryMeta", "Summary MetaData"))
       )
     ),
     
