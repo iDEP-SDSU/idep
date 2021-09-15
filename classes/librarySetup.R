@@ -1,4 +1,5 @@
 # dplyr complains this required libraries: libudunits2-dev, libmariadb-client-lgpl-dev
+#demo
 # install.packages("plotly", repos="http://cran.rstudio.com/", dependencies=TRUE)
 # sometimes need to remove all installed packages: https://www.r-bloggers.com/how-to-remove-all-user-installed-packages-in-r/ 
 list.of.packages <- c(
