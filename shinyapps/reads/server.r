@@ -12,7 +12,9 @@ library(RSQLite)
 library(getDEE2)
 library(dplyr)
   
-  dataPath <- "../../data/readCounts"
+  #dataPath <- "../../data/readCounts"
+   dataPath <- "C:/Users/bdere/OneDrive/Documents/idep-master/idep-master/data/readCounts"
+
   destination_fileH <- paste(dataPath, "/human_matrix_v10.h5", sep="")
   destination_fileM <- paste(dataPath, "/mouse_matrix_v10.h5", sep="")
   destination_fileH_transcript <- paste(dataPath, "/human_transcript_v10.h5", sep="")
@@ -61,10 +63,6 @@ library(dplyr)
 # Define server logic ----
 server <- function(input, output, session) {
   
-
-
-
-
   GSEID <- "null"
   
   #updattes species botton selection
