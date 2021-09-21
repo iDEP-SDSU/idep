@@ -214,15 +214,17 @@ server <- function(input, output, session) {
           
           
           # download data using DEE2 API
+          tmp <- tempfile()
           len <- length(SRRlist)
           if (len <= 500) {
-            data1 <- getDEE2(selectedSpecies, SRRvec=SRRlist) #outfile = "myfile.zip")
+            data1 <- getDEE2(selectedSpecies, SRRvec=SRRlist, outfile = tmp) #outfile = "myfile.zip")
             geneCounts <- as.data.frame(data1@assays@data@listData$counts)
-            geneInfo <- loadGeneInfo("myfile.zip")
-            TranscriptInfo <- loadTxInfo("myfile.zip")
+            tmp <- paste(tmp, ".zip", sep="")
+            geneInfo <- loadGeneInfo(tmp)
+            TranscriptInfo <- loadTxInfo(tmp)
             # These stopped working for some reason
-            QCmat <- loadQcMx("myfile.zip")
-            SummaryMeta <- loadSummaryMeta("myfile.zip")
+            QCmat <- loadQcMx(tmp)
+            SummaryMeta <- loadSummaryMeta(tmp)
             
           } else {
             if (len > 500) {
@@ -239,10 +241,10 @@ server <- function(input, output, session) {
               if (i == 1) {
                 # initiale data frame with data_chunk dimensions
                 df <- data.frame(matrix(nrow = dim(data_chunk[1]), ncol = 0))
-                geneInfo <- loadGeneInfo("myfile.zip")
-                TranscriptInfo <- loadTxInfo("myfile.zip")
-                QCmat <- loadQcMx("myfile.zip")
-                SummaryMeta <- loadSummaryMeta("myfile.zip")
+                geneInfo <- loadGeneInfo(tmp)
+                TranscriptInfo <- loadTxInfo(tmp)
+                QCmat <- loadQcMx(tmp)
+                SummaryMeta <- loadSummaryMeta(tmp)
               }
               df <- cbind(df, data_chunk)
               
