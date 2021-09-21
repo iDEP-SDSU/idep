@@ -11,15 +11,8 @@ library("rhdf5")
 library(RSQLite)
 library(getDEE2)
 library(dplyr)
-
-
-
-
-# Define server logic ----
-server <- function(input, output, session) {
   
-  
-  dataPath <- "C:/Users/bdere/OneDrive/Documents/idep-master/idep-master/data/readCounts"
+  dataPath <- "../../data/readCounts"
   destination_fileH <- paste(dataPath, "/human_matrix_v10.h5", sep="")
   destination_fileM <- paste(dataPath, "/mouse_matrix_v10.h5", sep="")
   destination_fileH_transcript <- paste(dataPath, "/human_transcript_v10.h5", sep="")
@@ -62,6 +55,13 @@ server <- function(input, output, session) {
   orgInfo <- dbGetQuery(convert, paste("select distinct species from GSEinfo "))
   orgInfo <- sort(orgInfo[, 1]) # convert data frame to vector, and sort
   speciesChoice <- setNames(as.list(orgInfo), orgInfo)
+
+
+
+# Define server logic ----
+server <- function(input, output, session) {
+  
+
 
 
 
