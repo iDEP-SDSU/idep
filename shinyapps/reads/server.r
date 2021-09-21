@@ -216,7 +216,7 @@ server <- function(input, output, session) {
           # download data using DEE2 API
           len <- length(SRRlist)
           if (len <= 500) {
-            data1 <- getDEE2(selectedSpecies, SRRvec=SRRlist, outfile = "myfile.zip")
+            data1 <- getDEE2(selectedSpecies, SRRvec=SRRlist) #outfile = "myfile.zip")
             geneCounts <- as.data.frame(data1@assays@data@listData$counts)
             geneInfo <- loadGeneInfo("myfile.zip")
             TranscriptInfo <- loadTxInfo("myfile.zip")
@@ -231,7 +231,7 @@ server <- function(input, output, session) {
             start <- 1
             end <- 500
             for (i in 1:iter) {
-              data1_prime <- getDEE2(selectedSpecies, SRRvec = SRRlist[start:end], outfile = "myfile.zip")
+              data1_prime <- getDEE2(selectedSpecies, SRRvec = SRRlist[start:end])#, outfile = "myfile.zip")
               geneInfo <- loadGeneInfo("myfile.zip")
               
               data_chunk <- as.data.frame(data1_prime@assays@data@listData$counts)
