@@ -8,7 +8,7 @@
 ## Local installation
 Local installation of this software is possible through steps below. But it is not supported or updated freqently. Local install is for non-profit organizations only. For-profit businesses please contact us.
 
-## To run iDEP on your laptop (Windows or MacOS):
+## To run iDEP on your local machine (Windows, MacOS, Linux):
 
 1. Upgrade to the most recent version of R and Rstudio.
 2. Start RStudio and install all the R packages by using [this script](https://github.com/iDEP-SDSU/idep/blob/master/classes/librarySetup.R). From RStudio console window:
@@ -16,47 +16,40 @@ Local installation of this software is possible through steps below. But it is n
 source https://raw.githubusercontent.com/iDEP-SDSU/idep/master/classes/librarySetup.R
 ```
 As we need so many R packages, this may take several hours.
-
 3. Download iDEP source code and example data files from Github. The best is to click the Clone or download button on this [page](https://github.com/iDEP-SDSU/idep). And unzip to a folder such as C:/IDEP.
 4. Download the most recet [database files](https://mft.sdstate.edu/public/file/3Y66fppA0Eym0G41taPtRw/data104.tar.gz) and unzip to the same folder (C:/IDEP), so that your database should be at C:/IDEP/data/data104. 
+5. Start Rstudio and load the ui.R and server.R scripts in the folder C:/IDEP/shinyapps/idep94. And then click on Run app. Similarily, the ShinyGO app could be started at the folder, C:/IDEP/shinyapps/go74/. 
 
-5. Start Rstudio and load the ui.R and server.R scripts in the folder C:/IDEP/shinyapps/idep94. And then click on Run app. 
+## To install iDEP on a Linux server:
 
-## To install iDEP as a server, follow the following instructions:
-
-Requirements
+Requirements:
 + Storage should be more than 200GB
 + Memory should be more than 4GB
-+ A Linux system with Docker, Docker-compose and Git installed
++ A Linux system with [Docker](https://docs.docker.com/get-docker/), [Docker-compose](https://docs.docker.com/compose/install/) and [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed
 
-
-
-The following are instructions based on [Docker](https://www.docker.com/).
-1. Download source code
+1. Download iDEP source code to a folder.
 ```
 mkdir ~/idep
 cd ~/idep
 git clone https://github.com/iDEP-SDSU/idep.git
 ```
-2. Download following script based on your system:
+2. Download database and build docker image.
+For Ubuntu, you can run this [script](https://raw.githubusercontent.com/iDEP-SDSU/idep/master/docs/SetupScripts/ubuntu/setup.sh)
 
-+ For Ubuntu: [Ubuntu](https://raw.githubusercontent.com/iDEP-SDSU/idep/master/docs/SetupScripts/ubuntu/setup.sh)
-Note: We are working on the script for other systems.
-
-Run setup script in root:
 ```
 sudo sh setup.sh
 ```
-Wait until the script shows 'iDEP is ready.' It can take several hours, as the script installs dozens of R packages and also copies a large database automatically.
+Wait until the script shows 'iDEP docker images and databases are ready!' It can take several hours, as the script installs dozens of R packages and also copies a large database automatically.
 
-3. Start system
+3. Start the Shiny server with Docker-compose.
 ```
 sudo docker-compose up -d --scale webapp=15 
 ```
-Now the server is running. 
-Note: `webapp=15` indicates the web application count. Based on your system capacity, you can increase or decrease this number.
-You can bring everything down, removing the containers entirely, with the down command. Pass `--volumes` to also remove the data volume.
+Now the server is running. You should be able to use iDEP from a web browser with http://12.12.12.12/idep94/, where 12.12.12.12 is the IP address of the server. The server's port 80 should be exposed.
+
+You can bring the Shiny server down, Pass `--volumes` to also remove the data volume.
 ```
+cd ~/IDEP/
 sudo docker-compose down --volumes
 ```
 
@@ -64,9 +57,4 @@ A [user](https://github.com/wresch) has contributed scripts to install a standal
 
 ## Documentation
 https://idepsite.wordpress.com/
-http://docs.rstudio.com/shiny-server/
 
-
-## Resources
-### Docker-Compose documentation
-https://docs.docker.com/compose/reference/overview/

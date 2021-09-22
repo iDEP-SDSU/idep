@@ -10,7 +10,6 @@ echo 'Docker images have been built. Start downloading data.'
 
 mkdir data
 cd data
-
 wget https://mft.sdstate.edu/public/file/3Y66fppA0Eym0G41taPtRw/data104.tar.gz .
 tar xvzf data104.tar.gz
 rm data104.tar.gz
