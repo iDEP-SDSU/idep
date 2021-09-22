@@ -17,9 +17,9 @@ source https://raw.githubusercontent.com/iDEP-SDSU/idep/master/classes/librarySe
 ```
 As we need so many R packages, this may take several hours.
 
-3. Download iDEP source code and example data files from Github. The best is to click the Clone or download button on this [page](https://github.com/iDEP-SDSU/idep). And unzip to a folder such as C:/IDEP.
+3. Download iDEP source code and example data files from GitHub. The best is to click the Clone or download button on this [page](https://github.com/iDEP-SDSU/idep). And unzip to a folder such as C:/IDEP.
 
-4. Download the most recet [database files](https://mft.sdstate.edu/public/file/3Y66fppA0Eym0G41taPtRw/data104.tar.gz) and unzip to the same folder (C:/IDEP), so that your database should be at C:/IDEP/data/data104. 
+4. Download the most recent [database files](https://mft.sdstate.edu/public/file/3Y66fppA0Eym0G41taPtRw/data104.tar.gz) and unzip to the same folder (C:/IDEP), so that your database can be found at C:/IDEP/data/data104. 
 
 5. Start Rstudio and load the ui.R and server.R scripts in the folder C:/IDEP/shinyapps/idep94. And then click on Run app. Similarily, the ShinyGO app could be started at the folder, C:/IDEP/shinyapps/go74/. 
 
@@ -48,7 +48,7 @@ Wait until the script shows 'iDEP docker images and databases are ready!' It can
 ```
 sudo docker-compose up -d --scale webapp=15 
 ```
-Now the server is running. You should be able to use iDEP from a web browser with http://12.12.12.12/idep94/, where 12.12.12.12 is the IP address of the server. The server's port 80 should be exposed.
+Now the server is running. You should be able to use iDEP from a web browser with http://12.12.12.12/idep94/, where 12.12.12.12 is the IP address of the server. ShinyGO can used via http://12.12.12.12/go74/. The server's port 80 should be exposed.
 
 You can bring the Shiny server down, Pass `--volumes` to also remove the data volume.
 ```
