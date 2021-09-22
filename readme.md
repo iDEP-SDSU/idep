@@ -13,12 +13,12 @@ Local installation of this software is possible through steps below. But it is n
 1. Upgrade to the most recent version of R and Rstudio.
 2. Start RStudio and install all the R packages by using [this script](https://github.com/iDEP-SDSU/idep/blob/master/classes/librarySetup.R). From RStudio console window:
 ```
-source https://github.com/iDEP-SDSU/idep/blob/master/classes/librarySetup.R
+source https://raw.githubusercontent.com/iDEP-SDSU/idep/master/classes/librarySetup.R
 ```
-This may take several hours.
+As we need so many R packages, this may take several hours.
 
 3. Download iDEP source code and example data files from Github. The best is to click the Clone or download button on this [page](https://github.com/iDEP-SDSU/idep). And unzip to a folder such as C:/IDEP.
-4. Download the most recet [database files](https://mft.sdstate.edu/public/file/3Y66fppA0Eym0G41taPtRw/data104.tar.gz) and unzip to the same folder (C:/IDEP). For version 104 of the database, your database should be at C:/IDEP/data/data104. 
+4. Download the most recet [database files](https://mft.sdstate.edu/public/file/3Y66fppA0Eym0G41taPtRw/data104.tar.gz) and unzip to the same folder (C:/IDEP), so that your database should be at C:/IDEP/data/data104. 
 
 5. Start Rstudio and load the ui.R and server.R scripts in the folder C:/IDEP/shinyapps/idep94. And then click on Run app. 
 
