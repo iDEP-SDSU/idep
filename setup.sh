@@ -16,5 +16,5 @@ rm data104.tar.gz
 
 echo 'Data has been downloaded and unziped'
 
-echo 'All image are ready to run'
+echo 'iDEP docker images and databases are ready!'
 

@@ -15,13 +15,12 @@ Requirements:
 + Most recent version of R and RStudio installed.
 
 1. Upgrade to the most recent version of R and Rstudio.
-2. Start RStudio and install all the R packages by using [this script](https://github.com/iDEP-SDSU/idep/blob/master/classes/librarySetup.R). From RStudio console window:
+2. Start RStudio and install all the R packages by using [this script](https://github.com/iDEP-SDSU/idep/blob/master/classes/librarySetup.R). As we need so many R packages, this may take several hours. From RStudio console window:
 ```
 source https://raw.githubusercontent.com/iDEP-SDSU/idep/master/classes/librarySetup.R
 ```
-As we need so many R packages, this may take several hours.
 
-3. Download iDEP source code and example data files from GitHub. The best is to click the Clone or download button on this [page](https://github.com/iDEP-SDSU/idep). And unzip to a folder such as C:/IDEP.
+3. Download iDEP source code and example data files from GitHub. The best is to click the Clone or Download button on this [page](https://github.com/iDEP-SDSU/idep). And unzip to a folder such as C:/IDEP.
 
 4. Download the most recent [database files](https://mft.sdstate.edu/public/file/3Y66fppA0Eym0G41taPtRw/data104.tar.gz) and unzip to the same folder (C:/IDEP), so that your database can be found at C:/IDEP/data/data104. 
 
@@ -73,7 +72,7 @@ Now the server is running. You should be able to use iDEP from a web browser wit
 
 You can bring the Shiny server down, Pass `--volumes` to also remove the data volume.
 ```
-cd ~/IDEP/
+cd ~/idep/
 sudo docker-compose down --volumes
 ```
 
