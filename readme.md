@@ -52,15 +52,19 @@ sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-
 sudo chmod +x /usr/local/bin/docker-compose
 ```
 
-4. Download iDEP source code, build docker images, and download database file from our FTP server. Here we are installing iDEP in the home directory; change to other folder if desired.
+4. Copy iDEP source code from GitHub. Here we are installing iDEP in the home directory; change to other folder if desired.
 ```
 cd ~
+git clone https://github.com/iDEP-SDSU/idep.git
+```. 
+5. Build docker images, and download database file from our FTP server. It can take as much as 5 hours, as the script installs dozens of R packages and also copies a large database automatically.
+```
 sudo sh setup.sh
 ```
 This[script](https://raw.githubusercontent.com/iDEP-SDSU/idep/master/docs/SetupScripts/ubuntu/setup.sh)
-was tested on Ubuntu. Wait until the script shows 'iDEP docker images and databases are ready!' It can take as much as 5 hours, as the script installs dozens of R packages and also copies a large database automatically.
+was tested on Ubuntu. Wait until the script shows 'iDEP docker images and databases are ready!' 
 
-5. Start the Shiny server with Docker-compose.
+6. Start the Shiny server with Docker-compose.
 ```
 sudo docker-compose up -d --scale webapp=15 
 ```

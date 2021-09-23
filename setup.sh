@@ -2,9 +2,8 @@
 # requires docker, docker-compose
 #  Updated 9/23/2021 by Xijin.Ge@sdstate.edu
 
-# copy the source code of iDEP from GitHub
-git clone https://github.com/iDEP-SDSU/idep.git
-
+# idep folder should already be created by git clone.
+cd idep
 
 #Build nginx image (this is fast)
 docker build ./nginx/. -t nginx  
