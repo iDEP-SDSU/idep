@@ -9,6 +9,10 @@
 Local installation of this software is possible through steps below. But it is not supported or updated freqently. Local install is for non-profit organizations only. For-profit businesses please contact us to license the database.
 
 ## To run iDEP on your local machine (Windows, MacOS, Linux):
+Requirements:
++ Storage should be more than 200GB
++ Memory should be more than 4GB
++ Most recent version of R and RStudio installed.
 
 1. Upgrade to the most recent version of R and Rstudio.
 2. Start RStudio and install all the R packages by using [this script](https://github.com/iDEP-SDSU/idep/blob/master/classes/librarySetup.R). From RStudio console window:
@@ -28,23 +32,40 @@ As we need so many R packages, this may take several hours.
 Requirements:
 + Storage should be more than 200GB
 + Memory should be more than 4GB
-+ A Linux system with [Docker](https://docs.docker.com/get-docker/), [Docker-compose](https://docs.docker.com/compose/install/) and [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed
++ A Linux system with port 80 open for web access. 
 
-1. Download iDEP source code to a folder.
+1. Install [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), if it is not available.  For Ubuntu:
 ```
-mkdir ~/idep
-cd ~/idep
+sudo apt install git-all
+```
+
+2. Install [Docker](https://docs.docker.com/get-docker/)
+```
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+```
+
+3. Install [Docker-compose](https://docs.docker.com/compose/install/)
+```
+sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+```
+
+4. Download iDEP source code to a folder. Here create a idep folder under the home directory.
+```
+cd ~
 git clone https://github.com/iDEP-SDSU/idep.git
 ```
-2. Download database and build docker image.
+5. Download the database and build docker images.
 For Ubuntu, you can run this [script](https://raw.githubusercontent.com/iDEP-SDSU/idep/master/docs/SetupScripts/ubuntu/setup.sh)
 
 ```
+cd ~/idep
 sudo sh setup.sh
 ```
 Wait until the script shows 'iDEP docker images and databases are ready!' It can take several hours, as the script installs dozens of R packages and also copies a large database automatically.
 
-3. Start the Shiny server with Docker-compose.
+6. Start the Shiny server with Docker-compose.
 ```
 sudo docker-compose up -d --scale webapp=15 
 ```
