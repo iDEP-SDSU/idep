@@ -22,7 +22,7 @@ shinyUI(
                actionLink("Statistics", "here"),
                "to see the number of datasets and samples by species.",
                br(),
-               "To begin, select a species and a source below."
+               "To begin, select a species and a source below. Then, select a row on the table."
              ),
       ),
     ),
