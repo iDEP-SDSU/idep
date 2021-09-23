@@ -65,8 +65,9 @@ sudo sh idep/setup.sh
 This[script](https://raw.githubusercontent.com/iDEP-SDSU/idep/master/docs/SetupScripts/ubuntu/setup.sh)
 was tested on Ubuntu. Wait until the script shows 'iDEP docker images and databases are ready!' 
 
-6. Start the Shiny server with Docker-compose.
+6. Start the Shiny server with Docker-compose from the idep folder.
 ```
+cd idep
 sudo docker-compose up -d --scale webapp=15 
 ```
 Now the server is running with 15 containers to serve many concurrent users. Currently the number has to be 15. You should be able to use iDEP from a web browser with http://12.12.12.12/idep94/, where 12.12.12.12 is the IP address of the server. ShinyGO can used via http://12.12.12.12/go74/. The server's port 80 should be available and exposed.
