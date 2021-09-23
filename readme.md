@@ -10,8 +10,8 @@ Local installation of this software is possible through steps below. But it is n
 
 ## To run iDEP on your local machine (Windows, MacOS, Linux):
 Requirements:
-+ Storage should be more than 200GB
-+ Memory should be more than 4GB
++ More than 200GB available storage
++ More than 4GB memory
 + Most recent version of R and RStudio installed.
 
 1. Upgrade to the most recent version of R and Rstudio.
@@ -29,9 +29,11 @@ source https://raw.githubusercontent.com/iDEP-SDSU/idep/master/classes/librarySe
 ## To install iDEP on a Linux server:
 
 Requirements:
-+ Storage should be more than 200GB
-+ Memory should be more than 4GB
++ More than 200GB available storage
++ More than 4GB memory
 + A Linux system with port 80 open for web access. 
+
+Cloud computing providers such as Amazon AWS provides temporary servers that can be used inexpensively for a fixed time period.
 
 1. Install [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), if it is not available.  For Ubuntu:
 ```
@@ -68,7 +70,7 @@ Wait until the script shows 'iDEP docker images and databases are ready!' It can
 ```
 sudo docker-compose up -d --scale webapp=15 
 ```
-Now the server is running. You should be able to use iDEP from a web browser with http://12.12.12.12/idep94/, where 12.12.12.12 is the IP address of the server. ShinyGO can used via http://12.12.12.12/go74/. The server's port 80 should be exposed.
+Now the server is running with 15 containers to serve many concurrent users. You should be able to use iDEP from a web browser with http://12.12.12.12/idep94/, where 12.12.12.12 is the IP address of the server. ShinyGO can used via http://12.12.12.12/go74/. The server's port 80 should be exposed.
 
 You can bring the Shiny server down, Pass `--volumes` to also remove the data volume.
 ```
