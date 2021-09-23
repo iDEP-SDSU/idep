@@ -58,7 +58,7 @@ cd ~
 git clone https://github.com/iDEP-SDSU/idep.git
 ```
  
-5. Build docker images, and download database file from our FTP server. It can take as much as 5 hours, as the script installs dozens of R packages and also copies a large database automatically.
+5. Build docker images, and download database file from our FTP server. It can take as much as up to 2 hours, as the script installs dozens of R packages and also copies and unzips a large database.
 ```
 sudo sh idep/setup.sh
 ```
