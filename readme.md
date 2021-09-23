@@ -33,7 +33,7 @@ Requirements:
 + More than 4GB memory
 + A Linux system with port 80 open for web access. 
 
-Cloud computing providers such as Amazon AWS provides temporary servers that can be used inexpensively for a fixed time period.
+Cloud computing providers such as Amazon AWS provides temporary servers that can be used inexpensively, especially the spot instances.
 
 1. Install [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), if it is not available.  For Ubuntu:
 ```
@@ -52,31 +52,20 @@ sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-
 sudo chmod +x /usr/local/bin/docker-compose
 ```
 
-4. Download iDEP source code to a folder. Here create a idep folder under the home directory.
+4. Download iDEP source code, build docker images, and download database file from our FTP server. Here we are installing iDEP in the home directory; change to other folder if desired.
 ```
 cd ~
-git clone https://github.com/iDEP-SDSU/idep.git
-```
-5. Download the database and build docker images.
-For Ubuntu, you can run this [script](https://raw.githubusercontent.com/iDEP-SDSU/idep/master/docs/SetupScripts/ubuntu/setup.sh)
-
-```
-cd ~/idep
 sudo sh setup.sh
 ```
-Wait until the script shows 'iDEP docker images and databases are ready!' It can take several hours, as the script installs dozens of R packages and also copies a large database automatically.
+This[script](https://raw.githubusercontent.com/iDEP-SDSU/idep/master/docs/SetupScripts/ubuntu/setup.sh)
+was tested on Ubuntu. Wait until the script shows 'iDEP docker images and databases are ready!' It can take as much as 5 hours, as the script installs dozens of R packages and also copies a large database automatically.
 
-6. Start the Shiny server with Docker-compose.
+5. Start the Shiny server with Docker-compose.
 ```
 sudo docker-compose up -d --scale webapp=15 
 ```
-Now the server is running with 15 containers to serve many concurrent users. You should be able to use iDEP from a web browser with http://12.12.12.12/idep94/, where 12.12.12.12 is the IP address of the server. ShinyGO can used via http://12.12.12.12/go74/. The server's port 80 should be exposed.
+Now the server is running with 15 containers to serve many concurrent users. Currently the number has to be 15. You should be able to use iDEP from a web browser with http://12.12.12.12/idep94/, where 12.12.12.12 is the IP address of the server. ShinyGO can used via http://12.12.12.12/go74/. The server's port 80 should be available and exposed.
 
-You can bring the Shiny server down, Pass `--volumes` to also remove the data volume.
-```
-cd ~/idep/
-sudo docker-compose down --volumes
-```
 
 A [user](https://github.com/wresch) has contributed scripts to install a standalone version using [Singularity](https://www.sylabs.io/). Following the instruction in this [folder.](https://github.com/iDEP-SDSU/idep/tree/master/singularity_standalone)
 
