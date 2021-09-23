@@ -56,7 +56,8 @@ sudo chmod +x /usr/local/bin/docker-compose
 ```
 cd ~
 git clone https://github.com/iDEP-SDSU/idep.git
-```. 
+```
+ 
 5. Build docker images, and download database file from our FTP server. It can take as much as 5 hours, as the script installs dozens of R packages and also copies a large database automatically.
 ```
 sudo sh setup.sh
