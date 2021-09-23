@@ -62,8 +62,7 @@ git clone https://github.com/iDEP-SDSU/idep.git
 ```
 sudo sh idep/setup.sh
 ```
-This[script](https://raw.githubusercontent.com/iDEP-SDSU/idep/master/docs/SetupScripts/ubuntu/setup.sh)
-was tested on Ubuntu. Wait until the script shows 'iDEP docker images and databases are ready!' 
+The setup.sh script was tested only on Ubuntu. Wait until the script shows 'iDEP docker images and databases are ready!' 
 
 6. Start the Shiny server with Docker-compose from the idep folder.
 ```
