@@ -34,6 +34,7 @@ Requirements:
 + A Linux system with port 80 open for web access. 
 
 Cloud computing providers such as Amazon AWS provides temporary servers that can be used inexpensively, especially the spot instances.
+See this [video](https://youtu.be/m-3vyGNYDOQ) for some step-by-step screen-shot.
 
 1. Install [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), if it is not available.  For Ubuntu:
 ```
