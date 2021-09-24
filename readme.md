@@ -22,7 +22,7 @@ source https://raw.githubusercontent.com/iDEP-SDSU/idep/master/classes/librarySe
 
 3. Download iDEP source code and example data files from GitHub. The best is to click the green "Code" button and select "Download ZIP" on this [page](https://github.com/iDEP-SDSU/idep). Unzip to a folder such as C:/IDEP, so that it contains all the subfolders such as config, classes, shinyapps, and so on.
 
-4. Download the most recent database file from [here](https://mft.sdstate.edu/public/file/3Y66fppA0Eym0G41taPtRw/data104.tar.gz). Unzip it to the same folder (C:/IDEP), so that your database can be found at C:/IDEP/data/data104. 
+4. Download the most recent database file from [here](http://18.235.92.206:8080/data104.tar.gz). Unzip it to the same folder (C:/IDEP), so that your database can be found at C:/IDEP/data/data104. 
 
 5. Start Rstudio and load the ui.R and server.R scripts in the folder C:/IDEP/shinyapps/idep94. And then click on Run app. Similarily, the ShinyGO app could be started at the folder, C:/IDEP/shinyapps/go74/. 
 
