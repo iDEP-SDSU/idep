@@ -154,7 +154,9 @@ iDEPversion,
 
       ,h3("We updated instruction for local installation", a("here.", href="https://github.com/iDEP-SDSU/idep#readme"), 
           "The most recent database file is now publically available, free of charge for non-profit organizations.")
-     ,h4( a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), "Dr. Ge is notorisly slow in responding to emails.") 
+
+      ,h3("Check out the 50,000+ datasets of uniformly processed public RNA-seq data ", a("here!", href="http://bioinformatics.sdstate.edu/reads/" ))
+      ,h4( a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), "Dr. Ge is notorisly slow in responding to emails.") 
 
       ,h5("iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
       ,h5("We will be happy to help prepare your data for iDEP.")
