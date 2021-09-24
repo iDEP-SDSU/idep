@@ -15,7 +15,7 @@ Requirements:
 + Most recent version of R and RStudio installed.
 
 1. Upgrade to the most recent version of R and Rstudio.
-2. Start RStudio and install all the R packages. As we need so many R packages, this may take several hours. From RStudio console window:
+2. Start RStudio and install all the R packages. As we need so many R packages, this may take several hours. You can let it run and get started on steps 3 and 4 below to save time. From RStudio console window:
 ```
 source https://raw.githubusercontent.com/iDEP-SDSU/idep/master/classes/librarySetup.R
 ```
