@@ -232,7 +232,8 @@ server <- function(input, output, session) {
             end <- 500
             for (i in 1:iter) {
               data1_prime <- getDEE2(selectedSpecies, SRRvec = SRRlist[start:end])#, outfile = "myfile.zip")
-              geneInfo <- loadGeneInfo("myfile.zip")
+            tmp <- paste(tmp, ".zip", sep="")
+            geneInfo <- loadGeneInfo(tmp)
               
               data_chunk <- as.data.frame(data1_prime@assays@data@listData$counts)
               
