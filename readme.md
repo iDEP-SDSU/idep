@@ -10,7 +10,7 @@ Local installation of this software is possible through steps below. But it is n
 
 ## To run iDEP on your local machine (Windows, MacOS, Linux):
 Requirements:
-+ More than 200GB available storage
++ More than 250GB available storage
 + More than 4GB memory
 + Most recent version of R and RStudio installed.
 
@@ -29,7 +29,7 @@ source https://raw.githubusercontent.com/iDEP-SDSU/idep/master/classes/librarySe
 ## To install iDEP on a Linux server:
 
 Requirements:
-+ More than 200GB available storage
++ More than 250GB available storage
 + More than 4GB memory
 + A Linux system with port 80 open for web access. 
 
