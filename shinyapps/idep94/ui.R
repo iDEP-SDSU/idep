@@ -33,7 +33,7 @@ iDEPversion,
                                  }"))                    
       ,h5(" and just click the tabs for some magic!", style = "color:red")
       ,p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))
-      ,strong("1. Select or search for your species.")
+      ,strong("1. Optional:Select or search for your species.")
       #,selectInput("selectOrg", label = NULL,"Best matching species",width='100%') 
                       ,selectizeInput('selectOrg', 
                                   label    = NULL,
@@ -152,19 +152,15 @@ iDEPversion,
       ,htmlOutput('fileFormat')
       ,h3("iDEP v.0.94 based on Ensembl Release 104 and STRING-db V11. 9/3/2021")
 
-     ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
-     
-      ,h3("New version 0.93 released on 5/23/2021  
-          includes upgrades to R 4.05, Bioconductor 3.12, 
-         larger database (5000+ species) from Ensembl Release 103 and STRING-db v11. 
-         Massive, manually-collected pathway database for 20 model organisms.
-          Fixed KEGG pathway chart and gene plot.", style = "color:red") 
-     ,h4("We recently hired Jenny Qi for database updates and user support.",
-         a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP")) 
+      ,h3("We updated instruction for local installation", a("here.", href="https://github.com/iDEP-SDSU/idep#readme"), 
+          "The most recent database file is now publically available, free of charge for non-profit organizations.")
+     ,h4( a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), "Dr. Ge is notorisly slow in responding to emails.") 
 
       ,h5("iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
       ,h5("We will be happy to help prepare your data for iDEP.")
-      ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
+      ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
+     
+           ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
      # ) # conditionalPanel
 
     ) # main panel

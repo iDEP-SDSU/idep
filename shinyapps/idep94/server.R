@@ -2585,12 +2585,12 @@ function(input, output,session) {
  # allGeneInfo(): returns all information in the geneInfo file for each gene
  # geneSets(): gene set as a list for pathway analysis
 options(shiny.maxRequestSize = 200*1024^2) # 200MB file max for upload
-observe({  updateSelectizeInput(session, "selectOrg", choices = speciesChoice, selected = speciesChoice[1] )      })
+observe({  updateSelectizeInput(session, "selectOrg", choices = speciesChoice, selected = speciesChoice[1], server = TRUE )      })
 observe({  updateSelectInput(session, "heatColors1", choices = colorChoices )      })
 observe({  updateSelectInput(session, "distFunctions", choices = distChoices )      })
 observe({  updateSelectInput(session, "hclustFunctions", choices = hclustChoices )      })
 # update species for STRING-db related API access
-observe({  	updateSelectizeInput(session, "speciesName", choices = sort(STRING10_species$official_name) ) 	})
+observe({  	updateSelectizeInput(session, "speciesName", choices = sort(STRING10_species$official_name), server = TRUE ) 	})
 
 	################################################################
 	#   Read data
