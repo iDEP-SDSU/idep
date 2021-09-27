@@ -785,7 +785,16 @@ geneInfo <- function (converted,selectOrg){
 		ix = grep(findSpeciesById(selectOrg)[1,1], geneInfoFiles )
 	}
 	if(length(ix) == 1)  # if only one file           #WBGene0000001 some ensembl gene ids in lower case
-	{ x = read.csv(as.character(geneInfoFiles[ix]) ); x[,1]= toupper(x[,1]) } else # read in the chosen file 
+	{ x = read.csv(as.character(geneInfoFiles[ix]) ); 
+      x[,1]= toupper(x[,1]) 
+      # if symbol is missing use Ensembl IDs
+      x$symbol[ is.na( x$symbol) ] <- x[, 1]
+      # if duplicated symbol, paste Ensembl id to the end
+      n_occur <- data.frame(table(x$symbol))
+      ix_duplicated <- which(n_occur$Freq > 1) # rows with duplicated symbols
+      x$symbol[ix_duplicated] <- paste(x$symbol[ix_duplicated], x[ix_duplicated, 1] )
+
+    } else # read in the chosen file 
 	{ return(as.data.frame("Multiple geneInfo file found!") )   }
 	Set = match(x$ensembl_gene_id, querySet)
 	Set[which(is.na(Set))]="Genome"
