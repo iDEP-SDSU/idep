@@ -1528,7 +1528,7 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 		start_time <- Sys.time()		
 		dds = DESeq(dds, parallel=TRUE, BPPARAM=MulticoreParam(6))  # main function		
 		end_time <- Sys.time()
-		writeLines( paste("\nTime", end_time - start_time), "tem.txt")	
+		cat( paste("\nTime", end_time - start_time))	
 		# comparisons 
 		# "group: control vs. mutant"
 		comparisons = gsub(".*: ","",selectedComparisons)
