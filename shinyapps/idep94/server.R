@@ -1478,7 +1478,7 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 								design=~groups)								
 
 	if( is.null(modelFactors)  ) 
-		dds = DESeq(dds)  	else  
+		dds = DESeq(dds, parallel=TRUE, BPPARAM=MulticoreParam(6))  	else  
 	{    # using selected factors and comparisons
 		# build model
 		modelFactors = c(modelFactors,blockFactor) # block factor is just added in. 
@@ -1520,11 +1520,15 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 				DESeq2.Object = paste(DESeq2.Object, " + ",tem)
 			}			
 		}
+
 		DESeq2.Object= paste( DESeq2.Object, ")") # ends the model
 
-		eval(parse(text = DESeq2.Object) )
-		dds = DESeq(dds)  # main function		
 		
+		eval(parse(text = DESeq2.Object) )
+		start_time <- Sys.time()		
+		dds = DESeq(dds, parallel=TRUE, BPPARAM=MulticoreParam(6))  # main function		
+		end_time <- Sys.time()
+		writeLines( paste("\nTime", end_time - start_time), "tem.txt")	
 		# comparisons 
 		# "group: control vs. mutant"
 		comparisons = gsub(".*: ","",selectedComparisons)
@@ -2590,7 +2594,7 @@ observe({  updateSelectInput(session, "heatColors1", choices = colorChoices )   
 observe({  updateSelectInput(session, "distFunctions", choices = distChoices )      })
 observe({  updateSelectInput(session, "hclustFunctions", choices = hclustChoices )      })
 # update species for STRING-db related API access
-observe({  	updateSelectizeInput(session, "speciesName", choices = sort(STRING10_species$official_name), server = TRUE ) 	})
+observe({  	updateSelectizeInput(session, "speciesName", choices = sort(STRING10_species$official_name) ) 	})
 
 	################################################################
 	#   Read data

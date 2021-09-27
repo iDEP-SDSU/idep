@@ -777,8 +777,8 @@ iDEPversion,
                               max   = 400, 
                               value = 100,
                               step  = 10) 
-                 ,htmlOutput("stringDB_network_link")
-                 ,tags$head(tags$style("#stringDB_network_link{color: blue; font-size: 15px;}"))
+                 #,htmlOutput("stringDB_network_link")  #no longer working due to update in STRING-db
+                 #,tags$head(tags$style("#stringDB_network_link{color: blue; font-size: 15px;}"))
                  ,br(),br()
                  ,h5("Interactions among proteins encoded by top up-regulated proteins", align = "center")
                  ,plotOutput("stringDB_network1")    

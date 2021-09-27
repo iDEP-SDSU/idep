@@ -318,8 +318,8 @@ ui <- fluidPage(
 			shinyGO is retrieving a sub-network, calculating PPI enrichment, 
 		  and generating custom URLs to the STRING website containing your genes. This can take 5 minutes. Patience will pay off! ")
                ,sliderInput("nGenesPPI", label = h5("Genes to include:"), min = 0, max = 400, value = 50,step=10) 
-               ,htmlOutput("stringDB_network_link")
-               ,tags$head(tags$style("#stringDB_network_link{color: blue; font-size: 15px;}"))
+               #,htmlOutput("stringDB_network_link")
+               #,tags$head(tags$style("#stringDB_network_link{color: blue; font-size: 15px;}"))
                
                ,plotOutput("stringDB_network1")		 	   
                
