@@ -1435,6 +1435,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 # Differential expression using DESeq2
 DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedComparisons=NULL, sampleInfo = NULL,modelFactors=NULL, blockFactor = NULL, referenceLevels=NULL){
 	library(DESeq2,verbose=FALSE) # count data analysis
+    library("BiocParallel")
 	groups = as.character ( detectGroups( colnames( rawCounts ), sampleInfo) )
 	g = unique(groups)# order is reversed	
 	
