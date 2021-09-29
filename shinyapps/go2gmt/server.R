@@ -47,7 +47,7 @@ server <- function(input, output) {
       genes=c(); goids = c()
       for(i in 1:dim(x)[1]){
         tem = unlist(strsplit(x[i,2],"; ") )
-        tem = gsub(" .*","",tem)
+        #tem = gsub(" .*","",tem)
         
         for(tem2 in tem){
           genes=c(genes,x[i,1]); goids = c(goids, tem2)

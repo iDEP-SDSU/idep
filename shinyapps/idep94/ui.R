@@ -650,6 +650,9 @@ iDEPversion,
         ,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') 
         ,h5("Enrichment analysis for DEGs:")
         ,htmlOutput("selectGO2")
+        ,checkboxInput("UseFilteredGenesEnrich", 
+                         label = "Use filtered data as background in enrichment(slow)", 
+                         value = TRUE)
         ,tags$style(type='text/css', "#selectGO2 { width:100%;   margin-top:-9px}")
         ,actionButton("ModalEnrichmentPlot", "Enrichment tree")
         ,actionButton("ModalEnrichmentNetwork", "Enrichment network")       

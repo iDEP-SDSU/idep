@@ -36,7 +36,7 @@ checkPackages <- function() {
   }
 }# end of checkPackages
 
-checkPackages()
+#checkPackages() #R packages should not be installed on server.
 library(shiny)
 library(RSQLite)
 library(ggplot2)
@@ -405,6 +405,13 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
                          groupings= as.data.frame("ID not recognized!")  )
   if(is.null(converted) ) return(idNotRecognized) # no ID
   querySet <- converted$IDs;
+
+    if(!is.null(gInfo) )
+        if(dim(gInfo)[1] > 1) {  # some species does not have geneInfo. STRING
+	# only coding
+	     querySet <- intersect( querySet, 
+                            gInfo[which( gInfo$gene_biotype == "protein_coding"),1] )
+	}
   if(length(querySet) == 0) return(idNotRecognized )
 
   ix = grep(converted$species[1,1],gmtFiles)
@@ -463,21 +470,39 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
 						paste(x0$pathwayID,collapse="', '"),   "') ",sep="") )
   x = merge(x0,pathwayInfo, by.x='pathwayID', by.y='id')
   
+    # filtered pathways with enrichment ratio less than one
+    x <- x[ which( x$overlap/ length(querySet) / (as.numeric(x$n) / totalGenes ) > 1)  ,]
+    x$Pval <- phyper(x$overlap - 1,
+				length(querySet),
+				totalGenes - length(querySet),   
+				as.numeric(x$n), 
+				lower.tail=FALSE );
+    # further filter by nominal P value
+    #x <- subset(x, Pval < 0.2)
   
   #Background genes----------------------------------------------------
   if(!is.null(convertedB) && 
      !is.null(gInfoB) && 
      length( convertedB$IDs) < maxGenesBackground + 1) { # if more than 30k genes, ignore background genes.
-        querySetB <- convertedB$IDs;    
+        querySetB <- convertedB$IDs;   
+     if(!is.null(gInfoB) )
+         if(dim(gInfoB)[1] > 1) {  # some species does not have geneInfo. STRING
+	     # only coding
+	     querySetB <- intersect( querySetB, 
+                            gInfoB[which( gInfoB$gene_biotype == "protein_coding"),1] )
+	 }   
+
         # if background and selected genes matches to different organisms, error
         if( length( intersect( querySetB, querySet ) ) == 0 )    # if none of the selected genes are in background genes
           return(list( x=as.data.frame("None of the selected genes are in the background genes!" )) )
         
         querySetB <- unique( c( querySetB, querySet ) )  # just to make sure the background set includes the query set
         
-        sqlQueryB = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySetB, collapse="', '"),"')" ,sep="")    
-        
-        if( GO != "All") sqlQuery = paste0(sqlQuery, " AND category ='",GO,"'")
+        sqlQueryB = paste( " select distinct gene,pathwayID from pathway where gene IN ('", 
+               paste(querySetB, collapse="', '"),"')" ,sep="")    
+        sqlQueryB = paste0(sqlQueryB, " AND pathwayID IN ('", paste(x$pathwayID, collapse="', '"),"')"  )
+
+        if( GO != "All") sqlQueryB = paste0(sqlQueryB, " AND category ='",GO,"'")
         resultB <- dbGetQuery( pathway, sqlQueryB  )
         if( dim(resultB)[1] ==0) {return(list( x=as.data.frame("No matching species or gene ID file!" )) )}    
         xB = table(resultB$pathwayID)
@@ -492,13 +517,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
                       as.numeric(x2$overlapB), # use the number of genes in background set
                       lower.tail=FALSE ); 
         
-      }   else { # original version without background genes
-          x$Pval <- phyper(x$overlap - 1,
-                        length(querySet),
-                        totalGenes - length(querySet),   
-                        as.numeric(x$n), 
-                        lower.tail=FALSE );
-          }
+      }
   
   # end background genes------------------------------------------------------------
   

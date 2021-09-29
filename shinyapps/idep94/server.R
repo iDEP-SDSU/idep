@@ -804,8 +804,11 @@ geneInfo <- function (converted,selectOrg){
  }
 
 # Main function. Find a query set of genes enriched with functional category
-FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE) {
+FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, convertedData = NULL, useFilteredBackground = NULL) {
+    maxGenesBackground <- 30000
+    minGenesBackground <- 2000
 	maxTerms =15 # max number of enriched terms
+    maxPvalFilter = 0.3
 	idNotRecognized = as.data.frame("ID not recognized!")
 	
 	if(is.null(converted) ) return(idNotRecognized) # no ID 
@@ -814,15 +817,16 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE) 
     if(!is.null(gInfo) )
         if(dim(gInfo)[1] > 1) {  # some species does not have geneInfo. STRING
 	# only coding
-	   gInfo <- gInfo[which( gInfo$gene_biotype == "protein_coding"),]  
-	   querySet <- intersect( querySet, gInfo[,1]);
+	   querySet <- intersect( querySet, 
+                             gInfo[which( gInfo$gene_biotype == "protein_coding"),1] )
 	}
 	if(length(querySet) == 0) return(idNotRecognized )
 	
 	ix = grep(converted$species[1,1],gmtFiles)
 	totalGenes <- converted$species[1,7]
-	
-	if (length(ix) == 0 ) {return(idNotRecognized )}
+    errorMessage = list(x=as.data.frame("Annotation file cannot be found"),
+                         groupings= as.data.frame("Annotation file cannot be found")  )	
+	if (length(ix) == 0 ) {return(errorMessage )}
 	
 	# If selected species is not the default "bestMatch", use that species directly
 	if(selectOrg != speciesChoice[[1]]) {  
@@ -846,25 +850,78 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE) 
 		tem <- result[which(result[,2]== pathwayID ),1]
 		ix = match(tem, converted$conversionTable$ensembl_gene_id) # convert back to original
 		tem2 <- unique( converted$conversionTable$User_input[ix] )
-		if(length(unique(gInfo$symbol) )/dim(gInfo)[1] >.7  ) # if 70% genes has symbol in geneInfo
-		{ ix = match(tem, gInfo$ensembl_gene_id); 
-		tem2 <- unique( gInfo$symbol[ix] )      }
+		#if(length(unique(gInfo$symbol) )/dim(gInfo)[1] >.7  ) # if 70% genes has symbol in geneInfo
+		#{ ix = match(tem, gInfo$ensembl_gene_id); 
+		#tem2 <- unique( gInfo$symbol[ix] )      }
 	return( paste( tem2 ,collapse=" ",sep="") )}
 	
 	x0 = table(result$pathwayID)					
 	x0 = as.data.frame( x0[which(x0>=Min_overlap)] )# remove low overlaps
-	if(dim(x0)[1] <= 5 ) return(idNotRecognized) # no data
+    errorMessage = list(x=as.data.frame("Too few genes."),
+                         groupings= as.data.frame("Too few genes.")  )
+	if(dim(x0)[1] <= 2 ) return(errorMessage) # no data
 	colnames(x0)=c("pathwayID","overlap")
 	pathwayInfo <- dbGetQuery( pathway, paste( " select distinct id,n,Description from pathwayInfo where id IN ('", 
 							paste(x0$pathwayID,collapse="', '"),   "') ",sep="") )
 	
+   
 	x = merge(x0,pathwayInfo, by.x='pathwayID', by.y='id')
-	#browser() 
-	test <- totalGenes - length(querySet)
-	if (test < 0) {
-	  test <- 0
-	}
-	x$Pval=phyper(x$overlap-1,length(querySet),test,as.numeric(x$n), lower.tail=FALSE )
+    
+    # filtered pathways with enrichment ratio less than one
+    x <- x[ which( x$overlap/ length(querySet) / (as.numeric(x$n) / totalGenes ) > 1)  ,]
+    x$Pval <- phyper(x$overlap - 1,
+				length(querySet),
+				totalGenes - length(querySet),   
+				as.numeric(x$n), 
+				lower.tail=FALSE );
+    # further filter by P value; if Pval is big, we assume that using the background genes will not change that.
+    x <- subset(x, Pval < maxPvalFilter)
+
+	  #Background genes----------------------------------------------------
+
+   if(!is.null(useFilteredBackground))
+  if( useFilteredBackground && 
+     length( row.names(convertedData) ) > minGenesBackground &&  # if too few genes, use all
+     length( row.names(convertedData) ) < maxGenesBackground + 1) { # if more than 30k genes, ignore background genes.
+        querySetB <- row.names(convertedData) # all genes in the converted GEnes  
+     if(!is.null(gInfo) )
+         if(dim(gInfo)[1] > 1) {  # some species does not have geneInfo. STRING
+	          # only coding
+	          querySetB <- intersect( querySetB, 
+                             gInfo[which( gInfo$gene_biotype == "protein_coding"),1] )
+	      }  
+
+        if( length( intersect( querySetB, querySet ) ) == 0 )    # if none of the selected genes are in background genes
+          return(list( x=as.data.frame("None of the selected genes are in the background genes!" )) )
+        
+        querySetB <- unique( c( querySetB, querySet ) )  # just to make sure the background set includes the query set
+        
+        sqlQueryB = paste( " select distinct gene,pathwayID from pathway where gene IN ('", 
+                           paste(querySetB, collapse="', '"),"')" ,sep="")    
+        # restrict to pathways with genes matching querySet. This improves the speed drastically
+        sqlQueryB = paste0(sqlQueryB, " AND pathwayID IN ('", paste(x$pathwayID, collapse="', '"),"')"  )
+        
+        if( GO != "All") sqlQueryB = paste0(sqlQueryB, " AND category ='",GO,"'")
+        resultB <- dbGetQuery( pathway, sqlQueryB  )
+        if( dim(resultB)[1] ==0) {return(list( x=as.data.frame("No matching species or gene ID file!" )) )}    
+        xB = table(resultB$pathwayID)
+        rm(resultB)
+        xB = as.data.frame( xB)
+        colnames(xB)=c("pathwayID","overlapB")
+        x2 = merge(x, xB, by='pathwayID', all.x = TRUE)       
+        
+        x$Pval=phyper(x2$overlap - 1,
+                      length(querySet),
+                      length(querySetB) - length(querySet),   
+                      as.numeric(x2$overlapB), # use the number of genes in background set
+                      lower.tail=FALSE ); 
+        
+      }
+  
+  # end background genes------------------------------------------------------------
+  
+
+
 	x$FDR = p.adjust(x$Pval,method="fdr")
 	x <- x[ order( x$FDR)  ,]  # sort according to FDR
 	
@@ -898,6 +955,7 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE) 
 	}
 			
 	dbDisconnect(pathway)
+    
 	return(x )
 } 
                                      #, categoryChoices = categoryChoices 
@@ -1435,7 +1493,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 # Differential expression using DESeq2
 DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedComparisons=NULL, sampleInfo = NULL,modelFactors=NULL, blockFactor = NULL, referenceLevels=NULL){
 	library(DESeq2,verbose=FALSE) # count data analysis
-    library("BiocParallel")
+    #library("BiocParallel")
 	groups = as.character ( detectGroups( colnames( rawCounts ), sampleInfo) )
 	g = unique(groups)# order is reversed	
 	
@@ -1488,7 +1546,7 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 								design=~groups)								
 
 	if( is.null(modelFactors)  ) 
-		dds = DESeq(dds, parallel=TRUE, BPPARAM=MulticoreParam(6))  	else  
+		dds = DESeq(dds)  	else  
 	{    # using selected factors and comparisons
 		# build model
 		modelFactors = c(modelFactors,blockFactor) # block factor is just added in. 
@@ -1535,10 +1593,10 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 
 		
 		eval(parse(text = DESeq2.Object) )
-		start_time <- Sys.time()		
-		dds = DESeq(dds, parallel=TRUE, BPPARAM=MulticoreParam(6))  # main function		
-		end_time <- Sys.time()
-		cat( paste("\nTime", end_time - start_time))	
+	
+		dds = DESeq(dds)  # main function		
+
+
 		# comparisons 
 		# "group: control vs. mutant"
 		comparisons = gsub(".*: ","",selectedComparisons)
@@ -3004,6 +3062,7 @@ allGeneInfo <- reactive({
 				})
 		})
 	})
+
 	
 convertedData <- reactive({
 		if (is.null(input$file1) && input$goButton == 0) return()  
@@ -7135,6 +7194,7 @@ geneListGOTable <- reactive({
 		tem = input$CountsDEGMethod; tem = input$countsLogStart; tem = input$CountsTransform
 		tem = input$minCounts;tem= input$NminSamples; tem = input$lowFilter; tem =input$NminSamples2; tem=input$transform; tem = input$logStart
 		tem = input$removeRedudantSets
+        tem = input$UseFilteredGenesEnrich
 		####################################
 		if( is.null(limma()$results) ) return(NULL)
 		if( is.null(selectedHeatmap.data()) ) return(NULL) # this has to be outside of isolate() !!!
@@ -7165,7 +7225,7 @@ geneListGOTable <- reactive({
 				convertedID <- converted()
 				convertedID$IDs <- query
 				if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
-				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO2,input$selectOrg,1, reduced) }
+				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO2,input$selectOrg,1, reduced, convertedData(), input$UseFilteredGenesEnrich ) }
 
 			if( dim(result)[2] ==1) next;   # result could be NULL
 			if(i == -1) result$direction = "Up regulated"  else result$direction = "Down regulated"
