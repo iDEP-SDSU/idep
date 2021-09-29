@@ -6,7 +6,7 @@
 ## iDEP is a web application hosted at http://bioinformatics.sdstate.edu/idep/ 
 
 ## Local installation
-Local installation of this software is possible through steps below. But it is not supported or updated freqently. Local install is for non-profit organizations only. For-profit businesses please contact us to license the database.
+Local installation of this software is possible through steps below. But it is not supported or updated freqently. Local install is for non-profit organizations only. For-profit businesses please contact us.
 
 ## To run iDEP on your local machine (Windows, MacOS, Linux):
 Requirements:
