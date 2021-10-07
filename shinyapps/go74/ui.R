@@ -166,7 +166,7 @@ ui <- fluidPage(
         
         ,tabPanel("Plots"
                   , h5("The characteristics of your genes are compared with the rest in the genome. Chi-squared and Student's 
-              t-tests are run to see if your genes have special characteristics when compared with all the other genes or, if uploaded a customized background.")
+              t-tests are run to see if your genes have special characteristics when compared with all the other genes or, if uploaded, a customized background.")
                   , plotOutput("genePlot", inline = TRUE,width='auto',height='auto')
                   , plotOutput("genePlot2", inline = TRUE,width='auto',height='auto')  
         )
@@ -340,15 +340,10 @@ ui <- fluidPage(
                               placeholder = 'Paste all genes from which the gene list is derived. These are all genes whose expression or other activity that you measured. This could be all the genes on a special DNA microarray or all the genes detected by a proteomics experiment. 
                     ', rows = 15, "")  
                ,h4("By default, we compare your gene list with a background of all protein-coding genes in the genome.
-		         But in some studies, such as those based on certain DNA microarray or proteomics techniques, 
-		         we only measure a few hudred or thousand of genes. 
-		         When your genes are not derived from genome-wide data, customized background genes might yield more accurate 
-		             results for enrichment analysis. We can also customize background genes to overcome bias in selection. For example,
-		             relatively highly expressed genes in RNA-seq are more likely to be identified as differentially expressed. 
-		             Thus we could enter all the relatively highly expressed genes as background.
-		             It is unneccesary to paste large set of reference genes (like 20,000 genes or more),
-		             as it is much slower and the results 
-		             would be similar. Currently only less than 30,000 genes are accepted.
+     		         When your genes are not selected from genome-wide data, customized background genes might yield more accurate 
+		             results for enrichment analysis. For gene lists derived from a typical RNA-seq dataset, 
+                     many people use the subset of genes with detectable expression, typically the genes passed a filter. 
+                      We can also customize background genes to overcome bias in selection. Currently only less than 30,000 genes are accepted.
 		              ")
                
       ),# bsModal 3	

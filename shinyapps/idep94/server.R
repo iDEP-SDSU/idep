@@ -660,6 +660,7 @@ convertID <- function (query,selectOrg, selectGO) {
 		comb = paste( result$species,result$idType)
 		sortedCounts = sort(table(comb),decreasing=T)
 		# Try to use Ensembl instead of STRING-db genome annotation
+		if(class(sortedCounts) == "table") # if more than 1 species matched
 		if( sortedCounts[1] <= sortedCounts[2] *1.1  # if the #1 species and #2 are close
 			 && as.numeric(names(sortedCounts[1])) > sum( annotatedSpeciesCounts[1:3])  # 1:3 are Ensembl species
 			 && as.numeric(names( sortedCounts[2] )) < sum( annotatedSpeciesCounts[1:3])    ) { # and #2 come earlier (ensembl) than #1
