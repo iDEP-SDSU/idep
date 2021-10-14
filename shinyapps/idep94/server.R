@@ -811,7 +811,7 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 	maxTerms =15 # max number of enriched terms
     maxPvalFilter = 0.3
 	idNotRecognized = as.data.frame("ID not recognized!")
-	
+
 	if(is.null(converted) ) return(idNotRecognized) # no ID 
 	
     querySet <- converted$IDs
@@ -822,11 +822,11 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
                              gInfo[which( gInfo$gene_biotype == "protein_coding"),1] )
 	}
 	if(length(querySet) == 0) return(idNotRecognized )
-	
+
 	ix = grep(converted$species[1,1],gmtFiles)
 	totalGenes <- converted$species[1,7]
-    errorMessage = list(x=as.data.frame("Annotation file cannot be found"),
-                         groupings= as.data.frame("Annotation file cannot be found")  )	
+    errorMessage = as.data.frame("Annotation file cannot be found")
+    
 	if (length(ix) == 0 ) {return(errorMessage )}
 	
 	# If selected species is not the default "bestMatch", use that species directly
@@ -840,10 +840,11 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 		
 	sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySet,collapse="', '"),"')" ,sep="")
 	
-	#cat(paste0("HH",GO,"HH") )
-	
+
+
 	if( GO != "All") sqlQuery = paste0(sqlQuery, " AND category ='",GO,"'")
 	result <- dbGetQuery( pathway, sqlQuery  )
+
 	if( dim(result)[1] ==0) {return(as.data.frame("No matching species or gene ID file!" )) }
 
 	# given a pathway id, it finds the overlapped genes, symbol preferred
@@ -858,8 +859,7 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 	
 	x0 = table(result$pathwayID)					
 	x0 = as.data.frame( x0[which(x0>=Min_overlap)] )# remove low overlaps
-    errorMessage = list(x=as.data.frame("Too few genes."),
-                         groupings= as.data.frame("Too few genes.")  )
+    errorMessage = as.data.frame("Too few genes.")
 	if(dim(x0)[1] <= 2 ) return(errorMessage) # no data
 	colnames(x0)=c("pathwayID","overlap")
 	pathwayInfo <- dbGetQuery( pathway, paste( " select distinct id,n,Description from pathwayInfo where id IN ('", 
@@ -935,9 +935,9 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 		colnames(x)[7]= "Genes"
 		x <- subset(x,select = c(FDR,overlap,n,description,Genes) )
 		colnames(x) = c("Corrected P value (FDR)", "Genes in list", "Total genes in category","Functional Category","Genes"  )
-		
+
 		# remove redudant gene sets
-		if(reduced != FALSE ){  # reduced=FALSE no filtering,  reduced = 0.9 filter sets overlap with 90%
+		if(reduced != FALSE && dim(x)[1] > 5){  # reduced=FALSE no filtering,  reduced = 0.9 filter sets overlap with 90%
 			n=  nrow(x)
 			tem=rep(TRUE,n )
 			geneLists = lapply(x$Genes, function(y) unlist( strsplit(as.character(y)," " )   ) )
@@ -957,7 +957,7 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 			
 	dbDisconnect(pathway)
     
-	return(x )
+	return(x)
 } 
                                      #, categoryChoices = categoryChoices 
 #Given a KEGG pathway description, found pathway ids
@@ -2945,7 +2945,8 @@ readSampleInfo <- reactive ({
 				# remove "-" or "." from factor levels
 				for( i in 1:dim(x)[1]) {
 				   x[i,] = gsub("-","",x[i,])
-				   x[i,] = gsub("\\.","",x[i,])				
+				   x[i,] = gsub("\\.","",x[i,])
+				   x[i,] = gsub(" ","",x[i,])				   
 				}
 				# if levels from different factors match
 				if( length(unique(ix) ) == dim(readData()$data)[2]) { # matches exactly
@@ -5171,8 +5172,19 @@ KmeansGOdata <- reactive({
 				convertedID <- converted()
 				convertedID$IDs <- query
 				if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
-				result = FindOverlap (convertedID,allGeneInfo(),input$selectGO3,input$selectOrg,1,reduced) 
+
+				result <- FindOverlap( converted = convertedID,
+				                       gInfo = allGeneInfo(),
+				                       GO = input$selectGO3,
+				                       selectOrg = input$selectOrg,
+				                       minFDR = minFDR,
+				                       reduced = reduced,
+				                       convertedData = NULL, 
+				                       useFilteredBackground = TRUE
+				                       )
 			}
+			if( is.null(result)) next;   # result could be NULL
+
 			if( dim(result)[2] ==1) next;   # result could be NULL
 			result$direction = toupper(letters)[i] 
 			if (pp==0 ) { results <- result; pp <- 1;
