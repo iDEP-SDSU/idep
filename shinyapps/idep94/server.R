@@ -644,26 +644,30 @@ matchedSpeciesInfo <- function (x) {
 }
 
 # convert gene IDs to ensembl gene ids and find species
+# updated 10/15; some changes not included in Gavin's new version
 convertID <- function (query,selectOrg, selectGO) {
 	querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,')))
 	# querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
- 
-    if( selectOrg == "BestMatch") { # query all species
-	  querySTMT <- paste( "select distinct id,ens,species from mapping where id IN ('", paste(querySet,collapse="', '"),"')",sep="")
-    } else {  # organism has been selected query specific one
- 	  querySTMT <- paste( "select distinct id,ens,species from mapping where species = '",selectOrg,
-                          "' AND id IN ('", paste(querySet,collapse="', '"),"')",sep="")    
-    }
-	result <- dbGetQuery(convert, querySTMT)
-	if( dim(result)[1] == 0  ) return(NULL)
-	if(selectOrg == speciesChoice[[1]]) {
-		comb = paste( result$species,result$idType)
-		sortedCounts = sort(table(comb),decreasing=T)
+    querSetString <- paste0("('", paste(querySet,collapse="', '"),"')")
+	# ('ENSG00000198888', 'ENSG00000198763', 'ENSG00000198804')
+
+	if(selectOrg == speciesChoice[[1]]) {# if best match
+
+	  #First send a query to determine the species
+	  query_species <- paste0( "select species, idType, COUNT(species) as freq from mapping where id IN ", 
+	                      querSetString," GROUP by species,idType")
+	  species_ranked <- dbGetQuery(convert, query_species)
+
+	  if( dim(species_ranked)[1] == 0  ) return(NULL)	  	
+	  sortedCounts <- species_ranked$freq 
+	  names(sortedCounts) <- paste(species_ranked$species, species_ranked$idType)
+	  sortedCounts <- sort(sortedCounts, decreasing = TRUE)
+
 		# Try to use Ensembl instead of STRING-db genome annotation
-		if(class(sortedCounts) == "table") # if more than 1 species matched
-		if( sortedCounts[1] <= sortedCounts[2] *1.1  # if the #1 species and #2 are close
-			 && as.numeric(names(sortedCounts[1])) > sum( annotatedSpeciesCounts[1:3])  # 1:3 are Ensembl species
-			 && as.numeric(names( sortedCounts[2] )) < sum( annotatedSpeciesCounts[1:3])    ) { # and #2 come earlier (ensembl) than #1
+		if(length(sortedCounts) > 1) # if more than 1 species matched
+        if( sortedCounts[1] <= sortedCounts[2] *1.1  # if the #1 species and #2 are close
+             && as.numeric( gsub(" .*", "", names(sortedCounts[1]))) > sum( annotatedSpeciesCounts[1:3])  # 1:3 are Ensembl species
+             && as.numeric( gsub(" .*", "", names(sortedCounts[2]))) < sum( annotatedSpeciesCounts[1:3])    ) {
 		  tem <- sortedCounts[2]
 		  sortedCounts[2] <- sortedCounts[1]
 		  names(sortedCounts)[2] <- names(sortedCounts)[1]
@@ -671,10 +675,12 @@ convertID <- function (query,selectOrg, selectGO) {
 		  names(sortedCounts)[1] <- names(tem)    
 		} 
 		recognized =names(sortedCounts[1])
-		result <- result[which(comb == recognized),]
+		
 		speciesMatched=sortedCounts
-		names(speciesMatched )= sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  ) 
-		speciesMatched <- as.data.frame( speciesMatched )
+		speciesMatched <- as.data.frame( speciesMatched )	
+		orgName <- sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  )
+		speciesMatched <- cbind( orgName,  speciesMatched)
+
 		if(length(sortedCounts) == 1) { # if only  one species matched
 		speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
 		} else {# if more than one species matched
@@ -683,7 +689,24 @@ convertID <- function (query,selectOrg, selectGO) {
 			speciesMatched[1,1] <- paste( speciesMatched[1,1],"   ***Used in mapping***  To change, select from above and resubmit query.") 	
 			speciesMatched <- as.data.frame(speciesMatched[,1])
 		}
+
+	
+		querySTMT <- paste0("select distinct id,ens,species,idType from mapping where ",  
+		                    " species = '", gsub(" .*","", recognized), "'",
+		                    " AND idType = '", gsub(".* ","", recognized ), "'",
+		                    " AND id IN ", querSetString)
+		
+		result <- dbGetQuery(convert, querySTMT)
+		if( dim(result)[1] == 0  ) return(NULL)		
+		
+		
 	} else { # if species is selected
+
+	  querySTMT <- paste0( "select distinct id,ens,species,idType from mapping where species = '", selectOrg,
+	                      "' AND id IN ", querSetString) 
+	  result <- dbGetQuery(convert, querySTMT)
+
+	  if( dim(result)[1] == 0  ) return(NULL)
 		result <- result[which(result$species == selectOrg ) ,]
 		if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
 		speciesMatched <- as.data.frame(paste("Using selected species ", findSpeciesByIdName(selectOrg) )  )
@@ -693,30 +716,9 @@ convertID <- function (query,selectOrg, selectGO) {
 	colnames(speciesMatched) = c("Matched Species (genes)" ) 
 	conversionTable <- result[,1:2]; colnames(conversionTable) = c("User_input","ensembl_gene_id")
 	conversionTable$Species = sapply(result[,3], findSpeciesByIdName )
-	if(0){
-		# generate a list of gene set categories
-		ix = grep(findSpeciesById(result$species[1])[1,1],gmtFiles)
-		if (length(ix) == 0 ) {categoryChoices = NULL}
-		# If selected species is not the default "bestMatch", use that species directly
-		if(selectOrg != speciesChoice[[1]]) {  
-			ix = grep(findSpeciesById(selectOrg)[1,1], gmtFiles )
-			if (length(ix) == 0 ) {categoryChoices = NULL}
-			totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
-		}
-		pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
-		# Generate a list of geneset categories such as "GOBP", "KEGG" from file
-		geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " ) 
-		geneSetCategory  <- geneSetCategory[,1]
-		categoryChoices <- setNames(as.list( geneSetCategory ), geneSetCategory )
-		categoryChoices <- append( setNames( "All","All available gene sets"), categoryChoices  )
-		#change GOBO to the full description for display
-		names(categoryChoices)[ match("GOBP",categoryChoices)  ] <- "GO Biological Process"
-		names(categoryChoices)[ match("GOCC",categoryChoices)  ] <- "GO Cellular Component"
-		names(categoryChoices)[ match("GOMF",categoryChoices)  ] <- "GO Molecular Function"
-		dbDisconnect(pathway)
-	} #if (0)
 
-	return(list(originalIDs = querySet,IDs=unique( result[,2]), 
+	return(list(originalIDs = querySet,
+                IDs=unique( result[,2]), 
 				species = findSpeciesById(result$species[1]), 
 				#idType = findIDtypeById(result$idType[1] ),
 				speciesMatched = speciesMatched,
@@ -805,7 +807,7 @@ geneInfo <- function (converted,selectOrg){
  }
 
 # Main function. Find a query set of genes enriched with functional category
-FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, convertedData = NULL, useFilteredBackground = NULL) {
+FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, convertedDataBackground = NULL) {
     maxGenesBackground <- 30000
     minGenesBackground <- 2000
 	maxTerms =15 # max number of enriched terms
@@ -835,14 +837,14 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 		if (length(ix) == 0 ) {return(idNotRecognized )}
 		totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
 	}
-	pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
-	
+
+	pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)	
 		
 	sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySet,collapse="', '"),"')" ,sep="")
 	
-
-
 	if( GO != "All") sqlQuery = paste0(sqlQuery, " AND category ='",GO,"'")
+
+
 	result <- dbGetQuery( pathway, sqlQuery  )
 
 	if( dim(result)[1] ==0) {return(as.data.frame("No matching species or gene ID file!" )) }
@@ -880,11 +882,10 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 
 	  #Background genes----------------------------------------------------
 
-   if(!is.null(useFilteredBackground))
-  if( useFilteredBackground && 
-     length( row.names(convertedData) ) > minGenesBackground &&  # if too few genes, use all
-     length( row.names(convertedData) ) < maxGenesBackground + 1) { # if more than 30k genes, ignore background genes.
-        querySetB <- row.names(convertedData) # all genes in the converted GEnes  
+  if(!is.null(convertedDataBackground))
+  if(length(convertedDataBackground$IDs) > minGenesBackground &&  # if too few genes, use all
+     length(convertedDataBackground$IDs) < maxGenesBackground + 1) { # if more than 30k genes, ignore background genes.
+        querySetB <- convertedDataBackground$IDs # all genes in the converted GEnes  
      if(!is.null(gInfo) )
          if(dim(gInfo)[1] > 1) {  # some species does not have geneInfo. STRING
 	          # only coding
@@ -951,7 +952,6 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 				}								
 			x <- x[which(tem),]		
 		}
-		
 
 	}
 			
@@ -5156,6 +5156,7 @@ KmeansGOdata <- reactive({
 	tem = input$kmeansNormalization
 	tem = input$nClusters
 	tem = input$removeRedudantSets
+    tem = input$useFilteredAsBackground
 	####################################
 	withProgress(message=sample(quotes,1), detail ="GO Enrichment", {
 		# GO
@@ -5173,14 +5174,20 @@ KmeansGOdata <- reactive({
 				convertedID$IDs <- query
 				if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
 
+                if(input$useFilteredAsBackground) {
+                   convertedDataBackground <- converted() 
+                } else {
+                  convertedDataBackground <- NULL
+                 }
+
+
 				result <- FindOverlap( converted = convertedID,
 				                       gInfo = allGeneInfo(),
 				                       GO = input$selectGO3,
 				                       selectOrg = input$selectOrg,
 				                       minFDR = minFDR,
 				                       reduced = reduced,
-				                       convertedData = NULL, 
-				                       useFilteredBackground = TRUE
+				                       convertedDataBackground = convertedDataBackground
 				                       )
 			}
 			if( is.null(result)) next;   # result could be NULL
@@ -7238,7 +7245,13 @@ geneListGOTable <- reactive({
 				convertedID <- converted()
 				convertedID$IDs <- query
 				if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
-				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO2,input$selectOrg,1, reduced, convertedData(), input$UseFilteredGenesEnrich ) }
+                if(input$UseFilteredGenesEnrich) {
+                   convertedDataBackground <- converted() 
+                } else {
+                  convertedDataBackground <- NULL
+                 }
+
+				result = FindOverlap (convertedID,allGeneInfo(), input$selectGO2,input$selectOrg,1, reduced, convertedDataBackground) }
 
 			if( dim(result)[2] ==1) next;   # result could be NULL
 			if(i == -1) result$direction = "Up regulated"  else result$direction = "Down regulated"

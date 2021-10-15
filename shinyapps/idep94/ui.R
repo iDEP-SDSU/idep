@@ -152,6 +152,8 @@ iDEPversion,
       ,htmlOutput('fileFormat')
       ,h3("iDEP v.0.94 based on Ensembl Release 104 and STRING-db V11. 9/3/2021")
 
+      ,h4("10/15/21: For GO enrichment analysis, we now recommend using background genes, instead of all genes on the genome. In the KNN and DEG2 tabs, it is now the default that all genes passed the filter in Pre-Process tab are used as a customized background.")
+
       ,h3("We updated instruction for local installation", a("here.", href="https://github.com/iDEP-SDSU/idep#readme"), 
           "The most recent database file is now publically available, free of charge for non-profit organizations.")
 
@@ -412,6 +414,7 @@ iDEPversion,
         ,htmlOutput("selectGO3")
         ,tags$style(type='text/css', "#selectGO3 { width:100%;   margin-top:-9px}")
         ,checkboxInput("removeRedudantSets", "Remove redudant genesets", value = TRUE)
+        ,checkboxInput("useFilteredAsBackground", "Use filtered genes as background for enrichment", value = TRUE)
         ,actionButton("ModalEnrichmentPlotKmeans", "Visualize enrichment")
         ,downloadButton('downloadKmeansGO',"Enrichment details")             
         ,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/k-means/",target="_blank")

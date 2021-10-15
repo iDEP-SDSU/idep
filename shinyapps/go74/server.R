@@ -177,7 +177,7 @@ server <- function(input, output, session){
 	   I am comparing your query genes to all 1000+ types of IDs across 5000 species.
 	  This can take up to 3 years. "
     if(is.null(significantOverlaps() )  ) return(NULL)
-    # this solves an error when there is no signficant enrichment
+    # this solves an error when there is no significant enrichment
     if(ncol(significantOverlaps()$x ) ==1 ) return(significantOverlaps()$x)	
     
     withProgress(message= sample(quotes,1),detail=myMessage, {
