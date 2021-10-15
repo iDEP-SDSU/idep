@@ -883,9 +883,11 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 	  #Background genes----------------------------------------------------
 
   if(!is.null(convertedDataBackground))
-  if(length(convertedDataBackground$IDs) > minGenesBackground &&  # if too few genes, use all
+  if( length( intersect( convertedDataBackground$IDs, querySet ) ) > 0.5 * length(querySet) &&  # Species matching? At least half of the query in background
+     length(convertedDataBackground$IDs) > minGenesBackground &&  # if too few genes, use all
      length(convertedDataBackground$IDs) < maxGenesBackground + 1) { # if more than 30k genes, ignore background genes.
-        querySetB <- convertedDataBackground$IDs # all genes in the converted GEnes  
+     
+     querySetB <- convertedDataBackground$IDs # all genes in the converted GEnes  
      if(!is.null(gInfo) )
          if(dim(gInfo)[1] > 1) {  # some species does not have geneInfo. STRING
 	          # only coding
