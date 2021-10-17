@@ -23,18 +23,17 @@ ui <- fluidPage(
       titlePanel("ShinyGO v0.74: Gene Ontology Enrichment Analysis + more"),  
       
       fluidRow(
-        column(8,   actionButton("useDemo", "Use demo genes"),	  	  ),
+        column(8,   actionButton("useDemo1", "Demo genes"),	  	  ),
+        #column(4,   actionButton("useDemo2", "Demo 2"),	  	  ),
         column(4,  p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))	  	  )
       ),
       tags$style(type="text/css", "textarea {width:100%}"),	  	
-      
-      
-      
+                
       tags$textarea(id = 'input_text', placeholder = 'Just paste a list of genes and click Submit. More adjustments below. Most types of gene IDs accepted. Double check the guessed species, and adjust if needed. ', rows = 8, ""),
       
       
       fluidRow(
-        column(8,  actionButton("backgroundGenes", "Customize background")	),
+        column(8,  actionButton("backgroundGenes", "Background (recommended)")	),
         column(4,   actionButton("goButton", strong("Submit"))	  	  )
       ),
       br(),
@@ -58,7 +57,6 @@ ui <- fluidPage(
                            selected = "30")
         )
       ),
-      
       #tags$style(type='text/css', "#minFDR { width:100%;   margin-top:-15px}"),  
       # selectInput("selectOrg", label = NULL,"Best matching species",width='100%'),  
       
@@ -73,25 +71,23 @@ ui <- fluidPage(
                      #,selected = "Best matching species"                                                  
       ), 
       tableOutput('species' ),
-      h5("Check this out if you want example of our gene ids,
-           or download gene mapping."),
+      #h5("Check this out if you want example of our gene ids,
+      #     or download gene mapping."),
       actionButton(inputId = "geneIdButton",
-                   label =  "Optional: Gene ID Examples")
+                   label =  "Gene ID Examples")
     ), # sidebarPanel
     mainPanel(
       tabsetPanel(
         tabPanel("Enrichment" 
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen
-                                   # ,br(),br(),h2("Scheduled maintenance from 8am to 11am (US Central Standard Time) Wednesday Dec. 18, 2019. Service will be temporarily unavailable.",  style = "color:red"),br(),br()
-                                   #,br(),br(),h3("We need your support! We are writing a grant proposal (due June 5th) to NIH to seek support for the development and maintenance of ShinyGO. A brief email on how this tool helped your research would go a long way to support our tiny team, even if you are a graduate student. ",a("Email",href="mailto:Xijin.Ge@SDSTATE.EDU?Subject=ShinyGO support letter"),  style = "color:blue")
-                                   ,h3("Live in testing mode 9/3/2021. Database updated to Ensembl Release 104 and STRING v11.")
-                                   ,h4("We recently hired Jenny Qi for database updates and user support.",
+
+                                   ,h4("Oct. 15, 2021: Version 0.74. Database updated to Ensembl Release 104 and STRING v11. We now recommends the use of background genes in enrichment analysis. V.0.74 is much faster with even large set of background genes.")
+                                   ,h4("We recently hired Jenny for database updates and user support.",
                                        a("Email Jenny ",href="mailto:gelabinfo@gmail.com?Subject=ShinyGO"),
                                        "for questions, suggestions or data contributions.") 
-                                   ,h3("5/23/2021: V. 0.65 Annotation update to Ensembl Release 103 and STRING-db V11. Includes 5000 species and tens of thousands of 
-         manually collected pathways for 20 model organisms.", style = "color:red")
+
                                    
-                                   ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
+                                   #,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
                                    
                                    ,h4("2/3/2020: Now published by", a("Bioinformatics.", href="https://doi.org/10.1093/bioinformatics/btz931",target="_blank"))
                                    ,h4("Just paste your gene list to get enriched GO terms and othe pathways for over 400 plant and animal species, 
@@ -108,7 +104,12 @@ ui <- fluidPage(
                                    ,br(),br(),img(src='chr.png', align = "center",width="444", height="338")			
                                    ,br(),br(),img(src='promoter.png', align = "center",width="717", height="288")					
                  )
-                 
+                 ,div(style="display:inline-block", 
+                          selectInput(inputId = "SortPathways",
+                              label = NULL,
+                              choices = c("Sort by FDR", "Sort by Fold Enriched", "Sort by Genes", "Sort by Category Name" ),
+                              selected = "Sort by Fold Enriched" ),
+                     style="algn:right")
                  ,tableOutput('EnrichmentTable')	
                  ,conditionalPanel("input.goButton != 0", 
                                    downloadButton('downloadEnrichment', 'Download table with gene IDs')			
@@ -236,6 +237,10 @@ ui <- fluidPage(
                   ,br(),br()
                   ,strong("Previous versions (still functional):")
                   ,br()
+                  ,a("ShinyGO V0.65, "
+                     , href="http://bioinformatics.sdstate.edu/go65/")
+                  ,"based on database derived from Ensembl Release 103, archived on Oct. 15, 2021"
+                  ,br()
                   ,a("ShinyGO V0.61, "
                      , href="http://bioinformatics.sdstate.edu/go61/")
                   ,"based on database derived from Ensembl Release 96, archived on May 23, 2020"
@@ -335,14 +340,14 @@ ui <- fluidPage(
                
       )# bsModal 2
       
-      ,bsModal("BackgroundGenes", "Customized background genes (Optional; It can takes 5 minutes)", "backgroundGenes", size = "large"
+      ,bsModal("BackgroundGenes", "Customized background genes (Optional but highly recommended)", "backgroundGenes", size = "large"
                ,tags$textarea(id = 'input_text_b', 
                               placeholder = 'Paste all genes from which the gene list is derived. These are all genes whose expression or other activity that you measured. This could be all the genes on a special DNA microarray or all the genes detected by a proteomics experiment. 
                     ', rows = 15, "")  
                ,h4("By default, we compare your gene list with a background of all protein-coding genes in the genome.
      		         When your genes are not selected from genome-wide data, customized background genes might yield more accurate 
 		             results for enrichment analysis. For gene lists derived from a typical RNA-seq dataset, 
-                     many people use the subset of genes with detectable expression, typically the genes passed a filter. 
+                     many  use the subset of genes with detectable expression, typically the genes passed a minimum filter. 
                       We can also customize background genes to overcome bias in selection. Currently only less than 30,000 genes are accepted.
 		              ")
                

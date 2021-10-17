@@ -16,10 +16,12 @@ server <- function(input, output, session){
   
   # load demo data when clicked
   observe({ 
-    if( input$useDemo ) {
-      updateTextInput(session, 'input_text', value = ExampleGeneList )
+    if( input$useDemo1 ) {
+      updateTextInput(session, 'input_text', value = ExampleGeneList1 )
     }
-    
+   # if( input$useDemo2 ) {
+   #   updateTextInput(session, 'input_text', value = ExampleGeneList2 )
+   # }    
   })
   
   # update species for STRING-db related API access
@@ -47,13 +49,15 @@ server <- function(input, output, session){
   
   # this defines an reactive object that can be accessed from other rendering functions
   converted_background <- reactive({
-    if (input$goButton == 0 | is.null(input$input_text_b))    return()
+    if (input$goButton == 0 | is.null(input$input_text_b))    return() 
+    if (nchar(input$input_text_b) > 10)    return() 
     
     convertID(input$input_text_b,input$selectOrg );
     
   } )
   geneInfoLookup_background <- reactive({
-    if (input$goButton == 0 | is.null(input$input_text_b))    return()
+    if (input$goButton == 0 | nchar(input$input_text_b) > 10)    return()
+    if(is.null( converted_background() )) return()
     geneInfo(converted_background(),input$selectOrg )   # uses converted gene ids thru converted() call
     
   } )
@@ -68,7 +72,9 @@ server <- function(input, output, session){
       withProgress(message= sample(quotes,1),detail="enrichment analysis", {
         #gene info is passed to enable lookup of gene symbols
         tem = geneInfoLookup(); tem <- tem[which( tem$Set == "List"),]
-        temb = geneInfoLookup_background(); temb <- temb[which( temb$Set == "List"),]  	  
+        temb = geneInfoLookup_background(); 
+        if(class(temb) == "data.frame")
+          temb <- temb[which( temb$Set == "List"),]  	  
         FindOverlap( converted(), tem, input$selectGO, input$selectOrg, input$minFDR, input$maxTerms, 
                      converted_background(), temb )
       })
@@ -174,20 +180,46 @@ server <- function(input, output, session){
     tem <- input$input_text_b; # just to make it re-calculate if user changes background
     
     myMessage = "Those genes seem interesting! Let me see what I can do.
-	   I am comparing your query genes to all 1000+ types of IDs across 5000 species.
-	  This can take up to 3 years. "
+	   I am comparing your query genes to all 1000+ types of IDs across 5000 species."
+
     if(is.null(significantOverlaps() )  ) return(NULL)
     # this solves an error when there is no significant enrichment
     if(ncol(significantOverlaps()$x ) ==1 ) return(significantOverlaps()$x)	
     
     withProgress(message= sample(quotes,1),detail=myMessage, {
-      tem <- significantOverlaps();
-      tem$x[, 3] <- as.character(tem$x[, 3]) # convert total genes into character 10/21/19
+      pathways <- significantOverlaps()$x;
+
+      if(input$SortPathways == "Sort by FDR")
+           pathways <- pathways[order(pathways[, 1]), ] 
+      if(input$SortPathways == "Sort by Fold Enriched")
+           pathways <- pathways[order(pathways[, 4], decreasing = TRUE), ] 
+      if(input$SortPathways == "Sort by Genes")
+           pathways <- pathways[order(pathways[, 2], decreasing = TRUE), ]  
+
+      if(input$SortPathways == "Sort by Category Name")
+           pathways <- pathways[order( pathways[, 5]), ]  
+
+      pathways$Pathway <- hyperText(pathways$Pathway, pathways$URL )
+      
+      pathways <- pathways[, -7]
+      #rownames(pathways) <- NULL
+      #pathways[, 1] <- as.numeric( format(pathways[, 1], scientific = TRUE, digits = 3 ) )
+      pathways[, 4] <- as.character( round(pathways[, 4], 1))
+      pathways[, 2] <- as.character(pathways[, 2]) # convert total genes into character 10/21/19
+      pathways[, 3] <- as.character(pathways[, 3]) # convert total genes into character 10/21/19
+      colnames(pathways)[5] <- "Pathways (click for details)"
       incProgress(1, detail = paste("Done"))	  })
-    
-    if(dim(tem$x)[2] >1 ) tem$x[,2] <- as.character(tem$x[,2])
-    if(dim(tem$x)[2] ==1 ) tem$x else tem$x[,1:4]  # If no significant enrichment found x only has 1 column.
-  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+
+    if(dim(pathways)[2] >1 ) pathways[,2] <- as.character(pathways[,2])
+
+    if(dim(pathways)[2] ==1 ) return(pathways) else return(pathways[,1:5])  # If no significant enrichment found x only has 1 column.
+  }, digits = -1, 
+     spacing="s", 
+     striped=TRUE,
+     bordered = TRUE, 
+     width = "auto",
+     hover=TRUE, 
+     sanitize.text.function = function(x) x )
   
   significantOverlaps2 <- reactive({
     if (input$goButton == 0  )    return()
@@ -196,7 +228,8 @@ server <- function(input, output, session){
     tem <- significantOverlaps();
     if(dim(tem$x)[2] ==1 ) return(NULL)
     tem <- tem$x;
-    colnames(tem) = c("adj.Pval","nGenesList","nGenesCategor","Pathways","Genes")
+    colnames(tem) = c("adj.Pval","nGenesList","nGenesCategor","Fold", "Pathways","URL","Genes")
+    tem$Pathways <- gsub(".*'_blank'>|</a>", "", tem$Pathways) # remove URL
     tem$Direction ="Diff"	
     tem
   })
@@ -209,7 +242,8 @@ server <- function(input, output, session){
     tem <- significantOverlaps();
     if(dim(tem$x)[2] ==1 ) return(NULL)
     tem <- tem$x;
-    colnames(tem) = c("adj.Pval","nGenesList","nGenesCategor","Pathways","Genes")
+    colnames(tem) = c("adj.Pval","nGenesList","nGenesCategor","Fold","Pathways","URL","Genes")
+    tem$Pathways <- gsub(".*'_blank'>|</a>", "", tem$Pathways) # remove URL
     if(input$wrapTextNetwork)
       tem$Pathways <- wrap_strings( tem$Pathways ) # wrap long pathway names using default width of 30 10/21/19
     
@@ -224,7 +258,9 @@ server <- function(input, output, session){
     tem <- significantOverlaps();
     if(dim(tem$x)[2] ==1 ) return(NULL)
     tem <- tem$x;
-    colnames(tem) = c("adj.Pval","nGenesList","nGenesCategor","Pathways","Genes")
+    colnames(tem) = c("adj.Pval","nGenesList","nGenesCategor", "Fold", "Pathways","URL","Genes")
+    tem$Pathways <- gsub(".*'_blank'>|</a>", "", tem$Pathways) # remove URL
+
     if(input$wrapTextNetworkStatic)
       tem$Pathways <- wrap_strings( tem$Pathways ) # wrap long pathway names using default width of 30 10/21/19
     
@@ -1129,7 +1165,7 @@ server <- function(input, output, session){
     tem <- significantOverlaps();
     
     if(dim(tem$x)[2] ==1 ) return(NULL)  
-    choices = tem$x[,4]		
+    choices = tem$x[,5]		
     selectInput("sigPathways", label="Select a KEGG pathway to show diagram with query genes highlighted in red:"
                 ,choices=choices)      
   })

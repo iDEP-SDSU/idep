@@ -21,26 +21,10 @@
 # IN/OUT ARGS :
 # RETURN : 
 #################################################################
-checkPackages <- function() {
-  sysLib <- rownames(installed.packages())
-  ################################################################
-  # R packages
-  ################################################################
-  # R packages, installed by:
-  #auto install
-  Rlibs = c('shiny','RSQLite','ggplot2','gridExtra','plotly','igraph',
-            'feather','shinyjs','reactable','reshape2','visNetwork','dendextend','dplyr')
-  notInstalled = setdiff(Rlibs, sysLib)
-  if(length(notInstalled)>0) {
-    install.packages(notInstalled, dependencies = T)
-  }
-}# end of checkPackages
 
-#checkPackages() #R packages should not be installed on server.
 library(shiny)
 library(RSQLite)
 library(ggplot2)
-#library(grid)
 library(gridExtra)
 library(plotly)
 library(reshape2)
@@ -59,7 +43,7 @@ PvalGeneInfo1 = 0.01
 PvalGeneInfo2 = 0.001
 maxGenesBackground = 30000
 pdf(NULL) # this prevents error Cannot open file 'Rplots.pdf'
-ExampleGeneList=
+ExampleGeneList2=
 "Hus1 Rad1 Tp63 Tp73 Usp28 Rad9b Fanci Hus1b 
 Cdk1 Cry1 D7Ertd443e Chek1 Foxo4 Zak Pea15a 
 Mapkapk2 Brca1 Taok1 Cdk5rap3 Ddx39b Mdm2 Fzr1 
@@ -73,7 +57,7 @@ Gigyf2 Mapk14 Bcat1 Fbxo31 Babam1 Cep63 Ccnd1
 Nek11 Fam175a Brsk1 Plk5 Bre Tp53 Taok2 Taok3 
 Nek1 Mre11a Pml Ptpn11 Zfp830 
 "
-ExampleGeneList= "ENSG00000078900
+ExampleGeneList1= "ENSG00000078900
 ENSG00000117614
 ENSG00000117748
 ENSG00000092853
@@ -310,70 +294,85 @@ convertID <- function (query, selectOrg) {
 	# |\\.[0-9] remove anything after A35244.1 -> A35244  
 	#  some gene ids are like Glyma.01G002100
 	
-  querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,' )  ) )
- 	
-  if( selectOrg == "BestMatch") { # query all species
-	  querySTMT <- paste( "select distinct id,ens,species,idType from mapping where id IN ('", paste(querySet,collapse="', '"),"')",sep="")
-    } else {  # organism has been selected query specific one
- 	  querySTMT <- paste( "select distinct id,ens,species,idType from mapping where species = '",selectOrg,
-                          "' AND id IN ('", paste(querySet,collapse="', '"),"')",sep="")    
-    }
-  
-	result <- dbGetQuery(convert, querySTMT)
-  if( dim(result)[1] == 0  ) return(NULL)
+	querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,')))
+	# querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
+    querSetString <- paste0("('", paste(querySet,collapse="', '"),"')")
+	# ('ENSG00000198888', 'ENSG00000198763', 'ENSG00000198804')
 
-  if(selectOrg == speciesChoice[[1]]) { # if best match species
-      comb = paste(result$species, result$idType)
-      sortedCounts = sort( table(comb ),decreasing=T)
-      
-      # Try to use Ensembl instead of STRING-db genome annotation
-      if(class(sortedCounts) != "integer") # when  one species matched, it is a number, not a vector
+	if(selectOrg == speciesChoice[[1]]) {# if best match
+
+	  #First send a query to determine the species
+	  query_species <- paste0( "select species, idType, COUNT(species) as freq from mapping where id IN ", 
+	                      querSetString," GROUP by species,idType")
+	  species_ranked <- dbGetQuery(convert, query_species)
+
+	  if( dim(species_ranked)[1] == 0  ) return(NULL)	  	
+	  sortedCounts <- species_ranked$freq 
+	  names(sortedCounts) <- paste(species_ranked$species, species_ranked$idType)
+	  sortedCounts <- sort(sortedCounts, decreasing = TRUE)
+
+		# Try to use Ensembl instead of STRING-db genome annotation
+		if(length(sortedCounts) > 1) # if more than 1 species matched
         if( sortedCounts[1] <= sortedCounts[2] *1.1  # if the #1 species and #2 are close
              && as.numeric( gsub(" .*", "", names(sortedCounts[1]))) > sum( annotatedSpeciesCounts[1:3])  # 1:3 are Ensembl species
-             && as.numeric( gsub(" .*", "", names(sortedCounts[2]))) < sum( annotatedSpeciesCounts[1:3])    ) 
-          { # and #2 come earlier (ensembl) than #1
-            tem <- sortedCounts[2]
-            sortedCounts[2] <- sortedCounts[1]
-            names(sortedCounts)[2] <- names(sortedCounts)[1]
-            sortedCounts[1] <- tem
-            names(sortedCounts)[1] <- names(tem)    
-        } 
-      
-      
-      recognized = names(sortedCounts[1]) 
-      result <- result[which(comb == recognized )  , ]
-  
-      
-  	  speciesMatched=sortedCounts
-      names(speciesMatched )= sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  )
-      speciesMatched <- as.data.frame( speciesMatched )
-  
-  	  if(length(sortedCounts) == 1) { # if only  one species matched
-  	     speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
-  	   } else {# if more than one species matched
-  		   speciesMatched[,1] <- as.character(speciesMatched[,1])
-  		   speciesMatched[,1] <- paste( speciesMatched[,1]," (",speciesMatched[,2], ")", sep="")
-  		   speciesMatched[1,1] <- paste( speciesMatched[1,1],"   ***Used in mapping***  To change, select from above and resubmit query.")
-  		   speciesMatched <- as.data.frame(speciesMatched[,1])
-  	   }
+             && as.numeric( gsub(" .*", "", names(sortedCounts[2]))) < sum( annotatedSpeciesCounts[1:3])    ) {
+		  tem <- sortedCounts[2]
+		  sortedCounts[2] <- sortedCounts[1]
+		  names(sortedCounts)[2] <- names(sortedCounts)[1]
+		   sortedCounts[1] <- tem
+		  names(sortedCounts)[1] <- names(tem)    
+		} 
+		recognized =names(sortedCounts[1])
+		
+		speciesMatched=sortedCounts
+		speciesMatched <- as.data.frame( speciesMatched )	
+		orgName <- sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  )
+		speciesMatched <- cbind( orgName,  speciesMatched)
 
-  } else { # if species is selected
-    result <- result[which(result$species == selectOrg ) ,]
-    if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
-    speciesMatched <- as.data.frame(paste("Using selected species ", findSpeciesByIdName(selectOrg) )  )
-  }
+		if(length(sortedCounts) == 1) { # if only  one species matched
+		speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
+		} else {# if more than one species matched
+            speciesMatched <- speciesMatched[!duplicated(speciesMatched[, 1]), ] # same species different mapping (ensembl, arayexpress, hpa)
+			speciesMatched[,1] <- as.character(speciesMatched[,1])
+			speciesMatched[,1] <- paste( speciesMatched[,1]," (",speciesMatched[,2], ")", sep="") 
+			speciesMatched[1,1] <- paste( speciesMatched[1,1],"   ***Used in mapping***  To change, select from above and resubmit query.") 	
+			speciesMatched <- as.data.frame(speciesMatched[,1])
+		}
 
-  result <- result[which(!duplicated(result[,1]) ),] # remove duplicates in query gene ids 
-  result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id  
-  colnames(speciesMatched) = c("Matched Species (genes)" )
-  conversionTable <- result[,1:2]; colnames(conversionTable) = c("User_input","ensembl_gene_id")
-  conversionTable$Species = sapply(result[,3], findSpeciesByIdName )
-  return(list(originalIDs = querySet,IDs=unique( result[,2]),
-              species = findSpeciesById(result$species[1]),
-              #idType = findIDtypeById(result$idType[1] ),
-              speciesMatched = speciesMatched,
-			  conversionTable = conversionTable
-			  ) )
+	
+		querySTMT <- paste0("select distinct id,ens,species,idType from mapping where ",  
+		                    " species = '", gsub(" .*","", recognized), "'",
+		                    " AND idType = '", gsub(".* ","", recognized ), "'",
+		                    " AND id IN ", querSetString)
+		
+		result <- dbGetQuery(convert, querySTMT)
+		if( dim(result)[1] == 0  ) return(NULL)		
+		
+		
+	} else { # if species is selected
+
+	  querySTMT <- paste0( "select distinct id,ens,species,idType from mapping where species = '", selectOrg,
+	                      "' AND id IN ", querSetString) 
+	  result <- dbGetQuery(convert, querySTMT)
+
+	  if( dim(result)[1] == 0  ) return(NULL)
+		result <- result[which(result$species == selectOrg ) ,]
+		if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
+		speciesMatched <- as.data.frame(paste("Using selected species ", findSpeciesByIdName(selectOrg) )  )
+	}
+	result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id
+	result <- result[which(!duplicated(result[,1]) ),] # remove duplicates in user ID
+	colnames(speciesMatched) = c("Matched Species (genes)" ) 
+	conversionTable <- result[,1:2]; colnames(conversionTable) = c("User_input","ensembl_gene_id")
+	conversionTable$Species = sapply(result[,3], findSpeciesByIdName )
+
+	return(list(originalIDs = querySet,
+                IDs=unique( result[,2]), 
+				species = findSpeciesById(result$species[1]), 
+				#idType = findIDtypeById(result$idType[1] ),
+				speciesMatched = speciesMatched,
+				conversionTable = conversionTable
+				) )
 }
 
 geneInfo <- function (converted,selectOrg){
@@ -398,6 +397,39 @@ geneInfo <- function (converted,selectOrg){
   return( cbind(x,Set) )}
  }
 
+  hyperText <- function (textVector, urlVector){
+  # for generating pathway lists that can be clicked.
+  # Function that takes a vector of strings and a vector of URLs
+  # and generate hyper text 
+  # add URL to Description 
+  # see https://stackoverflow.com/questions/30901027/convert-a-column-of-text-urls-into-active-hyperlinks-in-shiny
+  # see https://stackoverflow.com/questions/21909826/r-shiny-open-the-urls-from-rendertable-in-a-new-tab
+  if( sum(is.null(urlVector) ) == length(urlVector) )
+     return(textVector)
+ 
+  if(length(textVector) != length(urlVector))
+    return(textVector)
+
+  #------------------URL correction
+  # URL changed from http://amigo.geneontology.org/cgi-bin/amigo/term_details?term=GO:0000077 
+  #                  http://amigo.geneontology.org/amigo/term/GO:0000077
+  urlVector <- gsub("cgi-bin/amigo/term_details\\?term=", "amigo/term/", urlVector )
+  urlVector <- gsub(" ", "", urlVector )
+
+
+  # first see if URL is contained in memo
+  ix <- grepl("http:", urlVector, ignore.case = TRUE)  
+  if(sum(ix) > 0) { # at least one has http?
+    tem <- paste0("<a href='", 
+      urlVector, "' target='_blank'>",
+      textVector, 
+      "</a>" )
+    # only change the ones with URL
+    textVector[ix] <- tem[ix]
+  }
+  return(textVector)
+}
+
 # Main function. Find a query set of genes enriched with functional category
 # For debug:  converted = converted(); gInfo = tem;  GO=input$selectGO; selectOrg=input$selectOrg;  minFDR=input$minFDR; input_maxTerms=input$maxTerms
 FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms, convertedB=NULL, gInfoB=NULL) {
@@ -406,12 +438,14 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   if(is.null(converted) ) return(idNotRecognized) # no ID
   querySet <- converted$IDs;
 
-    if(!is.null(gInfo) )
-        if(dim(gInfo)[1] > 1) {  # some species does not have geneInfo. STRING
-	# only coding
+  if(!is.null(gInfo) )
+     if( class(gInfo) == "data.frame" )
+       if(dim(gInfo)[1] > 1) {  # some species does not have geneInfo. STRING
+	     # only coding
 	     querySet <- intersect( querySet, 
-                            gInfo[which( gInfo$gene_biotype == "protein_coding"),1] )
+                                gInfo[which( gInfo$gene_biotype == "protein_coding"), 1] )
 	}
+
   if(length(querySet) == 0) return(idNotRecognized )
 
   ix = grep(converted$species[1,1],gmtFiles)
@@ -452,9 +486,12 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
     tem <- result[which(result[,2]== pathwayID ),1]
     ix = match(tem, converted$conversionTable$ensembl_gene_id) # convert back to original
     tem2 <- unique( converted$conversionTable$User_input[ix] )
-    #    if(length(unique(gInfo$symbol) )/dim(gInfo)[1] >.7  ) # if 70% genes has symbol in geneInfo
-    #	{ ix = match(tem, gInfo$ensembl_gene_id);
-    #	  tem2 <- unique( gInfo$symbol[ix] )      }
+    if(!is.null(gInfo) )
+       if( class(gInfo) == "data.frame")
+         if( dim(gInfo)[1] > 1)
+           if(length(unique(gInfo$symbol) )/dim(gInfo)[1] >.7  ) { # if 70% genes has symbol in geneInfo
+    	     ix = match(tem, gInfo$ensembl_gene_id);
+    	     tem2 <- unique( gInfo$symbol[ix] )      }
     return( paste( tem2 ,collapse=" ",sep="") )
 	}
   
@@ -466,17 +503,25 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
                          groupings= as.data.frame("Too few genes.")  )
   if(dim(x0)[1] <= 2 ) return(errorMessage) # no data
   colnames(x0)=c("pathwayID","overlap")
-  pathwayInfo <- dbGetQuery( pathway, paste( " select distinct id,n,Description from pathwayInfo where id IN ('",
+
+  pathwayInfo <- dbGetQuery( pathway, paste( " select distinct id,n,description,memo from pathwayInfo where id IN ('",
 						paste(x0$pathwayID,collapse="', '"),   "') ",sep="") )
+  
+
+
+#  pathwayInfo$description <- hyperText( pathwayInfo$description, pathwayInfo$memo)
+#  pathwayInfo <- pathwayInfo[, -4] # remove memo/URL
+   
   x = merge(x0,pathwayInfo, by.x='pathwayID', by.y='id')
   
     # filtered pathways with enrichment ratio less than one
-    x <- x[ which( x$overlap/ length(querySet) / (as.numeric(x$n) / totalGenes ) > 1)  ,]
+    #x <- x[ which( x$overlap/ length(querySet) / (as.numeric(x$n) / totalGenes ) > 1)  ,]
     x$Pval <- phyper(x$overlap - 1,
 				length(querySet),
 				totalGenes - length(querySet),   
 				as.numeric(x$n), 
 				lower.tail=FALSE );
+    x$fold <- x$overlap/length(querySet) / (as.numeric(x$n) / totalGenes )
     # further filter by nominal P value
     #x <- subset(x, Pval < 0.2)
   
@@ -547,10 +592,11 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   x <- x[which(x$FDR < minFDR),]
   if(dim(x)[1] > as.integer(input_maxTerms) ) x = x[ 1:as.integer(input_maxTerms), ]
   x= cbind(x,sapply( x$pathwayID, sharedGenesPrefered ) )
-  colnames(x)[7]= "Genes"
+ 
+  colnames(x)[9]= "Genes"
   x$n <- as.numeric(x$n) # convert total genes from character to numeric 10/21/19
-  x <- subset(x,select = c(FDR,overlap,n,description,Genes) )
-  colnames(x) = c("Enrichment FDR", "Genes in list", "Total genes","Functional Category","Genes"  )
+  x <- subset(x,select = c(FDR,overlap,n,fold,description,memo,Genes) )
+  colnames(x) = c("Enrichment FDR", "Genes",  "Pathway Genes", "Fold Enriched","Pathway","URL", "Genes"  )
   }
 
  dbDisconnect(pathway)

@@ -645,7 +645,7 @@ matchedSpeciesInfo <- function (x) {
 
 # convert gene IDs to ensembl gene ids and find species
 # updated 10/15; some changes not included in Gavin's new version
-convertID <- function (query,selectOrg, selectGO) {
+convertID <- function (query,selectOrg) {
 	querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,')))
 	# querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
     querSetString <- paste0("('", paste(querySet,collapse="', '"),"')")
@@ -684,6 +684,7 @@ convertID <- function (query,selectOrg, selectGO) {
 		if(length(sortedCounts) == 1) { # if only  one species matched
 		speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
 		} else {# if more than one species matched
+            speciesMatched <- speciesMatched[!duplicated(speciesMatched[, 1]), ] # same species different mapping (ensembl, arayexpress, hpa)
 			speciesMatched[,1] <- as.character(speciesMatched[,1])
 			speciesMatched[,1] <- paste( speciesMatched[,1]," (",speciesMatched[,2], ")", sep="") 
 			speciesMatched[1,1] <- paste( speciesMatched[1,1],"   ***Used in mapping***  To change, select from above and resubmit query.") 	
@@ -817,12 +818,15 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 	if(is.null(converted) ) return(idNotRecognized) # no ID 
 	
     querySet <- converted$IDs
-    if(!is.null(gInfo) )
-        if(dim(gInfo)[1] > 1) {  # some species does not have geneInfo. STRING
-	# only coding
-	   querySet <- intersect( querySet, 
-                             gInfo[which( gInfo$gene_biotype == "protein_coding"),1] )
+
+  if(!is.null(gInfo) )
+     if( class(gInfo) == "data.frame" )
+       if(dim(gInfo)[1] > 1) {  # some species does not have geneInfo. STRING
+	     # only coding
+	     querySet <- intersect( querySet, 
+                                gInfo[which( gInfo$gene_biotype == "protein_coding"), 1] )
 	}
+
 	if(length(querySet) == 0) return(idNotRecognized )
 
 	ix = grep(converted$species[1,1],gmtFiles)
@@ -854,10 +858,14 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 		tem <- result[which(result[,2]== pathwayID ),1]
 		ix = match(tem, converted$conversionTable$ensembl_gene_id) # convert back to original
 		tem2 <- unique( converted$conversionTable$User_input[ix] )
-		#if(length(unique(gInfo$symbol) )/dim(gInfo)[1] >.7  ) # if 70% genes has symbol in geneInfo
-		#{ ix = match(tem, gInfo$ensembl_gene_id); 
-		#tem2 <- unique( gInfo$symbol[ix] )      }
-	return( paste( tem2 ,collapse=" ",sep="") )}
+        if(!is.null(gInfo) )
+          if( class(gInfo) == "data.frame")
+            if( dim(gInfo)[1] > 1)
+              if(length(unique(gInfo$symbol) )/dim(gInfo)[1] >.7  ) { # if 70% genes has symbol in geneInfo
+    	        ix = match(tem, gInfo$ensembl_gene_id);
+    	        tem2 <- unique( gInfo$symbol[ix] )      }
+	     return( paste( tem2 ,collapse=" ",sep="") )
+    }
 	
 	x0 = table(result$pathwayID)					
 	x0 = as.data.frame( x0[which(x0>=Min_overlap)] )# remove low overlaps
@@ -878,7 +886,7 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 				as.numeric(x$n), 
 				lower.tail=FALSE );
     # further filter by P value; if Pval is big, we assume that using the background genes will not change that.
-    x <- subset(x, Pval < maxPvalFilter)
+    #x <- subset(x, Pval < maxPvalFilter)
 
 	  #Background genes----------------------------------------------------
 
@@ -3045,7 +3053,7 @@ converted <- reactive({
 		tem = input$selectOrg;
 		isolate( {
 		
-		convertID(rownames(readData()$data ),input$selectOrg, input$selectGO );
+		convertID(rownames(readData()$data ),input$selectOrg);
 
 		# converted()$conversionTable: Not matched is skipped
 		#User_input	ensembl_gene_id	Species
