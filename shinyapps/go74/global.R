@@ -473,9 +473,13 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   names(categoryChoices)[ match("GOCC",categoryChoices)  ] <- "GO Cellular Component"
   names(categoryChoices)[ match("GOMF",categoryChoices)  ] <- "GO Molecular Function"
 
-  sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySet, collapse="', '"),"')" ,sep="")
-
-  if( GO != "All") sqlQuery = paste0(sqlQuery, " AND category ='",GO,"'")
+   if( GO != "All") {
+     sqlQuery = paste( " select distinct gene,pathwayID from pathway where category='", GO, "'",
+                          " AND gene IN ('", paste(querySet, collapse="', '"),"')" ,sep="")
+   } else {
+     sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", 
+                        paste(querySet, collapse="', '"),"')" ,sep="")
+   }
   
   result <- dbGetQuery( pathway, sqlQuery  )
   

@@ -807,6 +807,49 @@ geneInfo <- function (converted,selectOrg){
 	return( cbind(x,Set) )}
  }
 
+  hyperText <- function (textVector, urlVector){
+  # for generating pathway lists that can be clicked.
+  # Function that takes a vector of strings and a vector of URLs
+  # and generate hyper text 
+  # add URL to Description 
+  # see https://stackoverflow.com/questions/30901027/convert-a-column-of-text-urls-into-active-hyperlinks-in-shiny
+  # see https://stackoverflow.com/questions/21909826/r-shiny-open-the-urls-from-rendertable-in-a-new-tab
+  if( sum(is.null(urlVector) ) == length(urlVector) )
+     return(textVector)
+ 
+  if(length(textVector) != length(urlVector))
+    return(textVector)
+
+  #------------------URL correction
+  # URL changed from http://amigo.geneontology.org/cgi-bin/amigo/term_details?term=GO:0000077 
+  #                  http://amigo.geneontology.org/amigo/term/GO:0000077
+  urlVector <- gsub("cgi-bin/amigo/term_details\\?term=", "amigo/term/", urlVector )
+  urlVector <- gsub(" ", "", urlVector )
+
+
+  # first see if URL is contained in memo
+  ix <- grepl("http:", urlVector, ignore.case = TRUE)  
+  if(sum(ix) > 0) { # at least one has http?
+    tem <- paste0("<a href='", 
+      urlVector, "' target='_blank'>",
+      textVector, 
+      "</a>" )
+    # only change the ones with URL
+    textVector[ix] <- tem[ix]
+  }
+  return(textVector)
+}
+
+removeHypertext <- function( df ){
+# Given data frame, remove hypertext in all columns
+  if(class(df) == "data.frame") {
+    for( i in 1:dim(df)[2])
+      if(is.character(df[, i]))
+        df[, i] <- gsub(".*'_blank'>|</a>", "", df[, i]) 
+    }
+  return(df)
+}
+
 # Main function. Find a query set of genes enriched with functional category
 FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, convertedDataBackground = NULL) {
     maxGenesBackground <- 30000
@@ -844,10 +887,13 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 
 	pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)	
 		
-	sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", paste(querySet,collapse="', '"),"')" ,sep="")
-	
-	if( GO != "All") sqlQuery = paste0(sqlQuery, " AND category ='",GO,"'")
-
+  if( GO != "All") {
+     sqlQuery = paste( " select distinct gene,pathwayID from pathway where category='", GO, "'",
+                          " AND gene IN ('", paste(querySet, collapse="', '"),"')" ,sep="")
+   } else {
+     sqlQuery = paste( " select distinct gene,pathwayID from pathway where gene IN ('", 
+                        paste(querySet, collapse="', '"),"')" ,sep="")
+   }
 
 	result <- dbGetQuery( pathway, sqlQuery  )
 
@@ -872,10 +918,13 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
     errorMessage = as.data.frame("Too few genes.")
 	if(dim(x0)[1] <= 2 ) return(errorMessage) # no data
 	colnames(x0)=c("pathwayID","overlap")
-	pathwayInfo <- dbGetQuery( pathway, paste( " select distinct id,n,Description from pathwayInfo where id IN ('", 
+	pathwayInfo <- dbGetQuery( pathway, paste( " select distinct id,n,description,memo from pathwayInfo where id IN ('", 
 							paste(x0$pathwayID,collapse="', '"),   "') ",sep="") )
 	
+    # create hypertext
+    pathwayInfo$description <- hyperText(pathwayInfo$description, pathwayInfo$memo )
    
+    pathwayInfo <- subset( pathwayInfo, select = -c(memo))
 	x = merge(x0,pathwayInfo, by.x='pathwayID', by.y='id')
     
     # filtered pathways with enrichment ratio less than one
@@ -5237,12 +5286,13 @@ output$KmeansGO <- renderTable({
 	
     return( results1[,-5])
 	 }
-  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto", hover=T, 
+    sanitize.text.function = function(x) x) # hyperText
 
 output$downloadKmeansGO <- downloadHandler(
 		filename = function() {"KmeansEnrichment.csv"},
 		content = function(file) {
-			write.csv(KmeansGOdata(), file, row.names=FALSE)
+			write.csv( KmeansGOdata(), file, row.names=FALSE)
 	    }
 	) 
 	
@@ -5272,7 +5322,7 @@ output$enrichmentPlotKmeans <- renderPlot({
 	####################################
 	
 	
-	tem1 = KmeansGOdata()
+	tem1 = removeHypertext( KmeansGOdata() )
 	colnames(tem1)[1]="Direction"
 	enrichmentPlot(tem1, 46  )
 
@@ -5283,7 +5333,8 @@ output$enrichmentPlotKmeans4Download <- downloadHandler(
       filename = "enrichmentPlotKmeans.eps",
       content = function(file) {
 	  cairo_ps(file, width = 10, height = 16)
-	  tem = KmeansGOdata()
+	  tem = removeHypertext( KmeansGOdata() )
+
 	  colnames(tem)[1]="Direction"
 	  enrichmentPlot(tem,41  )
         dev.off()
@@ -7302,8 +7353,10 @@ output$geneListGO <- renderTable({
 	
 	return( results1[,-5] )
 	}	
-  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T, 
+  sanitize.text.function = function(x) x ) # for hypertext rendering
 	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })	
+
 output$downloadGOTerms <- downloadHandler(
 		filename = function() {"Enriched.csv"},
 		content = function(file) {
@@ -7314,7 +7367,8 @@ output$downloadGOTerms <- downloadHandler(
 output$enrichmentPlotDEG2 <- renderPlot({
     if(is.null(geneListGOTable())) return(NULL)
 	tem = input$removeRedudantSets
-	enrichmentPlot(geneListGOTable(), 45  )
+    
+	enrichmentPlot(removeHypertext( geneListGOTable() ), 45  )
 
 }, height=600, width=800)
 
@@ -7322,14 +7376,16 @@ output$enrichmentPlotDEG24Download <- downloadHandler(
       filename = "enrichmentPlotDEG2.eps",
       content = function(file) {
 	  cairo_ps(file, width = 10, height = 6)
-	  enrichmentPlot(geneListGOTable(),41  )
+	  enrichmentPlot(removeHypertext( geneListGOTable() ),41  )
         dev.off()
       })
 	  
 output$enrichmentNetworkPlot <- renderPlot({
     if(is.null(geneListGOTable())) return(NULL)
 	tem = input$removeRedudantSets
-	enrichmentNetwork(geneListGOTable(),layout_change = input$layoutButton2 )
+
+	enrichmentNetwork(removeHypertext( geneListGOTable() ),
+                       layout_change = input$layoutButton2 )
 
 }, height=900, width=900)	  
 
@@ -7337,14 +7393,14 @@ output$enrichmentNetworkPlot4Download <- downloadHandler(
       filename = "enrichmentPlotDEG2.eps",
       content = function(file) {
 	  cairo_ps(file, width = 12, height = 12)
-	enrichmentNetwork(geneListGOTable(),layout_change = input$layoutButton2 )
+	enrichmentNetwork(removeHypertext( geneListGOTable() ),layout_change = input$layoutButton2 )
         dev.off()
       })	  
 
 output$enrichmentNetworkPlotly <- renderPlotly({
     if(is.null(geneListGOTable())) return(NULL)
 	tem = input$removeRedudantSets
-	enrichmentNetworkPlotly(geneListGOTable(),layout_change = input$layoutButton2 )
+	enrichmentNetworkPlotly(removeHypertext( geneListGOTable() ),layout_change = input$layoutButton2 )
 
 })	  
 	  

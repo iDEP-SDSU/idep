@@ -104,6 +104,7 @@ ui <- fluidPage(
                                    ,br(),br(),img(src='chr.png', align = "center",width="444", height="338")			
                                    ,br(),br(),img(src='promoter.png', align = "center",width="717", height="288")					
                  )
+                 ,br()
                  ,div(style="display:inline-block", 
                           selectInput(inputId = "SortPathways",
                               label = NULL,
