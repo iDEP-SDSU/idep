@@ -22,7 +22,7 @@ library(e1071,verbose=FALSE) 		# computing kurtosis
 library(DT,verbose=FALSE) 		# for renderDataTable
 library(plotly,verbose=FALSE) 	# for interactive heatmap
 library(reshape2,verbose=FALSE) 	# for melt correlation matrix in heatmap
-
+library(visNetwork) # interative network graphs
 # Bioconductor packages
 #source("https://bioconductor.org/biocLite.R")
 #biocLite(c( "limma", "DESeq2","edgeR","gage", "PGSEA", "fgsea", "ReactomePA", "pathview","PREDA","PREDAsampledata","sfsmisc","lokern","multtest","dplyr"))
@@ -2101,6 +2101,8 @@ enrichmentPlot <- function( enrichedTerms, rightMargin=33) {
 }
 
 
+
+
 # numChar=100 maximum number of characters
 # n=200  maximum number of nodes
 # degree.cutoff = 0    Remove node if less connected
@@ -2112,11 +2114,11 @@ enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue,
     }, node.size = function(x) {
         2.5 * log10(x)
     }, group = FALSE, group.color = c("green","red" ), group.shape = c("circle", 
-        "square"), legend.parameter = list("topright"), show.legend = TRUE, plotting=TRUE, layout_change=0,
-    ...) 
+        "square"), legend.parameter = list("topright"), show.legend = TRUE, plotting=TRUE, 
+    layoutButton = 0, ...) 
 {
 	library(igraph)
-	set.seed(layout_change)
+	set.seed(layoutButton)
     x <- data.frame(x, group)
     colnames(x)[length(colnames(x))] <- "Group"
     x <- x[as.numeric( x[, pvalue]) < pvalue.cutoff, ]
@@ -2174,7 +2176,7 @@ enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue,
     n <- min(nrow(x), n)
     x <- x[1:n, ]
     group.level <- sort(unique(group))
-    pvalues <- x[, pvalue]
+    pvalues <- log10( x[, pvalue] )
     for (i in 1:length(group.level)) {
         index <- x[, "Group"] == group.level[i]
         V(g)$shape[index] <- group.shape[i]
@@ -2185,16 +2187,16 @@ enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue,
                   alpha.f = 0.5)
             }
             else {
-                V(g)$color[index] <- sapply(1 - (group.pvalues - 
+                V(g)$color[index] <- sapply(1 - .9* (group.pvalues - 
                   min(group.pvalues))/(max(group.pvalues) - min(group.pvalues)), 
                   function(x) {
-                    adjustcolor(group.color[i], alpha.f = x)
+                    adjustcolor(group.color[i], alpha.f =  .1 + x ) # change range?
                   })
             }
         }
     }
 	if(plotting) { 
-		plot(g,, vertex.label.dist=1, ...)
+		plot(g, , vertex.label.dist = 1.2, ...)
 		if (show.legend) {
 			legend.parameter$legend <- group.level
 			legend.parameter$text.col <- group.color
@@ -2204,64 +2206,25 @@ enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue,
     return(g)
 }
 
-
-enrichmentNetwork <- function(enrichedTerms,layout_change = 0 ){
+enrichmentNetwork <- function(enrichedTerms, layoutButton=0, edge.cutoff = 5){
 	geneLists = lapply(enrichedTerms$Genes, function(x) unlist( strsplit(as.character(x)," " )   ) )
-	names(geneLists)= enrichedTerms$Pathways
+	names(geneLists) = enrichedTerms$Pathways
 	enrichedTerms$Direction = gsub(" .*","",enrichedTerms$Direction )
 
 	g <- enrich.net2(enrichedTerms, geneLists, node.id = "Pathways", numChar = 100, 
-	   pvalue = "adj.Pval", edge.cutoff = 0.2, pvalue.cutoff = 1, degree.cutoff = 0,
-	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 1, vertex.label.color = "black", layout_change = layout_change)
+	   pvalue = "adj.Pval",  pvalue.cutoff = 1, degree.cutoff = 0,
+	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 1, 
+       vertex.label.color = "black", show.legend = FALSE, 
+       layoutButton = layoutButton, edge.cutoff = edge.cutoff) 
 
 }
 
-enrichmentNetworkPlotly <- function(enrichedTerms, layout_change = 0){
-	geneLists = lapply(enrichedTerms$Genes, function(x) unlist( strsplit(as.character(x)," " )   ) )
-	names(geneLists)= enrichedTerms$Pathways
-
-	g <- enrich.net2(enrichedTerms, geneLists, node.id = "Pathways", numChar = 100, 
-	   pvalue = "adj.Pval", edge.cutoff = 0.2, pvalue.cutoff = 1, degree.cutoff = 0,
-	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 0.8, vertex.label.color = "black"
-	   ,plotting=TRUE, layout_change = layout_change)
-
-	vs <- V(g)
-	es <- as.data.frame(get.edgelist(g))
-	Nv <- length(vs)
-	Ne <- length(es[1]$V1)
-	# create nodes
-	L <- layout.kamada.kawai(g)
-	Xn <- L[,1]
-	Yn <- L[,2]
-	inc = (max(Yn)-min(Yn))/50  # for shifting
-	#group <- ifelse(V(g)$shape == "circle", "GO", "KEGG")
-	 group <- as.character(enrichedTerms$Direction)
-	network <- plot_ly(x = ~Xn, y = ~Yn, type = "scatter", mode = "markers",
-	   marker = list(color = V(g)$color, size = V(g)$size*2,
-		  symbol= ~V(g)$shape, line = list(color = "gray", width = 2)),
-	   hoverinfo = "text", text = ~paste("</br>", group, "</br>", names(vs))) %>%
-	   add_annotations( x = ~Xn, y = ~Yn+inc, text = names(vs), showarrow = FALSE,
-		  font = list(color = "#030303", size = 12))
-	# create edges
-	edge_shapes <- list()
-	for(i in 1:Ne)
-	{
-	   v0 <- es[i,]$V1
-	   v1 <- es[i,]$V2
-	   index0 <- match(v0, names(V(g)))
-	   index1 <- match(v1, names(V(g)))
-	   edge_shape <- list(type = "line", line = list(color = "gray" ,
-		  width = E(g)$width[i]/2), x0 = Xn[index0], y0 = Yn[index0],
-		  x1 = Xn[index1], y1 = Yn[index1])
-	   edge_shapes[[i]] <- edge_shape
-	}
-	# create network
-	axis <- list(title = "", showgrid = FALSE, showticklabels = FALSE, zeroline = FALSE)
-	h <- layout(network, title = "Enrichment Network", shapes = edge_shapes,
-	   xaxis = axis, yaxis = axis)
-	config(h, showLink = TRUE)
-	   
-	   
+# Wrapping long text by adding \n 
+#  "Mitotic DNA damage checkpoint"  --> "Mitotic DNA damage\ncheckpoint"
+# https://stackoverflow.com/questions/7367138/text-wrap-for-plot-titles
+wrap_strings <- function( vector_of_strings, width = 30 ) { 
+  as.character( sapply( vector_of_strings, FUN=function(x) 
+  { paste(strwrap(x, width = width), collapse = "\n")}) )
 }
 
 	# output Parameter: This function outputs values in the input$variable to input_variable 
@@ -2280,427 +2243,6 @@ enrichmentNetworkPlotly <- function(enrichedTerms, layout_change = 0){
 					deparse(substitute(para)))," <- c('", paste0(para, collapse="','" ), "')\t#",annot) )
 
 	}
-
- if(0 ){ # pathway testing
-	x = read.csv("expression.csv")
-	x = read.csv("expression1_no_duplicate.csv")
-	x = read.csv("mouse1.csv")
-	x = read.csv("GSE40261.csv")
-	x = read.csv("GSE52778_All_Sample_FPKM_Matrix.csv")
-	x = read.csv("exampleData/GSE87194.csv")
-	x = read.csv("exampleData/expression_3groups.csv")
-    x = read.csv("C:/Users/Xijin.Ge/Google Drive/research/Shiny/idep/sampleData/BcellGSE71176_p53-two group.csv")
-	x = x[order(x[,1]),]
-	x = x[!duplicated(x[,1]),]
-	rownames(x)= x[,1]
-	x = x[,-1]
-
-	tem = apply(x,1,max)
-	x = x[which(tem> 1),] 
-
-	x = log(x+abs( 1),2)
-	tem = apply(x,1,sd)
-	x = x[order(-tem),]
-
-	selectOrg = "BestMatch"; GO="GOBP"; 
-	myrange = c(15,1000)
-
-	converted = convertID(rownames(x),selectOrg)
-
-	head(converted$conversionTable)
-	mapping = converted$conversionTable
-
-	rownames(x) = toupper(rownames(x))
-	x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
-	tem = apply(x1[,3:(dim(x1)[2]-2)],1,sd)
-	x1 = x1[order(x1[,2],-tem),]
-	x1 = x1[!duplicated(x1[,2]) ,]
-	rownames(x1) = x1[,2]
-	x1 = as.matrix(x1[,c(-1,-2)])
-
-	convertedData = x1
-	gmt = readGeneSets(converted, convertedData, GO,selectOrg, myrange)
-
-	subtype = detectGroups(colnames(convertedData))
-	Pvalue = 1  # cut off to report in PGSEA. Otherwise NA
-	Pval_pathway = 0.05   # cut off for P value of ANOVA test  to writ to file 
-	top = 30   # number of pathways to show
-	myrange = c(10,2000)
-
-	pg = myPGSEA (x,cl=gmt,range=myrange,p.value=TRUE, weighted=FALSE,nPermutation=1)
-	result = PGSEApathway (converted,convertedData, selectOrg,GO,gmt, myrange,.05,30)
-	smcPlot(result$pg3,factor(subtype),scale = c(-result$best, result$best), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5)
-	smcPlot(result$pg3,factor(subtype),scale = c(-max(result$pg3), max(result$pg3)), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5)
-
-	pca = 100*prcomp(t(x))$rotation 
-	Npca = 10
-	if (Npca > dim(pca)[2]) { Npca = dim(pca)[2] } else pca <-  pca[,1:Npca]
-	#pca = pca[,1:5]
-	pg = myPGSEA (pca,cl=gmt,range=myrange,p.value=TRUE, weighted=FALSE,nPermutation=1)
-
-	# correcting for multiple testing
-	p.matrix = pg$p.result
-	tem = p.adjust(as.numeric(p.matrix),"fdr")
-	p.matrix = matrix(tem, nrow=dim(p.matrix)[1], ncol = dim(p.matrix)[2] )
-	rownames(p.matrix) = rownames(pg$p.result); colnames(p.matrix) = colnames(pg$p.result)
-
-	# using absolute value to rank 
-	#selected = unlist( apply(pg$result, 2, function(y) which( rank(y) >= length(y)-3.1)   ) )
-
-	# using p value to rank #
-	#selected = unlist( apply(p.matrix, 2, function(x) which( rank(x,ties.method='first') <= 5)   ) )
-	selected =c()
-	for( i in 1:dim(p.matrix)[2]) {
-		tem = which( rank(p.matrix[,i],ties.method='first') <= 3) 
-		#tem = which( rank(pg$result[,i],ties.method='first') >= dim(p.matrix)[1]-3.1)
-		names(tem) = paste("PC",i," ", rownames(p.matrix)[tem], sep="" )
-		selected = c(selected, tem)
-	}
-	rowids = gsub(" .*","",names(selected))
-	rowids = as.numeric( gsub("PC","",rowids) )
-	pvals = p.matrix[ cbind(selected,rowids) ]
-	a=sprintf("%-1.0e",pvals)
-	tem = pg$result[selected,]
-	rownames(tem) = paste(a,names(selected)); #colnames(tem)= paste("PC",colnames(tem),sep="")
-
-	tem = tem[!duplicated(selected),] 
-	#tem = t(tem); tem = t( (tem - apply(tem,1,mean)) ) #/apply(tem,1,sd) )
-	smcPlot(tem,scale =  c(-max(tem), max(tem)), show.grid = T, margins = c(3,1, 13, 23), col = .rwb,cex.lab=0.5)
-
-	############  testing D.E.G.
-	limma = DEG.limma(convertedData, .1, .5,rawCounts=NULL,countsDEGMethods=1,priorCounts=3, dataFormat=2)
-	genes = limma$results
-		if( is.null(genes) ) return(NULL)
-		ix = match(limma$comparisons, colnames(genes)) 
-		query = rownames(genes)[which(genes[,ix] != 0)]
-		iy = match(query, rownames(convertedData  ) )
-		convertedData[iy,]
-		iz= match( detectGroups(colnames(convertedData)), unlist(strsplit( limma$comparisons, "-"))	  )
-		iz = which(!is.na(iz))
-		myheatmap( convertedData[iy,iz] )
-		# convertedData()[iy,iz]
-
-		# rawCounts = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
-		x = read.csv("exampleData/GSE87194.csv") ; x[,1] = toupper(x[,1]);   x = x[order(x[,1]),];    x = x[!duplicated(x[,1]),] #rownames(x)= x[,1]; rawCounts= x[,-1]
-		rawCounts = rawCounts[which(apply(rawCounts,1,max )>10 ) ,]
-		# res =DEG.DESeq2(rawCounts, .05, 2)
-		# res = 
-		# tem = res$topGenes
-		# head( res$results )
-		
-		# res2= DEG.limma(rawCounts, .05, 2,rawCounts, 1 ,3) 
-
-	######### testing GAGE
-	fc = apply(x1[,4:6],1,mean)- apply(x1[,1:3],1,mean)
-	paths <- gage(fc, gsets = gmt, ref = NULL, samp = NULL)
-
-	paths <- as.data.frame(paths)
-	path1 <- rownames(paths)[1]
-
-
-
-		x = read.csv("exampleData/airway_GSE52778.csv", row.names=1)
-		#x = read.csv("exampleData/GSE87194.csv") ; 
-		x=read.csv("GSE37704_sailfish_genecounts.csv");
-		#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
-		x = read.csv("exampleData/hoppe 2 samples.csv")
-		
-		x[,1] = toupper(x[,1]);  
-		colnames(x)[1]= "User_input"
-
-
-	selectOrg = "BestMatch"; GO="KEGG"; 
-	myrange = c(15,2000)
-
-	converted = convertID(x[,1],selectOrg)
-	mapping = converted$conversionTable
-	x = merge(mapping[,1:2],x,   by = 'User_input')
-	tem = apply(x[,3:(dim(x)[2]-2)],1,sum)
-	x = x[order(x[,2],-tem),]
-	x = x[!duplicated(x[,2]) ,]
-	rownames(x) = x[,2]
-	x = as.matrix(x[,c(-1,-2)])
-
-	convertedData = x
-	gmt = readGeneSets(converted, convertedData, GO,selectOrg, myrange)
-
-	res =DEG.DESeq2(x, .25, 1)
-
-	res <- DEG.limma (x, maxP_limma=.2, minFC_limma=2, x,countsDEGMethods=2,priorCounts=3, dataFormat=1)
-
-	top1 <- res$topGenes[[1]]
-
-	head(top1)	
-
-		paths <- gage(top1[,1,drop=F], gsets = gmt, ref = NULL, samp = NULL)
-		paths <-  rbind(paths$greater,paths$less)
-		if(dim(paths)[1] < 1 | dim(paths)[2]< 6 ) return( noSig )
-		top1 <- paths[,c('stat.mean','set.size','q.val')]
-		colnames(top1)= c("stat.mean","Set Size","FDR")
-		top1 <- top1[order(top1[,3]) ,]  
-		if ( length( which( top1[,3] <=  .9   ) ) == 0 )
-		return( noSig)
-		top1 <- top1[which(top1[,3] <=  .9 ) ,]
-		if(dim(top1)[1] > 30 ) 
-			top1 <- top1[1:30,]
-		top1
-
-
-	res = DEG.limma(x, .05, 2,NULL, 1,3 )
-
-	## fgsea
-		top1 <- res$topGenes[[1]]
-	head(top1)	
-	colnames(top1)= c("Fold","FDR")
-	fold = top1[,1]; names(fold) <- rownames(top1)
-		paths <- fgsea(pathways = gmt, 
-					stats = fold,
-					minSize=15,
-					maxSize=2000,
-					nperm=10000)
-	if(dim(paths)[1] < 1  ) return( noSig )
-		paths <- as.data.frame(paths)
-		top1 <- paths[,c(4,5,7,3)]
-		rownames(top1) <- paths[,1]
-		colnames(top1)= c("ES","NES","Set Size","FDR")
-		top1 <- top1[order(top1[,4]) ,]  
-		if ( length( which( top1[,4] <=  input$pathwayPvalCutoff   ) ) == 0 )
-		return( noSig)
-		top1 <- top1[which(top1[,4] <=  input$pathwayPvalCutoff ) ,]
-		if(dim(top1)[1] > input$nPathwayShow ) 
-			top1 <- top1[1:input$nPathwayShow,]
-			
-		top1
-		
-	# testing visualize KEGG pathway
-
-	query = x[1:500,1]
-		fc= convertEnsembl2Entrez (query, Species)  
-		
-		fc = log2(fc/mean(fc))
-		
-			top1 <- res$topGenes[[1]]
-		top1 <- top1[,1]; names(top1)= rownames(res$topGenes[[1]] )
-		Species = converted$species[1,1] 	
-		
-	system.time(  fc <- convertEnsembl2Entrez (top1, Species)  )
-			fc = sort(fc,decreasing =T)
-		
-		head(fc)
-		
-		system.time ( y<- gsePathway(fc, nPerm=1000,
-				minGSSize=15, pvalueCutoff=0.5,
-				pAdjustMethod="BH", verbose=FALSE) )
-		res <- as.data.frame(y)
-		head(res)
-		
-		
-		# testing mouse 
-		top1 = limma$topGenes[[1]]
-		top1 <- top1[,1]; names(top1)= rownames(limma$topGenes[[1]] )
-		Species = converted$species[1,1] 	
-		system.time(  fc <- convertEnsembl2Entrez (top1, Species)  )
-				fc = sort(fc,decreasing =T)
-				system.time ( y<- gsePathway(fc, nPerm=1000,organism = "mouse",
-				minGSSize=15, pvalueCutoff=0.5,
-				pAdjustMethod="BH", verbose=FALSE) )
-		res <- as.data.frame(y)
-		head(res)
-		ensemblSpecies <- c("hsapiens_gene_ensembl","rnorvegicus_gene_ensembl", "mmusculus_gene_ensembl",
-		"celegans_gene_ensembl","scerevisiae_gene_ensembl", "drerio_gene_ensembl", "dmelanogaster_gene_ensembl")
-			ReactomePASpecies= c("human", "rat", "mouse", "celegans", "yeast", "zebrafish", "fly" )
-
-
-	#### testing KEGG pathway graph
-	x=read.csv("GSE37704_sailfish_genecounts.csv");
-		#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
-		x[,1] = toupper(x[,1]);  
-		colnames(x)[1]= "User_input"
-
-
-	selectOrg = "BestMatch"; GO="KEGG"; 
-	myrange = c(15,2000)
-
-	converted = convertID(x[,1],selectOrg)
-	mapping = converted$conversionTable
-	x = merge(mapping[,1:2],x,   by = 'User_input')
-	tem = apply(x[,3:(dim(x)[2]-2)],1,sum)
-	x = x[order(x[,2],-tem),]
-	x = x[!duplicated(x[,2]) ,]
-	rownames(x) = x[,2]
-	x = as.matrix(x[,c(-1,-2)])
-
-	convertedData = x
-	gmt = readGeneSets(converted, convertedData, GO,selectOrg, myrange)
-
-	res =DEG.DESeq2(x, .25, 1)
-
-	top1 <- res$topGenes[[1]]
-
-	head(top1)	
-
-		paths <- gage(top1[,1,drop=F], gsets = gmt, ref = NULL, samp = NULL)
-		paths <-  rbind(paths$greater,paths$less)
-		
-	selectedPathway = rownames(paths)[1]
-	# [1] "Cytokine-cytokine receptor interaction"
-
-		Species <- converted$species[1,1]
-		
-		fold = top1[,1]; names(fold) <- rownames(top1)
-		fold <- convertEnsembl2Entrez(fold,Species)
-		
-		keggSpecies <- as.character( keggSpeciesID[which(keggSpeciesID[,1] == Species),3] )
-		
-		if(nchar( keggSpecies) <=2 ) return(blank) # not in KEGG
-	 #cat("here5  ",keggSpecies, " ",Species," ",input$sigPathways)
-		# kegg pathway id
-	pathID = keggPathwayID(selectedPathway, Species, "KEGG",selectOrg)
-
-	cat("\n",fold[1:5],"\n",keggSpecies,"\n",pathID)
-	if(is.null(pathID) ) return(blank) # kegg pathway id not found.	
-	pv.out <- pathview(gene.data = fold, pathway.id = pathID, species = keggSpecies, kegg.native=TRUE)
-
-
-
-
-	#######################################
-	# testing for species not recognized 
-	x=read.csv("exampleData/Wu_wet_vs_control - new species.csv");
-		#x = read.csv("exampleData/counts_test_data_3groups.csv") ;
-		x[,1] = toupper(x[,1]);  
-		colnames(x)[1]= "User_input"
-	selectOrg = "BestMatch"; GO="KEGG"; 
-	myrange = c(15,2000)
-	converted = convertID(x[,1],selectOrg)
-	mapping = converted$conversionTable	  
-
-    ############################################
-    # Test limma  3-3-2019
-    x = read.csv("C:/Users/Xijin.Ge/Google Drive/research/Shiny/idep/sampleData/BcellGSE71176_p53-two group.csv")
-    x = read.csv("C:/Users/Xijin.Ge/Google Drive/research/Shiny/idep/sampleData/BcellGSE71176_p53_reduced_4 groups.csv")
-
-	x = x[order(x[,1]),]
-	x = x[!duplicated(x[,1]),]
-	rownames(x)= x[,1]
-	x = x[,-1]
-
-	tem = apply(x,1,max)
-	x = x[which(tem> 1),] 
-    rawCounts = x;
-
-	selectOrg = "BestMatch"; GO="GOBP"; 
-
-	converted = convertID(rownames(x),selectOrg)
-
-	head(converted$conversionTable)
-	mapping = converted$conversionTable
-
-	rownames(x) = toupper(rownames(x))
-	x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
-	tem = apply(x1[,3:(dim(x1)[2]-2)],1,sd)
-	x1 = x1[order(x1[,2],-tem),]
-	x1 = x1[!duplicated(x1[,2]) ,]
-	rownames(x1) = x1[,2]
-	x1 = as.matrix(x1[,c(-1,-2)])
-
-	convertedData = x1
-    x=convertedData;
-    maxP_limma=.1; minFC_limma=2;
-    countsDEGMethods = 2;
-    priorCounts = 3
-    dataFormat=1
-    selectedComparisons=NULL; sampleInfo = NULL;modelFactors=NULL; blockFactor = NULL
-
-
- }
- 
-if(0) {  # testing
-
-	inFile = "C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/expression1_no_duplicate.csv"
-	# inFile = "C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/GSE52778_All_Sample_FPKM_Matrix.csv"
-	lowFilter = 1; logStart = 1
-	x = read.csv(inFile)
-	x[,1] = toupper(x[,1])
-	x = x[order(x[,1]),]
-	x = x[!duplicated(x[,1]),]
-	rownames(x)= x[,1]
-	x = x[,-1]
-
-	tem = apply(x,1,max)
-	x = x[which(tem> lowFilter),] 
-
-	tem = apply(x,1,function(y) sum(y>2) )
-	
-	
-	x = log(x+abs( logStart),2)
-	tem = apply(x,1,sd)
-	x = x[order(-tem),]
-
-	###########Converted data
-	convertedID = convertID(rownames(x ),selectOrg="BestMatch", selectGO = "GOBP" );#"gmax_eg_gene"
-
-	mapping <- convertedID$conversionTable
-
-		rownames(x) = toupper(rownames(x))
-		x1 = merge(mapping[,1:2],x,  by.y = 'row.names', by.x = 'User_input')
-		tem = apply(x1[,3:(dim(x1)[2]-2)],1,sd)
-		x1 = x1[order(x1[,2],-tem),]
-		x1 = x1[!duplicated(x1[,2]) ,]
-		rownames(x1) = x1[,2]
-		x1 = as.matrix(x1[,c(-1,-2)])
-
-		
-		tem = apply(x1,1,sd)
-	x1 = x1[order(-tem),]
-	x=x1
-		head(x)
-		
-	#################################
-	#testing Kmeans
-    n = 2000
-	x=as.matrix(x[1:n,])-apply(x[1:n,],1,mean)
-	#x = 100* x / apply(x,1,sum)  # this is causing problem??????
-	#x = x - apply(x,1,mean)  # this is causing problem??????
-	#colnames(x) = gsub("_.*","",colnames(x))
-	set.seed(2)
-	# determining number of clusters
-	k=4
-
-	cl = kmeans(x,k,iter.max = 50)
-	#myheatmap(cl$centers)	
-
-	hc <- hclust2(dist2(cl$centers-apply(cl$centers,1,mean) )  )# perform cluster for the reordering of samples
-	tem = match(cl$cluster,hc$order) #  new order 
-
-	x = x[order(tem),]
-
-	bar = sort(tem)
-	#myheatmap2(x, bar)
-	# GO
-	pp=0
-	for( i in 1:k) {
-		#incProgress(1/k, , detail = paste("Cluster",toupper(letters)[i]) )
-		query = rownames(x)[which(bar == i)]
-		convertedID = convertID(query,"BestMatch", selectGO = "GOBP" );#"gmax_eg_gene"
-		tem = geneInfo(convertedID,"BestMatch") #input$selectOrg ) ;
-		tem <- tem[which( tem$Set == "List"),] 
-
-
-		#selectOrg = input$selectOrg
-		selectOrg ="BestMatch"
-
-		result = FindOverlap (convertedID,tem, "GOBP",selectOrg,1) 
-		if( dim(result)[2] ==1) next;   # result could be NULL
-		result$Genes = toupper(letters)[i] 
-		if (pp==0 ) { results = result; pp = 1;} else  results = rbind(results,result)
-	}
-	results= results[,c(5,1,2,4)]
-	colnames(results)= c("Cluster","FDR","Genes","GO BP Terms")
-	minFDR = 0.05
-	if(min(results$FDR) > minFDR ) results = as.matrix("No signficant enrichment found.") else
-	results = results[which(results$FDR < minFDR),]
-}
 
 ################################################################
 #   Server function
@@ -3083,7 +2625,7 @@ output$nGenesFilter <- renderText({
 	# Show info on file format	
 output$fileFormat <- renderUI({
   shinyjs::hideElement(id = 'loadMessage')
-		i = "<h3>Ready to load data files.</h3>"
+		i = "<h4>Ready to load data files.</h3>"
 #		i = c(i,"Users can upload a CSV or tab-delimited text file with the first column as gene IDs. 
 #		For RNA-seq data, read count per gene is recommended.
 #		Also accepted are normalized expression data based on FPKM, RPKM, or DNA microarray data. iDEP can convert most types of common gene IDs to Ensembl gene IDs, which is used 
@@ -7384,25 +6926,120 @@ output$enrichmentNetworkPlot <- renderPlot({
     if(is.null(geneListGOTable())) return(NULL)
 	tem = input$removeRedudantSets
 
-	enrichmentNetwork(removeHypertext( geneListGOTable() ),
+	enrichmentNetwork_old_remove_later(removeHypertext( geneListGOTable() ),
                        layout_change = input$layoutButton2 )
 
 }, height=900, width=900)	  
 
-output$enrichmentNetworkPlot4Download <- downloadHandler(
-      filename = "enrichmentPlotDEG2.eps",
-      content = function(file) {
-	  cairo_ps(file, width = 12, height = 12)
-	enrichmentNetwork(removeHypertext( geneListGOTable() ),layout_change = input$layoutButton2 )
-        dev.off()
-      })	  
-
-output$enrichmentNetworkPlotly <- renderPlotly({
+# define a network
+networkDEG <- reactive({
     if(is.null(geneListGOTable())) return(NULL)
+    if(is.null( input$wrapTextNetworkDEG )) return(NULL)
 	tem = input$removeRedudantSets
-	enrichmentNetworkPlotly(removeHypertext( geneListGOTable() ),layout_change = input$layoutButton2 )
 
-})	  
+    network <- removeHypertext( geneListGOTable() )
+    
+    if(is.null( input$upORdownRegDEG )) return(NULL)
+    if(input$upORdownRegDEG != "Both")
+       network <- network[ grepl(input$upORdownRegDEG, network$Direction), ]
+    if(dim(network)[1] == 0) return(NULL)
+
+    if(input$wrapTextNetworkDEG)
+      network$Pathways <- wrap_strings( network$Pathways ) # wrap long pathway names using default width of 30 10/21/19
+
+    g <- enrichmentNetwork(network,layoutButton = input$layoutVisDEG, edge.cutoff = input$edgeCutoffDEG )
+
+    data1 <- toVisNetworkData(g)
+    
+    # Color codes: https://www.rapidtables.com/web/color/RGB_Color.html
+    data1$nodes$shape <- "dot"
+    # remove the color change of nodes
+    #data1$nodes <- subset(data1$nodes, select = -color)
+    
+    data1$nodes$size <- 5 + data1$nodes$size^2 
+    
+    return(data1)
+})
+
+  # note the same code is used twice as above. They need to be updated together!!!	  
+output$visNetworkDEG <- renderVisNetwork({
+    if(is.null(geneListGOTable())) return(NULL)
+    if(dim(geneListGOTable())[1] == 1) return(NULL)
+    if(is.null( input$wrapTextNetworkDEG )) return(NULL)
+	tem = input$removeRedudantSets
+    if(is.null(networkDEG() )) return(NULL)
+
+    data1 <- networkDEG()
+    visNetwork(nodes = data1$nodes, edges = data1$edges, height = "700px", width = "700px")%>% 
+      visIgraphLayout(layout = "layout_with_fr") %>%
+      visNodes( 
+        color = list(
+          #background = "#32CD32",
+          border = "#000000",
+          highlight = "#FF8000"
+        ),
+        font = list(
+          color = "#000000",
+          size = 20
+        ),
+        borderWidth = 1,
+        shadow = list(enabled = TRUE, size = 10)
+      )  %>%
+      visEdges(
+        shadow = FALSE,
+        color = list(color = "#A9A9A9", highlight = "#FFD700")
+      ) %>% visExport(type = "jpeg", 
+                      name = "export-network", 
+                      float = "left", 
+                      label = "Export as an image (only what's visible on the screen!)", 
+                      background = "white", 
+                      style= "") 
+  })	
+  
+output$visNetworkDEGDownload <- downloadHandler(
+    filename = "enrichmentPlotNetwork_DEG.html",
+    content = function(file) {
+
+    # same code as above to generate the network
+	tem = input$removeRedudantSets
+
+    data1 <- networkDEG()
+    visNetwork(nodes = data1$nodes, edges = data1$edges, height = "700px", width = "700px")%>% 
+      visIgraphLayout(layout = "layout_with_fr") %>%
+      visNodes( 
+        color = list(
+          #background = "#32CD32",
+          border = "#000000",
+          highlight = "#FF8000"
+        ),
+        font = list(
+          color = "#000000",
+          size = 20
+        ),
+        borderWidth = 1,
+        shadow = list(enabled = TRUE, size = 10)
+      )  %>%
+      visEdges(
+        shadow = FALSE,
+        color = list(color = "#A9A9A9", highlight = "#FFD700")
+      )  %>% 
+        visSave(file = file, background = "white")
+      
+    })  
+
+
+  output$downloadNodesDEG <- downloadHandler(
+    filename = function() {"network_nodes.csv"},
+    content = function(file) {      
+      write.csv(networkDEG()$nodes, file, row.names=FALSE)
+    }
+  )
+  output$downloadEdgesDEG <- downloadHandler(
+    filename = function() {"network_edges.csv"},
+    content = function(file) {    
+      write.csv(networkDEG()$edges, file, row.names=FALSE)
+    }
+  )  
 	  
 output$DEG.Promoter <- renderTable({
     if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
@@ -9578,26 +9215,125 @@ output$enrichmentNetworkPlotPathway <- renderPlot({
 	enrichmentNetwork(pathwayListData(),layout_change = input$layoutButton3 )
 }, height=900, width=900)	  
 
-output$enrichmentNetworkPlotPathway4Download <- downloadHandler(
-      filename = "enrichmentPlotNetworkPathway.eps",
-      content = function(file) {
-	  cairo_ps(file, width = 12, height = 12)
-	  enrichmentNetwork(pathwayListData(),layout_change = input$layoutButton3 )
-        dev.off()
-      })	
 
-
-output$enrichmentNetworkPlotlyPathway <- renderPlotly({
+# define a network. This code block is almost exactly the same as that for the network in DEG2
+networkPA <- reactive({
     if(is.null(pathwayListData())) return(NULL)
-    if (is.null(input$file1)&& input$goButton == 0)   return(NULL)
+    if(is.null( input$wrapTextNetworkPA )) return(NULL)
+
 	tem = input$selectOrg ; #tem = input$listComparisonsPathway
 	tem = input$selectGO; tem = input$selectContrast1
 	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
 	tem=input$nPathwayShow; tem=input$absoluteFold; tem =input$pathwayMethod
-	if(is.null(input$selectGO ) ) return (NULL)
-	enrichmentNetworkPlotly(pathwayListData(),layout_change = input$layoutButton3 )
-})	  
 
+    network <- pathwayListData()
+
+    if(is.null( input$upORdownRegPA )) return(NULL)
+    if(input$upORdownRegPA != "Both")
+       network <- network[ grepl(input$upORdownRegPA, network$Direction), ]
+    if(dim(network)[1] == 0) return(NULL)
+
+    if(input$wrapTextNetworkPA)
+      network$Pathways <- wrap_strings( network$Pathways ) # wrap long pathway names using default width of 30 10/21/19
+
+    g <- enrichmentNetwork(network,layoutButton = input$layoutVisPA, edge.cutoff = input$edgeCutoffPA )
+
+    data1 <- toVisNetworkData(g)
+    
+    # Color codes: https://www.rapidtables.com/web/color/RGB_Color.html
+    data1$nodes$shape <- "dot"
+    # remove the color change of nodes
+    #data1$nodes <- subset(data1$nodes, select = -color)
+    
+    data1$nodes$size <- 5 + data1$nodes$size^2 
+    
+    return(data1)
+})
+
+  # note the same code is used twice as above. They need to be updated together!!!	  
+output$visNetworkPA <- renderVisNetwork({
+    if(is.null(pathwayListData())) return(NULL)
+    if(dim(pathwayListData())[1] == 1) return(NULL)
+    if(is.null( input$wrapTextNetworkPA )) return(NULL)
+    if(is.null(networkPA() )) return(NULL)
+
+	tem = input$selectOrg ; #tem = input$listComparisonsPathway
+	tem = input$selectGO; tem = input$selectContrast1
+	tem = input$minSetSize; tem = input$maxSetSize; tem=input$pathwayPvalCutoff; 
+	tem=input$nPathwayShow; tem=input$absoluteFold; tem =input$pathwayMethod
+
+
+    data1 <- networkPA()
+
+    # render network of pathways
+    visNetwork(nodes = data1$nodes, edges = data1$edges, height = "700px", width = "700px")%>% 
+      visIgraphLayout(layout = "layout_with_fr") %>%
+      visNodes( 
+        color = list(
+          #background = "#32CD32",
+          border = "#000000",
+          highlight = "#FF8000"
+        ),
+        font = list(
+          color = "#000000",
+          size = 20
+        ),
+        borderWidth = 1,
+        shadow = list(enabled = TRUE, size = 10)
+      )  %>%
+      visEdges(
+        shadow = FALSE,
+        color = list(color = "#A9A9A9", highlight = "#FFD700")
+      ) %>% visExport(type = "jpeg", 
+                      name = "export-network", 
+                      float = "left", 
+                      label = "Export as an image (only what's visible on the screen!)", 
+                      background = "white", 
+                      style= "") 
+  })	
+ 
+output$visNetworkPADownload <- downloadHandler(
+    filename = "Pathway_Overlaping_Network_DEG.html",
+    content = function(file) {
+
+    data1 <- networkPA()
+    visNetwork(nodes = data1$nodes, edges = data1$edges, height = "700px", width = "700px")%>% 
+      visIgraphLayout(layout = "layout_with_fr") %>%
+      visNodes( 
+        color = list(
+          #background = "#32CD32",
+          border = "#000000",
+          highlight = "#FF8000"
+        ),
+        font = list(
+          color = "#000000",
+          size = 20
+        ),
+        borderWidth = 1,
+        shadow = list(enabled = TRUE, size = 10)
+      )  %>%
+      visEdges(
+        shadow = FALSE,
+        color = list(color = "#A9A9A9", highlight = "#FFD700")
+      )  %>% 
+        visSave(file = file, background = "white")
+      
+    })  
+
+
+output$downloadNodesPA <- downloadHandler(
+    filename = function() {"Pathway_network_nodes.csv"},
+    content = function(file) {      
+      write.csv(networkPA()$nodes, file, row.names=FALSE)
+    }
+  )
+
+output$downloadEdgesDEG <- downloadHandler(
+    filename = function() {"Pathway_network_edges.csv"},
+    content = function(file) {    
+      write.csv(networkPA()$edges, file, row.names=FALSE)
+    }
+  )  
 
 ################################################################
 #   Chromosome

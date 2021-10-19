@@ -302,7 +302,7 @@ server <- function(input, output, session){
   # note the same code is used twice as above. They need to be updated together!!!	  
   output$enrichmentNetworkPlotInteractive <- renderVisNetwork({
     if(is.null(significantOverlaps3())) return(NULL)
-    
+
     g <- enrichmentNetwork(significantOverlaps3(),layoutButton = input$layoutButton, edge.cutoff = input$edgeCutoff )
     data1 <- toVisNetworkData(g)
     

@@ -81,16 +81,16 @@ ui <- fluidPage(
         tabPanel("Enrichment" 
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen
 
-                                   ,h4("Oct. 15, 2021: Version 0.74. Database updated to Ensembl Release 104 and STRING v11. We now recommends the use of background genes in enrichment analysis. V.0.74 is much faster with even large set of background genes.")
-                                   ,h4("We recently hired Jenny for database updates and user support.",
+                                   ,p("Oct. 15, 2021: Version 0.74. Database updated to Ensembl Release 104 and STRING v11. We now recommends the use of background genes in enrichment analysis. V.0.74 is much faster with even large set of background genes.")
+                                   ,p("We recently hired Jenny for database updates and user support.",
                                        a("Email Jenny ",href="mailto:gelabinfo@gmail.com?Subject=ShinyGO"),
                                        "for questions, suggestions or data contributions.") 
 
                                    
                                    #,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
                                    
-                                   ,h4("2/3/2020: Now published by", a("Bioinformatics.", href="https://doi.org/10.1093/bioinformatics/btz931",target="_blank"))
-                                   ,h4("Just paste your gene list to get enriched GO terms and othe pathways for over 400 plant and animal species, 
+                                   ,p("2/3/2020: Now published by", a("Bioinformatics.", href="https://doi.org/10.1093/bioinformatics/btz931",target="_blank"))
+                                   ,p("Just paste your gene list to get enriched GO terms and othe pathways for over 400 plant and animal species, 
 				    based on annotation from Ensembl , Ensembl plants and Ensembl Metazoa. An additional 5000 genomes 
 				    (including bacteria and fungi) are   annotated based on STRING-db (v.11). In addition, it also produces
 				    KEGG pathway diagrams with your genes highlighted, hierarchical clustering trees and networks summarizing 
@@ -105,12 +105,17 @@ ui <- fluidPage(
                                    ,br(),br(),img(src='promoter.png', align = "center",width="717", height="288")					
                  )
                  ,br()
+                 ,p("FDR is adjusted from the hypergeometric test. Fold Enriched is defined as the percentage of genes in your list belonging to a pathway, divided by the corresponding percentage in the background. FDR tells us how likely the enrichment is by chance; Fold Enriched indicates how drastically genes of a certain pathway is overrepresented. We think the latter deserves at least some attention.")
                  ,div(style="display:inline-block", 
                           selectInput(inputId = "SortPathways",
                               label = NULL,
-                              choices = c("Sort by FDR", "Sort by Fold Enriched", "Sort by Genes", "Sort by Category Name" ),
+                              choices = c("Sort by FDR" = "Sort by FDR", 
+                                          "Sort by Fold Enriched" = "Sort by Fold Enriched", 
+                                          "Sort by Genes" =  "Sort by Genes", 
+                                          "Sort by Category Name" = "Sort by Category Name"),
                               selected = "Sort by Fold Enriched" ),
                      style="algn:right")
+
                  ,tableOutput('EnrichmentTable')	
                  ,conditionalPanel("input.goButton != 0", 
                                    downloadButton('downloadEnrichment', 'Download table with gene IDs')			

@@ -9,6 +9,7 @@ library(plotly,verbose=FALSE)
 library('shinyjs', verbose = FALSE)
 library('shinyjs', verbose = FALSE)
 library('reactable', verbose = FALSE)
+library(visNetwork) # interative network graphs
 iDEPversion = "iDEP.94"
 
 shinyUI(
@@ -150,21 +151,23 @@ iDEPversion,
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
-      ,h3("iDEP v.0.94 based on Ensembl Release 104 and STRING-db V11. 9/3/2021")
+      ,p("iDEP v.0.94 based on Ensembl Release 104 and STRING-db V11. 9/3/2021")
 
-      ,h4("10/15/21: For GO enrichment analysis, we now recommend using background genes, instead of all genes on the genome. In the KNN and DEG2 tabs, it is now the default that all genes passed the filter in Pre-Process tab are used as a customized background.")
+      ,p("10/15/21: For GO enrichment analysis, we now recommend using background genes, instead of all genes on the genome. In the KNN and DEG2 tabs, it is now the default that all genes passed the filter in Pre-Process tab are used as a customized background.")
 
-      ,h3("We updated instruction for local installation", a("here.", href="https://github.com/iDEP-SDSU/idep#readme"), 
+      ,p("We updated instruction for local installation", a("here.", href="https://github.com/iDEP-SDSU/idep#readme"), 
           "The most recent database file is now publically available, free of charge for non-profit organizations.")
 
-      ,h3("Check out the 50,000+ datasets of uniformly processed public RNA-seq data ", a("here!", href="http://bioinformatics.sdstate.edu/reads/" ))
-      ,h4( a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), "Dr. Ge is notorisly slow in responding to emails.") 
+      ,p("Check out the 50,000+ datasets of uniformly processed public RNA-seq data ", a("here!", href="http://bioinformatics.sdstate.edu/reads/" ))
+      ,p( a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), "Dr. Ge is notorisly slow in responding to emails.") 
 
-      ,h5("iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
-      ,h5("We will be happy to help prepare your data for iDEP.")
-      ,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
-     
-           ,br(),img(src='flowchart.png', align = "center",width="562", height="383")
+      ,p("iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.")
+
+      ,p("10/18/20: Interactive network enables users to easily visualize the relatedness 
+           of pathways, similar to EnrichmentMap. Using the Network buttons on DEG2 and Pathway tabs,
+           you can generate and export interactive networks like this one (click on it, drag, zoom, pan):", style = "color:red")
+      ,includeHTML("enrichmentPlotNetwork.html")
+       #,img(src='flowchart.png', align = "center",width="562", height="383")
      # ) # conditionalPanel
 
     ) # main panel
@@ -658,7 +661,8 @@ iDEPversion,
                          value = TRUE)
         ,tags$style(type='text/css', "#selectGO2 { width:100%;   margin-top:-9px}")
         ,actionButton("ModalEnrichmentPlot", "Enrichment tree")
-        ,actionButton("ModalEnrichmentNetwork", "Enrichment network")       
+     
+        ,actionButton("ModalVisNetworkDEG", "Network (New!)" )   
         ,downloadButton('downloadGOTerms', "Enrichment details" )
         ,actionButton("STRINGdb_GO", "Enrichment using STRING API")
         ,tags$head(tags$style("#STRINGdb_GO{color: blue}"))  
@@ -708,17 +712,33 @@ iDEPversion,
           ,plotOutput('enrichmentPlotDEG2') 
         ) #bsModal
       
-      # Enrichment network
-        ,bsModal("ModalEnrichmentPlot2", "Visualize enrichment", "ModalEnrichmentNetwork", size="large"
+      # visNetwork ------------------------------
+        ,bsModal("ModalVisNetworkDEG1", "Network of pathways", "ModalVisNetworkDEG", size="large"
           ,h5("Connected gene sets share more genes. Color of node correspond to adjuested Pvalues.")            
-          ,checkboxInput("enrichmentNetworkInteractive", label = "Interactive version", value = FALSE)
-          ,conditionalPanel("input.enrichmentNetworkInteractive==0" 
-            ,actionButton("layoutButton2", "Change layout")
-            ,downloadButton("enrichmentNetworkPlot4Download", "High-resolution figure")
-            ,plotOutput('enrichmentNetworkPlot'))
-          ,conditionalPanel("input.enrichmentNetworkInteractive==1"
-            ,plotlyOutput('enrichmentNetworkPlotly',width = "900px", height = "800px"))           
+          ,fluidRow(
+            column(2, actionButton("layoutVisDEG", "Change layout") ),
+            column(1, h5("Cutoff:"), align="right" ) ,
+            column(2, numericInput("edgeCutoffDEG", label = NULL, value = 0.30, min = 0, max = 1, step = .1), align="left"  ), 
+            column(2, checkboxInput("wrapTextNetworkDEG", "Wrap text", value = FALSE)), 
+            column(1, downloadButton("visNetworkDEGDownload","Network") ),
+            column(1, downloadButton("downloadEdgesDEG", "Edges")) ,
+            column(1, downloadButton("downloadNodesDEG", "Nodes"))
+           ) 
+ 
+		   ,selectInput("upORdownRegDEG", NULL,
+			 c("Both Up & Down" = "Both",
+			   "Up regulated" = "Up",
+			   "Down regulated" = "Down")) 
+
+           ,h6("Two pathways (nodes) are connected if they share 30% (default, adjustable) or more genes. 
+			   Green and red represents down- and up-regulated pathways. You can move the nodes by dragging them, zoom in and out by scrolling, 
+			   and shift the entire network by click on an empty point and drag. 
+			   Darker nodes are more significantly enriched gene sets. 
+			   Bigger nodes represent larger gene sets.  
+			   Thicker edges represent more overlapped genes. ")    
+           ,visNetworkOutput("visNetworkDEG",height = "800px", width = "800px")
         ) #bsModal
+       # end VisNetwork --------------------------------    
            
         # M-A plot
         ,bsModal("modalExample5555", "M-A plot", "showMAplot", size = "large",
@@ -873,7 +893,7 @@ iDEPversion,
         ,conditionalPanel("input.pathwayMethod == 1 | input.pathwayMethod == 2 |
                            input.pathwayMethod == 3| input.pathwayMethod == 4" 
           ,actionButton("ModalEnrichmentPlotPathway", "Pathway tree") 
-          ,actionButton("ModalEnrichmentNetworkPathway", "Pathway network")
+          ,actionButton("ModalVisNetworkPA", "Network(New!)" )
           #,actionButton("ModalExaminePathways", "Gene expression by pathway")
           ,downloadButton('downloadPathwayListData', "Pathway list w/ genes")          
         )
@@ -927,17 +947,41 @@ iDEPversion,
 
         ,bsModal("ModalEnrichmentPlotPahtway2", "Significant pathways", "ModalEnrichmentNetworkPathway", size="large"
                  ,h5("Connected gene sets share more genes. Color of node correspond to adjuested Pvalues.")            
-                 ,checkboxInput("enrichmentNetworkInteractivePathway", label = "Interactive version", value = FALSE)
-                 ,conditionalPanel("input.enrichmentNetworkInteractivePathway==0"
-                                   ,actionButton("layoutButton3", "Change layout")
-                                   ,downloadButton("enrichmentNetworkPlotPathway4Download"
-                                   ,"High-resolution figure")
-                                   ,plotOutput('enrichmentNetworkPlotPathway'))
-                 ,conditionalPanel("input.enrichmentNetworkInteractivePathway==1" 
-                                   ,plotlyOutput('enrichmentNetworkPlotlyPathway'
-                                   ,width  = "900px" 
-                                   ,height = "800px"))           
+                 ,actionButton("layoutButton3", "Change layout")
+                 ,plotOutput('enrichmentNetworkPlotPathway')
+      
         )#bsModal    
+
+
+      # visNetwork ------------------------------
+        ,bsModal("ModalVisNetworkPA1", "Related pathways", "ModalVisNetworkPA", size="large"
+          ,h5("Connected gene sets share more genes. Color of node correspond to adjuested Pvalues.")            
+          ,fluidRow(
+            column(2, actionButton("layoutVisPA", "Change layout") ),
+            column(1, h5("Cutoff:"), align="right" ) ,
+            column(2, numericInput("edgeCutoffPA", label = NULL, value = 0.30, min = 0, max = 1, step = .1), align="left"  ), 
+            column(2, checkboxInput("wrapTextNetworkPA", "Wrap text", value = FALSE)), 
+            column(1, downloadButton("visNetworkPADownload","Network") ),
+            column(1, downloadButton("downloadEdgesPA", "Edges")) ,
+            column(1, downloadButton("downloadNodesPA", "Nodes"))
+           )    
+		   ,selectInput("upORdownRegPA", NULL,
+						 c("Both Up & Down" = "Both",
+						   "Up regulated" = "Up",
+						   "Down regulated" = "Down")) 
+
+           ,h6("This interactive plot also shows the relationship between enriched pathways. 
+			   Two pathways (nodes) are connected if they share 30% (default, adjustable) or more genes. 
+			   Green and red represents down- and up-regulated pathways. You can move the nodes by dragging them, zoom in and out by scrolling, 
+			   and shift the entire network by click on an empty point and drag. 
+			   Darker nodes are more significantly enriched gene sets. 
+			   Bigger nodes represent larger gene sets.  
+			   Thicker edges represent more overlapped genes. ")    
+           ,visNetworkOutput("visNetworkPA",height = "800px", width = "800px")
+        ) #bsModal
+       # end VisNetwork --------------------------------    
+
+
        
       ) # mainPanel
     )  #sidebarLayout     
@@ -1290,6 +1334,10 @@ iDEPversion,
        ,h5("5/19/2019: v0.90 Annotation database upgrade. Ensembl v 96. Ensembl plants v.43, and Ensembl Metazoa v.43. STRING-db v10")
        ,h5("2/3/2020: v0.90 customizable PCA plot and scatter plot")
        ,h5("5/10/2021: V0.93 updated to Ensembl Release 103 and String-DB v11.")
+       ,h5("10/15/21: For GO enrichment analysis, we now recommend using background genes, instead of all genes on the genome. In the KNN and DEG2 tabs, it is now the default that all genes passed the filter in Pre-Process tab are used as a customized background.")
+      ,h4("10/18/20: Interactive network enabling users to easily visualize the relatedness of significant pathways similar to EnrichmentMap. ")
+
+
        ,br(),br()
        ,h5("In loving memory of my parents. X.G.")
 
