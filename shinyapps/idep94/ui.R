@@ -165,7 +165,8 @@ iDEPversion,
 
       ,p("10/18/20: Interactive network enables users to easily visualize the relatedness 
            of pathways, similar to EnrichmentMap. Using the Network buttons on DEG2 and Pathway tabs,
-           you can generate and export interactive networks like this one (click on it, drag, zoom, pan):", style = "color:red")
+           you can generate and export interactive networks like this one below. You can move the nodes by dragging them, zoom in by scrolling, 
+			   and shift the entire network by click on an empty point and drag. ", style = "color:red")
       ,includeHTML("enrichmentPlotNetwork.html")
        #,img(src='flowchart.png', align = "center",width="562", height="383")
      # ) # conditionalPanel
