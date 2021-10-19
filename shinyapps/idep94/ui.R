@@ -663,10 +663,10 @@ iDEPversion,
         ,tags$style(type='text/css', "#selectGO2 { width:100%;   margin-top:-9px}")
         ,actionButton("ModalEnrichmentPlot", "Enrichment tree")
      
-        ,actionButton("ModalVisNetworkDEG", "Network (New!)" )   
+        ,actionButton("ModalVisNetworkDEG", "Network (New!)" )  
+        ,tags$head(tags$style("#ModalVisNetworkDEG{color: red}"))   
         ,downloadButton('downloadGOTerms', "Enrichment details" )
         ,actionButton("STRINGdb_GO", "Enrichment using STRING API")
-        ,tags$head(tags$style("#STRINGdb_GO{color: blue}"))  
         ,h5("Also try",  a("ShinyGO", href="http://ge-lab.org/go/", target="_blank") )  
         ,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/degs/", target="_blank")        
         
@@ -895,6 +895,7 @@ iDEPversion,
                            input.pathwayMethod == 3| input.pathwayMethod == 4" 
           ,actionButton("ModalEnrichmentPlotPathway", "Pathway tree") 
           ,actionButton("ModalVisNetworkPA", "Network(New!)" )
+        ,tags$head(tags$style("#ModalVisNetworkPA{color: red}"))   
           #,actionButton("ModalExaminePathways", "Gene expression by pathway")
           ,downloadButton('downloadPathwayListData', "Pathway list w/ genes")          
         )
