@@ -143,8 +143,8 @@ ui <- fluidPage(
                     column(2, actionButton("layoutButton", "Change layout") ),
                     column(2, actionButton("GONetwork", "Static plot") ),
                     column(2, h5("Edge cutoff:"), align="left" ) ,
-                    column(2, numericInput("edgeCutoff", label = NULL, value = 0.20, min = 0, max = 1, step = .1), align="right"  ), 
-                    column(2, checkboxInput("wrapTextNetwork", "Wrap text", value = FALSE)) 
+                    column(2, numericInput("edgeCutoff", label = NULL, value = 0.30, min = 0, max = 1, step = .1), align="right"  ), 
+                    column(2, checkboxInput("wrapTextNetwork", "Wrap text", value = TRUE)) 
                   ),      
                   visNetworkOutput("enrichmentNetworkPlotInteractive",height = "800px", width = "800px"),
                   downloadButton("enrichmentNetworkPlotInteractiveDownload","Download HTML"),
