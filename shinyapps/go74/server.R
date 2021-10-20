@@ -13,7 +13,8 @@ server <- function(input, output, session){
   options(warn=-1)
   
   observe({  updateSelectizeInput(session, "selectOrg", choices = speciesChoice, selected = speciesChoice[1] )      })
-  
+
+  observe({  updateSelectizeInput(session, "userSpecieIDexample", choices = speciesChoice, selected = speciesChoice[1] )      })  
   # load demo data when clicked
   observe({ 
     if( input$useDemo1 ) {
@@ -95,7 +96,15 @@ server <- function(input, output, session){
       
     }) # avoid showing things initially
   }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+ 
+  output$showGeneIDs4Species <-renderTable({
+    if (input$userSpecieIDexample == 0)    return()
+    showGeneIDs(species = input$userSpecieIDexample, nGenes = 10)
+
+
+  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
   
+ 
   
   promoterData <-reactive({
     if (input$goButton == 0)    return()
@@ -1684,14 +1693,6 @@ server <- function(input, output, session){
     })
   }, deleteFile = TRUE)
   
-  ############################################
-  #Purpose: this logic for second tab i.e. Gene ID Examples
-  #File: gene_id_page_ser.R
-  ############################################
-  observeEvent(input$geneIdButton, {
-    source('gene_id_page_ser.R') #load server logic and functions for Gene ID popup
-    geneIDPage(input = input, output = output,
-               session = session, orgInfo = orgInfo, path = datapath)
-  })
+
   
 }

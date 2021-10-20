@@ -999,3 +999,42 @@ gmtCategory <- function (converted,  selectOrg) {
 	return(categoryChoices )
 } 
  
+showGeneIDs <- function(species, nGenes = 10){
+# Given a species ID, this function returns 10 gene ids for each idType
+    if(species == "BestMatch")
+      return(as.data.frame("Select a species above.") )
+
+	idTypes <- dbGetQuery( convert,
+						paste0( " select DISTINCT idType from mapping where species = '", species,"'") )	# slow
+    idTypes <- idTypes[,1, drop = TRUE]
+    
+    
+    for(k in 1:length(idTypes)){
+		result <- dbGetQuery( convert,
+                       paste0( " select  id,idType from mapping where species = '", species,"' 
+                                 AND idType ='", idTypes[k], "' 
+                                 LIMIT ", nGenes) )
+       if(k == 1) { 
+          resultAll <- result 
+       } else { 
+         resultAll <- rbind(resultAll, result)
+       }
+     }
+
+ 
+     idNames <- dbGetQuery( convert,
+                            paste0( " SELECT id,idType from idIndex where id IN ('",
+                                    paste(idTypes,collapse="', '"),  "') "))
+     
+     resultAll <- merge(resultAll, idNames, by.x = "idType", by.y = "id")
+     
+     resultAll <- resultAll |> 
+       select(id, idType.y) |>
+       group_by(idType.y) |>
+       summarise(Examples = paste0(id, collapse = "; "))
+     
+    colnames(resultAll)[1] <- "ID Type"
+    
+    return(resultAll)
+
+}
