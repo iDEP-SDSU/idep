@@ -2219,6 +2219,58 @@ enrichmentNetwork <- function(enrichedTerms, layoutButton=0, edge.cutoff = 5){
 
 }
 
+showGeneIDs <- function(species, nGenes = 10){
+# Given a species ID, this function returns 10 gene ids for each idType
+    if(species == "BestMatch")
+      return(as.data.frame("Select a species above.") )
+
+	idTypes <- dbGetQuery( convert,
+						paste0( " select DISTINCT idType from mapping where species = '", species,"'") )	# slow
+    idTypes <- idTypes[,1, drop = TRUE]
+    
+    if(nGenes > 100) nGenes <- 100; # upper limit
+    
+    # for each id Type
+    for(k in 1:length(idTypes)){
+        # retrieve 500 gene ids and then random choose 10
+		result <- dbGetQuery( convert,
+                       paste0( " select  id,idType from mapping where species = '", species,"' 
+                                 AND idType ='", idTypes[k], "' 
+                                 LIMIT ", 50 * nGenes) )
+       result <- result[sample(1:(50 * nGenes), nGenes), ]
+       if(k == 1) { 
+          resultAll <- result 
+       } else { 
+         resultAll <- rbind(resultAll, result)
+       }
+     }
+
+     # Names of idTypes
+     idNames <- dbGetQuery( convert,
+                            paste0( " SELECT id,idType from idIndex where id IN ('",
+                                    paste(idTypes,collapse="', '"),  "') "))
+     
+     resultAll <- merge(resultAll, idNames, by.x = "idType", by.y = "id")
+     
+     
+
+     #library(dplyr)
+     resultAll <- resultAll %>% 
+       select(id, idType.y) %>%
+       group_by(idType.y) %>%
+       summarise(Examples = paste0(id, collapse = "; "))
+
+       colnames(resultAll)[1] <- "ID Type"
+        # put symbols first, ensembls next and descriptions (long gnee names) last
+        resultAll <- resultAll[ order( grepl("ensembl", resultAll$'ID Type'), decreasing = TRUE), ]       
+        resultAll <- resultAll[ order( grepl("symbol", resultAll$'ID Type'), decreasing = TRUE), ]
+        resultAll <- resultAll[ order( grepl("description", resultAll$'ID Type'), decreasing = FALSE), ]
+    
+    return(resultAll)
+
+}
+
+
 # Wrapping long text by adding \n 
 #  "Mitotic DNA damage checkpoint"  --> "Mitotic DNA damage\ncheckpoint"
 # https://stackoverflow.com/questions/7367138/text-wrap-for-plot-titles
@@ -2244,6 +2296,7 @@ wrap_strings <- function( vector_of_strings, width = 30 ) {
 
 	}
 
+
 ################################################################
 #   Server function
 ################################################################
@@ -2260,6 +2313,10 @@ function(input, output,session) {
  # geneSets(): gene set as a list for pathway analysis
 options(shiny.maxRequestSize = 200*1024^2) # 200MB file max for upload
 observe({  updateSelectizeInput(session, "selectOrg", choices = speciesChoice, selected = speciesChoice[1], server = TRUE )      })
+
+  # for gene ID example
+  observe({  updateSelectizeInput(session, "userSpecieIDexample", choices = speciesChoice, selected = speciesChoice[1] )      })  
+
 observe({  updateSelectInput(session, "heatColors1", choices = colorChoices )      })
 observe({  updateSelectInput(session, "distFunctions", choices = distChoices )      })
 observe({  updateSelectInput(session, "hclustFunctions", choices = hclustChoices )      })
@@ -2565,15 +2622,6 @@ readSampleInfo <- reactive ({
 		})
 	})
 
-############################################
-#Purpose: this logic for second tab i.e. Gene ID Examples
-#File: gene_id_page_ser.R
-############################################
-observeEvent(input$geneIdButton, {
-  source('gene_id_page_ser.R') #load server logic and functions for Gene ID popup
-  geneIDPage(input = input, output = output,
-             session = session, orgInfo = orgInfo, path = datapath)
-})
 	
 output$sampleInfoTable <- renderTable({
 
@@ -2866,6 +2914,24 @@ output$species <-renderTable({
 
       }) # avoid showing things initially         
     }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+
+  output$showGeneIDs4Species <-renderTable({
+    if (input$userSpecieIDexample == 0)    return()
+      withProgress(message="Retrieving gene IDs (2 minutes)", {
+          geneIDs <- showGeneIDs(species = input$userSpecieIDexample, nGenes = 10)
+        incProgress(1, detail = paste("Done"))	  })
+      geneIDs
+  }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+  
+ output$orgInfoTable <- DT::renderDataTable({
+     
+     df <- orgInfo[order(orgInfo$id), ]
+     df <- df[, c("ensembl_dataset", "name", "totalGenes")]
+     colnames(df) <- c("Ensembl/STRING-db ID", "Name (Assembly)", "Total Genes")
+     row.names(df) <- NULL
+     df
+  })
+  
 
 # show first 20 rows of processed data; not used
 output$debug <- renderTable({

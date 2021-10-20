@@ -358,7 +358,7 @@ ui <- fluidPage(
                
       )# bsModal 3	
       
-      ,bsModal("geneIDexamples", "What the gene IDs looks like?", "MGeneIDexamples", size = "large"
+      ,bsModal("geneIDexamples", "What the gene IDs in our database look like?", "MGeneIDexamples", size = "large"
                ,selectizeInput(inputId = "userSpecieIDexample",
                                label = "Select or search for species", choices = NULL)
                ,tableOutput("showGeneIDs4Species")

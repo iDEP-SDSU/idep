@@ -1033,13 +1033,19 @@ showGeneIDs <- function(species, nGenes = 10){
      
      resultAll <- merge(resultAll, idNames, by.x = "idType", by.y = "id")
      
+     
+
      #library(dplyr)
      resultAll <- resultAll %>% 
        select(id, idType.y) %>%
        group_by(idType.y) %>%
        summarise(Examples = paste0(id, collapse = "; "))
-     
-    colnames(resultAll)[1] <- "ID Type"
+
+       colnames(resultAll)[1] <- "ID Type"
+        # put symbols first, ensembls next and descriptions (long gnee names) last
+        resultAll <- resultAll[ order( grepl("ensembl", resultAll$'ID Type'), decreasing = TRUE), ]       
+        resultAll <- resultAll[ order( grepl("symbol", resultAll$'ID Type'), decreasing = TRUE), ]
+        resultAll <- resultAll[ order( grepl("description", resultAll$'ID Type'), decreasing = FALSE), ]
     
     return(resultAll)
 
