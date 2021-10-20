@@ -97,11 +97,13 @@ server <- function(input, output, session){
     }) # avoid showing things initially
   }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
  
+
   output$showGeneIDs4Species <-renderTable({
     if (input$userSpecieIDexample == 0)    return()
-    showGeneIDs(species = input$userSpecieIDexample, nGenes = 10)
-
-
+      withProgress(message="Converting gene IDs", {
+          geneIDs <- showGeneIDs(species = input$userSpecieIDexample, nGenes = 10)
+        incProgress(1, detail = paste("Done"))	  })
+      geneIDs
   }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
   
  

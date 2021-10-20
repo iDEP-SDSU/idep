@@ -1028,9 +1028,10 @@ showGeneIDs <- function(species, nGenes = 10){
      
      resultAll <- merge(resultAll, idNames, by.x = "idType", by.y = "id")
      
-     resultAll <- resultAll |> 
-       select(id, idType.y) |>
-       group_by(idType.y) |>
+     #library(dplyr)
+     resultAll <- resultAll %>% 
+       select(id, idType.y) %>%
+       group_by(idType.y) %>%
        summarise(Examples = paste0(id, collapse = "; "))
      
     colnames(resultAll)[1] <- "ID Type"
