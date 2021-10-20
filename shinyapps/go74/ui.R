@@ -71,8 +71,8 @@ ui <- fluidPage(
                      #,selected = "Best matching species"                                                  
       ), 
       tableOutput('species' ),
-
-      actionButton("MGeneIDexamples", "See gene IDs")
+      actionButton("MorgInfo", "Supported Species"),
+      actionButton("MGeneIDexamples", "Supported gene IDs")
 
     ), # sidebarPanel
     mainPanel(
@@ -360,12 +360,15 @@ ui <- fluidPage(
       
       ,bsModal("geneIDexamples", "What the gene IDs looks like?", "MGeneIDexamples", size = "large"
                ,selectizeInput(inputId = "userSpecieIDexample",
-                               label = NULL, choices = NULL)
+                               label = "Select or search for species", choices = NULL)
                ,tableOutput("showGeneIDs4Species")
 
-       ),# bsModal 4	
+       )# bsModal 4	
 
+      ,bsModal("orgInfoButton", "Supported species (Search by command and scientific name, NCBI taxonomy id)", "MorgInfo", size = "large"
+               ,DT::dataTableOutput('orgInfoTable')
 
+       )# bsModal 4	
       
     ) # mainPanel
   ) #sidebarLayout

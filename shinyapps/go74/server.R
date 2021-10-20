@@ -13,7 +13,8 @@ server <- function(input, output, session){
   options(warn=-1)
   
   observe({  updateSelectizeInput(session, "selectOrg", choices = speciesChoice, selected = speciesChoice[1] )      })
-
+  
+  # for gene ID example
   observe({  updateSelectizeInput(session, "userSpecieIDexample", choices = speciesChoice, selected = speciesChoice[1] )      })  
   # load demo data when clicked
   observe({ 
@@ -100,13 +101,19 @@ server <- function(input, output, session){
 
   output$showGeneIDs4Species <-renderTable({
     if (input$userSpecieIDexample == 0)    return()
-      withProgress(message="Converting gene IDs", {
+      withProgress(message="Retrieving gene IDs (2 minutes)", {
           geneIDs <- showGeneIDs(species = input$userSpecieIDexample, nGenes = 10)
         incProgress(1, detail = paste("Done"))	  })
       geneIDs
   }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
   
- 
+ output$orgInfoTable <- DT::renderDataTable({
+     
+     df <- orgInfo[, c("ensembl_dataset", "name", "totalGenes")]
+     colnames(df) <- c("Ensembl/STRING-db ID", "Name (Assembly)", "Total Genes")
+     row.names(df) <- NULL
+     df
+  })
   
   promoterData <-reactive({
     if (input$goButton == 0)    return()

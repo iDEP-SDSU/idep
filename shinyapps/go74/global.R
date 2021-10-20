@@ -29,6 +29,7 @@ library(gridExtra)
 library(plotly)
 library(reshape2)
 library(visNetwork)
+library(DT,verbose=FALSE) 		# for renderDataTable
 
 # relative path to data files
 datapath = "../../data/data104/"   # production server
@@ -1008,12 +1009,16 @@ showGeneIDs <- function(species, nGenes = 10){
 						paste0( " select DISTINCT idType from mapping where species = '", species,"'") )	# slow
     idTypes <- idTypes[,1, drop = TRUE]
     
+    if(nGenes > 100) nGenes <- 100; # upper limit
     
+    # for each id Type
     for(k in 1:length(idTypes)){
+        # retrieve 500 gene ids and then random choose 10
 		result <- dbGetQuery( convert,
                        paste0( " select  id,idType from mapping where species = '", species,"' 
                                  AND idType ='", idTypes[k], "' 
-                                 LIMIT ", nGenes) )
+                                 LIMIT ", 50 * nGenes) )
+       result <- result[sample(1:(50 * nGenes), nGenes), ]
        if(k == 1) { 
           resultAll <- result 
        } else { 
@@ -1021,7 +1026,7 @@ showGeneIDs <- function(species, nGenes = 10){
        }
      }
 
- 
+     # Names of idTypes
      idNames <- dbGetQuery( convert,
                             paste0( " SELECT id,idType from idIndex where id IN ('",
                                     paste(idTypes,collapse="', '"),  "') "))
