@@ -2925,8 +2925,7 @@ output$species <-renderTable({
   
  output$orgInfoTable <- DT::renderDataTable({
      
-     df <- orgInfo[order(orgInfo$id), ]
-     df <- df[, c("ensembl_dataset", "name", "totalGenes")]
+     df <- orgInfo[, c("ensembl_dataset", "name", "totalGenes")]
      colnames(df) <- c("Ensembl/STRING-db ID", "Name (Assembly)", "Total Genes")
      row.names(df) <- NULL
      df
