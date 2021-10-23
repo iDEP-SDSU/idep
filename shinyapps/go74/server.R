@@ -49,6 +49,11 @@ server <- function(input, output, session){
     
   } )
   
+  detailedGeneInfoLookup <- reactive({
+    if (input$goButton == 0)    return()
+    geneInfoDetails(converted(),input$selectOrg )   # uses converted gene ids thru converted() call
+    
+  } )
   # this defines an reactive object that can be accessed from other rendering functions
   converted_background <- reactive({
     if (input$goButton == 0 | is.null(input$input_text_b))    return() 
@@ -150,13 +155,22 @@ server <- function(input, output, session){
     if (input$goButton == 0)    return()   # still have problems when geneInfo is not found!!!!!
     tem = input$selectGO; tem=input$selectOrg; tem=input$minFDR
     isolate( {
+
+    withProgress(message= sample(quotes,1),detail="Looking up gene Info", {
       tem <- converted();
+      incProgress(0.1)
       tem2 <- geneInfoLookup()
+      incProgress(0.3)
+      tem3 <- detailedGeneInfoLookup()   
+      incProgress(0.6)   
       if( is.null(tem)) {as.data.frame("ID not recognized.")} else {
-        if(dim(tem2)[1] == 1) { tem$conversionTable }
+        if(dim(tem2)[1] == 1) { return( tem$conversionTable) }
         else { # if gene info is not available
           merged <- merge(tem$conversionTable,tem2,by='ensembl_gene_id')
-          merged <- subset(merged,select=c(User_input,ensembl_gene_id,symbol,gene_biotype,Species,chromosome_name,start_position  ))
+          if(!is.null(tem3))
+             merged <- merge(merged, tem3, by='ensembl_gene_id', all.x = TRUE)
+          merged <- subset(merged,select=c(User_input,symbol,ensembl_gene_id,entrezgene_id, 
+                                           gene_biotype,Species,chromosome_name,start_position, Description  ))
           
           tem3 <- as.data.frame(tem$originalIDs); colnames(tem3) = "User_input"
           merged <- merge(merged, tem3, all=T)
@@ -167,12 +181,17 @@ server <- function(input, output, session){
                                   merged$start_position                                                
           ), ]
           merged$start_position <- merged$start_position/1e6
-          colnames(merged) <- c("User ID", "Ensembl Gene ID", "Symbol",
-                                "Gene Type", "Species", "Chr", "Position (Mbp)" )
+          colnames(merged) <- c("Pasted","Symbol", "Ensembl Gene ID",  "Entrez",
+                                "Gene Type", "Species", "Chr", "Position (Mbp)", "Description" )
           i = 1:dim(merged)[1]
           merged = cbind(i,merged)
+
+
         }
       }
+      incProgress(0.9)
+      return(merged)
+      })
     }) # avoid showing things initially
   })
   
@@ -180,10 +199,36 @@ server <- function(input, output, session){
     if (input$goButton == 0)    return()   # still have problems when geneInfo is not found!!!!!
     
     isolate( {
-      conversionTableData()
+      df <- conversionTableData()
+
+      # first see if it is Ensembl gene ID-----------------------
+      ix <- grepl("ENS", df$'Ensembl Gene ID')  
+      if(sum(ix) > 0) { # at least one has http?
+        tem <- paste0("<a href='http://www.ensembl.org/id/", 
+                      df$'Ensembl Gene ID',
+                      "' target='_blank'>",
+                      df$'Ensembl Gene ID', 
+                      "</a>" )
+        # only change the ones with URL
+        df$'Ensembl Gene ID'[ix] <- tem[ix]
+      }
+      # first see if it is Ensembl gene ID-----------------------
+      ix <- !is.na(as.numeric( df$Entrez) ) 
+      if(sum(ix) > 0) { # at least one has http?
+        tem <- paste0("<a href='https://www.ncbi.nlm.nih.gov/gene/", 
+                      df$Entrez,
+                      "' target='_blank'>",
+                      df$Entrez, 
+                      "</a>" )
+        # only change the ones with URL
+        df$Entrez[ix] <- tem[ix]
+      
+     }
+     return(df)
       
     }) # avoid showing things initially
-  }, digits = 4,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+  }, digits = 4,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T,
+    sanitize.text.function = function(x) x)
   
   
   output$downloadGeneInfo <- downloadHandler(
@@ -196,12 +241,13 @@ server <- function(input, output, session){
   output$EnrichmentTable <-renderTable({
     if (input$goButton == 0  )    return(NULL)
     tem <- input$input_text_b; # just to make it re-calculate if user changes background
-    
+
     myMessage = "Those genes seem interesting! Let me see what I can do.
 	   I am comparing your query genes to all 1000+ types of IDs across 5000 species."
 
-    if(is.null(significantOverlaps() )  ) return(NULL)
+    if(is.null( )  ) return(NULL)
     # this solves an error when there is no significant enrichment
+    #write.csv(significantOverlaps() , "enrich.csv")
     if(ncol(significantOverlaps()$x ) ==1 ) return(significantOverlaps()$x)	
     
     withProgress(message= sample(quotes,1),detail=myMessage, {
@@ -1668,11 +1714,11 @@ server <- function(input, output, session){
       withProgress(message="Rendering KEGG pathway plot", {
         incProgress(1/5, "Loading the pathview package") 
         
-        fold = rep(1, length(converted()$IDs))
-        names(fold) <- converted()$IDs
+
         Species <- converted()$species[1,1]
-        fold <- convertEnsembl2Entrez(fold,Species)
-        
+        fold <- convertEnsembl2Entrez(converted()$IDs,  Species)
+
+        fold <- fold$entrezgene_id  
         keggSpecies <- as.character( keggSpeciesID[which(keggSpeciesID[,1] == Species),3] )
         
         if(nchar( keggSpecies) <=2 ) return(blank) # not in KEGG

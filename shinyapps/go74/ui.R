@@ -159,15 +159,16 @@ ui <- fluidPage(
         )
         
         ,tabPanel("Genes"
-                  , tableOutput("conversionTable")
                   , downloadButton('downloadGeneInfo', 'Download')
-                  , h5("This table shows how your genes are converted to Ensembl gene IDs.")          
+                  , tableOutput("conversionTable")
+      
         )
         
         ,tabPanel("Groups"
-                  , tableOutput("grouping")
                   , downloadButton('downloadGrouping', 'Download')
-                  , h5("If Gene Ontology is chosen, your genes are grouped by functional categories defined by high-level GO terms. ")          
+                  , h5("If Gene Ontology is chosen, your genes are grouped by functional categories defined by high-level GO terms. ")  
+                  , tableOutput("grouping")
+        
         ) 
         
         ,tabPanel("Plots"

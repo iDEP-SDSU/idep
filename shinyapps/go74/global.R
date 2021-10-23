@@ -376,7 +376,7 @@ convertID <- function (query, selectOrg) {
 				) )
 }
 
-geneInfo <- function (converted,selectOrg){
+geneInfo <- function (converted, selectOrg){
   if(is.null(converted) ) return(as.data.frame("ID not recognized!") ) # no ID
   querySet <- converted$IDs
   if(length(querySet) == 0) return(as.data.frame("ID not recognized!") )
@@ -397,6 +397,45 @@ geneInfo <- function (converted,selectOrg){
   # x = cbind(x,Set) } # just for debuging
   return( cbind(x,Set) )}
  }
+
+geneInfoDetails <- function (converted, selectOrg){
+  if(is.null(converted) ) return(as.data.frame("ID not recognized!") ) # no ID
+  querySet <- converted$IDs
+
+
+     details <- convertEnsembl2Details(converted$IDs,  
+                                      converted$species[1,1])
+    entrezIDs <- subset(details, 
+                        idType == "entrezgene_id",
+                        select = c(id, ensembl_gene_id))
+    colnames(entrezIDs) <- c("entrezgene_id", "ensembl_gene_id")
+
+    # remove duplicated entrez IDs. 
+    # if one ensembl id matched two entrez id, only keep one. 
+    entrezIDs <- entrezIDs[!duplicated(entrezIDs$ensembl_gene_id), ]
+
+    Description <- subset(details, 
+                          idType == "description",
+                          select = c(id, ensembl_gene_id))
+    colnames(Description) <- c("Description", "ensembl_gene_id")
+  
+    Description$Description <- proper( gsub("\\[SOURCE.*", "", Description$Description))
+    
+    # remove duplicated entrez IDs. 
+    # if one ensembl id matched two entrez id, only keep one. 
+    Description <- Description[!duplicated(Description$ensembl_gene_id), ]
+    
+    
+    
+  
+    allInfo  <- merge(entrezIDs, Description, by = "ensembl_gene_id" )
+    
+    allInfo$Description <- paste0(toupper(substr(allInfo$Description, 1, 1)), 
+                                  tolower(substring(allInfo$Description, 2)))
+     return(allInfo )
+
+}
+
 
   hyperText <- function (textVector, urlVector){
   # for generating pathway lists that can be clicked.
@@ -792,7 +831,6 @@ enrichmentPlot <- function( enrichedTerms, rightMargin=33) {
   
 }
 
-
 # numChar=100 maximum number of characters
 # n=200  maximum number of nodes
 # degree.cutoff = 0    Remove node if less connected
@@ -911,30 +949,54 @@ enrichmentNetwork <- function(enrichedTerms, layoutButton=0, edge.cutoff = 5){
 
 keggSpeciesID = read.csv(paste0(datapath,"data_go/KEGG_Species_ID.csv"))
 
-# finds id index corresponding to entrez gene and KEGG for id conversion
-idType_Entrez <- dbGetQuery(convert, paste("select distinct * from idIndex where idType = 'entrezgene_id'" ))
-if(dim(idType_Entrez)[1] != 1) {cat("Warning! entrezgene ID not found!")}
-idType_Entrez = as.numeric( idType_Entrez[1,1])
-idType_KEGG <- dbGetQuery(convert, paste("select distinct * from idIndex where idType = 'kegg'" ))
-if(dim(idType_KEGG)[1] != 1) {cat("Warning! KEGG ID not found!")}
-idType_KEGG = as.numeric( idType_KEGG[1,1])
+
 
 convertEnsembl2Entrez <- function (query,Species) { 
-	querySet <- cleanGeneSet( unlist( strsplit( toupper(names( query)),'\t| |\n|\\,' )  ) )
+    # finds id index corresponding to entrez gene and KEGG for id conversion
+    idType_Entrez <- dbGetQuery(convert, paste("select distinct * from idIndex where idType = 'entrezgene_id'" ))
+    if(dim(idType_Entrez)[1] != 1) {cat("Warning! entrezgene ID not found!")}
+    idType_Entrez = as.numeric( idType_Entrez[1,1])
+
+    # given a set of ensembl ids, return a mapping table to Entrez gene ID
+	querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,' )  ) )
 	speciesID <- orgInfo$id[ which(orgInfo$ensembl_dataset == Species)]  # note uses species Identifying
-	# idType 6 for entrez gene ID
+
 	result <- dbGetQuery( convert,
-						paste( " select  id,ens,species from mapping where ens IN ('", paste(querySet,collapse="', '"),
-								"') AND  idType ='",idType_Entrez,"'",sep="") )	# slow
+						paste0( " SELECT  id,ens from mapping where species = '", speciesID, "'",
+                                " AND idType ='",idType_Entrez,"'", 
+                                " AND ens IN ('", paste(querySet,collapse="', '"), "')" ) )
 							
 	if( dim(result)[1] == 0  ) return(NULL)
-	result <- subset(result, species==speciesID, select = -species)
 
-	ix = match(result$ens,names(query)  )
+    colnames(result) <- c("entrezgene_id", "ensembl_gene_id" )
 
-	tem <- query[ix];  names(tem) = result$id
-	return(tem)
-  
+	return(result)
+}
+
+convertEnsembl2Details <- function (query,Species) {
+# Given ensembl gene IDs, find gene description and entrez gene ID.  
+    # finds id index corresponding to description and entrez IDs
+
+    idType_description <- dbGetQuery(convert, paste("select distinct * from idIndex where idType in ('entrezgene_id', 'description')" ))
+    idTypes = as.numeric( idType_description[,1])
+
+    # given a set of ensembl ids, return a mapping table to Entrez gene ID
+	querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,' )  ) )
+	speciesID <- orgInfo$id[ which(orgInfo$ensembl_dataset == Species)]  # note uses species Identifying
+
+	result <- dbGetQuery( convert,
+						paste0( " SELECT  id,ens,idType from mapping where 
+                                        species = '", speciesID, "'",
+                                        "AND idType IN ('",	paste0(idTypes, collapse = "','"), "')", 
+                                " AND ens IN ('", paste(querySet,collapse="', '"), "')" ) )
+							
+	if( dim(result)[1] == 0  ) return(NULL)
+    colnames(result) <- c("id", "ensembl_gene_id", "idType" )
+    
+    ix <- match(result$idType, idType_description$id)
+    result$idType <- idType_description$idType[ix]
+
+	return(result)
 }
 
 #Given a KEGG pathway description, found pathway ids
@@ -1042,8 +1104,9 @@ showGeneIDs <- function(species, nGenes = 10){
        summarise(Examples = paste0(id, collapse = "; "))
 
        colnames(resultAll)[1] <- "ID Type"
-        # put symbols first, ensembls next and descriptions (long gnee names) last
-        resultAll <- resultAll[ order( grepl("ensembl", resultAll$'ID Type'), decreasing = TRUE), ]       
+        # put symbols first, refseq next, followed by ensembls. Descriptions (long gnee names) last
+        resultAll <- resultAll[ order( grepl("ensembl", resultAll$'ID Type'), decreasing = TRUE), ]    
+        resultAll <- resultAll[ order( grepl("refseq", resultAll$'ID Type'), decreasing = TRUE), ]       
         resultAll <- resultAll[ order( grepl("symbol", resultAll$'ID Type'), decreasing = TRUE), ]
         resultAll <- resultAll[ order( grepl("description", resultAll$'ID Type'), decreasing = FALSE), ]
     

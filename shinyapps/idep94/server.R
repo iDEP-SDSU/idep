@@ -2261,8 +2261,9 @@ showGeneIDs <- function(species, nGenes = 10){
        summarise(Examples = paste0(id, collapse = "; "))
 
        colnames(resultAll)[1] <- "ID Type"
-        # put symbols first, ensembls next and descriptions (long gnee names) last
-        resultAll <- resultAll[ order( grepl("ensembl", resultAll$'ID Type'), decreasing = TRUE), ]       
+        # put symbols first, refseq next, followed by ensembls. Descriptions (long gnee names) last
+        resultAll <- resultAll[ order( grepl("ensembl", resultAll$'ID Type'), decreasing = TRUE), ]    
+        resultAll <- resultAll[ order( grepl("refseq", resultAll$'ID Type'), decreasing = TRUE), ]      
         resultAll <- resultAll[ order( grepl("symbol", resultAll$'ID Type'), decreasing = TRUE), ]
         resultAll <- resultAll[ order( grepl("description", resultAll$'ID Type'), decreasing = FALSE), ]
     

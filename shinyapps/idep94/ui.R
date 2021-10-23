@@ -93,8 +93,6 @@ iDEPversion,
                   )
       )
       ,tableOutput('species' )
-
-
       ,actionButton("MorgInfo", "Supported Species")
       ,actionButton("MGeneIDexamples", "Supported gene IDs")
       ,bsModal("geneIDexamples", "What the gene IDs in our database look like?", "MGeneIDexamples", size = "large"
