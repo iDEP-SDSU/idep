@@ -102,7 +102,7 @@ iDEPversion,
 
        )# bsModal 4	
 
-      ,bsModal("orgInfoButton", "Supported species (Search by command and scientific name, NCBI taxonomy id)", "MorgInfo", size = "large"
+      ,bsModal("orgInfoButton", "Supported species (Search by common and scientific names, or NCBI taxonomy id)", "MorgInfo", size = "large"
                ,DT::dataTableOutput('orgInfoTable')
 
        )# bsModal 4	

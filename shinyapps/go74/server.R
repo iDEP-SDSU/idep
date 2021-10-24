@@ -115,7 +115,7 @@ server <- function(input, output, session){
      df <- orgInfo[, c("ensembl_dataset", "name", "totalGenes")]
      colnames(df) <- c("Ensembl/STRING-db ID", "Name (Assembly)", "Total Genes")
      row.names(df) <- NULL
-     
+     df
   })
   
   promoterData <-reactive({
