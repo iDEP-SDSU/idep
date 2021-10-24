@@ -20,12 +20,37 @@ echo 'Docker images have been built. Start downloading data.'
 
 # Download and unzip database files; this can take 2 hours
 # use Amazon server for faster download
-wget http://18.235.92.206:8080/data104.tar.gz 
+
+
+mkdir data
+cd data
+mkdir data104
+cd data104
+
+
+wget http://18.235.92.206:8080/convertIDs.db.tar.gz
+tar xvzf convertIDs.db.tar.gz
+rm convertIDs.db.tar.gz
+
+wget http://18.235.92.206:8080/data_go.tar.gz
+tar xvzf data_go.tar.gz
+rm data_go.tar.gz
+
+wget http://18.235.92.206:8080/geneInfo.tar.gz
+tar xvzf geneInfo.tar.gz
+rm geneInfo.tar.gz
+
+wget http://18.235.92.206:8080/motif.tar.gz
+tar xvzf motif.tar.gz
+rm motif.tar.gz
+
+wget http://18.235.92.206:8080/pathwayDB.tar.gz
+tar xvzf pathwayDB.tar.gz
+rm pathwayDB.tar.gz
 
 #slower server
 #wget --no-check-certificate https://mft.sdstate.edu/public/file/3Y66fppA0Eym0G41taPtRw/data104.tar.gz .
-tar xvzf data104.tar.gz
-rm data104.tar.gz
+
 
 echo 'Data has been downloaded and unziped'
 
