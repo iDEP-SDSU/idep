@@ -35,7 +35,7 @@ ui <- fluidPage(
                                       placeholder  = 'Best matching species',
                                       onInitialize = I('function() { this.setValue(""); }')) 
                   )), 
-        column(3, actionButton("MorgInfo", "List"))  
+        column(3, actionButton("MorgInfo", "Info"))  
       ),  
       fluidRow(
         column(8,   actionButton("useDemo1", "Demo genes"),	  	  ),

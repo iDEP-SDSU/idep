@@ -8,7 +8,7 @@ As a younger sister, [ShinyGO](http://ge-lab.org/go/) focuses on the enrichment 
 ## Local installation
 Local installation of this software is possible through steps below. But it is not supported or updated freqently. Local install is for non-profit organizations only. For-profit businesses please contact us.
 
-## To run iDEP on your local machine (Windows, MacOS, Linux):
+## To run iDEP and ShinyGO on your local machine (Windows, MacOS, Linux):
 Requirements:
 + More than 250GB available storage
 + More than 4GB memory
@@ -26,7 +26,7 @@ source https://raw.githubusercontent.com/iDEP-SDSU/idep/master/classes/librarySe
 
 5. Start Rstudio and load the ui.R and server.R scripts in the folder C:/IDEP/shinyapps/idep94. And then click on Run app. Similarily, the ShinyGO app could be started at the folder, C:/IDEP/shinyapps/go74/. 
 
-## To install iDEP on a Linux server:
+## To install iDEP and ShinyGO on a Linux server:
 
 Requirements:
 + More than 250GB available storage
