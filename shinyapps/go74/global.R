@@ -10,18 +10,6 @@
 # Data last modified: 06-16-2021, 11:46 PM CST (mm-dd-yyyy,TIME) 
 # to help with github merge 
 #######################################################
-
-
-
-#################################################################
-# FUNCTION : checkPackages 
-# DESCRIPTION : checks and install all packages for iDEP
-# INPUT ARGS : 
-# OUTPUT ARGS : 
-# IN/OUT ARGS :
-# RETURN : 
-#################################################################
-
 library(shiny)
 library(RSQLite)
 library(ggplot2)
@@ -245,6 +233,11 @@ idIndex <- dbGetQuery(convert, paste("select distinct * from idIndex " ))
 quotes <- dbGetQuery(convert, " select * from quotes")
 quotes = paste0("\"",quotes$quotes,"\"", " -- ",quotes$author,".       ")
 
+columnSelection = list("-log10(FDR)" = "EnrichmentFDR", 
+                        "Fold Enriched" = "FoldEnriched", 
+                        "Genes" =  "Genes", 
+                        "Category Name" = "Pathway")
+
 # This function convert gene set names
 # x="GOBP_mmu_mgi_GO:0000183_chromatin_silencing_at_rDNA"
 # chromatin silencing at rDNA
@@ -403,8 +396,10 @@ geneInfoDetails <- function (converted, selectOrg){
   querySet <- converted$IDs
 
 
-     details <- convertEnsembl2Details(converted$IDs,  
+    details <- convertEnsembl2Details(converted$IDs,  
                                       converted$species[1,1])
+
+    if(is.null(details))  return(NULL)
     entrezIDs <- subset(details, 
                         idType == "entrezgene_id",
                         select = c(id, ensembl_gene_id))

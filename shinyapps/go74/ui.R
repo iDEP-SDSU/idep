@@ -15,13 +15,26 @@ library(plotly) # interactive network plot
 library(visNetwork)
 library('shinyjs', verbose = FALSE)
 library('reactable', verbose = FALSE)
+columnSelection = list("-log10(FDR)" = "EnrichmentFDR", 
+                        "Fold Enriched" = "FoldEnriched", 
+                        "Genes" =  "Genes", 
+                        "Category Name" = "Pathway")
 ui <- fluidPage(
   # Application title
   sidebarLayout(
     
     sidebarPanel(
-      titlePanel("ShinyGO v0.74: Gene Ontology Enrichment Analysis + more"),  
-      
+      titlePanel("ShinyGO v0.741: Gene Ontology Enrichment Analysis + more"),  
+       h5("Select or search your species. Or use our best guess."),
+      selectizeInput('selectOrg', 
+                     label    = NULL,
+                     choices  = " ",
+                     multiple = TRUE,
+                     options  = list( maxItems     = 1,               
+                                      placeholder  = 'Best matching species',
+                                      onInitialize = I('function() { this.setValue(""); }'))  
+                     #,selected = "Best matching species"                                                  
+      ),      
       fluidRow(
         column(8,   actionButton("useDemo1", "Demo genes"),	  	  ),
         #column(4,   actionButton("useDemo2", "Demo 2"),	  	  ),
@@ -60,26 +73,20 @@ ui <- fluidPage(
       #tags$style(type='text/css', "#minFDR { width:100%;   margin-top:-15px}"),  
       # selectInput("selectOrg", label = NULL,"Best matching species",width='100%'),  
       
-      h5("Select or search your species. Or use our best guess."),
-      selectizeInput('selectOrg', 
-                     label    = NULL,
-                     choices  = " ",
-                     multiple = TRUE,
-                     options  = list( maxItems     = 1,               
-                                      placeholder  = 'Best matching species',
-                                      onInitialize = I('function() { this.setValue(""); }'))  
-                     #,selected = "Best matching species"                                                  
-      ), 
+
       tableOutput('species' ),
-      actionButton("MorgInfo", "Supported Species"),
-      actionButton("MGeneIDexamples", "Supported gene IDs")
+      fluidRow(
+      column(6,actionButton("MorgInfo", "Supported Species") ),
+      column(6, actionButton("MGeneIDexamples", "Gene IDs"))
+      )
+
 
     ), # sidebarPanel
     mainPanel(
       tabsetPanel(
         tabPanel("Enrichment" 
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen
-
+                                   ,p("oct.23, 2021: Version 0.741 An enrichment chart that is fully customiziable. Detailed gene informations with links on the Genes tab.")
                                    ,p("Oct. 15, 2021: Version 0.74. Database updated to Ensembl Release 104 and STRING v11. We now recommends the use of background genes in enrichment analysis. V.0.74 is much faster with even large set of background genes.")
                                    ,p("We recently hired Jenny for database updates and user support.",
                                        a("Email Jenny ",href="mailto:gelabinfo@gmail.com?Subject=ShinyGO"),
@@ -96,6 +103,7 @@ ui <- fluidPage(
 				    overlapping terms/pathways, protein-protein interaction networks, gene characterristics plots, and enriched promoter motifs. 
                  See example outputs below:")			
                                    ,br(),img(src='enrich.png', align = "center",width="660", height="339")
+                                   ,br(),img(src='enrichmentChart.png', align = "center",width="700", height="400")
                                    ,br(),br(),img(src='KEGG2.png', align = "center",width="541", height="360")
                                    ,br(),br(),img(src='GOtree3.png', align = "center",width="500", height="258")
                                    ,br(),br(),img(src='GOnetwork2.png', align = "center",width="500", height="248")
@@ -120,15 +128,62 @@ ui <- fluidPage(
                                    downloadButton('downloadEnrichment', 'Download table with gene IDs')			
                                    ,br(),br()
                  )			
-                 ,conditionalPanel("input.selectGO == 'KEGG'", 
-                                   htmlOutput('listSigPathways')
-                                   ,br(),br(),imageOutput("KeggImage", width = "100%", height = "100%")				
-                                   ,br(),br()	 
-                 )
-                 ,h5("Enrichment analysis based on hypergeometric distribution followed by FDR correction.")
-                 ,h5("Select KEGG pathways in the left to display your genes in pathway diagrams.")
+
         ) # enrichment tab
         #,tabPanel("Details", tableOutput('tableDetail')  )
+
+ #---Enrichment Chart-----------------------------------------------------------
+        ,tabPanel("Chart" 
+                  ,plotOutput('enrichPlot')
+                  ,br(), h4("The same information in the previous tab is visualized in a lollipop plot. In addition to 
+                           controls below, you can also refine this plot by adjusting the width of your browser window. Now you are in control!")
+                  ,fluidRow(
+                    column(3, selectInput(inputId = "SortPathwaysPlot",
+                                          label = h5("Pathway Order:"),
+                                          choices = columnSelection,
+                                          selected = columnSelection[2] ) )
+                    ,column(3, selectInput(inputId = "SortPathwaysPlotX",
+                                           label = h5("x-axis"),
+                                           choices = columnSelection[1:3],
+                                           selected = columnSelection[2] )  )
+                     ,column(3, selectInput(inputId = "SortPathwaysPlotColor",
+                                           label = h5("Color"),
+                                           choices = columnSelection[1:3],
+                                           selected = columnSelection[1] )  )
+                     ,column(3, selectInput(inputId = "SortPathwaysPlotSize",
+                                           label = h5("Size"),
+                                           choices = columnSelection[1:3],
+                                           selected = columnSelection[3] )  )
+                  ) # first row
+
+                  ,fluidRow(
+                    column(3, numericInput(inputId = "SortPathwaysPlotFontSize",
+                                           label = h5("Font Size"),
+                                           value = 12,
+                                           min = 3,
+                                           max = 18,
+                                           step = 1 ) )
+                    ,column(3, numericInput(inputId = "SortPathwaysPlotMarkerSize",
+                                           label = h5("Circle Size"),
+                                           value = 4,
+                                           min = 0,
+                                           max = 10,
+                                           step = 1 ))
+                    ,column(3, selectInput(inputId = "SortPathwaysPlotHighColor",
+                                           label = h5("Color:High"),
+                                           choices = c("red", "orange", "yellow", "green", "blue", "purple"),
+                                           selected = "red"
+                                           ))
+                    ,column(3, selectInput(inputId = "SortPathwaysPlotLowColor",
+                                           label = h5("Color:Low"),
+                                           choices = c("red", "orange", "yellow", "green", "blue", "purple"),
+                                           selected = "blue"
+                                           ))
+                  ) # 2nd row
+
+        )
+
+ #---Tree-----------------------------------------------------------
         ,tabPanel("Tree" 
                   ,h5("A hierarchical clustering tree summarizing the correlation among significant pathways 
        listed in the Enrichment tab. Pathways with many shared genes are clustered together. 
@@ -136,7 +191,8 @@ ui <- fluidPage(
                   ,downloadButton('GOTermsTree4Download','Figure' )
                   ,plotOutput('GOTermsTree')
         )
-        
+
+ #---Enrichment Chart-----------------------------------------------------------        
         ,tabPanel("Network" 
                   ,fluidRow(
                     column(2, actionButton("layoutButton", "Change layout") ),
@@ -157,27 +213,38 @@ ui <- fluidPage(
        Bigger nodes represent larger gene sets.  
        Thicker edges represent more overlapped genes.")               		   
         )
-        
+ #---Genes-----------------------------------------------------------        
+        ,tabPanel("KEGG"
+                 ,h5("Select KEGG pathways in the left to display your genes in pathway diagrams. Selected species only.")
+                 ,conditionalPanel("input.selectGO == 'KEGG'", 
+                                   htmlOutput('listSigPathways')
+                                   ,br(),br(),imageOutput("KeggImage", width = "100%", height = "100%")				
+                                   ,br(),br()	 
+                 )
+
+      
+        )
+ #---Genes-----------------------------------------------------------        
         ,tabPanel("Genes"
                   , downloadButton('downloadGeneInfo', 'Download')
                   , tableOutput("conversionTable")
       
         )
-        
+ #---Groups-----------------------------------------------------------        
         ,tabPanel("Groups"
                   , downloadButton('downloadGrouping', 'Download')
                   , h5("If Gene Ontology is chosen, your genes are grouped by functional categories defined by high-level GO terms. ")  
                   , tableOutput("grouping")
         
         ) 
-        
+ #---Plots-----------------------------------------------------------        
         ,tabPanel("Plots"
                   , h5("The characteristics of your genes are compared with the rest in the genome. Chi-squared and Student's 
               t-tests are run to see if your genes have special characteristics when compared with all the other genes or, if uploaded, a customized background.")
                   , plotOutput("genePlot", inline = TRUE,width='auto',height='auto')
                   , plotOutput("genePlot2", inline = TRUE,width='auto',height='auto')  
         )
-        
+ #---Genome-----------------------------------------------------------        
         ,tabPanel("Genome"
                   , h5("Your genes are marked in each of the chromosomes. 
                 Note that the scale for each chromosomes are different.")
@@ -196,6 +263,7 @@ ui <- fluidPage(
               your list.")
                   
         )  
+ #---STRING-----------------------------------------------------------
         ,tabPanel("STRING", 
                   h5("Your genes are sent to STRING-db website for enrichment analysis 
             and retrieval of a protein-protein network. We tries 
@@ -228,6 +296,8 @@ ui <- fluidPage(
                   ,tableOutput("stringDB_GO_enrichment")		
                   
         )	
+
+ #---?-----------------------------------------------------------
         ,tabPanel("?"
                   ," For feedbacks, please"
                   ,a("contact us, ",href="mailto:gelabinfo@gmail?Subject=ShinyGO" )

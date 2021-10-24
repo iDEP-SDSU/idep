@@ -87,8 +87,7 @@ server <- function(input, output, session){
       })
     })
   })
-  
-  
+    
   output$species <-renderTable({
     if (input$goButton == 0)    return()
     tem = input$selectGO; tem=input$selectOrg; tem=input$minFDR
@@ -103,7 +102,6 @@ server <- function(input, output, session){
     }) # avoid showing things initially
   }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
  
-
   output$showGeneIDs4Species <-renderTable({
     if (input$userSpecieIDexample == 0)    return()
       withProgress(message="Retrieving gene IDs (2 minutes)", {
@@ -245,9 +243,9 @@ server <- function(input, output, session){
     myMessage = "Those genes seem interesting! Let me see what I can do.
 	   I am comparing your query genes to all 1000+ types of IDs across 5000 species."
 
-    if(is.null( )  ) return(NULL)
+    if(is.null(significantOverlaps() )  ) return(NULL)
     # this solves an error when there is no significant enrichment
-    #write.csv(significantOverlaps() , "enrich.csv")
+
     if(ncol(significantOverlaps()$x ) ==1 ) return(significantOverlaps()$x)	
     
     withProgress(message= sample(quotes,1),detail=myMessage, {
@@ -1221,7 +1219,70 @@ server <- function(input, output, session){
     }) #isolate
   }, width=700,height = 3000)
   
-  
+  output$enrichPlot <- renderPlot({
+    if (input$goButton == 0  )    return()
+
+    if(is.null(significantOverlaps() )  ) return(NULL)
+    tem=input$selectOrg; tem = input$SortPathwaysPlot
+    tem = input$SortPathwaysPlotX  
+    tem = input$SortPathwaysPlotSize
+    tem = input$SortPathwaysPlotColor
+    tem = input$SortPathwaysPlotFontSize
+    tem = input$SortPathwaysPlotMarkerSize
+    tem = input$SortPathwaysPlotHighColor
+    tem = input$SortPathwaysPlotLowColor
+    isolate( {
+ 
+    # this solves an error when there is no significant enrichment
+
+    if(ncol(significantOverlaps()$x ) ==1 ) return(NULL)	
+
+        goTable <- significantOverlaps()$x[, 1:5]
+
+        # Remove spaces in col names
+        colnames(goTable) <- gsub(" ","", colnames(goTable))
+
+
+
+        x       = input$SortPathwaysPlotX  
+        size    = input$SortPathwaysPlotSize
+        colorBy = input$SortPathwaysPlotColor
+
+        goTable$EnrichmentFDR = -log10(goTable$EnrichmentFDR)
+        ix <- which(colnames(goTable) == input$SortPathwaysPlot)
+        
+        # sort the pathways
+        if(ix >0 && ix < dim(goTable)[2])
+            goTable <- goTable[order(goTable[, ix], decreasing = TRUE), ]
+        # convert to factor so that the levels are not reordered by ggplot2
+        goTable$Pathway <- factor(goTable$Pathway, levels = rev(goTable$Pathway) )                  
+
+        ggplot(goTable, aes_string(x=x, y="Pathway", size=size, color=colorBy)) +
+             geom_point() +
+             scale_color_continuous(low=input$SortPathwaysPlotLowColor, 
+                                    high=input$SortPathwaysPlotHighColor, 
+                                    name = colorBy,
+                                    guide=guide_colorbar(reverse=TRUE)) +
+             ylab(NULL) + #ggtitle(title) + #theme_dose(font.size) +
+             scale_size(range=c(1, input$SortPathwaysPlotMarkerSize)) +
+             guides(size  = guide_legend(order = 2), 
+                    color = guide_colorbar(order = 1)) +
+             geom_segment(aes_string(x = 0, 
+                                     xend = x, 
+                                     y = "Pathway", 
+                                     yend = "Pathway"),
+                          size=1) +
+            theme(axis.text=element_text( size = input$SortPathwaysPlotFontSize) ) +
+            expand_limits(x = 0, y = 0)
+
+          
+          
+
+
+    }) #isolate
+    
+  } ) #,height = 800,height=400
+    
   output$listSigPathways <- renderUI({
     tem = input$selectOrg
     if (input$goButton == 0 | is.null(significantOverlaps())) return(NULL)
@@ -1230,7 +1291,7 @@ server <- function(input, output, session){
     
     if(dim(tem$x)[2] ==1 ) return(NULL)  
     choices = tem$x[,5]		
-    selectInput("sigPathways", label="Select a KEGG pathway to show diagram with query genes highlighted in red:"
+    selectInput("sigPathways", label="Select a significant KEGG pathway to show diagram with your genes highlighted in red:"
                 ,choices=choices)      
   })
   
