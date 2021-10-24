@@ -106,6 +106,7 @@ iDEPversion,
                ,DT::dataTableOutput('orgInfoTable')
 
        )# bsModal 4	
+      ,h5("Try ", a(" ShinyGO", href="https://bioinformatics.sdstate.edu/go/",target="_blank"), "for GO enrichment analysis")
       ,a( h5("?",align = "right"), href="https://idepsite.wordpress.com/data-format/",target="_blank")
                                                                                        # new window
     ), #sidebarPanel

@@ -234,8 +234,8 @@ quotes <- dbGetQuery(convert, " select * from quotes")
 quotes = paste0("\"",quotes$quotes,"\"", " -- ",quotes$author,".       ")
 
 columnSelection = list("-log10(FDR)" = "EnrichmentFDR", 
-                        "Fold Enriched" = "FoldEnriched", 
-                        "Genes" =  "Genes", 
+                        "Fold Enrichment" = "FoldEnrichment", 
+                        "N. of Genes" =  "nGenes", 
                         "Category Name" = "Pathway")
 
 # This function convert gene set names
@@ -635,7 +635,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   colnames(x)[9]= "Genes"
   x$n <- as.numeric(x$n) # convert total genes from character to numeric 10/21/19
   x <- subset(x,select = c(FDR,overlap,n,fold,description,memo,Genes) )
-  colnames(x) = c("Enrichment FDR", "Genes",  "Pathway Genes", "Fold Enriched","Pathway","URL", "Genes"  )
+  colnames(x) = c("Enrichment FDR", "nGenes",  "Pathway Genes", "Fold Enrichment","Pathway","URL", "Genes"  )
   }
 
  dbDisconnect(pathway)

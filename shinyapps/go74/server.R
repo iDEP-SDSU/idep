@@ -240,8 +240,7 @@ server <- function(input, output, session){
     if (input$goButton == 0  )    return(NULL)
     tem <- input$input_text_b; # just to make it re-calculate if user changes background
 
-    myMessage = "Those genes seem interesting! Let me see what I can do.
-	   I am comparing your query genes to all 1000+ types of IDs across 5000 species."
+    myMessage = "Analyzing genes."
 
     if(is.null(significantOverlaps() )  ) return(NULL)
     # this solves an error when there is no significant enrichment
@@ -253,11 +252,10 @@ server <- function(input, output, session){
 
       if(input$SortPathways == "Sort by FDR")
            pathways <- pathways[order(pathways[, 1]), ] 
-      if(input$SortPathways == "Sort by Fold Enriched")
+      if(input$SortPathways == "Sort by Fold Enrichment")
            pathways <- pathways[order(pathways[, 4], decreasing = TRUE), ] 
       if(input$SortPathways == "Sort by Genes")
            pathways <- pathways[order(pathways[, 2], decreasing = TRUE), ]  
-
       if(input$SortPathways == "Sort by Category Name")
            pathways <- pathways[order( pathways[, 5]), ]  
 
@@ -1219,10 +1217,11 @@ server <- function(input, output, session){
     }) #isolate
   }, width=700,height = 3000)
   
-  output$enrichPlot <- renderPlot({
+  output$enrichChart <- renderPlot({
     if (input$goButton == 0  )    return()
 
     if(is.null(significantOverlaps() )  ) return(NULL)
+    if(ncol(significantOverlaps()$x ) == 1 ) return(NULL) # no significant ones found.
     tem=input$selectOrg; tem = input$SortPathwaysPlot
     tem = input$SortPathwaysPlotX  
     tem = input$SortPathwaysPlotSize
@@ -1231,12 +1230,10 @@ server <- function(input, output, session){
     tem = input$SortPathwaysPlotMarkerSize
     tem = input$SortPathwaysPlotHighColor
     tem = input$SortPathwaysPlotLowColor
+    tem = input$enrichChartType
+
     isolate( {
  
-    # this solves an error when there is no significant enrichment
-
-    if(ncol(significantOverlaps()$x ) ==1 ) return(NULL)	
-
         goTable <- significantOverlaps()$x[, 1:5]
 
         # Remove spaces in col names
@@ -1247,35 +1244,57 @@ server <- function(input, output, session){
         x       = input$SortPathwaysPlotX  
         size    = input$SortPathwaysPlotSize
         colorBy = input$SortPathwaysPlotColor
-
+        
+        # convert to vector so that we can look up the readable names of columns 
+        columns <- unlist(columnSelection)
+        
         goTable$EnrichmentFDR = -log10(goTable$EnrichmentFDR)
         ix <- which(colnames(goTable) == input$SortPathwaysPlot)
-        
+
         # sort the pathways
         if(ix >0 && ix < dim(goTable)[2])
             goTable <- goTable[order(goTable[, ix], decreasing = TRUE), ]
         # convert to factor so that the levels are not reordered by ggplot2
         goTable$Pathway <- factor(goTable$Pathway, levels = rev(goTable$Pathway) )                  
 
-        ggplot(goTable, aes_string(x=x, y="Pathway", size=size, color=colorBy)) +
-             geom_point() +
-             scale_color_continuous(low=input$SortPathwaysPlotLowColor, 
-                                    high=input$SortPathwaysPlotHighColor, 
-                                    name = colorBy,
-                                    guide=guide_colorbar(reverse=TRUE)) +
-             ylab(NULL) + #ggtitle(title) + #theme_dose(font.size) +
-             scale_size(range=c(1, input$SortPathwaysPlotMarkerSize)) +
-             guides(size  = guide_legend(order = 2), 
-                    color = guide_colorbar(order = 1)) +
-             geom_segment(aes_string(x = 0, 
-                                     xend = x, 
-                                     y = "Pathway", 
-                                     yend = "Pathway"),
-                          size=1) +
-            theme(axis.text=element_text( size = input$SortPathwaysPlotFontSize) ) +
-            expand_limits(x = 0, y = 0)
+        p <- ggplot(goTable, aes_string(x=x, y="Pathway", size=size, color=colorBy)) +
+               geom_point() +
+               scale_color_continuous(low=input$SortPathwaysPlotLowColor, 
+                                      high=input$SortPathwaysPlotHighColor, 
+                                      name = names(columns)[columns == colorBy],
+                                      guide=guide_colorbar(reverse=TRUE)) +
+               scale_size(range=c(1, input$SortPathwaysPlotMarkerSize)) +
+               xlab( names(columns)[columns == x]  ) +
+               ylab(NULL) + 
+               guides(size  = guide_legend(order = 2, title = names(columns)[columns == size]), 
+                      color = guide_colorbar(order = 1)) +
+               theme(axis.text=element_text( size = input$SortPathwaysPlotFontSize) ) 
 
-          
+        if(input$enrichChartType == "dotplot") {
+          p <- p 
+        } else if(input$enrichChartType == "lollipop") {
+          p <- p + 
+                 geom_segment(aes_string(x = 0, 
+                                            xend = x, 
+                                            y = "Pathway", 
+                                            yend = "Pathway"),
+                                  size=1) 
+        } else if(input$enrichChartType == "barplot") {
+          p <- ggplot(goTable, aes_string(x=x, y="Pathway", fill=colorBy)) +
+               geom_col(width = 0.8, position = position_dodge(0.7)) +
+               scale_fill_continuous(low=input$SortPathwaysPlotLowColor, 
+                                      high=input$SortPathwaysPlotHighColor, 
+                                      name = names(columns)[columns == colorBy],
+                                      guide=guide_colorbar(reverse=TRUE)) +
+               xlab( names(columns)[columns == x]  ) +
+               ylab(NULL) + 
+               theme(axis.text=element_text( size = input$SortPathwaysPlotFontSize) ) 
+
+        }    
+        
+
+
+         p 
           
 
 

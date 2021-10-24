@@ -16,8 +16,8 @@ library(visNetwork)
 library('shinyjs', verbose = FALSE)
 library('reactable', verbose = FALSE)
 columnSelection = list("-log10(FDR)" = "EnrichmentFDR", 
-                        "Fold Enriched" = "FoldEnriched", 
-                        "Genes" =  "Genes", 
+                        "Fold Enrichment" = "FoldEnrichment", 
+                        "Genes" =  "nGenes", 
                         "Category Name" = "Pathway")
 ui <- fluidPage(
   # Application title
@@ -78,7 +78,8 @@ ui <- fluidPage(
       fluidRow(
       column(6,actionButton("MorgInfo", "Supported Species") ),
       column(6, actionButton("MGeneIDexamples", "Gene IDs"))
-      )
+      ),
+      h5("Try ", a(" iDEP", href="https://bioinformatics.sdstate.edu/idep/",target="_blank"), "for RNA-Seq data analysis")
 
 
     ), # sidebarPanel
@@ -112,15 +113,15 @@ ui <- fluidPage(
                                    ,br(),br(),img(src='promoter.png', align = "center",width="717", height="288")					
                  )
                  ,br()
-                 ,p("FDR is adjusted from the hypergeometric test. Fold Enriched is defined as the percentage of genes in your list belonging to a pathway, divided by the corresponding percentage in the background. FDR tells us how likely the enrichment is by chance; Fold Enriched indicates how drastically genes of a certain pathway is overrepresented. We think the latter deserves at least some attention.")
+                 ,p("FDR is adjusted from the hypergeometric test. Fold Enrichment is defined as the percentage of genes in your list belonging to a pathway, divided by the corresponding percentage in the background. FDR tells us how likely the enrichment is by chance; Fold Enrichment indicates how drastically genes of a certain pathway is overrepresented. We think the latter deserves at least some attention.")
                  ,div(style="display:inline-block", 
                           selectInput(inputId = "SortPathways",
                               label = NULL,
                               choices = c("Sort by FDR" = "Sort by FDR", 
-                                          "Sort by Fold Enriched" = "Sort by Fold Enriched", 
+                                          "Sort by Fold Enrichment" = "Sort by Fold Enrichment", 
                                           "Sort by Genes" =  "Sort by Genes", 
                                           "Sort by Category Name" = "Sort by Category Name"),
-                              selected = "Sort by Fold Enriched" ),
+                              selected = "Sort by Fold Enrichment" ),
                      style="algn:right")
 
                  ,tableOutput('EnrichmentTable')	
@@ -134,12 +135,11 @@ ui <- fluidPage(
 
  #---Enrichment Chart-----------------------------------------------------------
         ,tabPanel("Chart" 
-                  ,plotOutput('enrichPlot')
-                  ,br(), h4("The same information in the previous tab is visualized in a lollipop plot. In addition to 
-                           controls below, you can also refine this plot by adjusting the width of your browser window. Now you are in control!")
+                  ,plotOutput('enrichChart')
+                  ,br(), h4("Adjusting the width of your browser window to resize figure.")
                   ,fluidRow(
                     column(3, selectInput(inputId = "SortPathwaysPlot",
-                                          label = h5("Pathway Order:"),
+                                          label = h5("Sort Pathway by"),
                                           choices = columnSelection,
                                           selected = columnSelection[2] ) )
                     ,column(3, selectInput(inputId = "SortPathwaysPlotX",
@@ -180,7 +180,11 @@ ui <- fluidPage(
                                            selected = "blue"
                                            ))
                   ) # 2nd row
-
+                  ,selectInput(inputId = "enrichChartType",
+                                           label = h5("Chart type"),
+                                           choices = c("lollipop", "dotplot", "barplot"),
+                                           selected = "lollipop"
+                                           )
         )
 
  #---Tree-----------------------------------------------------------
