@@ -86,7 +86,7 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("Enrichment" 
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen
-                                   ,p("oct.23, 2021: Version 0.741 An enrichment chart that is fully customiziable. Detailed gene informations with links on the Genes tab.")
+                                   ,p("oct.23, 2021: Version 0.741 An enrichment chart that is fully customizable. Detailed gene informations with links on the Genes tab.")
                                    ,p("Oct. 15, 2021: Version 0.74. Database updated to Ensembl Release 104 and STRING v11. We now recommends the use of background genes in enrichment analysis. V.0.74 is much faster with even large set of background genes.")
                                    ,p("We recently hired Jenny for database updates and user support.",
                                        a("Email Jenny ",href="mailto:gelabinfo@gmail.com?Subject=ShinyGO"),
@@ -215,7 +215,7 @@ ui <- fluidPage(
         )
  #---Genes-----------------------------------------------------------        
         ,tabPanel("KEGG"
-                 ,h5("Select KEGG pathways in the left to display your genes in pathway diagrams. Selected species only.")
+                 ,h5("Select KEGG pathways in the left to display your genes in pathway diagrams. Selected species only. Takes 1-3 minutes.")
                  ,conditionalPanel("input.selectGO == 'KEGG'", 
                                    htmlOutput('listSigPathways')
                                    ,br(),br(),imageOutput("KeggImage", width = "100%", height = "100%")				
