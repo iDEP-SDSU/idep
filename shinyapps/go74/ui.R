@@ -26,15 +26,17 @@ ui <- fluidPage(
     sidebarPanel(
       titlePanel("ShinyGO v0.741: Gene Ontology Enrichment Analysis + more"),  
        h5("Select or search your species. Or use our best guess."),
-      selectizeInput('selectOrg', 
+       fluidRow( 
+         column(9, selectizeInput('selectOrg', 
                      label    = NULL,
                      choices  = " ",
                      multiple = TRUE,
                      options  = list( maxItems     = 1,               
                                       placeholder  = 'Best matching species',
-                                      onInitialize = I('function() { this.setValue(""); }'))  
-                     #,selected = "Best matching species"                                                  
-      ),      
+                                      onInitialize = I('function() { this.setValue(""); }')) 
+                  )), 
+        column(3, actionButton("MorgInfo", "List"))  
+      ),  
       fluidRow(
         column(8,   actionButton("useDemo1", "Demo genes"),	  	  ),
         #column(4,   actionButton("useDemo2", "Demo 2"),	  	  ),
@@ -75,10 +77,7 @@ ui <- fluidPage(
       
 
       tableOutput('species' ),
-      fluidRow(
-      column(6,actionButton("MorgInfo", "Supported Species") ),
-      column(6, actionButton("MGeneIDexamples", "Gene IDs"))
-      ),
+      actionButton("MGeneIDexamples", "Gene IDs examples"),
       h5("Try ", a(" iDEP", href="https://bioinformatics.sdstate.edu/idep/",target="_blank"), "for RNA-Seq data analysis")
 
 

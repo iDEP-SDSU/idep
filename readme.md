@@ -1,9 +1,9 @@
-# iDEP: Integrated Differential Expression and Pathway analysis
-
+# iDEP and ShinyGO
 
 [iDEP](http://ge-lab.org/idep/) is a Shiny app for analyzing RNA-seq or other transcriptomic data. See [documentation](https://idepsite.wordpress.com/) and [paper](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6). For feedbacks or data contributions (genes and GO mapping of any species), please contact us, or visit our homepage. Send us suggestions or any error message to help improve iDEP.
 
-## iDEP is a web application hosted at http://bioinformatics.sdstate.edu/idep/ 
+As a younger sister, [ShinyGO](http://ge-lab.org/go/) focuses on the enrichment analysis of gene lists. The same database is used. They live in the same GitHub repository. ShinyGO is published [here](https://doi.org/10.1093/bioinformatics/btz931). 
+
 
 ## Local installation
 Local installation of this software is possible through steps below. But it is not supported or updated freqently. Local install is for non-profit organizations only. For-profit businesses please contact us.
