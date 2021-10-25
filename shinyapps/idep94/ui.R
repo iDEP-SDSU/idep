@@ -35,16 +35,17 @@ iDEPversion,
       ,h5(" and just click the tabs for some magic!", style = "color:red")
       ,p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))
       ,strong("1. Optional:Select or search for your species.")
-      #,selectInput("selectOrg", label = NULL,"Best matching species",width='100%') 
-                      ,selectizeInput('selectOrg', 
-                                  label    = NULL,
-                                  choices  = " ",
-                                  multiple = TRUE,
-                                  options  = list( maxItems     = 1,               
-                                                   placeholder  = 'Best matching species',
-                                                   onInitialize = I('function() { this.setValue(""); }'))  
-                                  #,selected = "Best matching species"                                                  
-                         )    
+      ,fluidRow( 
+         column(9, selectizeInput('selectOrg', 
+                     label    = NULL,
+                     choices  = " ",
+                     multiple = TRUE,
+                     options  = list( maxItems     = 1,               
+                                      placeholder  = 'Best matching species',
+                                      onInitialize = I('function() { this.setValue(""); }')) 
+                  )), 
+        column(3, actionButton("MorgInfo", "Info"))  
+      )  
       ,conditionalPanel("input.selectOrg == 'NEW'",
         fileInput('gmtFile', 'Upload a geneset .GMT file for enrichment analysis (optional)',
                   accept = c(
@@ -93,8 +94,8 @@ iDEPversion,
                   )
       )
       ,tableOutput('species' )
-      ,actionButton("MorgInfo", "Supported Species")
-      ,actionButton("MGeneIDexamples", "Supported gene IDs")
+
+      ,actionButton("MGeneIDexamples", "Example gene IDs")
       ,bsModal("geneIDexamples", "What the gene IDs in our database look like?", "MGeneIDexamples", size = "large"
                ,selectizeInput(inputId = "userSpecieIDexample",
                                label = "Select or search for species", choices = NULL)
@@ -102,7 +103,7 @@ iDEPversion,
 
        )# bsModal 4	
 
-      ,bsModal("orgInfoButton", "Supported species (Search by common and scientific names, or NCBI taxonomy id)", "MorgInfo", size = "large"
+      ,bsModal("orgInfoButton", "Search annotated species by common and scientific names, or NCBI taxonomy id. For other species, you can still use iDEP, except enrichment analysis.", "MorgInfo", size = "large"
                ,DT::dataTableOutput('orgInfoTable')
 
        )# bsModal 4	
