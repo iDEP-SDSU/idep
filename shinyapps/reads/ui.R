@@ -84,10 +84,10 @@ shiny::shinyUI(
     shiny::HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />'), # a solid line
     
     
-    shiny::fluidRow(
-      shiny::column(3, h4(textOutput("selectedDataset"))),
-      
-    ),
+    # shiny::fluidRow(
+    #   shiny::column(3, h4(textOutput("selectedDataset"))),
+    #   
+    # ),
     shiny::conditionalPanel(
       "input.selectedSpecies != 'ARCHS4_Human' & input.selectedSpecies != 'ARCHS4_Mouse' & input.GSEID != 'null'",
       #shiny::fluidRow(shiny::column(3, offset = 9, textOutput("selected_selectedSpecies"), )),
@@ -101,18 +101,18 @@ shiny::shinyUI(
         )
       ),
     ),
-    shiny::fluidRow(
-      shiny::column(
-        5,
-        shiny::tableOutput("samples")
-        # ,h4("Loading data and R packages ... ...")
-        # ,shiny::HTMLOutput('DoneLoading')
-      ),
-      shiny::conditionalPanel(
-        "input.selectedSpecies != 'ARCHS4_Human' & input.selectedSpecies != 'ARCHS4_Mouse' & input.GSEID != 'null'",
-        #shiny::column(2, downloadButton("downloadSearchedDataSummaryMeta", "Summary MetaData"))
-      )
-    ),
+    # shiny::fluidRow(
+    #   shiny::column(
+    #     5,
+    #     shiny::tableOutput("samples")
+    #     # ,h4("Loading data and R packages ... ...")
+    #     # ,shiny::HTMLOutput('DoneLoading')
+    #   ),
+    #   shiny::conditionalPanel(
+    #     "input.selectedSpecies != 'ARCHS4_Human' & input.selectedSpecies != 'ARCHS4_Mouse' & input.GSEID != 'null'",
+    #     #shiny::column(2, downloadButton("downloadSearchedDataSummaryMeta", "Summary MetaData"))
+    #   )
+    # ),
     
     # table for dataset counts by species and source
     shinyBS::bsModal("modalExample1021", "Data Set Statistics and Details", "Statistics",
