@@ -1239,12 +1239,17 @@ server <- function(input, output, session){
         # Remove spaces in col names
         colnames(goTable) <- gsub(" ","", colnames(goTable))
 
-
-
         x       = input$SortPathwaysPlotX  
         size    = input$SortPathwaysPlotSize
         colorBy = input$SortPathwaysPlotColor
-        
+        fontSize = input$SortPathwaysPlotFontSize
+        markerSize = input$SortPathwaysPlotMarkerSize
+        # validate values; users can input any numeric value outside the range
+        if(! (fontSize >= 1 && fontSize <= 20) ) 
+           fontSize <- 12
+         if(! (markerSize >= 0 && fontSize <= 12) ) 
+           fontSize <- 4
+       
         # convert to vector so that we can look up the readable names of columns 
         columns <- unlist(columnSelection)
         
@@ -1263,12 +1268,12 @@ server <- function(input, output, session){
                                       high=input$SortPathwaysPlotHighColor, 
                                       name = names(columns)[columns == colorBy],
                                       guide=guide_colorbar(reverse=TRUE)) +
-               scale_size(range=c(1, input$SortPathwaysPlotMarkerSize)) +
+               scale_size(range=c(1, markerSize)) +
                xlab( names(columns)[columns == x]  ) +
                ylab(NULL) + 
                guides(size  = guide_legend(order = 2, title = names(columns)[columns == size]), 
                       color = guide_colorbar(order = 1)) +
-               theme(axis.text=element_text( size = input$SortPathwaysPlotFontSize) ) 
+               theme(axis.text=element_text( size = fontSize) ) 
 
         if(input$enrichChartType == "dotplot") {
           p <- p 
@@ -1288,7 +1293,7 @@ server <- function(input, output, session){
                                       guide=guide_colorbar(reverse=TRUE)) +
                xlab( names(columns)[columns == x]  ) +
                ylab(NULL) + 
-               theme(axis.text=element_text( size = input$SortPathwaysPlotFontSize) ) 
+               theme(axis.text=element_text( size = fontSize) ) 
 
         }    
         

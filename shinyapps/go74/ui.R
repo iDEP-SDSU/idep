@@ -250,7 +250,7 @@ ui <- fluidPage(
 
  #---Genome-----------------------------------------------------------        
         ,tabPanel("Genome"
-                  , h5("The chromosomes maybe only partly shown.")
+                  , h5("The genes are represented by red dots. The peaks indicate relative abundance compared with gene density in the window. Each window is further divided into several equal-sized steps. We calculated the density of pasted genes in this window compared with average. The ratio of densit is cutoff with the Cutoff parameter. The chromosomes maybe only partly shown. ")
                   ,fluidRow(
                     column(3, selectInput(inputId = "MAwindowSize",
                                            label = h5("Window Size(Mb)"),
@@ -265,8 +265,8 @@ ui <- fluidPage(
                                            selected = 4,
                                            choices = c(2, 4, 6, 8) )))
                   ,fluidRow(  
-                     column(2, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) )  
-                    ,column(3, actionButton("gPlotstatic", "Static plot") ) )
+                     column(4, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) )  
+                    ,column(4, actionButton("gPlotstatic", "Static plot") ) )
               
                   ,plotlyOutput("genomePlotly",height = "900px")
 
