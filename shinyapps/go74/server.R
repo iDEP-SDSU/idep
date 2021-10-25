@@ -1982,9 +1982,9 @@ output$genomePlotly <- renderPlotly({
              cutoff <- as.numeric(input$MAwindowCutoff) 
 
              x0$x <- (floor(x0$start_position / windowSize )   + 0.5 ) * windowSize
-             movingAverage <- x0 |>
-               select(chNum, x, Fold) |>
-               group_by(chNum, x) |>
+             movingAverage <- x0 %>%
+               select(chNum, x, Fold) %>%
+               group_by(chNum, x) %>%
                summarize(y = mean(Fold)) 
              incProgress(0.6)
              for(i in 1:(steps-1)) {
@@ -1994,18 +1994,18 @@ output$genomePlotly <- renderPlotly({
                x0$x <- x0$x + i * windowSize / steps
                x0 <- subset(x0, x > 0)  # remove anything below zero
 
-               movingAverage1 <- x0 |>
-                 select(chNum, x, Fold) |>
-                 group_by(chNum, x) |>
+               movingAverage1 <- x0 %>%
+                 select(chNum, x, Fold) %>%
+                 group_by(chNum, x) %>%
                  summarize(y = mean(Fold))
                movingAverage <- rbind(movingAverage, movingAverage1)          
              }
                  
              # translate fold to y coordinates
-             movingAverage <- movingAverage |>
-                mutate(y =  y / mean(y)) |>
-                mutate( y = ifelse(y > cutoff, cutoff, y)) |> # upper bound
-                mutate(y =  y / max(y)) |>
+             movingAverage <- movingAverage %>%
+                mutate(y =  y / mean(y)) %>%
+                mutate( y = ifelse(y > cutoff, cutoff, y)) %>% # upper bound
+                mutate(y =  y / max(y)) %>%
                 mutate(y = chNum * chD + 3 * y)
 
              p <- p +
