@@ -5,58 +5,62 @@
 # runApp('~/shinyapps/reads', display.mode = "showcase")
 options(shiny.maxRequestSize = 100 * 1024^2)
 
-library(shiny)
-library(DT) # for renderDataTable
-library("rhdf5")
-library(RSQLite)
-library(getDEE2)
-library(dplyr)
-  
-  dataPath <- "../../data/readCounts"
-   #dataPath <- "C:/Users/bdere/OneDrive/Documents/idep-master/idep-master/data/readCounts"
+#library(shiny)
+#library(DT) # for renderDataTable
+#library("rhdf5")
+##library(RSQLite)
+#library(getDEE2)
+#library(dplyr)
+#library("shinybusy") 
 
-  destination_fileH <- paste(dataPath, "/human_matrix_v10.h5", sep="")
-  destination_fileM <- paste(dataPath, "/mouse_matrix_v10.h5", sep="")
-  destination_fileH_transcript <- paste(dataPath, "/human_transcript_v10.h5", sep="")
-  destination_fileM_transcript <- paste(dataPath, "/mouse_transcript_v10.h5", sep="")
-  destination_file_transcript <- ""
-  GEOdbFile <- paste(dataPath, "/GEO.db", sep="") # ~/idep-master/idep-master/shinyapps/reads
-  
-  
-  sqlite <- dbDriver("SQLite")
-  convert <- dbConnect(sqlite, GEOdbFile, flags = SQLITE_RO) # read only mode
-  
-  #dbListTables(convert)
-  # dbListFields(convert, 'GSEinfo')
-  DEE2Species <- c(
-    "athaliana",
-    "celegans",
-    "dmelanogaster",
-    "drerio",
-    "ecoli",
-    "hsapiens",
-    "mmusculus",
-    "rnorvegicus",
-    "scerevisiae"
-  )
-  
-  
-  names(DEE2Species) <- c(
-    "Arabidopsis",
-    "Worm",
-    "Fly",
-    "Zebrafish",
-    "E coli",
-    "Human",
-    "Mouse",
-    "Rat",
-    "Yeast"
-  )
-  
-  # get a list of species
-  orgInfo <- dbGetQuery(convert, paste("select distinct species from GSEinfo "))
-  orgInfo <- sort(orgInfo[, 1]) # convert data frame to vector, and sort
-  speciesChoice <- setNames(as.list(orgInfo), orgInfo)
+#dataPath <- "../../data/readCounts"
+dataPath <- "C:/Users/bdere/OneDrive/Documents/idep-master/idep-master/data/readCounts"
+
+destination_fileH <- paste(dataPath, "/human_matrix_v10.h5", sep="")
+destination_fileM <- paste(dataPath, "/mouse_matrix_v10.h5", sep="")
+destination_fileH_transcript <- paste(dataPath, "/human_transcript_v10.h5", sep="")
+destination_fileM_transcript <- paste(dataPath, "/mouse_transcript_v10.h5", sep="")
+destination_file_transcript <- ""
+GEOdbFile <- paste(dataPath, "/GEO.db", sep="") # ~/idep-master/idep-master/shinyapps/reads
+
+
+sqlite <- DBI::dbDriver("SQLite")
+convert <- DBI::dbConnect(sqlite, GEOdbFile, flags = SQLITE_RO) # read only mode
+
+#dbListTables(convert)
+ #dbListFields(convert, 'GSEinfo')
+DEE2Species <- c(
+  "athaliana",
+  "celegans",
+  "dmelanogaster",
+  "drerio",
+  "ecoli",
+  "hsapiens",
+  "mmusculus",
+  "rnorvegicus",
+  "scerevisiae"
+)
+
+
+names(DEE2Species) <- c(
+  "Arabidopsis",
+  "Worm",
+  "Fly",
+  "Zebrafish",
+  "E coli",
+  "Human",
+  "Mouse",
+  "Rat",
+  "Yeast"
+)
+
+# get a list of species
+orgInfo <- DBI::dbGetQuery(convert, paste("select distinct species from GSEinfo "))
+orgInfo <- sort(orgInfo[, 1]) # convert data frame to vector, and sort
+speciesChoice <- setNames(as.list(orgInfo), orgInfo)
+
+
+
 
 
 
@@ -65,10 +69,10 @@ server <- function(input, output, session) {
   
   GSEID <- "null"
   
-  #updattes species botton selection
-  reactive(input$selectedSpecies,{
-     updateRadioButtons(session, "selectedSpecies", choices = speciesChoice, selected = "ARCHS4_Mouse")
-    })
+  #updates species botton selection
+  shiny::reactive(input$selectedSpecies,{
+    updateRadioButtons(session, "selectedSpecies", choices = speciesChoice, selected = "ARCHS4_Human")
+  })
   #disables downlaod button when species changes
   observeEvent(input$selectedSpecies,{
     shinyjs::disable("downloadSearchedData")
@@ -78,7 +82,7 @@ server <- function(input, output, session) {
     shinyjs::disable("downloadSearchedDataQCmat")
     shinyjs::disable("downloadSearchedDataSummaryMeta")
   })
- 
+  
   #enables download buttons after row is selected
   observeEvent(input$SearchData_rows_selected,{
     shinyjs::enable("downloadSearchedData")
@@ -89,26 +93,29 @@ server <- function(input, output, session) {
     shinyjs::enable("downloadSearchedDataSummaryMeta")  
   }) 
   
-  dataset.info <- reactive({
-
-    dataset.info <- dbGetQuery(convert, "select * from GSEinfo")
+  dataset.info <- shiny::reactive({
+    
+    dataset.info <- DBI::dbGetQuery(convert, "select GSEID, Species, Samples, Title, Summary from GSEinfo")
     dataset.info$GSEID <- as.character(dataset.info$GSEID)
+    dataset.info$Link <-  paste("https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=", dataset.info$GSEID, sep="")
+    dataset.info$'NCBI Link' <- paste0("<a href='", dataset.info$Link,"'>",dataset.info$GSEID,"</a>")
+    #dataset.info$Link <-  a("hi", href=paste("https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=", dataset.info$GSEID, sep=""))
     return(dataset.info)
   })
   
   # retrieve sample info and counts data
-  Search <- reactive({
-
+  Search <- shiny::reactive({
+    
     if (is.null(input$SearchData_rows_selected)) {
       return(NULL)
     }
-
+    
     # row selected by clicking
     iy <- which(dataset.info()$Species == input$selectedSpecies)
     ix <- iy[input$SearchData_rows_selected]
     
     GSEID <- dataset.info()$GSEID[ix]
-
+    
     GSEID <- gsub(" ", "", GSEID)
     
     querySTMT <- paste("select * from sampleInfo where gse = '",
@@ -116,16 +123,16 @@ server <- function(input, output, session) {
                        sep = ""
     )
     
-    results <- dbGetQuery(convert, querySTMT)
+    results <- DBI::dbGetQuery(convert, querySTMT)
     
     selectedSpecies <- names(sort(table(results[, 5]), decreasing = T))[1]
-
+    
     if (dim(results)[1] == 0) {
       return(NULL)
     } else if (grepl("ARCHS4", selectedSpecies)) {
       cat("archs4 selected")
-
-      withProgress(message = "Parsing ARCHS4 file ...", {
+      
+      shiny::withProgress(message = "Parsing ARCHS4 file ...", {
         samp <- results[, 1]
         if (selectedSpecies == "ARCHS4_Human") {
           destination_file <- destination_fileH
@@ -137,17 +144,17 @@ server <- function(input, output, session) {
         }
         
         # Identify columns to be extracted
-        samples <- h5read(destination_file, "meta/samples/geo_accession")
+        samples <- rhdf5::h5read(destination_file, "meta/samples/geo_accession")
         sample_locations <- which(samples %in% samp)
         
         # extract gene expression from compressed data
-        genes <- h5read(destination_file, "meta/genes")
-        expression <- h5read(destination_file, "data/expression", index = list(sample_locations, 1:length(genes$genes)))
+        genes <- rhdf5::h5read(destination_file, "meta/genes")
+        expression <- rhdf5::h5read(destination_file, "data/expression", index = list(sample_locations, 1:length(genes$genes)))
         expression <- t(expression)
-        sample_title <- h5read(destination_file, "meta/samples/title")[sample_locations]
-        H5close()
+        sample_title <- rhdf5::h5read(destination_file, "meta/samples/title")[sample_locations]
+        rhdf5::H5close()
         
-        incProgress(.2)
+        shiny::incProgress(.2)
         
         # add row and column names
         rownames(expression) <- paste(" ", genes$genes)
@@ -155,18 +162,18 @@ server <- function(input, output, session) {
         
         expression <- expression[, order(colnames(expression))] # order by colname
         
-        incProgress(.3)
+        shiny::incProgress(.3)
         
         # extract transcript level expression
         if (file.exists(destination_file_transcript)) {
           cat("archs4 transcript exists ")
           
-          samples <- h5read(destination_file_transcript, "meta/samples/geo_accession")
+          samples <- rhdf5::h5read(destination_file_transcript, "meta/samples/geo_accession")
           sample_locations <- which(samples %in% samp)
           
-          transcripts <- h5read(destination_file_transcript, "meta/transcripts")
-          incProgress(.1)
-          transcriptCounts <- h5read(destination_file_transcript,
+          transcripts <- rhdf5::h5read(destination_file_transcript, "meta/transcripts")
+          shiny::incProgress(.1)
+          transcriptCounts <- rhdf5::h5read(destination_file_transcript,
                                      "data/expression",
                                      index = list(sample_locations, 1:length(transcripts$transcripts))
           )
@@ -182,7 +189,7 @@ server <- function(input, output, session) {
         }
         
         # sample information table
-        a <- results %>% select(gse, gsm, tissue, sample_title)
+        a <- results %>% dplyr::select(gse, gsm, tissue, sample_title)
         results <- a
         remove(a)
         
@@ -192,7 +199,7 @@ server <- function(input, output, session) {
         colnames(results) <- c("GEO ID", "Sample ID", "Tissue", "Sample Title") # rename columns
         results <- results[, -1] # Remove GSE number
         
-        incProgress(1)
+        shiny::incProgress(1)
         
         if (dim(results)[1] > 100) results <- results[1:100, ] # only show 100 results
       })
@@ -204,7 +211,7 @@ server <- function(input, output, session) {
     } else { # DEE2 data
       if (grepl("DEE2_", selectedSpecies)) {
         cat("DEE2 selected")
-        withProgress(message = "Downloading expression data from DEE2 server... This can take 5 minutes. ", {
+        shiny::withProgress(message = "Downloading expression data from DEE2 server... This can take 5 minutes. ", {
           selectedSpecies <- gsub("DEE2_", "", selectedSpecies) # remove DEE2
           selectedSpecies <- DEE2Species[selectedSpecies] # species code
           SRRlist <- results$SRR_accession
@@ -215,56 +222,57 @@ server <- function(input, output, session) {
           tmp <- tempfile()
           len <- length(SRRlist)
           if (len <= 500) {
-            data1 <- getDEE2(selectedSpecies, SRRvec=SRRlist, outfile = tmp) #outfile = "myfile.zip")
+            cat("small sample #")
+            data1 <- getDEE2::getDEE2(selectedSpecies, SRRvec=SRRlist, outfile = tmp) #outfile = "myfile.zip")
             geneCounts <- as.data.frame(data1@assays@data@listData$counts)
             tmp <- paste(tmp, ".zip", sep="")
-            geneInfo <- loadGeneInfo(tmp)
-            TranscriptInfo <- loadTxInfo(tmp)
-            # These stopped working for some reason
-            QCmat <- loadQcMx(tmp)
-            SummaryMeta <- loadSummaryMeta(tmp)
+            geneInfo <- getDEE2::loadGeneInfo(tmp)
+            TranscriptInfo <- lgetDEE2::oadTxInfo(tmp)
+            QCmat <- getDEE2::loadQcMx(tmp)
+            SummaryMeta <- getDEE2::loadSummaryMeta(tmp)
             
           } else {
             if (len > 500) {
-            # for large samples, we can only read 500 at a time
-            iter <- floor(len / 500) + 1
-            start <- 1
-            end <- 500
-            for (i in 1:iter) {
-              data1_prime <- getDEE2(selectedSpecies, SRRvec = SRRlist[start:end])#, outfile = "myfile.zip")
-            tmp <- paste(tmp, ".zip", sep="")
-            geneInfo <- loadGeneInfo(tmp)
-              
-              data_chunk <- as.data.frame(data1_prime@assays@data@listData$counts)
-              
-              if (i == 1) {
-                # initiale data frame with data_chunk dimensions
-                df <- data.frame(matrix(nrow = dim(data_chunk[1]), ncol = 0))
-                geneInfo <- loadGeneInfo(tmp)
-                TranscriptInfo <- loadTxInfo(tmp)
-                QCmat <- loadQcMx(tmp)
-                SummaryMeta <- loadSummaryMeta(tmp)
+              cat("large sample #")
+              # for large samples, we can only read 500 at a time
+              iter <- floor(len / 500) + 1
+              start <- 1
+              end <- 500
+              for (i in 1:iter) {
+                data1_prime <- getDEE2::getDEE2(selectedSpecies, SRRvec = SRRlist[start:end], outfile = tmp)
+                tmp <- paste(tmp, ".zip", sep="")
+                #geneInfo <- loadGeneInfo(tmp)
+                
+                data_chunk <- as.data.frame(data1_prime@assays@data@listData$counts)
+                
+                if (i == 1) {
+                  # initiale data frame with data_chunk dimensions
+                  df <- data.frame(matrix(nrow = dim(data_chunk[1]), ncol = 0))
+                  geneInfo <- getDEE2::loadGeneInfo(tmp)
+                  TranscriptInfo <- getDEE2::loadTxInfo(tmp)
+                  QCmat <- getDEE2::loadQcMx(tmp)
+                  SummaryMeta <- lgetDEE2::oadSummaryMeta(tmp)
+                }
+                df <- cbind(df, data_chunk)
+                
+                # increment start value
+                start <- start + 500
+                
+                if (i == iter) { # change range on final iteration
+                  end <- end + (len %% 500)
+                } else if (i < iter) { # all iteration before final iteration
+                  end <- end + 500
+                }
               }
-              df <- cbind(df, data_chunk)
               
-              # increment start value
-              start <- start + 500
-              
-              if (i == iter) { # change range on final iteration
-                end <- end + (len %% 500)
-              } else if (i < iter) { # all iteration before final iteration
-                end <- end + 500
-              }
-            }
-            
-            # rename df
-            geneCounts <- df
+              # rename df
+              geneCounts <- df
             }
           }
           
           ##### Transcript Counts for large number of samples
           if (len <= 500) {
-            tc <- getDEE2(selectedSpecies, SRRlist, counts = "TxCounts")
+            tc <- getDEE2::getDEE2(selectedSpecies, SRRlist, counts = "TxCounts")
             transcriptCounts <- tc@assays@data@listData$counts
           } else if (len > 500) {
             iter <- floor(len / 500) + 1
@@ -291,7 +299,7 @@ server <- function(input, output, session) {
             transcriptCounts <- df
           }
           
-          incProgress(.5)
+          shiny::incProgress(.5)
           ix <- match(colnames(geneCounts), results$SRR_accession)
           colnames(geneCounts) <- paste(colnames(geneCounts), results$sample_title[ix])
           
@@ -300,7 +308,7 @@ server <- function(input, output, session) {
           colnames(transcriptCounts) <- paste(colnames(transcriptCounts), results$sample_title[ix])
           
           results <- results[, c(-4, -5)]
-          incProgress(1)
+          shiny::incProgress(1)
         })
         
         return(list(
@@ -319,89 +327,136 @@ server <- function(input, output, session) {
   
   
   # selected species
-  output$selected_selectedSpecies <- renderText({
+  output$selected_selectedSpecies <- shiny::renderText({
     paste("Additional information: ", input$selectedSpecies)
   })
   
-  output$samples <- renderTable(
+  output$samples <- shiny::renderTable(
     {
+
       if (is.null(input$SearchData_rows_selected)) {
         return(NULL)
       }
       if (is.null(Search())) {
         return(as.matrix("No dataset found!"))
       }
+      
+
       Search()$info
     },
     bordered = TRUE
   )
+
+  output$samples1 <- shiny::renderTable(
+    {
+      
+      if (is.null(input$SearchData_rows_selected)) {
+        return(NULL)
+      }
+      if (is.null(Search())) {
+        return(as.matrix("No dataset found!"))
+      }
+      if(nrow(Search()$info)<10)
+      {
+        return(t(Search()$info))
+      }
+      sampletab<-as.data.frame(t(Search()$info))
+      return(sampletab[,1:8])
+   # DT::datatable(st)
+                                  
+                                  #, row.names = c("<b>GSM</b>","Tissue","Sample Title")), escape = FALSE)
+      
+      ##sampletable<-t(Search()$info)
+      
+      
+     # DT::datatable(sampletable)
+      
+    },
+    bordered = TRUE,
+    rownames = TRUE,
+    colnames = FALSE
+  )
   
-  output$downloadSearchedData <- downloadHandler(
+  
+  output$downloadSearchedData <- shiny::downloadHandler(
     filename = function() {
       paste(selectedGSEID(), "_gene_level.csv", sep = "")
     },
     content = function(file) {
-      write.csv(Search()$counts, file)
+      utils::write.csv(Search()$counts, file)
     }
   )
   
-  output$downloadSearchedDataTranscript <- downloadHandler(
+  output$downloadSearchedDataTranscript <- shiny::downloadHandler(
     filename = function() {
       paste(selectedGSEID(), "_transcript_level.csv", sep = "")
     },
     content = function(file) {
-      write.csv(Search()$transcriptCounts, file)
+      utils::write.csv(Search()$transcriptCounts, file)
     }
   )
   
-  output$downloadSearchedDataTxInfo <- downloadHandler(
+  output$downloadSearchedDataTxInfo <- shiny::downloadHandler(
     filename = function() {
       paste(selectedGSEID(), "_transcript_info.csv", sep = "")
     },
     content = function(file) {
-      write.csv(Search()$transcriptInfo, file)
+      utils::write.csv(Search()$transcriptInfo, file)
     }
   )
-  output$downloadSearchedDataGeneInfo <- downloadHandler(
+  output$downloadSearchedDataGeneInfo <- shiny::downloadHandler(
     filename = function() {
       paste(selectedGSEID(), "_gene_info.csv", sep = "")
     },
     content = function(file) {
-      write.csv(Search()$geneInfo, file)
+      utils::write.csv(Search()$geneInfo, file)
     }
   )
-  output$downloadSearchedDataQCmat <- downloadHandler(
+  output$downloadSearchedDataQCmat <- shiny::downloadHandler(
     filename = function() {
       paste(selectedGSEID(), "_QC_matrix.csv", sep = "")
     },
     content = function(file) {
-      write.csv(Search()$QCmat, file)
+      utils::write.csv(Search()$QCmat, file)
     }
   )
-  output$downloadSearchedDataSummaryMeta <- downloadHandler(
+  output$downloadSearchedDataSummaryMeta <- shiny::downloadHandler(
     filename = function() {
       paste(selectedGSEID(), "_summary_meta.csv", sep = "")
     },
     content = function(file) {
-      write.csv(Search()$SummaryMeta, file)
+      utils::write.csv(Search()$SummaryMeta, file)
     }
   )
   # search GSE IDs
-  output$SearchData <- DT::renderDataTable(
+  output$SearchData <- DT::renderDataTable(rownames = FALSE,
     {
+      
       if (is.null(dataset.info())) {
         return(NULL)
       }
       if (is.null(input$selectedSpecies)) {
+        
         return(NULL)
       }
-      dataset.info()[which(dataset.info()$Species == input$selectedSpecies), ]
-    },
+      
+      dataset.info()[which(dataset.info()$Species == input$selectedSpecies), c(1,3,4,7)]
+       },
     selection = "single",
+    escape = FALSE,
     options = list(pageLength = 5) # only 5 rows shown
+    
+
+    
   )
   
-  selectedGSEID <- reactive({
+  selectedGSEID <- shiny::reactive({
+    
+    shinybusy::show_modal_spinner(
+      spin = "orbit",
+      text = "Loading",
+      color = "#000000"
+    )
     if (is.null(input$SearchData_rows_selected)) {
       return(NULL)
     }
@@ -409,10 +464,13 @@ server <- function(input, output, session) {
     iy <- which(dataset.info()$Species == input$selectedSpecies)
     ix <- iy[input$SearchData_rows_selected]
     
+    shinybusy::remove_modal_spinner()
+    
     return(dataset.info()$GSEID[ix])
   })
   
-  output$selectedDataset <- renderText({
+  #shows: Preview: GSE######
+  output$selectedDataset <- shiny::renderText({
     if (is.null(input$SearchData_rows_selected)) {
       return(NULL)
     }
@@ -421,14 +479,21 @@ server <- function(input, output, session) {
       paste("Preview:", selectedGSEID())
     )
   })
-  output$stats <- renderTable(
+  
+
+  output$stats <- shiny::renderTable(
     {
-      withProgress(message = "Parsing ARCHS4 file ...", {
+      shinybusy::show_modal_spinner(
+        spin = "orbit",
+        text = "Loading",
+        color = "#000000"
+      )
+      shiny::withProgress(message = "Parsing ARCHS4 file ...", {
         # datasets
-        GSEs <- dbGetQuery(convert, "select  species, count(GSEID) from GSEinfo GROUP BY species")
-        incProgress(0.3)
-        GSMs <- dbGetQuery(convert, "select  species, count(gsm) from sampleInfo GROUP BY species")
-        incProgress(0.3)
+        GSEs <- DBI::dbGetQuery(convert, "select  species, count(GSEID) from GSEinfo GROUP BY species")
+        shiny::incProgress(0.3)
+        GSMs <- DBI::dbGetQuery(convert, "select  species, count(gsm) from sampleInfo GROUP BY species")
+        shiny::incProgress(0.3)
         stats <- merge(GSEs, GSMs, by.x = "Species", by.y = "species")
         
         stats$Source <- stats$Species
@@ -438,15 +503,17 @@ server <- function(input, output, session) {
         colnames(stats)[3:4] <- c("#Datasets", "#Samples")
         stats$Source[which(duplicated(stats$Source))] <- ""
       })
+      shinybusy::remove_modal_spinner()
+      
       return(stats)
     },
     bordered = TRUE
   )
-  output$DoneLoading <- renderUI({
+  output$DoneLoading <- shiny::renderUI({
     i <- "<h4>Done. Ready to search.</h4>"
     
     
-    HTML(paste(i, collapse = "<br/>"))
+    shiny::HTML(paste(i, collapse = "<br/>"))
   })
   
   # dbDisconnect(convert)

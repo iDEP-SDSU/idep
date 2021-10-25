@@ -33,6 +33,10 @@ shinyUI(
     
     HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />'), # a solid line
     
+   # shinybusy::add_busy_spinner(spin = "breeding-rhombus", position="top-left", timeout=200, color="#8A2BE2", margin= c(50,50)),
+
+   
+   
     sidebarLayout(
       
       # Sidebar with a slider input
@@ -68,10 +72,18 @@ shinyUI(
       # Show a plot of the generated distribution
       
       mainPanel(width=10,
-                DT::dataTableOutput("SearchData")
-      )
+                DT::dataTableOutput("SearchData"),
+
+                column(6, shiny::tableOutput("samples1")),
+                
+
     ),
-    
+    ),
+   fluidRow(conditionalPanel(
+     "is.null(input.SearchData_rows_selected)",
+     column(2, "Scroll down to see sample previews.")
+   )
+   ),
     # GSEinfo table
     HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />'), # a solid line
     
