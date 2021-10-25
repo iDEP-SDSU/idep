@@ -251,7 +251,7 @@ ui <- fluidPage(
 
  #---Genome-----------------------------------------------------------        
         ,tabPanel("Genome"
-                  , h5("The genes are represented by red dots. The peaks indicate concentration of your genes in a genomic region. Each window is further divided into several equal-sized steps for sliding. We compared the density of the pasted genes in a window with all windows. The Cutoff Z score is the upper bound for visialization. The chromosomes may be only partly shown as we use the last gene's location to draw the line. Mouse over to see gene symbols. Zoom in for regions of interest.")
+                  , h5("The genes are represented by red dots. The peaks indicate higher concentration of your genes in a genomic region compared than background genes. Each window is further divided into several equal-sized steps for sliding. We compared the density of the pasted genes in a window with all windows. The Cutoff Z score is the upper bound for visialization. The chromosomes may be only partly shown as we use the last gene's location to draw the line. Mouse over to see gene symbols. Zoom in regions of interest.")
                   ,plotlyOutput("genomePlotly",height = "900px")
                   ,fluidRow(
                     column(3, selectInput(inputId = "MAwindowSize",
