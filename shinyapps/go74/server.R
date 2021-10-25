@@ -2011,18 +2011,8 @@ output$genomePlotly <- renderPlotly({
              p <- p +
                   geom_line(data = movingAverage, aes(x = x, y = y, group = chNum) )
 
-             incProgress(0.8)
-            # draw horizontal lines for each ch.
-             for( i in 1:dim(chLengthTable)[1] )
-               p = p+ annotate( "segment",x = 0, xend = chLengthTable$start_position[i]/1e6,
-                                y = chLengthTable$chNum[i]*chD, yend = chLengthTable$chNum[i]*chD)
-             # change legend  http://ggplot2.tidyverse.org/reference/scale_manual.html
-             p <- p + scale_colour_manual(name="",   # customize legend text
-                                          values=c("red", "blue"),
-                                          breaks=c("1","-1"),
-                                          labels=c("Up", "Dn")) 
-             p <- p + xlab("Position on chrs. (Mbp)") +  theme(axis.title.y=element_blank())      
-             p <- p + theme(legend.position="none")
+
+
 
          } # have genes after filter
 			
