@@ -1245,10 +1245,10 @@ server <- function(input, output, session){
         fontSize = input$SortPathwaysPlotFontSize
         markerSize = input$SortPathwaysPlotMarkerSize
         # validate values; users can input any numeric value outside the range
-        if(! (fontSize >= 1 && fontSize <= 20) ) 
+        if(fontSize < 1 | fontSize >= 20 ) 
            fontSize <- 12
-         if(! (markerSize >= 0 && fontSize <= 12) ) 
-           fontSize <- 4
+         if(markerSize < 0 | markerSize > 20 ) 
+           markerSize <- 4
        
         # convert to vector so that we can look up the readable names of columns 
         columns <- unlist(columnSelection)
