@@ -9449,7 +9449,7 @@ output$genomePlotly <- renderPlotly({
 		}
 		  if(dim(top1)[1] == 0 ) return (ggplotly(p))
 		  colnames(top1)= c("Fold","FDR")
-		  
+
 		 # write.csv(merge(top1,allGeneInfo(), by.x="row.names",by.y="ensembl_gene_id"  ),"tem.csv"  )
 		 x <- merge(top1,allGeneInfo(), by.x="row.names",by.y="ensembl_gene_id"  )
 

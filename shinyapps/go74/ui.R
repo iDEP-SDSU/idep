@@ -247,14 +247,33 @@ ui <- fluidPage(
                   , plotOutput("genePlot", inline = TRUE,width='auto',height='auto')
                   , plotOutput("genePlot2", inline = TRUE,width='auto',height='auto')  
         )
+
  #---Genome-----------------------------------------------------------        
         ,tabPanel("Genome"
-                  , h5("Your genes are marked in each of the chromosomes. 
-                Note that the scale for each chromosomes are different.")
-                  , plotOutput("genomePlot", width = "100%")  
+                  , h5("The chromosomes maybe only partly shown.")
+                  ,fluidRow(
+                    column(3, selectInput(inputId = "MAwindowSize",
+                                           label = h5("Window Size(Mb)"),
+                                           selected = 6,
+                                           choices = c(1, 2, 4, 6, 8, 10, 15, 20) ))
+                    ,column(3, selectInput(inputId = "MAwindowSteps",
+                                           label = h5("Steps in window"),
+                                           selected = 2,
+                                           choices = c(1, 2, 3, 4)))
+                    ,column(3, selectInput(inputId = "MAwindowCutoff",
+                                           label = h5("Cutoff"),
+                                           selected = 4,
+                                           choices = c(2, 4, 6, 8) )))
+                  ,fluidRow(  
+                     column(2, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) )  
+                    ,column(3, actionButton("gPlotstatic", "Static plot") ) )
+              
+                  ,plotlyOutput("genomePlotly",height = "900px")
+
                   
         )
-        
+
+ #---Genome-----------------------------------------------------------                
         ,tabPanel("Promoter", 
                   radioButtons("radio", label = NULL, choices = list("Upstream 300bp as promoter" = 300, 
                                                                      "Upstream 600bp as promoter" = 600),selected = 300),
@@ -442,8 +461,13 @@ ui <- fluidPage(
       ,bsModal("orgInfoButton", "Supported species (Search by common and scientific names, or NCBI taxonomy IDs)", "MorgInfo", size = "large"
                ,DT::dataTableOutput('orgInfoTable')
 
-       )# bsModal 4	
-      
+       )# bsModal 5	
+      ,bsModal("genomePlotStaticButton", "Static genome plot", "gPlotstatic", size = "large"
+                  , h5("Your genes are marked in each of the chromosomes. 
+                Note that the scale for each chromosomes are different.")
+                  , plotOutput("genomePlot", width = "100%")  
+
+       )# bsModal 6	      
     ) # mainPanel
   ) #sidebarLayout
   ,tags$head(includeScript("google_analytics.js")) # tracking usage

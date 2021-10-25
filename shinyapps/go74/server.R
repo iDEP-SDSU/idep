@@ -1828,6 +1828,210 @@ server <- function(input, output, session){
     })
   }, deleteFile = TRUE)
   
+# visualizing fold change on chrs. 
+output$genomePlotly <- renderPlotly({
+        if (input$goButton == 0  )    return()
+		if(is.null(geneInfoLookup))   return()
+		tem = input$selectOrg ; 
+		tem = input$MAwindowSize
+        tem = input$MAwindowSteps
+        tem = input$MAwindowCutoff
+        tem = input$ignoreNonCoding
+		FDRcutoffFake <- 0.5; FoldcutoffFake <- 0.5 # those are not real numbers.  
+
+		####################################
+		
+	  isolate({ 
+		withProgress(message=sample(quotes,1), detail ="Visualzing expression on the genome", {
+		# default plot
+		fake = data.frame(a=1:3,b=1:3)
+		p <- ggplot(fake, aes(x = a, y = b)) +
+							 geom_blank() + ggtitle("No genes with position info.") +
+							 theme(axis.title.x=element_blank(),axis.title.y=element_blank())
+
+        x = geneInfoLookup()
+
+        #Background genes ---------------
+        xB = geneInfoLookup_background()
+        convertedB = converted_background()	   
+        if(!is.null(xB) && 
+           !is.null(convertedB) && 
+           length( convertedB$IDs) < maxGenesBackground + 1) { # if more than 30k genes, ignore background genes.
+          
+          x <- x[ x$Set == "List", ] # remove background from selected genes
+          xB <- xB[ xB$Set == "Genome", ] # remove Genome genes from background
+          xB$Set <- "Genome"
+          x <- rbind(x, xB)
+        }
+        # end background genes ------------
+        
+        # only coding genes? 
+        if(input$ignoreNonCoding) {
+          x <- subset(x, gene_biotype == "protein_coding")
+        }
+        x$FDR <- 1
+        x$Fold <- 0
+        ix <- which(x$Set == "List")
+        x$FDR[ix] <- 1e-10
+        x$Fold[ix] <- 0.51
+        incProgress(0.1)
+		 # if no chromosomes found. For example if user do not convert gene IDs.
+		 if( dim(x)[1] >5  ) { 
+
+           x <- x[order(x$chromosome_name,x$start_position),]
+  
+           x$ensembl_gene_id <- as.character( x$ensembl_gene_id)
+   
+           # if symbol is missing use Ensembl id
+           x$symbol = as.character(x$symbol)  
+           ix = which(is.na(x$symbol))
+           ix2 = which(nchar(as.character(x$symbol))<= 2 )
+           ix3 = which( duplicated(x$symbol))
+           ix = unique( c(ix,ix2,ix3))
+           x$symbol[ix] <- x$ensembl_gene_id[ix] 
+
+           x = x[!is.na(x$chromosome_name),]
+           x = x[!is.na(x$start_position),]
+            
+            # use max position as chr. length   before filtering
+           chLengthTable = aggregate(start_position~chromosome_name, data=x,max )
+  
+           # only keep significant genes
+          ix = which( (x$FDR< FDRcutoffFake) &
+                        (abs(x$Fold) > FoldcutoffFake ) )
+
+           if (length(ix) > 5) { 
+
+             # remove nonsignificant / not selected genes
+             x0 <- x   # keep a copy
+             x = x[ix, ]  
+  
+             tem = sort( table( x$chromosome_name), decreasing=T)
+             ch <- names( tem[tem >= 1 ] )  # ch with less than 100 genes are excluded
+             if(length(ch) > 50) ch <- ch[1:50]  # at most 50 ch
+             ch <- ch[ nchar(ch)<=12] # ch. name less than 10 characters
+             ch = ch[order(as.numeric(ch) ) ]
+             tem <- ch
+             ch <- 1:(length(ch))  # the numbers are continous from 1 to length(ch)
+             names(ch) <- tem  # the names are real chr. names
+
+
+             x <- x[which(x$chromosome_name %in% names(ch)),]
+             x <- droplevels(x)
+
+             x$chNum <- 1 # numeric encoding
+             x$chNum <- ch[ x$chromosome_name ]
+
+              # add chr. numer 
+             chLengthTable$chNum <-  ch[ chLengthTable$chromosome_name ]
+             chLengthTable <- chLengthTable[!is.na( chLengthTable$chNum ), ]
+             chLengthTable <- chLengthTable[order(chLengthTable$chNum), c(3,2)]
+             chLengthTable <- chLengthTable[order(chLengthTable$chNum), ]
+
+              # prepare coordinates
+             x$start_position = x$start_position/1000000 # Mbp
+             chD = 30 # distance between chs.
+             foldCutoff = 2   # max log2 fold 
+    
+             x$Fold = x$Fold / sd(x$Fold)  # standardize fold change    
+             x$Fold[which(x$Fold > foldCutoff )] = foldCutoff   # log2fold within -5 to 5
+             x$Fold[which(x$Fold <   -1*foldCutoff )] = -1*foldCutoff 
+             x$Fold = 4* x$Fold
+    
+             x$y = x$chNum*chD + x$Fold
+             chTotal = dim(chLengthTable)[1] 
+             x$R = as.factor(sign(x$Fold))
+    
+             colnames(x)[ which(colnames(x) == "start_position")] = "x"
+
+             incProgress(0.3)
+             # plotting ----------------------------------
+#              if(dim(x)[1] > 100) {  # don't label if too many genes
+                p <- ggplot() +  # don't define x and y, so that we could plot use two datasets
+                     geom_point(data = x, aes(x = x, y = y, colour = R, text = symbol), shape = 20, size = .3 ) 
+#              } else { #ggrepel does not work with plotly
+#                p <- ggplot() +  # don't define x and y, so that we could plot use two datasets
+#                     geom_point(data = x, aes(x = x, y = y, colour = R), shape = 20, size = .2 ) + 
+#                     geom_text_repel(data = x, aes(x = x, y = y, label = symbol, size = .2))
+#              }
+             #label y with ch names
+             p <- p +  scale_y_continuous(labels = paste("chr", names(ch[chLengthTable$chNum]),sep=""), 
+                                          breaks = chD* (1:chTotal), 
+                                          limits = c(0, chD*(chTotal + 1) + 5) )
+             # draw horizontal lines for each ch.
+             for( i in 1:dim(chLengthTable)[1] )
+               p = p+ annotate( "segment",x = 0, xend = chLengthTable$start_position[i]/1e6,
+                                y = chLengthTable$chNum[i]*chD, yend = chLengthTable$chNum[i]*chD)
+             # change legend  http://ggplot2.tidyverse.org/reference/scale_manual.html
+             p <- p + scale_colour_manual(name="",   # customize legend text
+                                          values=c("red", "blue"),
+                                          breaks=c("1","-1"),
+                                          labels=c("Up", "Dn")) 
+             p <- p + xlab("Position on chrs. (Mbp)") +  theme(axis.title.y=element_blank())      
+             p <- p + theme(legend.position="none")
+
+             incProgress(0.5)
+             # add trend lines------------------------------------------
+             x0 <- x0[x0$chromosome_name %in% unique(x$chromosome_name), ]
+             x0$chNum <- 1 # numeric encoding
+             x0$chNum <- ch[ x0$chromosome_name ]
+             x0$start_position = x0$start_position/1e6 # Mbp
+
+             windowSize = as.numeric( input$MAwindowSize )#Mb            
+             steps = as.numeric( input$MAwindowSteps ) # step size is then windowSize / steps       
+             cutoff <- as.numeric(input$MAwindowCutoff) 
+
+             x0$x <- (floor(x0$start_position / windowSize )   + 0.5 ) * windowSize
+             movingAverage <- x0 |>
+               select(chNum, x, Fold) |>
+               group_by(chNum, x) |>
+               summarize(y = mean(Fold)) 
+             incProgress(0.6)
+             for(i in 1:(steps-1)) {
+
+               x0$x <- (floor((x0$start_position - i * windowSize / steps)/ windowSize ) + 0.5) * windowSize 
+
+               x0$x <- x0$x + i * windowSize / steps
+               x0 <- subset(x0, x > 0)  # remove anything below zero
+
+               movingAverage1 <- x0 |>
+                 select(chNum, x, Fold) |>
+                 group_by(chNum, x) |>
+                 summarize(y = mean(Fold))
+               movingAverage <- rbind(movingAverage, movingAverage1)          
+             }
+                 
+             # translate fold to y coordinates
+             movingAverage <- movingAverage |>
+                mutate(y =  y / mean(y)) |>
+                mutate( y = ifelse(y > cutoff, cutoff, y)) |> # upper bound
+                mutate(y =  y / max(y)) |>
+                mutate(y = chNum * chD + 3 * y)
+
+             p <- p +
+                  geom_line(data = movingAverage, aes(x = x, y = y, group = chNum) )
+
+             incProgress(0.8)
+            # draw horizontal lines for each ch.
+             for( i in 1:dim(chLengthTable)[1] )
+               p = p+ annotate( "segment",x = 0, xend = chLengthTable$start_position[i]/1e6,
+                                y = chLengthTable$chNum[i]*chD, yend = chLengthTable$chNum[i]*chD)
+             # change legend  http://ggplot2.tidyverse.org/reference/scale_manual.html
+             p <- p + scale_colour_manual(name="",   # customize legend text
+                                          values=c("red", "blue"),
+                                          breaks=c("1","-1"),
+                                          labels=c("Up", "Dn")) 
+             p <- p + xlab("Position on chrs. (Mbp)") +  theme(axis.title.y=element_blank())      
+             p <- p + theme(legend.position="none")
+
+         } # have genes after filter
+			
+      }  # have 5+ genes to begin with
+              incProgress(1)
+	  ggplotly(p)
+    }) # progress
+  }) # isolate
+})
 
   
 }
