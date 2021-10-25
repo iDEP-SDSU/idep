@@ -2005,11 +2005,17 @@ output$genomePlotly <- renderPlotly({
                  summarize(y = mean(Fold))
                movingAverage <- rbind(movingAverage, movingAverage1)          
              }
-                 
+ 
+             movingAverage$y <- movingAverage$y / mean( movingAverage$y )
+             
+             # cutoff by 3 SD of the non-zero windows
+             tem <- movingAverage$y
+             tem <- tem[tem > 1e-20] # 
+             temCutoff <- mean(tem) + cutoff * sd(tem)
+             
              # translate fold to y coordinates
              movingAverage <- movingAverage %>%
-                mutate(y =  y / mean(y)) %>%
-                mutate( y = ifelse(y > cutoff, cutoff, y)) %>% # upper bound
+                mutate( y = ifelse(y > temCutoff, temCutoff, y)) %>% # upper bound
                 mutate(y =  y / max(y)) %>%
                 mutate(y = chNum * chD + 3 * y)
 

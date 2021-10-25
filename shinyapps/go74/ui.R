@@ -86,7 +86,8 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("Enrichment" 
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen
-                                   ,p("oct.23, 2021: Version 0.741 An enrichment chart that is fully customizable. Detailed gene informations with links on the Genes tab.")
+                                   ,p("Oct25, 2021: Interactive genome plot.")
+                                   ,p("Oct.23, 2021: Version 0.741 A fully customizable enrichment chart! Switch between bar, dot or lollipop plots.  Detailed gene informations with links on the Genes tab.")
                                    ,p("Oct. 15, 2021: Version 0.74. Database updated to Ensembl Release 104 and STRING v11. We now recommends the use of background genes in enrichment analysis. V.0.74 is much faster with even large set of background genes.")
                                    ,p("We recently hired Jenny for database updates and user support.",
                                        a("Email Jenny ",href="mailto:gelabinfo@gmail.com?Subject=ShinyGO"),
@@ -250,7 +251,8 @@ ui <- fluidPage(
 
  #---Genome-----------------------------------------------------------        
         ,tabPanel("Genome"
-                  , h5("The genes are represented by red dots. The peaks indicate relative abundance compared with gene density in the window. Each window is further divided into several equal-sized steps. We calculated the density of pasted genes in this window compared with average. The ratio of densit is cutoff with the Cutoff parameter. The chromosomes maybe only partly shown. ")
+                  , h5("The genes are represented by red dots. The peaks indicate concentration of your genes in a genomic region. Each window is further divided into several equal-sized steps for sliding. We compared the density of the pasted genes in a window with all windows. The Cutoff Z score is the upper bound for visialization. The chromosomes may be only partly shown as we use the last gene's location to draw the line. Mouse over to see gene symbols. Zoom in for regions of interest.")
+                  ,plotlyOutput("genomePlotly",height = "900px")
                   ,fluidRow(
                     column(3, selectInput(inputId = "MAwindowSize",
                                            label = h5("Window Size(Mb)"),
@@ -261,16 +263,12 @@ ui <- fluidPage(
                                            selected = 2,
                                            choices = c(1, 2, 3, 4)))
                     ,column(3, selectInput(inputId = "MAwindowCutoff",
-                                           label = h5("Cutoff"),
+                                           label = h5("Cutoff Z score"),
                                            selected = 4,
                                            choices = c(2, 4, 6, 8) )))
                   ,fluidRow(  
                      column(4, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) )  
-                    ,column(4, actionButton("gPlotstatic", "Static plot") ) )
-              
-                  ,plotlyOutput("genomePlotly",height = "900px")
-
-                  
+                    ,column(4, actionButton("gPlotstatic", "Static plot") ) )                
         )
 
  #---Genome-----------------------------------------------------------                
