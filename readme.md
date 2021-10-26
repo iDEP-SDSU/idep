@@ -59,7 +59,7 @@ cd ~
 git clone https://github.com/iDEP-SDSU/idep.git
 ```
  
-5. Build docker images, and download database file from our FTP server. It can take as much as 2 hours, as the script installs dozens of R packages and also copies and unzips a large database.
+5. Download docker images from DockHub, and download database file from our FTP server. It can take as much as 2 hours, as the script downloads and unzips large files. Once finished total storage usage is about 161GB!
 ```
 sudo sh idep/setup.sh
 ```
