@@ -1,5 +1,5 @@
 # iDEP and ShinyGO:   Graphical tools for analyzing genomics data  
-##Let the data speak for itself!
+## Let the data speak for itself!
 
 [iDEP](http://ge-lab.org/idep/) is a Shiny app for analyzing RNA-seq or other transcriptomic data. See [documentation](https://idepsite.wordpress.com/) and [paper](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6). For feedbacks or data contributions (genes and GO mapping of any species), please contact us, or visit our homepage. Send us suggestions or any error message to help improve iDEP.
 
