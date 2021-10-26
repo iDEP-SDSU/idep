@@ -1002,7 +1002,23 @@ iDEPversion,
       
       # main panel of Genome tab -----------------------------------------------------------------------------------
       mainPanel(  
-        plotlyOutput("genomePlotly",height = "900px")
+                  h5("The DE genes are represented by red dots. Regions with coherent up- or down-regulation are marked in blue crosses. Each window is further divided into several equal-sized steps for sliding. For all genes in this window, regardless of DE or not, we test whether the mean is zero (nomimal P value<0.001).  The chromosomes may be only partly shown as we use the last gene's location to draw the line. Mouse over to see gene symbols. Zoom in regions of interest.")
+                  ,plotlyOutput("genomePlotly",height = "900px")
+                  ,fluidRow(
+                    column(3, selectInput(inputId = "MAwindowSize",
+                                           label = h5("Window Size(Mb)"),
+                                           selected = 6,
+                                           choices = c(1, 2, 4, 6, 8, 10, 15, 20) ))
+                    ,column(3, selectInput(inputId = "MAwindowSteps",
+                                           label = h5("Steps in window"),
+                                           selected = 2,
+                                           choices = c(1, 2, 3, 4)))
+                    ,column(3, selectInput(inputId = "MAwindowCutoff",
+                                           label = h5("Cutoff Z score"),
+                                           selected = 4,
+                                           choices = c(2, 4, 6, 8) )))
+                  ,fluidRow(  
+                     column(4, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) )   )   
         ,bsModal("modalExample111", "Differentially expressed genomic loci", "runPREDA", size="large"
                  ,fluidRow( 
                            column(3, numericInput("RegionsPvalCutoff", 

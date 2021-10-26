@@ -1843,7 +1843,7 @@ output$genomePlotly <- renderPlotly({
         tem = input$MAwindowCutoff
         tem = input$ignoreNonCoding
 		FDRcutoffFake <- 0.5; FoldcutoffFake <- 0.5 # those are not real numbers.  
-
+        library(dplyr)
 		####################################
 		
 	  isolate({ 
