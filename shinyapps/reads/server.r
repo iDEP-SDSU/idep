@@ -111,6 +111,7 @@ server <- function(input, output, session) {
 
   # retrieve sample info and counts data
   Search <- shiny::reactive({
+    shinybusy::remove_modal_spinner()
     
     
     if (is.null(input$SearchData_rows_selected)) {
@@ -232,6 +233,7 @@ server <- function(input, output, session) {
           text = "Loading",
           color = "#000000"
         )
+        shinybusy::remove_modal_spinner()
         
         
         cat("DEE2 selected")
@@ -256,7 +258,7 @@ server <- function(input, output, session) {
             geneCounts <- as.data.frame(data1@assays@data@listData$counts)
             tmp <- paste(tmp, ".zip", sep = "")
             geneInfo <- getDEE2::loadGeneInfo(tmp)
-            TranscriptInfo <- lgetDEE2::oadTxInfo(tmp)
+            TranscriptInfo <- getDEE2::loadTxInfo(tmp)
             QCmat <- getDEE2::loadQcMx(tmp)
             SummaryMeta <- getDEE2::loadSummaryMeta(tmp)
           } else {
@@ -279,7 +281,7 @@ server <- function(input, output, session) {
                   geneInfo <- getDEE2::loadGeneInfo(tmp)
                   TranscriptInfo <- getDEE2::loadTxInfo(tmp)
                   QCmat <- getDEE2::loadQcMx(tmp)
-                  SummaryMeta <- lgetDEE2::oadSummaryMeta(tmp)
+                  SummaryMeta <- getDEE2::loadSummaryMeta(tmp)
                 }
                 df <- cbind(df, data_chunk)
 
@@ -386,7 +388,7 @@ server <- function(input, output, session) {
       if (is.null(Search())) {
         return(as.matrix("No dataset found!"))
       }
-      if (nrow(Search()$info) < 10) {
+      if (nrow(Search()$info) < 8) {
         return(t(Search()$info))
       }
       sampletab <- as.data.frame(t(Search()$info))
