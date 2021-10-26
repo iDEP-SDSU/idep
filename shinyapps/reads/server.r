@@ -14,7 +14,7 @@ library(dplyr)
 # library("shinybusy")
 
 dataPath <- "../../data/readCounts"
-#dataPath <- "C:/Users/bdere/OneDrive/Documents/idep-master/idep-master/data/readCounts"
+#dataPath <- "C:/Users/bdere/OneDrive/Documents/idep-master/idep-master/data/readCounts" #path on device
 
 destination_fileH <- paste(dataPath, "/human_matrix_v10.h5", sep = "")
 destination_fileM <- paste(dataPath, "/mouse_matrix_v10.h5", sep = "")
@@ -93,25 +93,24 @@ server <- function(input, output, session) {
   })
 
   dataset.info <- shiny::reactive({
-    shinybusy::show_modal_spinner(
-      spin = "orbit",
-      text = "Loading",
-      color = "#000000"
-    )  
-    
+    #shinybusy::show_modal_spinner(
+      #spin = "orbit",
+      ##text = "Loading",
+      #color = "#000000"
+    #)  
+    withProgress(message = "Loading...",{
     dataset.info <- RSQLite::dbGetQuery(convert, "select GSEID, Species, Samples, Title, Summary from GSEinfo")
     dataset.info$GSEID <- as.character(dataset.info$GSEID)
     dataset.info$Link <- paste("https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=", dataset.info$GSEID, sep = "")
     dataset.info$"NCBI GEO Link" <- paste0("<a href='", dataset.info$Link, "'>", dataset.info$GSEID, "</a>")
-    
-    shinybusy::remove_modal_spinner()
-    
+    #shinybusy::remove_modal_spinner()
+    })
     return(dataset.info)
   })
 
   # retrieve sample info and counts data
   Search <- shiny::reactive({
-    shinybusy::remove_modal_spinner()
+    #shinybusy::remove_modal_spinner()
     
     
     if (is.null(input$SearchData_rows_selected)) {
@@ -141,11 +140,11 @@ server <- function(input, output, session) {
       cat("archs4 selected")
 
       shiny::withProgress(message = "Parsing ARCHS4 file ...", {
-        shinybusy::show_modal_spinner(
-          spin = "orbit",
-          text = "Loading",
-          color = "#000000"
-        )
+        #shinybusy::show_modal_spinner(
+          #spin = "orbit",
+          #text = "Loading",
+          #color = "#000000"
+        #)
         
         
         samp <- results[, 1]
@@ -218,7 +217,7 @@ server <- function(input, output, session) {
 
         if (dim(results)[1] > 100) results <- results[1:100, ] # only show 100 results
         
-        shinybusy::remove_modal_spinner()
+        #shinybusy::remove_modal_spinner()
         
       })
       return(list(
@@ -228,22 +227,22 @@ server <- function(input, output, session) {
       ))
     } else { # DEE2 data
       if (grepl("DEE2_", selectedSpecies)) {
-        shinybusy::show_modal_spinner(
-          spin = "orbit",
-          text = "Loading",
-          color = "#000000"
-        )
-        shinybusy::remove_modal_spinner()
+        #shinybusy::show_modal_spinner(
+          #spin = "orbit",
+          #text = "Loading",
+          #color = "#000000"
+        #)
+        #shinybusy::remove_modal_spinner()
         
         
         cat("DEE2 selected")
         shiny::withProgress(message = "Downloading expression data from DEE2 server... This can take 5 minutes. ", {
           
-          shinybusy::show_modal_spinner(
-            spin = "orbit",
-            text = "Loading",
-            color = "#000000"
-          )
+          #shinybusy::show_modal_spinner(
+            #spin = "orbit",
+            #text = "Loading",
+            #color = "#000000"
+          #)
           
           selectedSpecies <- gsub("DEE2_", "", selectedSpecies) # remove DEE2
           selectedSpecies <- DEE2Species[selectedSpecies] # species code
@@ -339,11 +338,11 @@ server <- function(input, output, session) {
 
           results <- results[, c(-4, -5)]
           shiny::incProgress(1)
-          shinybusy::remove_modal_spinner()
+          #shinybusy::remove_modal_spinner()
           
         })
         
-        shinybusy::remove_modal_spinner()
+        #shinybusy::remove_modal_spinner()
 
         return(list(
           info = results,
@@ -478,11 +477,11 @@ server <- function(input, output, session) {
   )
 
   selectedGSEID <- shiny::reactive({
-    shinybusy::show_modal_spinner(
-      spin = "orbit",
-      text = "Loading",
-      color = "#000000"
-    )
+    #shinybusy::show_modal_spinner(
+      #spin = "orbit",
+      #text = "Loading",
+      #color = "#000000"
+    #)
     if (is.null(input$SearchData_rows_selected)) {
       return(NULL)
     }
@@ -490,7 +489,7 @@ server <- function(input, output, session) {
     iy <- which(dataset.info()$Species == input$selectedSpecies)
     ix <- iy[input$SearchData_rows_selected]
 
-    shinybusy::remove_modal_spinner()
+    #shinybusy::remove_modal_spinner()
 
     return(dataset.info()$GSEID[ix])
   })
@@ -509,11 +508,11 @@ server <- function(input, output, session) {
 
   output$stats <- shiny::renderTable(
     {
-      shinybusy::show_modal_spinner(
-        spin = "orbit",
-        text = "Loading",
-        color = "#000000"
-      )
+      #shinybusy::show_modal_spinner(
+        #spin = "orbit",
+        #text = "Loading",
+        #color = "#000000"
+      #)
       shiny::withProgress(message = "Parsing ARCHS4 file ...", {
         # datasets
         GSEs <- RSQLite::dbGetQuery(convert, "select  species, count(GSEID) from GSEinfo GROUP BY species")
@@ -529,24 +528,24 @@ server <- function(input, output, session) {
         colnames(stats)[3:4] <- c("#Datasets", "#Samples")
         stats$Source[which(duplicated(stats$Source))] <- ""
       })
-      shinybusy::remove_modal_spinner()
+      #shinybusy::remove_modal_spinner()
 
       return(stats)
     },
     bordered = TRUE
   )
   output$DoneLoading <- shiny::renderUI({
-    shinybusy::show_modal_spinner(
-      spin = "orbit",
-      text = "Loading",
-      color = "#000000"
-    )
+    #shinybusy::show_modal_spinner(
+      #spin = "orbit",
+      #text = "Loading",
+      #color = "#000000"
+    #)
     i <- "<h4>Done. Ready to search.</h4>"
 
 
     shiny::HTML(paste(i, collapse = "<br/>"))
     
-    shinybusy::remove_modal_spinner()
+    #shinybusy::remove_modal_spinner()
   })
 
   # dbDisconnect(convert)
