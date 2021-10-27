@@ -3,7 +3,7 @@
 # hosted at http://ge-lab.org/idep/
 # manuscript: https://www.biorxiv.org/content/early/2018/04/20/148411 
 
-iDEPversion = "iDEP 0.94"
+iDEPversion = "iDEP 0.94"     
 
 ################################################################
 # R packages
