@@ -9588,7 +9588,7 @@ output$genomePlotly <- renderPlotly({
                  group_by(chNum, x) %>%
                  summarize( ma = mean(Fold),
                             n = n(),
-                            pval = ifelse( n() >= 3, t.test(Fold)$p.value, 0 ) ) %>%
+                            pval = ifelse( n() >= 3 && sd(Fold) > 0, t.test(Fold)$p.value, 0 ) ) %>%
                  filter(!is.na(pval)) # na when only 1 data point?
 
                if(i == 0) {

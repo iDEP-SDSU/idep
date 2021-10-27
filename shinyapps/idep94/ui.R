@@ -972,7 +972,7 @@ iDEPversion,
         ,tags$style(type='text/css', "#listComparisonsPathway { width:100%;   margin-top:-12px}")  
         ,fluidRow(
           column(6, numericInput("limmaPvalViz", 
-                                 label = h5("Filters: FDR "), 
+                                 label = h5("Genes: FDR "), 
                                  value = 0.1,
                                  min   = 1e-5, 
                                  max   = 1,
@@ -988,6 +988,25 @@ iDEPversion,
         ,tags$style(type='text/css', "#limmaFCViz { width:100%;   margin-top:-12px}")    
       
         ,br()
+
+                  ,fluidRow(
+                    column(6, selectInput(inputId = "MAwindowSize",
+                                           label = h5("Window Size(Mb)"),
+                                           selected = 6,
+                                           choices = c(1, 2, 4, 6, 8, 10, 15, 20) ))
+                    ,column(6, selectInput(inputId = "MAwindowSteps",
+                                           label = h5("Steps for sliding"),
+                                           selected = 2,
+                                           choices = c(1, 2, 3, 4)))
+                   )
+                  ,fluidRow( 
+                    column(6, selectInput(inputId = "chRegionPval", 
+                                           label = h5("FDR cutoff for windows"),
+                                           selected = 0.0001,
+                                           choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001)) )
+ 
+                     ,column(6, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) )  
+                    )
 
         ,actionButton("runPREDA", "Run PREDA (5 mins)")
         ,br()
@@ -1015,21 +1034,7 @@ iDEPversion,
            
 
                   ,plotlyOutput("genomePlotly",height = "900px")
-                  ,fluidRow(
-                    column(3, selectInput(inputId = "MAwindowSize",
-                                           label = h5("Window Size(Mb)"),
-                                           selected = 6,
-                                           choices = c(1, 2, 4, 6, 8, 10, 15, 20) ))
-                    ,column(3, selectInput(inputId = "MAwindowSteps",
-                                           label = h5("Steps in window for sliding"),
-                                           selected = 2,
-                                           choices = c(1, 2, 3, 4)))
-                    ,column(4, selectInput(inputId = "chRegionPval", 
-                                           label = h5("FDR cutoff for windows"),
-                                           selected = 0.0001,
-                                           choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001))) )
-                  ,fluidRow(  
-                     column(4, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) ) ) 
+
   
         ,bsModal("modalExample111", "Differentially expressed genomic loci", "runPREDA", size="large"
                  ,fluidRow( 
