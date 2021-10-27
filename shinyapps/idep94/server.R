@@ -9524,12 +9524,12 @@ output$genomePlotly <- renderPlotly({
               # prepare coordinates
              x$start_position = x$start_position/1000000 # Mbp
              chD = 30 # distance between chs.
-             foldCutoff = 8   # max log2 fold 
+             foldCutoff = 4   # max log2 fold 
     
              # 
              x$Fold[which(x$Fold > foldCutoff )] = foldCutoff   # log2fold within -5 to 5
              x$Fold[which(x$Fold <   -1*foldCutoff )] = -1*foldCutoff 
-             x$Fold = 6* x$Fold
+             x$Fold = 4 * x$Fold
     
              x$y = x$chNum*chD + x$Fold
              chTotal = dim(chLengthTable)[1] 
@@ -9612,7 +9612,7 @@ output$genomePlotly <- renderPlotly({
 
               # significant regions are marked 
              p <- p +    
-                    geom_point(data = movingAverage, aes(x = x, y = y, colour = ma), shape = 4)
+                    geom_point(data = movingAverage, aes(x = x, y = y, colour = ma), shape = 0, size = 2)
 
          } # have genes after filter
 			
