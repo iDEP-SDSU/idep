@@ -1,4 +1,5 @@
-# iDEP and ShinyGO
+# iDEP and ShinyGO:   Graphical tools for analyzing genomics data  
+## Let the data speak for itself!
 
 [iDEP](http://ge-lab.org/idep/) is a Shiny app for analyzing RNA-seq or other transcriptomic data. See [documentation](https://idepsite.wordpress.com/) and [paper](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6). For feedbacks or data contributions (genes and GO mapping of any species), please contact us, or visit our homepage. Send us suggestions or any error message to help improve iDEP.
 
@@ -22,7 +23,7 @@ source https://raw.githubusercontent.com/iDEP-SDSU/idep/master/classes/librarySe
 
 3. Download iDEP source code and example data files from GitHub. The best is to click the green "Code" button and select "Download ZIP" on this [page](https://github.com/iDEP-SDSU/idep). Unzip to a folder such as C:/IDEP, so that it contains all the subfolders such as config, classes, shinyapps, and so on.
 
-4. Download the most recent database file from [here](http://18.235.92.206:8080/data104.tar.gz). Unzip it to the same folder (C:/IDEP), so that your database can be found at C:/IDEP/data/data104. 
+4. Download all the database files from [here](http://18.235.92.206:8080/). Unzip all files to a folder (C:/IDEP/data/data104), so that your database can be found by the most recent versions of iDEP and ShinyGO. For example, the convertIDs.db files should be at C:/IDEP/data/data104/convertIDs.db, and the pathway information files should be at C:/IDEP/data/data104/pathwayDB. 
 
 5. Start Rstudio and load the ui.R and server.R scripts in the folder C:/IDEP/shinyapps/idep94. And then click on Run app. Similarily, the ShinyGO app could be started at the folder, C:/IDEP/shinyapps/go74/. 
 
@@ -59,7 +60,7 @@ cd ~
 git clone https://github.com/iDEP-SDSU/idep.git
 ```
  
-5. Build docker images, and download database file from our FTP server. It can take as much as 2 hours, as the script installs dozens of R packages and also copies and unzips a large database.
+5. Download docker images from DockHub, and download database file from our FTP server. It can take as much as 2 hours, as the script downloads and unzips large files. Once finished total storage usage is about 161GB!
 ```
 sudo sh idep/setup.sh
 ```
