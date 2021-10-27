@@ -18,7 +18,7 @@ library(plotly)
 library(reshape2)
 library(visNetwork)
 library(DT,verbose=FALSE) 		# for renderDataTable
-library(dplyr)
+
 
 # relative path to data files
 datapath = "../../data/data104/"   # production server

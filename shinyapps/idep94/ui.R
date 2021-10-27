@@ -35,16 +35,17 @@ iDEPversion,
       ,h5(" and just click the tabs for some magic!", style = "color:red")
       ,p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))
       ,strong("1. Optional:Select or search for your species.")
-      #,selectInput("selectOrg", label = NULL,"Best matching species",width='100%') 
-                      ,selectizeInput('selectOrg', 
-                                  label    = NULL,
-                                  choices  = " ",
-                                  multiple = TRUE,
-                                  options  = list( maxItems     = 1,               
-                                                   placeholder  = 'Best matching species',
-                                                   onInitialize = I('function() { this.setValue(""); }'))  
-                                  #,selected = "Best matching species"                                                  
-                         )    
+      ,fluidRow( 
+         column(9, selectizeInput('selectOrg', 
+                     label    = NULL,
+                     choices  = " ",
+                     multiple = TRUE,
+                     options  = list( maxItems     = 1,               
+                                      placeholder  = 'Best matching species',
+                                      onInitialize = I('function() { this.setValue(""); }')) 
+                  )), 
+        column(3, actionButton("MorgInfo", "Info"))  
+      )  
       ,conditionalPanel("input.selectOrg == 'NEW'",
         fileInput('gmtFile', 'Upload a geneset .GMT file for enrichment analysis (optional)',
                   accept = c(
@@ -93,8 +94,8 @@ iDEPversion,
                   )
       )
       ,tableOutput('species' )
-      ,actionButton("MorgInfo", "Supported Species")
-      ,actionButton("MGeneIDexamples", "Supported gene IDs")
+
+      ,actionButton("MGeneIDexamples", "Example gene IDs")
       ,bsModal("geneIDexamples", "What the gene IDs in our database look like?", "MGeneIDexamples", size = "large"
                ,selectizeInput(inputId = "userSpecieIDexample",
                                label = "Select or search for species", choices = NULL)
@@ -102,7 +103,7 @@ iDEPversion,
 
        )# bsModal 4	
 
-      ,bsModal("orgInfoButton", "Supported species (Search by common and scientific names, or NCBI taxonomy id)", "MorgInfo", size = "large"
+      ,bsModal("orgInfoButton", "Search annotated species by common and scientific names, or NCBI taxonomy id. For other species, you can still use iDEP, except enrichment analysis.", "MorgInfo", size = "large"
                ,DT::dataTableOutput('orgInfoTable')
 
        )# bsModal 4	
@@ -1001,7 +1002,24 @@ iDEPversion,
       
       # main panel of Genome tab -----------------------------------------------------------------------------------
       mainPanel(  
-        plotlyOutput("genomePlotly",height = "900px")
+                  h5("Red and blue dots represent significantly up- and down-regulated genes, respectively, according to the criteria on the side panel. The distance of the dots from the closest chromosome is proportional to the log2 fold-change (FC). Red and blue crosses indicate genomic regions with genes coherently up- or down-regulated, respectively. Each region is further divided into several equal-sized steps for sliding. For all genes in this region, regardless of significantly differentially expressed or not, we test whether the mean of FC of these genes is zero using a t-test. The chromosomes may be only partly shown as we use the last gene's location to draw the line. Mouse over to see gene symbols. Zoom in regions of interest.")
+                  ,plotlyOutput("genomePlotly",height = "900px")
+                  ,fluidRow(
+                    column(3, selectInput(inputId = "MAwindowSize",
+                                           label = h5("Window Size(Mb)"),
+                                           selected = 6,
+                                           choices = c(1, 2, 4, 6, 8, 10, 15, 20) ))
+                    ,column(3, selectInput(inputId = "MAwindowSteps",
+                                           label = h5("Steps in window"),
+                                           selected = 2,
+                                           choices = c(1, 2, 3, 4)))
+                    ,column(4, selectInput(inputId = "chRegionPval", 
+                                           label = "Adj. Pval for window",
+                                           selected = 0.001,
+                                           choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001))) )
+                  ,fluidRow(  
+                     column(4, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) ) ) 
+  
         ,bsModal("modalExample111", "Differentially expressed genomic loci", "runPREDA", size="large"
                  ,fluidRow( 
                            column(3, numericInput("RegionsPvalCutoff", 
