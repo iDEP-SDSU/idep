@@ -998,8 +998,20 @@ iDEPversion,
     
       
       # main panel of Genome tab -----------------------------------------------------------------------------------
-      mainPanel(  
-                  p("Red and blue dots represent significantly up- and down-regulated genes, respectively, according to the criteria on the side panel. The distance of the dots from the closest chromosome is proportional to the log2 fold-change (FC). Red and blue segments indicate genomic regions with genes coherently up- or down-regulated, respectively. For all genes in this region, regardless of significantly differentially expressed or not, we test whether the mean of FC of these genes is zero using a t-test. P values are adjusted to FDR. The chromosomes may be only partly shown as we use the last gene's location to draw the line. Below you can adjust the window size, and steps in a window, and FDR cutoff for windows.  Mouse over to see gene symbols. Zoom in regions of interest.")
+      mainPanel(                   
+                  div(style = "display:inline-block; float:right", actionButton("genomeTabButton", "Info"))
+                  ,bsModal("genomeTabButtonID", "View your genes on chromosomes", "genomeTabButton", size = "large"
+                          ,h3("Where are your differentially expressed genes (DEGs) located on the genome?" )
+                          ,p("Red and blue dots represent significantly up- and down-regulated genes, respectively, according to the criteria on the side panel. These criteria could differ from the one in DEG1 tab. The distance of the dots from the closest chromosome is proportional to the log2 fold-change (FC).")
+
+                         ,h3("Are there regions of the genome where genes are coherently up- or down-regulated?")
+                         ,p("To answer this question, we scan the genome with sliding windows. Within each window we take several steps to slide forward. For example if you choose a window size = 6Mbps and steps = 3, the first window is from 0 to 6 Mbps, the 2nd  from 2 to 8Mbps, and the third from 4 to 10 Mbps, and so on.")
+                         ,p("For all genes in a window/region, we test whether the mean of FC of these genes is zero using a t-test. All genes analyzed by DESeq2 or limma, significant or otherwise, are included in this analysis. Hence this result is indepdent of our DEG cutoffs. P values from the test of the mean are adjusted to FDR. Essentially, we considered genes located in a genomic region as a gene set or pathway, and we performed simple pathway analysis by asking whether these genes are behaving non-randomly.")
+
+                         ,p("Based on an FDR cutoff for the windows, red and blue segments indicate genomic regions with genes coherently up- or down-regulated, respectively.  Below you can adjust the window size, and steps in a window, and FDR cutoff for windows.  Mouse over to see gene symbols or IDs. Zoom in regions of interest. The chromosomes may be only partly shown as we use the last gene's location to draw the line.")
+                   )
+           
+
                   ,plotlyOutput("genomePlotly",height = "900px")
                   ,fluidRow(
                     column(3, selectInput(inputId = "MAwindowSize",
