@@ -121,6 +121,7 @@ iDEPversion,
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
+      ,p("10/26/2021: The Genome view is now much improved! Automatically detects chromosomal regions with abnormal high and low expression of genes.")
       ,p("iDEP v.0.94 based on Ensembl Release 104 and STRING-db V11. 9/3/2021")
 
       ,p("10/15/21: For GO enrichment analysis, we now recommend using background genes, instead of all genes on the genome. In the KNN and DEG2 tabs, it is now the default that all genes passed the filter in Pre-Process tab are used as a customized background.")
@@ -1002,7 +1003,7 @@ iDEPversion,
       
       # main panel of Genome tab -----------------------------------------------------------------------------------
       mainPanel(  
-                  h5("Red and blue dots represent significantly up- and down-regulated genes, respectively, according to the criteria on the side panel. The distance of the dots from the closest chromosome is proportional to the log2 fold-change (FC). Red and blue crosses indicate genomic regions with genes coherently up- or down-regulated, respectively. Each region is further divided into several equal-sized steps for sliding. For all genes in this region, regardless of significantly differentially expressed or not, we test whether the mean of FC of these genes is zero using a t-test. The chromosomes may be only partly shown as we use the last gene's location to draw the line. Mouse over to see gene symbols. Zoom in regions of interest.")
+                  h5("Red and blue dots represent significantly up- and down-regulated genes, respectively, according to the criteria on the side panel. The distance of the dots from the closest chromosome is proportional to the log2 fold-change (FC). Red and blue open boxes indicate genomic regions with genes coherently up- or down-regulated, respectively. Each region is further divided into several equal-sized steps for sliding. For all genes in this region, regardless of significantly differentially expressed or not, we test whether the mean of FC of these genes is zero using a t-test. The chromosomes may be only partly shown as we use the last gene's location to draw the line. Mouse over to see gene symbols. Zoom in regions of interest.")
                   ,plotlyOutput("genomePlotly",height = "900px")
                   ,fluidRow(
                     column(3, selectInput(inputId = "MAwindowSize",
@@ -1015,7 +1016,7 @@ iDEPversion,
                                            choices = c(1, 2, 3, 4)))
                     ,column(4, selectInput(inputId = "chRegionPval", 
                                            label = "Adj. Pval for window",
-                                           selected = 0.001,
+                                           selected = 0.0001,
                                            choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001))) )
                   ,fluidRow(  
                      column(4, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) ) ) 
