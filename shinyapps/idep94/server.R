@@ -9502,7 +9502,7 @@ output$genomePlotly <- renderPlotly({
              tem = sort( table( x$chromosome_name), decreasing=T)
              ch <- names( tem[tem >= 1 ] )  # ch with less than 100 genes are excluded
              if(length(ch) > 50) ch <- ch[1:50]  # at most 50 ch
-             ch <- ch[ nchar(ch)<=10] # ch. name less than 10 characters
+             ch <- ch[ nchar(ch)<=12] # ch. name less than 10 characters
              ch = ch[order(as.numeric(ch) ) ]
              tem <- ch
              ch <- 1:(length(ch))  # the numbers are continous from 1 to length(ch)
@@ -9603,16 +9603,23 @@ output$genomePlotly <- renderPlotly({
              movingAverage <- movingAverage %>%
                 filter(n >= 3) %>%
 #                mutate( pval = p.adjust(pval, method = "fdr", n = length(pval[pval < 0.9]) ) )
-                mutate( pval = p.adjust(pval) ) %>%
+                mutate( pval = p.adjust(pval, method = "fdr" ) ) %>%
                 filter( pval < as.numeric(input$chRegionPval) ) %>%
                 mutate( y = ifelse(ma > 0, 1, -1)) %>% # upper bound
                 mutate(y = chNum * chD + 3 * y) %>%
                 mutate( ma = ifelse(ma > 0, 1, -1)) %>%
                 mutate( ma = as.factor(ma))
 
-              # significant regions are marked 
-             p <- p +    
-                    geom_point(data = movingAverage, aes(x = x, y = y, colour = ma), shape = 0, size = 2)
+              # significant regions are marked as horizontal error bars 
+             if(dim(movingAverage)[1] > 0)
+               p <- p +
+                 geom_errorbarh(data = movingAverage, aes(x = x, 
+                                                          y = y, 
+                                                          xmin = x -windowSize/2, 
+                                                          xmax = x + windowSize/2,
+                                                          colour = ma), 
+                                 size = 2, 
+                                 height = 15 )
 
          } # have genes after filter
 			

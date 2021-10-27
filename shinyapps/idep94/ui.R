@@ -965,14 +965,10 @@ iDEPversion,
 #  Genome view
 #================================================================================================== 
   ,tabPanel("Genome",
-    sidebarLayout(
-  
+    sidebarLayout(  
       # sidebar of Genome --------------------------------------------------------------------------------
-      sidebarPanel(
-        h5("This interactive map shows DEGs on the genome. 
-           Red and blue dots represent up- or down-regulated genes, respectively.
-           Mouse over to see gene symbols. Click and drag to zoom in.") 
-        ,htmlOutput("listComparisonsGenome")
+      sidebarPanel( 
+        htmlOutput("listComparisonsGenome")
         ,tags$style(type='text/css', "#listComparisonsPathway { width:100%;   margin-top:-12px}")  
         ,fluidRow(
           column(6, numericInput("limmaPvalViz", 
@@ -1003,7 +999,7 @@ iDEPversion,
       
       # main panel of Genome tab -----------------------------------------------------------------------------------
       mainPanel(  
-                  h5("Red and blue dots represent significantly up- and down-regulated genes, respectively, according to the criteria on the side panel. The distance of the dots from the closest chromosome is proportional to the log2 fold-change (FC). Red and blue open boxes indicate genomic regions with genes coherently up- or down-regulated, respectively. Each region is further divided into several equal-sized steps for sliding. For all genes in this region, regardless of significantly differentially expressed or not, we test whether the mean of FC of these genes is zero using a t-test. The chromosomes may be only partly shown as we use the last gene's location to draw the line. Mouse over to see gene symbols. Zoom in regions of interest.")
+                  p("Red and blue dots represent significantly up- and down-regulated genes, respectively, according to the criteria on the side panel. The distance of the dots from the closest chromosome is proportional to the log2 fold-change (FC). Red and blue segments indicate genomic regions with genes coherently up- or down-regulated, respectively. For all genes in this region, regardless of significantly differentially expressed or not, we test whether the mean of FC of these genes is zero using a t-test. P values are adjusted to FDR. The chromosomes may be only partly shown as we use the last gene's location to draw the line. Below you can adjust the window size, and steps in a window, and FDR cutoff for windows.  Mouse over to see gene symbols. Zoom in regions of interest.")
                   ,plotlyOutput("genomePlotly",height = "900px")
                   ,fluidRow(
                     column(3, selectInput(inputId = "MAwindowSize",
@@ -1011,11 +1007,11 @@ iDEPversion,
                                            selected = 6,
                                            choices = c(1, 2, 4, 6, 8, 10, 15, 20) ))
                     ,column(3, selectInput(inputId = "MAwindowSteps",
-                                           label = h5("Steps in window"),
+                                           label = h5("Steps in window for sliding"),
                                            selected = 2,
                                            choices = c(1, 2, 3, 4)))
                     ,column(4, selectInput(inputId = "chRegionPval", 
-                                           label = h5("Adj. Pval for genes in window"),
+                                           label = h5("FDR cutoff for windows"),
                                            selected = 0.0001,
                                            choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001))) )
                   ,fluidRow(  
