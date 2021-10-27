@@ -988,19 +988,16 @@ iDEPversion,
         ,tags$style(type='text/css', "#limmaFCViz { width:100%;   margin-top:-12px}")    
       
         ,br()
-        ,h5("To identify genomic regions significatly enriched with up- or down-regulated genes, we can use "
-        ,a("PREDA.", href="  https://academic.oup.com/bioinformatics/article/27/17/2446/224332/PREDA-an-R-package-to-identify-regional-variations"
-         ,target="_blank"),
-         "Very slow (5 mins), but may be useful in studying cancer or
-         other diseases that might involve chromosomal gain or loss."  )
+
         ,actionButton("runPREDA", "Run PREDA (5 mins)")
+        ,br()
+        ,div(style = "display:inline-block; float:right", actionButton("genomeTabButton", "Info"))
       ), # end of sidebar
     
       
       # main panel of Genome tab -----------------------------------------------------------------------------------
       mainPanel(                   
-                  div(style = "display:inline-block; float:right", actionButton("genomeTabButton", "Info"))
-                  ,bsModal("genomeTabButtonID", "View your genes on chromosomes", "genomeTabButton", size = "large"
+                  bsModal("genomeTabButtonID", "View your genes on chromosomes", "genomeTabButton", size = "large"
                           ,h3("Where are your differentially expressed genes (DEGs) located on the genome?" )
                           ,p("Red and blue dots represent significantly up- and down-regulated genes, respectively, according to the criteria on the side panel. These criteria could differ from the one in DEG1 tab. The distance of the dots from the closest chromosome is proportional to the log2 fold-change (FC).")
 
@@ -1009,6 +1006,11 @@ iDEPversion,
                          ,p("For all genes in a window/region, we test whether the mean of FC of these genes is zero using a t-test. All genes analyzed by DESeq2 or limma, significant or otherwise, are included in this analysis. Hence this result is indepdent of our DEG cutoffs. P values from the test of the mean are adjusted to FDR. Essentially, we considered genes located in a genomic region as a gene set or pathway, and we performed simple pathway analysis by asking whether these genes are behaving non-randomly.")
 
                          ,p("Based on an FDR cutoff for the windows, red and blue segments indicate genomic regions with genes coherently up- or down-regulated, respectively.  Below you can adjust the window size, and steps in a window, and FDR cutoff for windows.  Mouse over to see gene symbols or IDs. Zoom in regions of interest. The chromosomes may be only partly shown as we use the last gene's location to draw the line.")
+
+                         ,p("As an alternative approach, you can use "
+                             ,a("PREDA.", href="https://doi.org/10.1093/bioinformatics/btr404",target="_blank"),
+                             "Very slow (5 mins), but may be useful in studying cancer or
+                             other diseases that might involve chromosomal gain or loss."  ) 
                    )
            
 
