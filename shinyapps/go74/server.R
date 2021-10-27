@@ -1842,7 +1842,8 @@ output$genomePlotly <- renderPlotly({
         tem = input$MAwindowSteps
         tem = input$MAwindowCutoff
         tem = input$ignoreNonCoding
-		FDRcutoffFake <- 0.5; FoldcutoffFake <- 0.5 # those are not real numbers.  
+        tem = input$chRegionPval
+        tem = input$labelGeneSymbol
         library(dplyr)
 		####################################
 		
@@ -1874,15 +1875,15 @@ output$genomePlotly <- renderPlotly({
         if(input$ignoreNonCoding) {
           x <- subset(x, gene_biotype == "protein_coding")
         }
-        x$FDR <- 1
+  
         x$Fold <- 0
         ix <- which(x$Set == "List")
-        x$FDR[ix] <- 1e-10
-        x$Fold[ix] <- 0.51
+        x$Fold[ix] <- 1
+
         incProgress(0.1)
 		 # if no chromosomes found. For example if user do not convert gene IDs.
 		 if( dim(x)[1] >5  ) { 
-
+           
            x <- x[order(x$chromosome_name,x$start_position),]
   
            x$ensembl_gene_id <- as.character( x$ensembl_gene_id)
@@ -1899,17 +1900,14 @@ output$genomePlotly <- renderPlotly({
            x = x[!is.na(x$start_position),]
             
             # use max position as chr. length   before filtering
-           chLengthTable = aggregate(start_position~chromosome_name, data=x,max )
+           chLengthTable = aggregate(start_position ~ chromosome_name, data=x, max )
   
-           # only keep significant genes
-          ix = which( (x$FDR< FDRcutoffFake) &
-                        (abs(x$Fold) > FoldcutoffFake ) )
-
-           if (length(ix) > 5) { 
+           x0 <- x   # keep a copy
+           x <- subset(x, Set == "List")
+           if (dim(x)[1] > 5) { 
 
              # remove nonsignificant / not selected genes
-             x0 <- x   # keep a copy
-             x = x[ix, ]  
+
   
              tem = sort( table( x$chromosome_name), decreasing=T)
              ch <- names( tem[tem >= 1 ] )  # ch with less than 100 genes are excluded
@@ -1936,29 +1934,23 @@ output$genomePlotly <- renderPlotly({
               # prepare coordinates
              x$start_position = x$start_position/1000000 # Mbp
              chD = 30 # distance between chs.
-             foldCutoff = 2   # max log2 fold 
     
-             x$Fold = x$Fold / sd(x$Fold)  # standardize fold change    
-             x$Fold[which(x$Fold > foldCutoff )] = foldCutoff   # log2fold within -5 to 5
-             x$Fold[which(x$Fold <   -1*foldCutoff )] = -1*foldCutoff 
-             x$Fold = 4* x$Fold
-    
-             x$y = x$chNum*chD + x$Fold
+             x$y = x$chNum*chD + 4
              chTotal = dim(chLengthTable)[1] 
-             x$R = as.factor(sign(x$Fold))
+
     
              colnames(x)[ which(colnames(x) == "start_position")] = "x"
 
              incProgress(0.3)
              # plotting ----------------------------------
-#              if(dim(x)[1] > 100) {  # don't label if too many genes
+
                 p <- ggplot() +  # don't define x and y, so that we could plot use two datasets
-                     geom_point(data = x, aes(x = x, y = y, colour = R, text = symbol), shape = 20, size = .3 ) 
-#              } else { #ggrepel does not work with plotly
-#                p <- ggplot() +  # don't define x and y, so that we could plot use two datasets
-#                     geom_point(data = x, aes(x = x, y = y, colour = R), shape = 20, size = .2 ) + 
-#                     geom_text_repel(data = x, aes(x = x, y = y, label = symbol, size = .2))
-#              }
+                     geom_point(data = x, aes(x = x, y = y, text = symbol), 
+                                colour = "red", shape = 20, size = .3 )  
+                if(input$labelGeneSymbol)
+                     p <- p + geom_text(data = x, aes(x = x, y = y, label = symbol),
+                                check_overlap = FALSE, angle = 45, size = 2, vjust = 0, nudge_y = 4 )
+
              #label y with ch names
              p <- p +  scale_y_continuous(labels = paste("chr", names(ch[chLengthTable$chNum]),sep=""), 
                                           breaks = chD* (1:chTotal), 
@@ -1967,15 +1959,13 @@ output$genomePlotly <- renderPlotly({
              for( i in 1:dim(chLengthTable)[1] )
                p = p+ annotate( "segment",x = 0, xend = chLengthTable$start_position[i]/1e6,
                                 y = chLengthTable$chNum[i]*chD, yend = chLengthTable$chNum[i]*chD)
-             # change legend  http://ggplot2.tidyverse.org/reference/scale_manual.html
-             p <- p + scale_colour_manual(name="",   # customize legend text
-                                          values=c("red", "blue"),
-                                          breaks=c("1","-1"),
-                                          labels=c("Up", "Dn")) 
+
              p <- p + xlab("Position on chrs. (Mbp)") +  theme(axis.title.y=element_blank())      
              p <- p + theme(legend.position="none")
 
              incProgress(0.5)
+
+
              # add trend lines------------------------------------------
              x0 <- x0[x0$chromosome_name %in% unique(x$chromosome_name), ]
              x0$chNum <- 1 # numeric encoding
@@ -1985,42 +1975,57 @@ output$genomePlotly <- renderPlotly({
              windowSize = as.numeric( input$MAwindowSize )#Mb            
              steps = as.numeric( input$MAwindowSteps ) # step size is then windowSize / steps       
              cutoff <- as.numeric(input$MAwindowCutoff) 
-
-             x0$x <- (floor(x0$start_position / windowSize )   + 0.5 ) * windowSize
-             movingAverage <- x0 %>%
-               select(chNum, x, Fold) %>%
-               group_by(chNum, x) %>%
-               summarize(y = mean(Fold)) 
-             incProgress(0.6)
-             for(i in 1:(steps-1)) {
-
-               x0$x <- (floor((x0$start_position - i * windowSize / steps)/ windowSize ) + 0.5) * windowSize 
-
-               x0$x <- x0$x + i * windowSize / steps
-               x0 <- subset(x0, x > 0)  # remove anything below zero
+ 
+             totalN = dim(x0)[1]  # total genes
+             listN = dim(subset(x0, Set == "List"))[1]  # genes in list
+             
+             for(i in 0:(steps-1)) {
+               #step size is  windowSize/steps   
+               # If windowSize=10 and steps = 2; then step size is 5Mb
+               # 1.3 becomes 5, 11.2 -> 15 for step 1
+               # 1.3 -> -5
+               x0$x <- ( floor((x0$start_position - i * windowSize / steps)/ windowSize )  
+                        + 0.5 + i / steps ) * windowSize
 
                movingAverage1 <- x0 %>%
                  select(chNum, x, Fold) %>%
+                 filter( x >= 0) %>%   # beginning bin can be negative for first bin in the 2nd step
                  group_by(chNum, x) %>%
-                 summarize(y = mean(Fold))
-               movingAverage <- rbind(movingAverage, movingAverage1)          
+                 summarize( n = n(), k = sum(Fold)) %>% 
+                 filter( k > 0) %>%
+                 filter( k / n > listN / totalN) %>%
+                 mutate(pval = phyper(k - 1,
+                                       n,
+                                       totalN - n,   
+                                       listN, 
+                                       lower.tail=FALSE )
+                       )
+
+               if(i == 0) {
+                 movingAverage <- movingAverage1
+               } else {
+                 movingAverage <- rbind(movingAverage, movingAverage1)  
+               }        
              }
  
-             movingAverage$y <- movingAverage$y / mean( movingAverage$y )
-             
-             # cutoff by 3 SD of the non-zero windows
-             tem <- movingAverage$y
-             tem <- tem[tem > 1e-20] # 
-             temCutoff <- mean(tem) + cutoff * sd(tem)
-             
+            
              # translate fold to y coordinates
              movingAverage <- movingAverage %>%
-                mutate( y = ifelse(y > temCutoff, temCutoff, y)) %>% # upper bound
-                mutate(y =  y / max(y)) %>%
-                mutate(y = chNum * chD + 3 * y)
+                filter(n >= 3) %>%
+                mutate( pval = p.adjust(pval, method = "fdr" ) ) %>%
+                filter( pval < as.numeric(input$chRegionPval) ) %>%
+                mutate(y = chNum * chD - 4 ) 
 
-             p <- p +
-                  geom_line(data = movingAverage, aes(x = x, y = y, group = chNum) )
+              # significant regions are marked as horizontal error bars 
+             if(dim(movingAverage)[1] > 0)
+               p <- p +
+                 geom_errorbarh(data = movingAverage, aes(x = x, 
+                                                          y = y, 
+                                                          xmin = x -windowSize/2, 
+                                                          xmax = x + windowSize/2), 
+                                 size = 2, 
+                                 height = 15,
+                                 colour = "purple" )
 
 
 

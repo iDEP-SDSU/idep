@@ -1000,12 +1000,12 @@ iDEPversion,
                                            choices = c(1, 2, 3, 4)))
                    )
                   ,fluidRow( 
-                    column(6, selectInput(inputId = "chRegionPval", 
+                    column(4, selectInput(inputId = "chRegionPval", 
                                            label = h5("FDR cutoff for windows"),
                                            selected = 0.0001,
                                            choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001)) )
- 
-                     ,column(6, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) )  
+                     ,column(4, checkboxInput("labelGeneSymbol", "Gene symbol", value = FALSE) ) 
+                     ,column(4, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) )  
                     )
 
         ,actionButton("runPREDA", "Run PREDA (5 mins)")

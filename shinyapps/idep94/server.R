@@ -9434,6 +9434,7 @@ output$genomePlotly <- renderPlotly({
         tem = input$MAwindowCutoff
         tem = input$ignoreNonCoding
         tem = input$chRegionPval
+        tem = input$labelGeneSymbol
 
 		####################################
 		
@@ -9543,6 +9544,9 @@ output$genomePlotly <- renderPlotly({
              p <- ggplot() +  # don't define x and y, so that we could plot use two datasets
                   geom_point(data = x, aes(x = x, y = y, colour = R, text = symbol), shape = 20, size = 0.2 ) 
 
+            if(input$labelGeneSymbol)
+                p <- p + geom_text(data = x, aes(x = x, y = y, label = symbol),
+                                    check_overlap = FALSE, angle = 45, size = 2, vjust = 0, nudge_y = 4 )
              #label y with ch names
              p <- p +  scale_y_continuous(labels = paste("chr", names(ch[chLengthTable$chNum]),sep=""), 
                                           breaks = chD* (1:chTotal), 
