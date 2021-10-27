@@ -1002,7 +1002,7 @@ iDEPversion,
       
       # main panel of Genome tab -----------------------------------------------------------------------------------
       mainPanel(  
-                  h5("The DE genes are represented by red dots. Regions with coherent up- or down-regulation are marked in blue crosses. Each window is further divided into several equal-sized steps for sliding. For all genes in this window, regardless of DE or not, we test whether the mean is zero (nomimal P value<0.001).  The chromosomes may be only partly shown as we use the last gene's location to draw the line. Mouse over to see gene symbols. Zoom in regions of interest.")
+                  h5("Red and blue dots represent significantly up- and down-regulated genes, respectively, according to the criteria on the side panel. The distance of the dots from the closest chromosome is proportional to the log2 fold-change (FC). Red and blue crosses indicate genomic regions with genes coherently up- or down-regulated, respectively. Each region is further divided into several equal-sized steps for sliding. For all genes in this region, regardless of significantly differentially expressed or not, we test whether the mean of FC of these genes is zero using a t-test. The chromosomes may be only partly shown as we use the last gene's location to draw the line. Mouse over to see gene symbols. Zoom in regions of interest.")
                   ,plotlyOutput("genomePlotly",height = "900px")
                   ,fluidRow(
                     column(3, selectInput(inputId = "MAwindowSize",
@@ -1013,12 +1013,13 @@ iDEPversion,
                                            label = h5("Steps in window"),
                                            selected = 2,
                                            choices = c(1, 2, 3, 4)))
-                    ,column(3, selectInput(inputId = "MAwindowCutoff",
-                                           label = h5("Cutoff Z score"),
-                                           selected = 4,
-                                           choices = c(2, 4, 6, 8) )))
+                    ,column(4, selectInput(inputId = "chRegionPval", 
+                                           label = "Adj. Pval for window",
+                                           selected = 0.001,
+                                           choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001))) )
                   ,fluidRow(  
-                     column(4, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) )   )   
+                     column(4, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) ) ) 
+  
         ,bsModal("modalExample111", "Differentially expressed genomic loci", "runPREDA", size="large"
                  ,fluidRow( 
                            column(3, numericInput("RegionsPvalCutoff", 

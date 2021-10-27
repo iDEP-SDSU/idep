@@ -9433,6 +9433,7 @@ output$genomePlotly <- renderPlotly({
         tem = input$MAwindowSteps
         tem = input$MAwindowCutoff
         tem = input$ignoreNonCoding
+        tem = input$chRegionPval
 
 		####################################
 		
@@ -9523,12 +9524,12 @@ output$genomePlotly <- renderPlotly({
               # prepare coordinates
              x$start_position = x$start_position/1000000 # Mbp
              chD = 30 # distance between chs.
-             foldCutoff = 6   # max log2 fold 
+             foldCutoff = 8   # max log2 fold 
     
              # 
              x$Fold[which(x$Fold > foldCutoff )] = foldCutoff   # log2fold within -5 to 5
              x$Fold[which(x$Fold <   -1*foldCutoff )] = -1*foldCutoff 
-             x$Fold = 4* x$Fold
+             x$Fold = 6* x$Fold
     
              x$y = x$chNum*chD + x$Fold
              chTotal = dim(chLengthTable)[1] 
@@ -9540,7 +9541,7 @@ output$genomePlotly <- renderPlotly({
              # plotting ----------------------------------
 
              p <- ggplot() +  # don't define x and y, so that we could plot use two datasets
-                  geom_point(data = x, aes(x = x, y = y, colour = R, text = symbol), shape = 17, size = .3 ) 
+                  geom_point(data = x, aes(x = x, y = y, colour = R, text = symbol), shape = 20, size = 0.2 ) 
 
              #label y with ch names
              p <- p +  scale_y_continuous(labels = paste("chr", names(ch[chLengthTable$chNum]),sep=""), 
@@ -9572,19 +9573,24 @@ output$genomePlotly <- renderPlotly({
              x0$Fold <-  x0$Fold - mean(x0$Fold) # centering             
 
              incProgress(0.6)
+                             
              for(i in 0:(steps-1)) {
-               x0$x <- (floor((x0$start_position - i * windowSize / steps)/ windowSize ) + 0.5) * windowSize 
-
-               x0$x <- x0$x + i * windowSize / steps
+               #step size is  windowSize/steps   
+               # If windowSize=10 and steps = 2; then step size is 5Mb
+               # 1.3 becomes 5, 11.2 -> 15 for step 1
+               # 1.3 -> -5
+               x0$x <- ( floor((x0$start_position - i * windowSize / steps)/ windowSize )  
+                        + 0.5 + i / steps ) * windowSize
 
                movingAverage1 <- x0 %>%
                  select(chNum, x, Fold) %>%
+                 filter( x >= 0) %>%   # beginning bin can be negative for first bin in the 2nd step
                  group_by(chNum, x) %>%
-                 summarize(y = mean(Fold)/sd(Fold)*sqrt(n()), 
-                           n = n(), 
-                          pval = ifelse( n() > 5, t.test(Fold)$p.value, 1 ) ) %>%
-#                 summarize(y = mean(Fold, ra.na = TRUE)) %>%
-                 filter(!is.na(y)) # na when only 1 data point?
+                 summarize( ma = mean(Fold),
+                            n = n(),
+                            pval = ifelse( n() >= 3, t.test(Fold)$p.value, 0 ) ) %>%
+                 filter(!is.na(pval)) # na when only 1 data point?
+
                if(i == 0) {
                  movingAverage <- movingAverage1
                } else {
@@ -9596,14 +9602,17 @@ output$genomePlotly <- renderPlotly({
              # translate fold to y coordinates
              movingAverage <- movingAverage %>%
                 filter(n >= 3) %>%
-                filter( pval < 0.001) %>%
-                mutate( y = ifelse(y > cutoff, cutoff, y)) %>% # upper bound
-                mutate( y = ifelse(y <  -1 * cutoff, -1 * cutoff, y)) %>% # lower bound
-                mutate(y =  y / max(abs(y))) %>%
-                mutate(y = chNum * chD + 8 * y)
+#                mutate( pval = p.adjust(pval, method = "fdr", n = length(pval[pval < 0.9]) ) )
+                mutate( pval = p.adjust(pval) ) %>%
+                filter( pval < as.numeric(input$chRegionPval) ) %>%
+                mutate( y = ifelse(ma > 0, 1, -1)) %>% # upper bound
+                mutate(y = chNum * chD + 3 * y) %>%
+                mutate( ma = ifelse(ma > 0, 1, -1)) %>%
+                mutate( ma = as.factor(ma))
+
               # significant regions are marked 
              p <- p +    
-                    geom_point(data = movingAverage, aes(x = x, y = y), colour = "blue", shape = 3)
+                    geom_point(data = movingAverage, aes(x = x, y = y, colour = ma), shape = 4)
 
          } # have genes after filter
 			
