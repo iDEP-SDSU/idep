@@ -1015,7 +1015,7 @@ iDEPversion,
                                            selected = 2,
                                            choices = c(1, 2, 3, 4)))
                     ,column(4, selectInput(inputId = "chRegionPval", 
-                                           label = "Adj. Pval for window",
+                                           label = h5("Adj. Pval for genes in window"),
                                            selected = 0.0001,
                                            choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001))) )
                   ,fluidRow(  
