@@ -121,7 +121,7 @@ iDEPversion,
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
-      ,p("10/26/2021: The Genome view is now much improved! Automatically detects chromosomal regions with abnormal high and low expression of genes.")
+      ,p("10/26/2021: The Genome view is now much improved! Automatically detects chromosomal regions enriched with genes having abnormaly high and low fold-changes.")
       ,p("iDEP v.0.94 based on Ensembl Release 104 and STRING-db V11. 9/3/2021")
 
       ,p("10/15/21: For GO enrichment analysis, we now recommend using background genes, instead of all genes on the genome. In the KNN and DEG2 tabs, it is now the default that all genes passed the filter in Pre-Process tab are used as a customized background.")
@@ -986,27 +986,30 @@ iDEPversion,
         ) # fluidRow  
         ,tags$style(type='text/css', "#limmaPvalViz { width:100%;   margin-top:-12px}")
         ,tags$style(type='text/css', "#limmaFCViz { width:100%;   margin-top:-12px}")    
-      
-        ,br()
+        
+     
+
+        ,fluidRow( 
+                  column(6, checkboxInput("labelGeneSymbol", "Label Genes", value = FALSE) ) 
+                  ,column(6, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) )  
+                  )
+        ,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />') 
 
                   ,fluidRow(
                     column(6, selectInput(inputId = "MAwindowSize",
-                                           label = h5("Window Size(Mb)"),
+                                           label = h5("Window Size (Mb)"),
                                            selected = 6,
                                            choices = c(1, 2, 4, 6, 8, 10, 15, 20) ))
                     ,column(6, selectInput(inputId = "MAwindowSteps",
-                                           label = h5("Steps for sliding"),
+                                           label = h5("Steps"),
                                            selected = 2,
                                            choices = c(1, 2, 3, 4)))
                    )
-                  ,fluidRow( 
-                    column(4, selectInput(inputId = "chRegionPval", 
-                                           label = h5("FDR cutoff for windows"),
+                  ,selectInput(inputId = "chRegionPval", 
+                                           label = h5("FDR cutoff for window"),
                                            selected = 0.0001,
-                                           choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001)) )
-                     ,column(4, checkboxInput("labelGeneSymbol", "Gene symbol", value = FALSE) ) 
-                     ,column(4, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) )  
-                    )
+                                           choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001)) 
+        ,HTML('<hr style="height:1px;border:none;color:#333;background-color:#333;" />')  
 
         ,actionButton("runPREDA", "Run PREDA (5 mins)")
         ,br()

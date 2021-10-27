@@ -9487,18 +9487,7 @@ output$genomePlotly <- renderPlotly({
            x = x[!is.na(x$chromosome_name),]
            x = x[!is.na(x$start_position),]
             
-            # use max position as chr. length   before filtering
-           chLengthTable = aggregate(start_position~chromosome_name, data=x,max )
-  
-           # only keep significant genes
-          ix = which( (x$FDR< as.numeric(input$limmaPvalViz)) &
-                        (abs(x$Fold) > log2( as.numeric(input$limmaFCViz) ) ) )
 
-           if (length(ix) > 5) { 
-
-             # remove nonsignificant / not selected genes
-             x0 <- x   # keep a copy
-             x = x[ix, ]  
 
              tem = sort( table( x$chromosome_name), decreasing=T)
              ch <- names( tem[tem >= 1 ] )  # ch with less than 100 genes are excluded
@@ -9516,11 +9505,27 @@ output$genomePlotly <- renderPlotly({
              x$chNum <- 1 # numeric encoding
              x$chNum <- ch[ x$chromosome_name ]
 
+            # use max position as chr. length   before filtering
+           chLengthTable = aggregate(start_position~chromosome_name, data=x,max )
               # add chr. numer 
              chLengthTable$chNum <-  ch[ chLengthTable$chromosome_name ]
              chLengthTable <- chLengthTable[!is.na( chLengthTable$chNum ), ]
              chLengthTable <- chLengthTable[order(chLengthTable$chNum), c(3,2)]
              chLengthTable <- chLengthTable[order(chLengthTable$chNum), ]
+
+
+  
+           # only keep significant genes
+          ix = which( (x$FDR< as.numeric(input$limmaPvalViz)) &
+                        (abs(x$Fold) > log2( as.numeric(input$limmaFCViz) ) ) )
+
+           if (length(ix) > 5) { 
+
+             # remove nonsignificant / not selected genes
+             x0 <- x   # keep a copy
+             x = x[ix, ]  
+
+
 
               # prepare coordinates
              x$start_position = x$start_position/1000000 # Mbp

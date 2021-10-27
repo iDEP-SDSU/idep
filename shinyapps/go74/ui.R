@@ -259,15 +259,15 @@ ui <- fluidPage(
                                            selected = 6,
                                            choices = c(1, 2, 4, 6, 8, 10, 15, 20) ))
                     ,column(3, selectInput(inputId = "MAwindowSteps",
-                                           label = h5("Steps in window"),
+                                           label = h5("Steps in a window"),
                                            selected = 2,
                                            choices = c(1, 2, 3, 4)))
                     ,column(3, selectInput(inputId = "chRegionPval", 
                                            label = h5("FDR cutoff for windows"),
-                                           selected = 0.0001,
-                                           choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001))))
+                                           selected = 0.00001,
+                                           choices = c(0.1, 0.05, 0.01, 0.001, 0.0001, 0.00001, 0.000001))))
                   ,fluidRow(  
-                     column(4, checkboxInput("labelGeneSymbol", "Show gene symbol", value = FALSE) )
+                     column(4, checkboxInput("labelGeneSymbol", "Label genes", value = FALSE) )
                      ,column(4, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) )  
                     ,column(4, actionButton("gPlotstatic", "Static plot") ) )                
         )
