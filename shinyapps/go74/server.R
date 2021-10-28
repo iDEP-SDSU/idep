@@ -1898,18 +1898,8 @@ output$genomePlotly <- renderPlotly({
 
            x = x[!is.na(x$chromosome_name),]
            x = x[!is.na(x$start_position),]
-            
-            # use max position as chr. length   before filtering
-           chLengthTable = aggregate(start_position ~ chromosome_name, data=x, max )
-  
-           x0 <- x   # keep a copy
-           x <- subset(x, Set == "List")
-           if (dim(x)[1] > 5) { 
 
-             # remove nonsignificant / not selected genes
-
-  
-             tem = sort( table( x$chromosome_name), decreasing=T)
+            tem = sort( table( x$chromosome_name), decreasing=T)
              ch <- names( tem[tem >= 1 ] )  # ch with less than 100 genes are excluded
              if(length(ch) > 50) ch <- ch[1:50]  # at most 50 ch
              ch <- ch[ nchar(ch)<=12] # ch. name less than 10 characters
@@ -1925,18 +1915,30 @@ output$genomePlotly <- renderPlotly({
              x$chNum <- 1 # numeric encoding
              x$chNum <- ch[ x$chromosome_name ]
 
-              # add chr. numer 
+            # add chr. numer 
+            # use max position as chr. length   before filtering
+             chLengthTable = aggregate(start_position ~ chromosome_name, data=x, max )
              chLengthTable$chNum <-  ch[ chLengthTable$chromosome_name ]
              chLengthTable <- chLengthTable[!is.na( chLengthTable$chNum ), ]
              chLengthTable <- chLengthTable[order(chLengthTable$chNum), c(3,2)]
-             chLengthTable <- chLengthTable[order(chLengthTable$chNum), ]
+             chLengthTable <- chLengthTable[order(chLengthTable$chNum), ]       
+             chLengthTable$start_position <- chLengthTable$start_position/1e6
+
+           chTotal = dim(chLengthTable)[1]
+           x0 <- x   # keep a copy
+           x <- subset(x, Set == "List")
+           if (dim(x)[1] > 5) { 
+
+             # remove nonsignificant / not selected genes
+ 
+ 
 
               # prepare coordinates
              x$start_position = x$start_position/1000000 # Mbp
              chD = 30 # distance between chs.
     
              x$y = x$chNum*chD + 4
-             chTotal = dim(chLengthTable)[1] 
+
 
     
              colnames(x)[ which(colnames(x) == "start_position")] = "x"
@@ -1957,7 +1959,7 @@ output$genomePlotly <- renderPlotly({
                                           limits = c(0, chD*(chTotal + 1) + 5) )
              # draw horizontal lines for each ch.
              for( i in 1:dim(chLengthTable)[1] )
-               p = p+ annotate( "segment",x = 0, xend = chLengthTable$start_position[i]/1e6,
+               p = p+ annotate( "segment",x = 0, xend = chLengthTable$start_position[i],
                                 y = chLengthTable$chNum[i]*chD, yend = chLengthTable$chNum[i]*chD)
 
              p <- p + xlab("Position on chrs. (Mbp)") +  theme(axis.title.y=element_blank())      
@@ -2017,7 +2019,7 @@ output$genomePlotly <- renderPlotly({
                 mutate(y = chNum * chD - 4 ) 
 
               # significant regions are marked as horizontal error bars 
-             if(dim(movingAverage)[1] > 0)
+             if(dim(movingAverage)[1] > 0) {
                p <- p +
                  geom_errorbarh(data = movingAverage, aes(x = x, 
                                                           y = y, 
@@ -2026,8 +2028,30 @@ output$genomePlotly <- renderPlotly({
                                  size = 2, 
                                  height = 15,
                                  colour = "purple" )
+ 
+                 # label significant regions
+                 sigCh <- sort(table(movingAverage$chNum), decreasing = TRUE)
+                 sigCh <- names(ch)[ as.numeric(names(sigCh)) ]
+                 if(length(sigCh) <= 5) { # more than 5 just show 5
+                   sigCh <- paste0("chr", sigCh, collapse = ", ")
+                 } else {
+                   sigCh <- sigCh[1:5]
+                   sigCh <- paste0("chr", sigCh, collapse = ", ")                  
+                   sigCh <- paste0(sigCh,", ...")
+                 }
 
+                 sigCh <- paste(dim(movingAverage)[1], 
+                                " enriched regions \n(",
+                                round( sum(chLengthTable$start_position) / windowSize * steps * as.numeric(input$chRegionPval), 3),
+                                          " expected)  detected on:\n ", sigCh)
+                 
+               p <- p + annotate(geom = "text", 
+                          x = max(x$x) * 0.70,
+                          y = max(x$y) * 0.90,
+                          label = sigCh)
+                      
 
+              }
 
 
          } # have genes after filter

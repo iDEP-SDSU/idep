@@ -9512,7 +9512,7 @@ output$genomePlotly <- renderPlotly({
              chLengthTable <- chLengthTable[!is.na( chLengthTable$chNum ), ]
              chLengthTable <- chLengthTable[order(chLengthTable$chNum), c(3,2)]
              chLengthTable <- chLengthTable[order(chLengthTable$chNum), ]
-
+             chLengthTable$start_position <- chLengthTable$start_position/1e6
 
   
            # only keep significant genes
@@ -9558,7 +9558,7 @@ output$genomePlotly <- renderPlotly({
                                           limits = c(0, chD*(chTotal + 1) + 5) )
              # draw horizontal lines for each ch.
              for( i in 1:dim(chLengthTable)[1] )
-               p = p+ annotate( "segment",x = 0, xend = chLengthTable$start_position[i]/1e6,
+               p = p+ annotate( "segment",x = 0, xend = chLengthTable$start_position[i],
                                 y = chLengthTable$chNum[i]*chD, yend = chLengthTable$chNum[i]*chD)
              # change legend  http://ggplot2.tidyverse.org/reference/scale_manual.html
              p <- p + scale_colour_manual(name="",   # customize legend text
@@ -9620,7 +9620,7 @@ output$genomePlotly <- renderPlotly({
                 mutate( ma = as.factor(ma))
 
               # significant regions are marked as horizontal error bars 
-             if(dim(movingAverage)[1] > 0)
+             if(dim(movingAverage)[1] > 0) {
                p <- p +
                  geom_errorbarh(data = movingAverage, aes(x = x, 
                                                           y = y, 
@@ -9629,6 +9629,30 @@ output$genomePlotly <- renderPlotly({
                                                           colour = ma), 
                                  size = 2, 
                                  height = 15 )
+
+                 # label significant regions
+                 sigCh <- sort(table(movingAverage$chNum), decreasing = TRUE)
+                 sigCh <- names(ch)[ as.numeric(names(sigCh)) ]
+                 if(length(sigCh) <= 5) { # more than 5 just show 5
+                   sigCh <- paste0("chr", sigCh, collapse = ", ")
+                 } else {
+                   sigCh <- sigCh[1:5]
+                   sigCh <- paste0("chr", sigCh, collapse = ", ")                  
+                   sigCh <- paste0(sigCh,", ...")
+                 }
+
+                 sigCh <- paste(dim(movingAverage)[1], 
+                                " enriched regions \n(",
+                                round( sum(chLengthTable$start_position)/ windowSize * steps * as.numeric(input$chRegionPval), 3),
+                                          " expected)  detected on:\n ", sigCh)
+                 
+               p <- p + annotate(geom = "text", 
+                          x = max(x$x) * 0.70,
+                          y = max(x$y) * 0.90,
+                          label = sigCh)
+
+
+             }
 
          } # have genes after filter
 			
