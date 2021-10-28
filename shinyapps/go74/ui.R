@@ -86,7 +86,7 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("Enrichment" 
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen
-                                   ,p("Oct25, 2021: Interactive genome plot.")
+                                   ,p("Oct25, 2021: Interactive genome plot. Identificantion of genomic regions signficantly enriched with user genes.")
                                    ,p("Oct.23, 2021: Version 0.741 A fully customizable enrichment chart! Switch between bar, dot or lollipop plots.  Detailed gene informations with links on the Genes tab.")
                                    ,p("Oct. 15, 2021: Version 0.74. Database updated to Ensembl Release 104 and STRING v11. We now recommends the use of background genes in enrichment analysis. V.0.74 is much faster with even large set of background genes.")
                                    ,p("We recently hired Jenny for database updates and user support.",
@@ -109,7 +109,8 @@ ui <- fluidPage(
                                    ,br(),br(),img(src='GOtree3.png', align = "center",width="500", height="258")
                                    ,br(),br(),img(src='GOnetwork2.png', align = "center",width="500", height="248")
                                    ,br(),br(),img(src='PPInetwork2.png', align = "center",width="500", height="391")	
-                                   ,br(),br(),img(src='chr.png', align = "center",width="444", height="338")			
+                                   ,br(),br(),img(src='chr.png', align = "center",width="444", height="338")
+                                   ,br(),br(),img(src='downSyndrome.png', align = "center",width="371", height="276")				
                                    ,br(),br(),img(src='promoter.png', align = "center",width="717", height="288")					
                  )
                  ,br()
