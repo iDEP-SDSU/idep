@@ -2042,7 +2042,7 @@ output$genomePlotly <- renderPlotly({
 
                  sigCh <- paste(dim(movingAverage)[1], 
                                 " enriched regions \n(",
-                                round( sum(chLengthTable$start_position) / windowSize * steps * as.numeric(input$chRegionPval), 3),
+                                round( sum(chLengthTable$start_position) / windowSize * steps * as.numeric(input$chRegionPval), 2),
                                           " expected)  detected on:\n ", sigCh)
                  
                p <- p + annotate(geom = "text", 

@@ -318,14 +318,15 @@ convertID <- function (query, selectOrg) {
 		  names(sortedCounts)[1] <- names(tem)    
 		} 
 		recognized =names(sortedCounts[1])
-		
+	
 		speciesMatched=sortedCounts
 		speciesMatched <- as.data.frame( speciesMatched )	
 		orgName <- sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  )
 		speciesMatched <- cbind( orgName,  speciesMatched)
 
 		if(length(sortedCounts) == 1) { # if only  one species matched
-		speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
+		   speciesMatched[1,1] <-paste( speciesMatched[1,1], "(",speciesMatched[1,2],")",sep="")
+		   speciesMatched <- speciesMatched[, 1, drop = FALSE]
 		} else {# if more than one species matched
             speciesMatched <- speciesMatched[!duplicated(speciesMatched[, 1]), ] # same species different mapping (ensembl, arayexpress, hpa)
 			speciesMatched[,1] <- as.character(speciesMatched[,1])
@@ -341,6 +342,7 @@ convertID <- function (query, selectOrg) {
 		                    " AND id IN ", querSetString)
 		
 		result <- dbGetQuery(convert, querySTMT)
+		
 		if( dim(result)[1] == 0  ) return(NULL)		
 		
 		
@@ -380,6 +382,7 @@ geneInfo <- function (converted, selectOrg){
   if(selectOrg != speciesChoice[[1]]) {
     ix = grep(findSpeciesById(selectOrg)[1,1], geneInfoFiles )
   }
+
   if(length(ix) == 1)  # if only one file           #WBGene0000001 some ensembl gene ids in lower case
   { x = read.csv(as.character(geneInfoFiles[ix]) ); x[,1]= toupper(x[,1]) }
   else # read in the chosen file

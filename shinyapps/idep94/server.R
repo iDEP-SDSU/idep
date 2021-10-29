@@ -682,7 +682,8 @@ convertID <- function (query,selectOrg) {
 		speciesMatched <- cbind( orgName,  speciesMatched)
 
 		if(length(sortedCounts) == 1) { # if only  one species matched
-		speciesMatched[1,1] <-paste( rownames(speciesMatched), "(",speciesMatched[1,1],")",sep="")
+		   speciesMatched[1,1] <-paste( speciesMatched[1,1], "(",speciesMatched[1,2],")",sep="")
+		   speciesMatched <- speciesMatched[, 1, drop = FALSE]
 		} else {# if more than one species matched
             speciesMatched <- speciesMatched[!duplicated(speciesMatched[, 1]), ] # same species different mapping (ensembl, arayexpress, hpa)
 			speciesMatched[,1] <- as.character(speciesMatched[,1])
@@ -9643,7 +9644,7 @@ output$genomePlotly <- renderPlotly({
 
                  sigCh <- paste(dim(movingAverage)[1], 
                                 " enriched regions \n(",
-                                round( sum(chLengthTable$start_position)/ windowSize * steps * as.numeric(input$chRegionPval), 3),
+                                round( sum(chLengthTable$start_position)/ windowSize * steps * as.numeric(input$chRegionPval), 2),
                                           " expected)  detected on:\n ", sigCh)
                  
                p <- p + annotate(geom = "text", 
