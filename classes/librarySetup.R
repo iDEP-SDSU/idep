@@ -60,7 +60,8 @@ while(notInstalledPackageCount != 0){
 }
 
 #PGSEA is deprecated since Bioconductor 3.12. So we have to install manually from source.
-BiocManager::install(c("GO.db","KEGG.db", "annaffy")) # required y PGSEA
+BiocManager::install(c("GO.db", "annaffy")) # required y PGSEA
+install.packages("http://www.bioconductor.org/packages//2.11/data/annotation/src/contrib/KEGG.db_2.8.0.tar.gz", repos=NULL, type="source")
 install.packages("https://bioconductor.org/packages/3.10/bioc/src/contrib/PGSEA_1.60.0.tar.gz", 
                  repos=NULL, type="source")
 list.of.bio.packages = c(list.of.bio.packages, "PGSEA") # add package for testing
