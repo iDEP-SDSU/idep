@@ -436,7 +436,7 @@ geneInfoDetails <- function (converted, selectOrg){
 }
 
 
-  hyperText <- function (textVector, urlVector){
+hyperText <- function (textVector, urlVector){
   # for generating pathway lists that can be clicked.
   # Function that takes a vector of strings and a vector of URLs
   # and generate hyper text 
@@ -468,6 +468,7 @@ geneInfoDetails <- function (converted, selectOrg){
   }
   return(textVector)
 }
+
 
 # Main function. Find a query set of genes enriched with functional category
 # For debug:  converted = converted(); gInfo = tem;  GO=input$selectGO; selectOrg=input$selectOrg;  minFDR=input$minFDR; input_maxTerms=input$maxTerms

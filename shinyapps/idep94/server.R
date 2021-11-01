@@ -808,7 +808,7 @@ geneInfo <- function (converted,selectOrg){
 	return( cbind(x,Set) )}
  }
 
-  hyperText <- function (textVector, urlVector){
+hyperText <- function (textVector, urlVector){
   # for generating pathway lists that can be clicked.
   # Function that takes a vector of strings and a vector of URLs
   # and generate hyper text 
@@ -1186,12 +1186,6 @@ PGSEApathway <- function (converted,convertedData, selectOrg,GO,gmt, myrange,Pva
     }
  }
 
-if(0){ # for testing LIMMA
-	x = read.csv("C:/Users/Xijin.Ge/Google Drive/research/Shiny/RNAseqer/doc/Hoxa1-1/GSE50813_reduced.csv")
-	rownames(x) = x[,1]
-	x = x[,-1]
-	maxP_limma=.1; minFC_limma=2; rawCounts=NULL; countsDEGMethods=2;priorCounts=4; dataFormat=2;
-} 
 
 # Differential expression using LIMMA 
 DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMethods,priorCounts, dataFormat, selectedComparisons=NULL, sampleInfo = NULL,modelFactors=NULL, blockFactor = NULL){
@@ -4901,7 +4895,7 @@ output$KmeansGO <- renderTable({
 output$downloadKmeansGO <- downloadHandler(
 		filename = function() {"KmeansEnrichment.csv"},
 		content = function(file) {
-			write.csv( KmeansGOdata(), file, row.names=FALSE)
+			write.csv( removeHypertext( KmeansGOdata() ), file, row.names=FALSE)
 	    }
 	) 
 	
@@ -6969,7 +6963,7 @@ output$geneListGO <- renderTable({
 output$downloadGOTerms <- downloadHandler(
 		filename = function() {"Enriched.csv"},
 		content = function(file) {
-			write.csv(geneListGOTable(), file)
+			write.csv( removeHypertext( geneListGOTable() ), file)
 	    }
 	)
 
@@ -10290,7 +10284,8 @@ output$geneListBclustGO <- renderTable({
 
 		 })#progress
 		}) #isolate
-  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T, 
+     sanitize.text.function = function(x) x)
 	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })
 
 	
@@ -10746,7 +10741,8 @@ output$networkModuleGO <- renderTable({
 
 		 })#progress
 		}) #isolate
-  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
+  }, digits = 0,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T,
+sanitize.text.function = function(x) x)
 	#   output$selectedHeatmap <- renderPlot({       hist(rnorm(100))    })
 
 
