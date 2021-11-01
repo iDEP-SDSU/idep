@@ -1937,7 +1937,8 @@ output$genomePlotly <- renderPlotly({
              x$start_position = x$start_position/1000000 # Mbp
              chD = 30 # distance between chs.
     
-             x$y = x$chNum*chD + 4
+             # y is scalled and also jittered with random number to avoid overlap
+             x$y = x$chNum*chD + 4 + runif(dim(x)[1]) * 6
 
 
     
@@ -1968,7 +1969,7 @@ output$genomePlotly <- renderPlotly({
              incProgress(0.5)
 
 
-             # add trend lines------------------------------------------
+             # add  lines------------------------------------------
              x0 <- x0[x0$chromosome_name %in% unique(x$chromosome_name), ]
              x0$chNum <- 1 # numeric encoding
              x0$chNum <- ch[ x0$chromosome_name ]
