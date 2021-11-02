@@ -606,7 +606,13 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
                       length(querySetB) - length(querySet),   
                       as.numeric(x2$overlapB), # use the number of genes in background set
                       lower.tail=FALSE ); 
-        
+
+        # calculate fold enrichment compared to background
+                  
+        x$fold <- x$overlap/length(querySet) /                    # ratio in query
+                  ( as.numeric(x2$overlapB) / length(querySetB) ) # ratio in background
+        # number of genes in pathways in background genes  
+        x$n <- as.numeric(x2$overlapB)     
       }
   
   # end background genes------------------------------------------------------------
