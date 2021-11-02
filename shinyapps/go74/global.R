@@ -569,6 +569,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
     # further filter by nominal P value
     #x <- subset(x, Pval < 0.2)
   
+
   #Background genes----------------------------------------------------
   if(!is.null(convertedB) && 
      !is.null(gInfoB) && 

@@ -57,13 +57,13 @@ server <- function(input, output, session){
   # this defines an reactive object that can be accessed from other rendering functions
   converted_background <- reactive({
     if (input$goButton == 0 | is.null(input$input_text_b))    return() 
-    if (nchar(input$input_text_b) > 10)    return() 
-    
+    if (nchar(input$input_text_b) < 10)    return() 
+
     convertID(input$input_text_b,input$selectOrg );
     
   } )
   geneInfoLookup_background <- reactive({
-    if (input$goButton == 0 | nchar(input$input_text_b) > 10)    return()
+    if (input$goButton == 0 | nchar(input$input_text_b) < 10)    return()
     if(is.null( converted_background() )) return()
     geneInfo(converted_background(),input$selectOrg )   # uses converted gene ids thru converted() call
     
