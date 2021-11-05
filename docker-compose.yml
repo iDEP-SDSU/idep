@@ -3,6 +3,8 @@ services:
   webapp:
     build: .
     image: webapp
+    mem_limit: 1g
+    mem_reservation: 500m
     expose:
       - "3838"
     volumes:
