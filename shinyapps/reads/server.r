@@ -13,8 +13,8 @@ options(shiny.maxRequestSize = 100 * 1024^2)
 library(dplyr)
 # library("shinybusy")
 
-#dataPath <- "../../data/readCounts"
-dataPath <- "C:/Users/bdere/OneDrive/Documents/idep-master/idep-master/data/readCounts" #path on device
+dataPath <- "../../data/readCounts"
+#dataPath <- "C:/Users/bdere/OneDrive/Documents/idep-master/idep-master/data/readCounts" #path on device
 
 destination_fileH <- paste(dataPath, "/human_matrix_v10.h5", sep = "")
 destination_fileM <- paste(dataPath, "/mouse_matrix_v10.h5", sep = "")
