@@ -13,8 +13,8 @@ options(shiny.maxRequestSize = 100 * 1024^2)
 library(dplyr)
 # library("shinybusy")
 
-dataPath <- "../../data/readCounts"
-#dataPath <- "C:/Users/bdere/OneDrive/Documents/idep-master/idep-master/data/readCounts" #path on device
+#dataPath <- "../../data/readCounts"
+dataPath <- "C:/Users/bdere/OneDrive/Documents/idep-master/idep-master/data/readCounts" #path on device
 
 destination_fileH <- paste(dataPath, "/human_matrix_v10.h5", sep = "")
 destination_fileM <- paste(dataPath, "/mouse_matrix_v10.h5", sep = "")
@@ -102,7 +102,7 @@ server <- function(input, output, session) {
     dataset.info <- RSQLite::dbGetQuery(convert, "select GSEID, Species, Samples, Title, Summary from GSEinfo")
     dataset.info$GSEID <- as.character(dataset.info$GSEID)
     dataset.info$Link <- paste("https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=", dataset.info$GSEID, sep = "")
-    dataset.info$"NCBI GEO Link" <- paste0("<a href='", dataset.info$Link, "'>", dataset.info$GSEID, "</a>")
+    dataset.info$"NCBI GEO Link" <- paste0("<a target='_blank' href='", dataset.info$Link, "'>", dataset.info$GSEID, "</a>")
     #shinybusy::remove_modal_spinner()
     })
     return(dataset.info)
@@ -126,10 +126,8 @@ server <- function(input, output, session) {
     GSEID <- gsub(" ", "", GSEID)
 
     querySTMT <- paste("select * from sampleInfo where gse = '",
-      GSEID, "' AND species = '", input$selectedSpecies, "'",
-      sep = ""
-    )
-
+                       GSEID, "' AND species = '", input$selectedSpecies, "' order by gsm limit 500",
+                       sep = "")
     results <- RSQLite::dbGetQuery(convert, querySTMT)
 
     selectedSpecies <- names(sort(table(results[, 5]), decreasing = T))[1]
@@ -160,7 +158,9 @@ server <- function(input, output, session) {
         # Identify columns to be extracted
         samples <- rhdf5::h5read(destination_file, "meta/samples/geo_accession")
         sample_locations <- which(samples %in% samp)
+        samples<-samples[sample_locations]
 
+        
         # extract gene expression from compressed data
         genes <- rhdf5::h5read(destination_file, "meta/genes")
         expression <- rhdf5::h5read(destination_file, "data/expression", index = list(sample_locations, 1:length(genes$genes)))
@@ -184,7 +184,8 @@ server <- function(input, output, session) {
 
           samples <- rhdf5::h5read(destination_file_transcript, "meta/samples/geo_accession")
           sample_locations <- which(samples %in% samp)
-
+          samples<-samples[sample_locations]
+          
           transcripts <- rhdf5::h5read(destination_file_transcript, "meta/transcripts")
           shiny::incProgress(.1)
           transcriptCounts <- rhdf5::h5read(destination_file_transcript,
@@ -194,6 +195,7 @@ server <- function(input, output, session) {
 
           rownames(transcriptCounts) <- paste(samples[sample_locations], sample_title, sep = " ")
           colnames(transcriptCounts) <- paste(" ", transcripts$transcripts)
+          remove(transcripts)
           transcriptCounts <- t(transcriptCounts)
           transcriptCounts <- transcriptCounts[, order(colnames(transcriptCounts))]
         } else { # transcript missing
@@ -220,6 +222,7 @@ server <- function(input, output, session) {
         #shinybusy::remove_modal_spinner()
         
       })
+      remove(samples, sample_locations, genes)
       return(list(
         info = results,
         counts = expression,
@@ -251,6 +254,12 @@ server <- function(input, output, session) {
           # download data using DEE2 API
           tmp <- tempfile()
           len <- length(SRRlist)
+          
+          #remove SRRs above 500
+          if (len <= 500)
+          {
+            SRRlist <- SRRlist[1:500]
+          }
           if (len <= 500) {
             cat("small sample #")
             data1 <- getDEE2::getDEE2(selectedSpecies, SRRvec = SRRlist, outfile = tmp) # outfile = "myfile.zip")
@@ -341,7 +350,7 @@ server <- function(input, output, session) {
           #shinybusy::remove_modal_spinner()
           
         })
-        
+        remove(data1, ix,start,end, iter, df, data_chunk, tc,tmp,data1_prime,SRRlist)
         #shinybusy::remove_modal_spinner()
 
         return(list(
