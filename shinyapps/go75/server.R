@@ -159,14 +159,13 @@ server <- function(input, output, session){
       incProgress(0.1)
       tem2 <- geneInfoLookup()
       incProgress(0.3)
-#      tem3 <- detailedGeneInfoLookup()   
+
       incProgress(0.6)   
       if( is.null(tem)) {as.data.frame("ID not recognized.")} else {
         if(dim(tem2)[1] == 1) { return( tem$conversionTable) }
         else { # if gene info is not available
           merged <- merge(tem$conversionTable,tem2,by='ensembl_gene_id')
- #         if(!is.null(tem3))
- #            merged <- merge(merged, tem3, by='ensembl_gene_id', all.x = TRUE)
+
           merged <- subset(merged,select=c(User_input,symbol,ensembl_gene_id,entrezgene_id, 
                                            gene_biotype,Species,chromosome_name,start_position, description  ))
           
@@ -780,7 +779,7 @@ server <- function(input, output, session){
     isolate( {
       x = geneInfoLookup()
       converted1 = converted()
-      
+      if(ncol(x) == 1) return(NULL) # no geneInfo found for STRING species
       #chromosomes
       if((sum(!is.na( x$chromosome_name) ) >= minGenes && length(unique(x$chromosome_name) ) > 2 ) && length(which(x$Set == "List") ) > minGenes )
       {
@@ -1856,7 +1855,7 @@ output$genomePlotly <- renderPlotly({
 							 theme(axis.title.x=element_blank(),axis.title.y=element_blank())
 
         x = geneInfoLookup()
-
+        if(ncol(x) == 1) return(p) # no geneInfo found for STRING species
         #Background genes ---------------
         xB = geneInfoLookup_background()
         convertedB = converted_background()	   
