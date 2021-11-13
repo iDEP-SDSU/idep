@@ -385,7 +385,7 @@ geneInfo <- function (converted, selectOrg){
 
   if(length(ix) == 1)  # if only one file           #WBGene0000001 some ensembl gene ids in lower case
   { x = read.csv(as.character(geneInfoFiles[ix]) ); x[,1]= toupper(x[,1]) 
-#    colnames(x)[which(colnames(x) == "entrezgene_id")] <- "entrezID_geneInfo"
+
    }
   else # read in the chosen file
   { return(as.data.frame("Multiple geneInfo file found!") )   }
@@ -396,47 +396,6 @@ geneInfo <- function (converted, selectOrg){
   # x = cbind(x,Set) } # just for debuging
   return( cbind(x,Set) )}
  }
-
-geneInfoDetails <- function (converted, selectOrg){
-  if(is.null(converted) ) return(as.data.frame("ID not recognized!") ) # no ID
-  querySet <- converted$IDs
-
-
-    details <- convertEnsembl2Details(converted$IDs,  
-                                      converted$species[1,1])
-
-    if(is.null(details))  return(NULL)
-    entrezIDs <- subset(details, 
-                        idType == "entrezgene_id",
-                        select = c(id, ensembl_gene_id))
-    colnames(entrezIDs) <- c("entrezgene_id", "ensembl_gene_id")
-
-    # remove duplicated entrez IDs. 
-    # if one ensembl id matched two entrez id, only keep one. 
-    entrezIDs <- entrezIDs[!duplicated(entrezIDs$ensembl_gene_id), ]
-
-    Description <- subset(details, 
-                          idType == "description",
-                          select = c(id, ensembl_gene_id))
-    colnames(Description) <- c("Description", "ensembl_gene_id")
-  
-    Description$Description <- proper( gsub("\\[SOURCE.*", "", Description$Description))
-    
-    # remove duplicated entrez IDs. 
-    # if one ensembl id matched two entrez id, only keep one. 
-    Description <- Description[!duplicated(Description$ensembl_gene_id), ]
-    
-    
-    
-  
-    allInfo  <- merge(entrezIDs, Description, by = "ensembl_gene_id" )
-    
-    allInfo$Description <- paste0(toupper(substr(allInfo$Description, 1, 1)), 
-                                  tolower(substring(allInfo$Description, 2)))
-     return(allInfo )
-
-}
-
 
 hyperText <- function (textVector, urlVector){
   # for generating pathway lists that can be clicked.
@@ -990,32 +949,6 @@ convertEnsembl2Entrez <- function (query,Species) {
 	if( dim(result)[1] == 0  ) return(NULL)
 
     colnames(result) <- c("entrezgene_id", "ensembl_gene_id" )
-
-	return(result)
-}
-
-convertEnsembl2Details <- function (query,Species) {
-# Given ensembl gene IDs, find gene description and entrez gene ID.  
-    # finds id index corresponding to description and entrez IDs
-
-    idType_description <- dbGetQuery(convert, paste("select distinct * from idIndex where idType in ('entrezgene_id', 'description')" ))
-    idTypes = as.numeric( idType_description[,1])
-
-    # given a set of ensembl ids, return a mapping table to Entrez gene ID
-	querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,' )  ) )
-	speciesID <- orgInfo$id[ which(orgInfo$ensembl_dataset == Species)]  # note uses species Identifying
-
-	result <- dbGetQuery( convert,
-						paste0( " SELECT  id,ens,idType from mapping where 
-                                        species = '", speciesID, "'",
-                                        "AND idType IN ('",	paste0(idTypes, collapse = "','"), "')", 
-                                " AND ens IN ('", paste(querySet,collapse="', '"), "')" ) )
-							
-	if( dim(result)[1] == 0  ) return(NULL)
-    colnames(result) <- c("id", "ensembl_gene_id", "idType" )
-    
-    ix <- match(result$idType, idType_description$id)
-    result$idType <- idType_description$idType[ix]
 
 	return(result)
 }
