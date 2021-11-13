@@ -1855,7 +1855,7 @@ output$genomePlotly <- renderPlotly({
 							 theme(axis.title.x=element_blank(),axis.title.y=element_blank())
 
         x = geneInfoLookup()
-        if(ncol(x) == 1) return(p) # no geneInfo found for STRING species
+        if(dim(x)[1] == 1) return(p) # no geneInfo found for STRING species
         #Background genes ---------------
         xB = geneInfoLookup_background()
         convertedB = converted_background()	   
