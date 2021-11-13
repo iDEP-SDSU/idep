@@ -159,16 +159,16 @@ server <- function(input, output, session){
       incProgress(0.1)
       tem2 <- geneInfoLookup()
       incProgress(0.3)
-      tem3 <- detailedGeneInfoLookup()   
+#      tem3 <- detailedGeneInfoLookup()   
       incProgress(0.6)   
       if( is.null(tem)) {as.data.frame("ID not recognized.")} else {
         if(dim(tem2)[1] == 1) { return( tem$conversionTable) }
         else { # if gene info is not available
           merged <- merge(tem$conversionTable,tem2,by='ensembl_gene_id')
-          if(!is.null(tem3))
-             merged <- merge(merged, tem3, by='ensembl_gene_id', all.x = TRUE)
+ #         if(!is.null(tem3))
+ #            merged <- merge(merged, tem3, by='ensembl_gene_id', all.x = TRUE)
           merged <- subset(merged,select=c(User_input,symbol,ensembl_gene_id,entrezgene_id, 
-                                           gene_biotype,Species,chromosome_name,start_position, Description  ))
+                                           gene_biotype,Species,chromosome_name,start_position, description  ))
           
           tem3 <- as.data.frame(tem$originalIDs); colnames(tem3) = "User_input"
           merged <- merge(merged, tem3, all=T)
