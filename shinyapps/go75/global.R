@@ -384,7 +384,9 @@ geneInfo <- function (converted, selectOrg){
   }
 
   if(length(ix) == 1)  # if only one file           #WBGene0000001 some ensembl gene ids in lower case
-  { x = read.csv(as.character(geneInfoFiles[ix]) ); x[,1]= toupper(x[,1]) }
+  { x = read.csv(as.character(geneInfoFiles[ix]) ); x[,1]= toupper(x[,1]) 
+    colnames(x)[which(colnames(x) == "entrezgene_id")] <- "entrezID_geneInfo"
+   }
   else # read in the chosen file
   { return(as.data.frame("Multiple geneInfo file found!") )   }
 
