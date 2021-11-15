@@ -375,6 +375,7 @@ convertID <- function (query, selectOrg) {
 geneInfo <- function (converted, selectOrg){
   if(is.null(converted) ) return(as.data.frame("ID not recognized!") ) # no ID
   querySet <- converted$IDs
+
   if(length(querySet) == 0) return(as.data.frame("ID not recognized!") )
   ix = grep(converted$species[1,1],geneInfoFiles)
   if (length(ix) == 0 ) {return(as.data.frame("No matching gene info file found") )} else {
