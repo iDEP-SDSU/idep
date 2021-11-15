@@ -86,20 +86,22 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("Enrichment" 
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen
+                                   ,p("Nov. 15, 2021: ",a("ShinyGO v0.75", href="http://bioinformatics.sdstate.edu/go75/"), " released in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update from to 11.5.", style = "color:red")
                                    ,p("Oct25, 2021: Interactive genome plot. Identificantion of genomic regions signficantly enriched with user genes.")
                                    ,p("Oct.23, 2021: Version 0.741 A fully customizable enrichment chart! Switch between bar, dot or lollipop plots.  Detailed gene informations with links on the Genes tab.")
                                    ,p("Oct. 15, 2021: Version 0.74. Database updated to Ensembl Release 104 and STRING v11. We now recommends the use of background genes in enrichment analysis. V.0.74 is much faster with even large set of background genes.")
                                    ,p("We recently hired Jenny for database updates and user support.",
                                        a("Email Jenny ",href="mailto:gelabinfo@gmail.com?Subject=ShinyGO"),
                                        "for questions, suggestions or data contributions.") 
-
+                                   ,p("ShinyGO has not been tested thoroughly! Please let us know if you find any problems.", style = "color:red")
+                                   
                                    
                                    #,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
                                    
                                    ,p("2/3/2020: Now published by", a("Bioinformatics.", href="https://doi.org/10.1093/bioinformatics/btz931",target="_blank"))
-                                   ,p("Just paste your gene list to get enriched GO terms and othe pathways for over 400 plant and animal species, 
-				    based on annotation from Ensembl , Ensembl plants and Ensembl Metazoa. An additional 5000 genomes 
-				    (including bacteria and fungi) are   annotated based on STRING-db (v.11). In addition, it also produces
+                                   ,p("Just paste your gene list to get enriched GO terms and othe pathways for over 520 species, 
+				    based on annotation from Ensembl (Plants, Metazoa, Protists, Fungi). An additional 5090 genomes 
+				    (including bacteria and fungi) are  annotated based on STRING-db (v.11.5). In addition, it also produces
 				    KEGG pathway diagrams with your genes highlighted, hierarchical clustering trees and networks summarizing 
 				    overlapping terms/pathways, protein-protein interaction networks, gene characterristics plots, and enriched promoter motifs. 
                  See example outputs below:")			
