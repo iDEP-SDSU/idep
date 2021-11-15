@@ -159,16 +159,15 @@ server <- function(input, output, session){
       incProgress(0.1)
       tem2 <- geneInfoLookup()
       incProgress(0.3)
-      tem3 <- detailedGeneInfoLookup()   
+
       incProgress(0.6)   
       if( is.null(tem)) {as.data.frame("ID not recognized.")} else {
         if(dim(tem2)[1] == 1) { return( tem$conversionTable) }
         else { # if gene info is not available
           merged <- merge(tem$conversionTable,tem2,by='ensembl_gene_id')
-          if(!is.null(tem3))
-             merged <- merge(merged, tem3, by='ensembl_gene_id', all.x = TRUE)
+
           merged <- subset(merged,select=c(User_input,symbol,ensembl_gene_id,entrezgene_id, 
-                                           gene_biotype,Species,chromosome_name,start_position, Description  ))
+                                           gene_biotype,Species,chromosome_name,start_position, description  ))
           
           tem3 <- as.data.frame(tem$originalIDs); colnames(tem3) = "User_input"
           merged <- merge(merged, tem3, all=T)
@@ -517,8 +516,10 @@ server <- function(input, output, session){
         genes <- conversionTableData()
         colnames(genes)[3]=c("gene")
         genes$lfc = 1
+        # remove space character in front of gene symbols. Otherwise STRING won't convert
+        genes$gene <- gsub(" ", "", genes$gene) 
         mapped <- string_db$map(genes,"gene", removeUnmappedRows = TRUE )
-        browser()
+
         incProgress(1/4,detail = paste("up regulated")  )
         up= subset(mapped, lfc>0, select="STRING_id", drop=TRUE )
         
@@ -780,7 +781,7 @@ server <- function(input, output, session){
     isolate( {
       x = geneInfoLookup()
       converted1 = converted()
-      
+      if(dim(x)[1] == 1) return(NULL) # no geneInfo found for STRING species
       #chromosomes
       if((sum(!is.na( x$chromosome_name) ) >= minGenes && length(unique(x$chromosome_name) ) > 2 ) && length(which(x$Set == "List") ) > minGenes )
       {
@@ -1852,11 +1853,11 @@ output$genomePlotly <- renderPlotly({
 		# default plot
 		fake = data.frame(a=1:3,b=1:3)
 		p <- ggplot(fake, aes(x = a, y = b)) +
-							 geom_blank() + ggtitle("No genes with position info.") +
+							 geom_blank() + ggtitle("Position info not available.") +
 							 theme(axis.title.x=element_blank(),axis.title.y=element_blank())
 
         x = geneInfoLookup()
-
+        if(dim(x)[1] == 1) return(p) # no geneInfo found for STRING species
         #Background genes ---------------
         xB = geneInfoLookup_background()
         convertedB = converted_background()	   
