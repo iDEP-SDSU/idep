@@ -163,8 +163,10 @@ server <- function(input, output, session){
       incProgress(0.6)   
       if( is.null(tem)) {as.data.frame("ID not recognized.")} else {
         if(dim(tem2)[1] == 1) { return( tem$conversionTable) }
-        else { # if gene info is not available
+        else { # if gene info is  available
+ #         if('chromosome_name' %in% colnames(tem2)) {
           merged <- merge(tem$conversionTable,tem2,by='ensembl_gene_id')
+ 
 
           merged <- subset(merged,select=c(User_input,symbol,ensembl_gene_id,entrezgene_id, 
                                            gene_biotype,Species,chromosome_name,start_position, description  ))
@@ -181,7 +183,10 @@ server <- function(input, output, session){
           colnames(merged) <- c("Pasted","Symbol", "Ensembl Gene ID",  "Entrez",
                                 "Gene Type", "Species", "Chr", "Position (Mbp)", "Description" )
           i = 1:dim(merged)[1]
-          merged = cbind(i,merged)
+ #         merged = cbind(i,merged)
+ #         } else {
+ #          merged = tem2
+ #         }
 
 
         }
