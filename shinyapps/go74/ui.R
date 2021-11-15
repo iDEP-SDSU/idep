@@ -86,9 +86,10 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("Enrichment" 
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen
-                                   ,p("Nov. 15, 2021: ",a("ShinyGO v0.75", href="http://bioinformatics.sdstate.edu/go75/"), " released in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update from to 11.5.", style = "color:red")
-                                   ,p("Oct25, 2021: Interactive genome plot. Identificantion of genomic regions signficantly enriched with user genes.")
-                                   ,p("Oct.23, 2021: Version 0.741 A fully customizable enrichment chart! Switch between bar, dot or lollipop plots.  Detailed gene informations with links on the Genes tab.")
+                                   ,br()
+                                   ,p("Nov. 15, 2021: Database update. ",a("ShinyGO v0.75", href="http://bioinformatics.sdstate.edu/go75/"), " released in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update from to 11.5.", style = "color:red")
+                                   ,p("Oct. 25, 2021: Interactive genome plot. Identificantion of genomic regions signficantly enriched with user genes.")
+                                   ,p("Oct. 23, 2021: Version 0.741 A fully customizable enrichment chart! Switch between bar, dot or lollipop plots.  Detailed gene informations with links on the Genes tab.")
                                    ,p("Oct. 15, 2021: Version 0.74. Database updated to Ensembl Release 104 and STRING v11. We now recommends the use of background genes in enrichment analysis. V.0.74 is much faster with even large set of background genes.")
                                    ,p("We recently hired Jenny for database updates and user support.",
                                        a("Email Jenny ",href="mailto:gelabinfo@gmail.com?Subject=ShinyGO"),
