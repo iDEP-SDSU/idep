@@ -22,7 +22,7 @@ library(DT,verbose=FALSE) 		# for renderDataTable
 
 # relative path to data files
 datapath = "../../data/data104b/"   # production server
-STRING_DB_VERSION <- "11.0" # what version of STRINGdb needs to be used 
+STRING_DB_VERSION <- "11.5" # what version of STRINGdb needs to be used 
 Min_overlap <- 1
 minSetSize = 3;
 mappingCoverage = 0.60 # 60% percent genes has to be mapped for confident mapping
@@ -437,8 +437,9 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   idNotRecognized = list(x=as.data.frame("ID not recognized!"),
                          groupings= as.data.frame("ID not recognized!")  )
   if(is.null(converted) ) return(idNotRecognized) # no ID
-  querySet <- converted$IDs;
 
+  querySet <- converted$IDs;
+  #start.time <- proc.time()[3]
   if(!is.null(gInfo) )
      if( class(gInfo) == "data.frame" )
        if(dim(gInfo)[1] > 1) {  # some species does not have geneInfo. STRING
@@ -462,7 +463,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
 	  if (length(ix) == 0 ) {return(idNotRecognized )}
 	  totalGenes <- orgInfo[which(orgInfo$id == as.numeric(selectOrg)),7]
   }
-  pathway <- dbConnect(sqlite,gmtFiles[ix])
+  pathway <- dbConnect(sqlite,gmtFiles[ix],flags=SQLITE_RO)
 
   # Generate a list of geneset categories such as "GOBP", "KEGG" from file
   geneSetCategory <-  dbGetQuery(pathway, "select distinct * from categories " )
@@ -485,6 +486,8 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   result <- dbGetQuery( pathway, sqlQuery  )
   
   if( dim(result)[1] ==0) {return(list( x=as.data.frame("No matching pathway data find!" )) )}
+
+  #cat("\nTime:", proc.time()[3] - start.time)
 
    # given a pathway id, it finds the overlapped genes, symbol preferred
   sharedGenesPrefered <- function(pathwayID) {
@@ -512,7 +515,6 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   pathwayInfo <- dbGetQuery( pathway, paste( " select distinct id,n,description,memo from pathwayInfo where id IN ('",
 						paste(x0$pathwayID,collapse="', '"),   "') ",sep="") )
   
-
 
 #  pathwayInfo$description <- hyperText( pathwayInfo$description, pathwayInfo$memo)
 #  pathwayInfo <- pathwayInfo[, -4] # remove memo/URL

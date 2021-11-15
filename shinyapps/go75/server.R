@@ -516,8 +516,10 @@ server <- function(input, output, session){
         genes <- conversionTableData()
         colnames(genes)[3]=c("gene")
         genes$lfc = 1
+        # remove space character in front of gene symbols. Otherwise STRING won't convert
+        genes$gene <- gsub(" ", "", genes$gene) 
         mapped <- string_db$map(genes,"gene", removeUnmappedRows = TRUE )
-        
+
         incProgress(1/4,detail = paste("up regulated")  )
         up= subset(mapped, lfc>0, select="STRING_id", drop=TRUE )
         
@@ -779,7 +781,7 @@ server <- function(input, output, session){
     isolate( {
       x = geneInfoLookup()
       converted1 = converted()
-      if(ncol(x) == 1) return(NULL) # no geneInfo found for STRING species
+      if(dim(x)[1] == 1) return(NULL) # no geneInfo found for STRING species
       #chromosomes
       if((sum(!is.na( x$chromosome_name) ) >= minGenes && length(unique(x$chromosome_name) ) > 2 ) && length(which(x$Set == "List") ) > minGenes )
       {
@@ -1851,7 +1853,7 @@ output$genomePlotly <- renderPlotly({
 		# default plot
 		fake = data.frame(a=1:3,b=1:3)
 		p <- ggplot(fake, aes(x = a, y = b)) +
-							 geom_blank() + ggtitle("No genes with position info.") +
+							 geom_blank() + ggtitle("Position info not available.") +
 							 theme(axis.title.x=element_blank(),axis.title.y=element_blank())
 
         x = geneInfoLookup()

@@ -121,6 +121,7 @@ iDEPversion,
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
+      ,p("Nov. 15, 2021: iDEP v0.95 released in testing mode. Ensembl database update for all existing species. New species include Ensembl Fungi and Ensembl Protists! STRINGdb (5090 species) update from v11 to 11.5.")
       ,p("10/26/2021: The Genome view is now much improved! Automatically detects chromosomal regions enriched with genes having abnormaly high and low fold-changes.")
       ,p("iDEP v.0.94 based on Ensembl Release 104 and STRING-db V11. 9/3/2021")
 

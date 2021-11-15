@@ -518,7 +518,7 @@ server <- function(input, output, session){
         colnames(genes)[3]=c("gene")
         genes$lfc = 1
         mapped <- string_db$map(genes,"gene", removeUnmappedRows = TRUE )
-        
+        browser()
         incProgress(1/4,detail = paste("up regulated")  )
         up= subset(mapped, lfc>0, select="STRING_id", drop=TRUE )
         
