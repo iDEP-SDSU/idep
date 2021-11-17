@@ -787,6 +787,8 @@ server <- function(input, output, session){
       x = geneInfoLookup()
       converted1 = converted()
       if(dim(x)[1] == 1) return(NULL) # no geneInfo found for STRING species
+        # for STRING species, no gene location is available
+      if(sum(!is.na(x$start_position)) < 5) return(p)
       #chromosomes
       if((sum(!is.na( x$chromosome_name) ) >= minGenes && length(unique(x$chromosome_name) ) > 2 ) && length(which(x$Set == "List") ) > minGenes )
       {
@@ -1863,6 +1865,9 @@ output$genomePlotly <- renderPlotly({
 
         x = geneInfoLookup()
         if(dim(x)[1] == 1) return(p) # no geneInfo found for STRING species
+        # for STRING species, no gene location is available
+        if(sum(!is.na(x$start_position)) < 5) return(p)
+
         #Background genes ---------------
         xB = geneInfoLookup_background()
         convertedB = converted_background()	   
