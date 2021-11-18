@@ -199,9 +199,15 @@ server <- function(input, output, session){
   
   output$conversionTable <-renderTable({
     if (input$goButton == 0)    return()   # still have problems when geneInfo is not found!!!!!
-    
+    tem = input$showDetailedGeneInfo
     isolate( {
       df <- conversionTableData()
+      #show detailed gene info for string species
+      if(!input$showDetailedGeneInfo )
+        df$Description <- gsub(";.*|\\[.*", "", df$Description)
+      # Remove columns with all missing values; chr and start possition in STRINGdb species
+      df <- df[, which(!apply(is.na(df), 2, sum) == nrow(df))]
+      df$Species <- gsub("STRINGdb", "", df$Species)
 
       # first see if it is Ensembl gene ID-----------------------
       ix <- grepl("ENS", df$'Ensembl Gene ID')  
