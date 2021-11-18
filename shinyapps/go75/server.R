@@ -183,12 +183,6 @@ server <- function(input, output, session){
           colnames(merged) <- c("Pasted","Symbol", "Ensembl Gene ID",  "Entrez",
                                 "Gene Type", "Species", "Chr", "Position (Mbp)", "Description" )
           i = 1:dim(merged)[1]
- #         merged = cbind(i,merged)
- #         } else {
- #          merged = tem2
- #         }
-
-
         }
       }
       incProgress(0.9)
