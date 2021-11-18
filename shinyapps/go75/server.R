@@ -199,9 +199,15 @@ server <- function(input, output, session){
   
   output$conversionTable <-renderTable({
     if (input$goButton == 0)    return()   # still have problems when geneInfo is not found!!!!!
-    
+    tem = input$showDetailedGeneInfo
     isolate( {
       df <- conversionTableData()
+      #show detailed gene info for string species
+      if(!input$showDetailedGeneInfo )
+        df$Description <- gsub(";.*|\\[.*", "", df$Description)
+      # Remove columns with all missing values; chr and start possition in STRINGdb species
+      df <- df[, which(!apply(is.na(df), 2, sum) == nrow(df))]
+      df$Species <- gsub("STRINGdb", "", df$Species)
 
       # first see if it is Ensembl gene ID-----------------------
       ix <- grepl("ENS", df$'Ensembl Gene ID')  
@@ -787,6 +793,8 @@ server <- function(input, output, session){
       x = geneInfoLookup()
       converted1 = converted()
       if(dim(x)[1] == 1) return(NULL) # no geneInfo found for STRING species
+        # for STRING species, no gene location is available
+      if(sum(!is.na(x$start_position)) < 5) return(p)
       #chromosomes
       if((sum(!is.na( x$chromosome_name) ) >= minGenes && length(unique(x$chromosome_name) ) > 2 ) && length(which(x$Set == "List") ) > minGenes )
       {
@@ -1863,6 +1871,9 @@ output$genomePlotly <- renderPlotly({
 
         x = geneInfoLookup()
         if(dim(x)[1] == 1) return(p) # no geneInfo found for STRING species
+        # for STRING species, no gene location is available
+        if(sum(!is.na(x$start_position)) < 5) return(p)
+
         #Background genes ---------------
         xB = geneInfoLookup_background()
         convertedB = converted_background()	   

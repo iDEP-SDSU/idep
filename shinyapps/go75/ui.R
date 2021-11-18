@@ -220,7 +220,7 @@ ui <- fluidPage(
        Bigger nodes represent larger gene sets.  
        Thicker edges represent more overlapped genes.")               		   
         )
- #---Genes-----------------------------------------------------------        
+ #---KEGG-----------------------------------------------------------        
         ,tabPanel("KEGG"
                  ,h5("Select KEGG pathways in the left to display your genes in pathway diagrams. Selected species only. Takes 1-3 minutes.")
                  ,conditionalPanel("input.selectGO == 'KEGG'", 
@@ -233,7 +233,10 @@ ui <- fluidPage(
         )
  #---Genes-----------------------------------------------------------        
         ,tabPanel("Genes"
-                  , downloadButton('downloadGeneInfo', 'Download')
+                 ,fluidRow(
+                    column(3, downloadButton('downloadGeneInfo', 'Download') )
+                    ,column(4, checkboxInput("showDetailedGeneInfo", "Detailed Description", value = FALSE) )
+                  )
                   , tableOutput("conversionTable")
       
         )
@@ -248,8 +251,9 @@ ui <- fluidPage(
         ,tabPanel("Plots"
                   , h5("The characteristics of your genes are compared with the rest in the genome. Chi-squared and Student's 
               t-tests are run to see if your genes have special characteristics when compared with all the other genes or, if uploaded, a customized background.")
-                  , plotOutput("genePlot", inline = TRUE,width='auto',height='auto')
                   , plotOutput("genePlot2", inline = TRUE,width='auto',height='auto')  
+                  , plotOutput("genePlot", inline = TRUE,width='auto',height='auto')
+
         )
 
  #---Genome-----------------------------------------------------------        

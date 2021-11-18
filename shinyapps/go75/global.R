@@ -378,12 +378,13 @@ geneInfo <- function (converted, selectOrg){
 
   if(length(querySet) == 0) return(as.data.frame("ID not recognized!") )
   ix = grep(converted$species[1,1],geneInfoFiles)
+#browser()
   if (length(ix) == 0 ) {return(as.data.frame("No matching gene info file found") )} else {
   # If selected species is not the default "bestMatch", use that species directly
   if(selectOrg != speciesChoice[[1]]) {
     ix = grep(findSpeciesById(selectOrg)[1,1], geneInfoFiles )
   }
-
+#browser()
   if(length(ix) == 1)  # if only one file           #WBGene0000001 some ensembl gene ids in lower case
   { x = read.csv(as.character(geneInfoFiles[ix]) ); x[,1]= toupper(x[,1]) 
 

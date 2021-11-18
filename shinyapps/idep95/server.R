@@ -9450,7 +9450,11 @@ output$genomePlotly <- renderPlotly({
 		  top1 <- top[[ix]]; 
 		}
 		  if(dim(top1)[1] == 0 ) return (ggplotly(p))
+
+         # Species in STRING-db do not have chr. location data
+         if(sum(!is.na(allGeneInfo()$start_position)) < 5) return(p)
 		  colnames(top1)= c("Fold","FDR")
+
 
 		 x <- merge(top1,allGeneInfo(), by.x="row.names",by.y="ensembl_gene_id"  )
 
@@ -9816,8 +9820,9 @@ genomePlotData <- reactive({
 	  }
 	  if(dim(top1)[1] == 0 ) return (NULL)
 	  colnames(top1)= c("Fold","FDR")
-	  
-	 # write.csv(merge(top1,allGeneInfo(), by.x="row.names",by.y="ensembl_gene_id"  ),"tem.csv"  )
+	 # for STRING species, no gene location is available
+     if(sum(!is.na(allGeneInfo()$start_position)) < 5) return(NULL) 
+
 	 x <- merge(top1,allGeneInfo(), by.x="row.names",by.y="ensembl_gene_id"  )
 	 
 	 x <- x[order(x$chromosome_name,x$start_position),]
