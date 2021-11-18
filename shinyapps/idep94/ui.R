@@ -31,7 +31,7 @@ iDEPversion,
       tags$head(tags$style("#goButton{color: red;
                                  font-size: 16px;
                                  font-style: italic;
-                                 }"))                    
+                                 }"))
       ,h5(" and just click the tabs for some magic!", style = "color:red")
       ,p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))
       ,strong("1. Optional:Select or search for your species.")
