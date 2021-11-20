@@ -9,6 +9,9 @@ As a younger sister, [ShinyGO](http://ge-lab.org/go/) focuses on the enrichment 
 ## Local installation
 Local installation of this software is possible through steps below. But it is not supported or updated freqently. Local install is for non-profit organizations only. For-profit businesses please contact us.
 
+iDEP and ShinyGO are both under active development, thanks to a grant from NHGRI. They have not been fully tested. So we are constantly fixing bugs/errors in both source code and sometime database. If you install locally, 
+please make sure to check for updates regularily here and download the latest versions of both the source code and database.  
+
 ## To run iDEP and ShinyGO on your local machine (Windows, MacOS, Linux):
 Requirements:
 + More than 250GB available storage
@@ -24,7 +27,7 @@ source https://raw.githubusercontent.com/iDEP-SDSU/idep/master/classes/librarySe
 3. Download iDEP source code and example data files from GitHub. The best is to click the green "Code" button and select "Download ZIP" on this [page](https://github.com/iDEP-SDSU/idep). Unzip to a folder such as C:/IDEP, so that it contains all the subfolders such as config, classes, shinyapps, and so on.
 
 4. Download all the database files from [here](http://18.235.92.206:8080/). Unzip all files to a folder (C:/IDEP/data/data104), so that your database can be found by the most recent versions of iDEP and ShinyGO. For example, the convertIDs.db files should be at C:/IDEP/data/data104/convertIDs.db, and the pathway information files should be at C:/IDEP/data/data104/pathwayDB. 
-Below is an example folder structure when iDEP is installed in the IDEP folder on I drive. 
+Below is an example folder structure. 
 
 ![Folder structure](docs/folders.png)
 
@@ -74,7 +77,7 @@ The setup.sh script was tested only on Ubuntu. Wait until the script shows 'iDEP
 cd ~/idep
 sudo docker-compose up -d --scale webapp=10 
 ```
-Now the server is running with 15 containers to serve many concurrent users. Currently the number has to be 15. You should be able to use iDEP from a web browser with http://12.12.12.12/idep94/, where 12.12.12.12 is the IP address of the server. ShinyGO can used via http://12.12.12.12/go74/. The server's port 80 should be available and exposed.
+Now the server is running with 10 containers to serve many concurrent users. You should be able to use iDEP from a web browser with http://12.12.12.12/idep94/, where 12.12.12.12 is the IP address of the server. ShinyGO can used via http://12.12.12.12/go74/. The server's port 80 should be available and exposed.
 
 
 A [user](https://github.com/wresch) has contributed scripts to install a standalone version using [Singularity](https://www.sylabs.io/). Following the instruction in this [folder.](https://github.com/iDEP-SDSU/idep/tree/master/singularity_standalone)
