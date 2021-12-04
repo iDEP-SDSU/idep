@@ -201,7 +201,7 @@ tags$head(
                                            choices = .1* (5:20),
                                            selected = 1.5
                                            ))
-                    ,column(3, downloadButton('enrichChartDownloadPNG', 'High Res. Fig.)'))
+                    ,column(3, downloadButton('enrichChartDownloadPNG', 'High Resolution'))
                     ,column(3, downloadButton('enrichChartDownload', 'PDF'))
 
                   ) # 3rd row
