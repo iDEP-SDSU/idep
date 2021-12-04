@@ -1225,7 +1225,11 @@ server <- function(input, output, session){
     }) #isolate
   }, width=700,height = 3000)
   
-  output$enrichChart <- renderPlot({
+
+
+  # ggplot2 object for the enrichment chart;
+  # used both for display and download
+  enrichChartObject <- reactive({
     if (input$goButton == 0  )    return()
 
     if(is.null(significantOverlaps() )  ) return(NULL)
@@ -1239,9 +1243,10 @@ server <- function(input, output, session){
     tem = input$SortPathwaysPlotHighColor
     tem = input$SortPathwaysPlotLowColor
     tem = input$enrichChartType
+    tem = input$enrichChartAspectRatio
 
     isolate( {
- 
+
         goTable <- significantOverlaps()$x[, 1:5]
 
         # Remove spaces in col names
@@ -1305,15 +1310,45 @@ server <- function(input, output, session){
 
         }    
         
-
-
-         p 
-          
-
-
+        return(p)
     }) #isolate
-    
-  } ) #,height = 800,height=400
+ })
+
+  # Enrichment plot for display on the screen
+  #https://stackoverflow.com/questions/34792998/shiny-variable-height-of-renderplot
+  output$enrichChart <- renderPlot({
+    enrichChartObject()
+   }, 
+   height = 500, 
+   width = function(){ 
+     round(500 * as.numeric(input$enrichChartAspectRatio))
+   }
+  )
+
+  output$enrichChartDownload <- downloadHandler(
+    filename = "Enrichment_chart.pdf",
+    content = function(file) {
+      pdf(
+        file, 
+        width = round(6 * as.numeric(input$enrichChartAspectRatio)), 
+        height = 6
+      )
+      print(enrichChartObject())
+      dev.off()
+    })
+
+  output$enrichChartDownloadPNG <- downloadHandler(
+    filename = "Enrichment_chart.png",
+    content = function(file) {
+      png(
+        file, 
+        width = round(2500 * as.numeric(input$enrichChartAspectRatio)), 
+        height = 2500,
+        res = 360
+      )
+      print(enrichChartObject())
+      dev.off()
+    }) 
     
   output$listSigPathways <- renderUI({
     tem = input$selectOrg

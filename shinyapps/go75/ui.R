@@ -19,8 +19,15 @@ columnSelection = list("-log10(FDR)" = "EnrichmentFDR",
                         "Fold Enrichment" = "FoldEnrichment", 
                         "Genes" =  "nGenes", 
                         "Category Name" = "Pathway")
+
 ui <- fluidPage(
-  # Application title
+# reduce the space between label and widgets, globally
+tags$head(
+  tags$style(HTML(
+    "label { font-size:100%; font-family:Times New Roman; margin-bottom:-15px; }"
+  ))
+),
+
   sidebarLayout(
     
     sidebarPanel(
@@ -138,8 +145,7 @@ ui <- fluidPage(
 
  #---Enrichment Chart-----------------------------------------------------------
         ,tabPanel("Chart" 
-                  ,plotOutput('enrichChart')
-                  ,br(), h4("Adjusting the width of your browser window to resize figure.")
+                  ,plotOutput('enrichChart', width = "100%", height = "100%")
                   ,fluidRow(
                     column(3, selectInput(inputId = "SortPathwaysPlot",
                                           label = h5("Sort Pathway by"),
@@ -183,11 +189,23 @@ ui <- fluidPage(
                                            selected = "blue"
                                            ))
                   ) # 2nd row
-                  ,selectInput(inputId = "enrichChartType",
+
+                  ,fluidRow(
+                    column(width = 3, selectInput(inputId = "enrichChartType",
                                            label = h5("Chart type"),
                                            choices = c("lollipop", "dotplot", "barplot"),
                                            selected = "lollipop"
-                                           )
+                                           ) )
+                    ,column(3, selectInput(inputId = "enrichChartAspectRatio",
+                                           label = h5("Aspect Ratio"),
+                                           choices = .1* (5:20),
+                                           selected = 1.5
+                                           ))
+                    ,column(3, downloadButton('enrichChartDownloadPNG', 'High Res. Fig.)'))
+                    ,column(3, downloadButton('enrichChartDownload', 'PDF'))
+
+                  ) # 3rd row
+                  
         )
 
  #---Tree-----------------------------------------------------------

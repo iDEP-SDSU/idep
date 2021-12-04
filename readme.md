@@ -7,10 +7,10 @@ As a younger sister, [ShinyGO](http://ge-lab.org/go/) focuses on the enrichment 
 
 
 ## Local installation
-Local installation of this software is possible through steps below. But it is not supported or updated freqently. Local install is for non-profit organizations only. For-profit businesses please contact us.
+Local installation of this software is possible through steps below. But it is not supported or updated freqently. Local install is for non-profit organizations only. For-profit businesses please contact us. 
 
 iDEP and ShinyGO are both under active development, thanks to a grant from NHGRI. They have not been fully tested. So we are constantly fixing bugs/errors in both source code and sometime database. If you install locally, 
-please make sure to check for updates regularily here and download the latest versions of both the source code and database.  
+please make sure to check for updates regularily here and download the latest versions of both the source code and database.  For most users, we recommend to visit our website. 
 
 ## To run iDEP and ShinyGO on your local machine (Windows, MacOS, Linux):
 Requirements:
