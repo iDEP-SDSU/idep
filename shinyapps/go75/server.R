@@ -46,14 +46,13 @@ server <- function(input, output, session){
     }
   })
 
-  observe({
+   observe({    
    # Hide genome tab when STRINGdb is matched
-   if(input$goButton != 0) {
-     if(grepl("STRING", converted()$speciesMatched[1])) {
+   showTab(inputId = "tabs", target = "8")
+   if(input$goButton != 0 ) {
+     if(grepl("STRING", converted()$speciesMatched[1,1])) {
        hideTab(inputId = "tabs", target = "8")
-     } else {
-       showTab(inputId = "tabs", target = "8") 
-     }
+     } 
    }
   })
 
@@ -492,7 +491,9 @@ server <- function(input, output, session){
       write.csv(significantOverlaps()$x, file, row.names=FALSE)
     }
   )
-  
+ 
+
+
 
   #----------------------------------------------------
   # STRING-db functionality
