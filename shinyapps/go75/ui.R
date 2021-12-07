@@ -269,7 +269,7 @@ tags$head(
         ,tabPanel("Groups"
                   ,value = 6
                   , downloadButton('downloadGrouping', 'Download')
-                  , h5("If Gene Ontology is chosen, your genes are grouped by functional categories defined by high-level GO terms. ")  
+                  , h5("Your genes are grouped by functional categories defined by high-level GO terms. ")  
                   , tableOutput("grouping")
         
         ) 
@@ -286,7 +286,6 @@ tags$head(
  #---Genome-----------------------------------------------------------        
         ,tabPanel("Genome"
                   ,value = 8
-                  , h5("The genes are represented by red dots. The purple lines indicate regions where these genes are statistically enriched, compared to the density of genes in the background. We scanned the genome with a sliding window. Each window is further divided into several equal-sized steps for sliding. Within each window we used the hypergeometric test to determine if the presence of your genes are significant. Essentially, the genes in each window define a gene set/pathway, and we carried out enrichment analysis. The chromosomes may be only partly shown as we use the last gene's location to draw the line. Mouse over to see gene symbols. Zoom in regions of interest.")
                   ,plotlyOutput("genomePlotly",height = "900px")
                   ,fluidRow(
                     column(3, selectInput(inputId = "MAwindowSize",
@@ -304,7 +303,16 @@ tags$head(
                   ,fluidRow(  
                      column(4, checkboxInput("labelGeneSymbol", "Label genes", value = FALSE) )
                      ,column(4, checkboxInput("ignoreNonCoding", "Coding genes only", value = TRUE) )  
-                    ,column(4, actionButton("gPlotstatic", "Static plot") ) )                
+                    ,column(4, actionButton("gPlotstatic", "Static plot") ) ) 
+                  , h5("The genes are represented by red dots. The purple lines indicate regions where 
+                        these genes are statistically enriched, compared to the density of genes in the background. 
+                        We scanned the genome with a sliding window. Each window is further divided into several 
+                        equal-sized steps for sliding. Within each window we used the hypergeometric test to 
+                        determine if the presence of your genes are significant. Essentially, the genes in
+                        each window define a gene set/pathway, and we carried out enrichment analysis. The
+                        chromosomes may be only partly shown as we use the last gene's location to draw the line. 
+                        Mouse over to see gene symbols. Zoom in regions of interest.")
+               
         )
 
  #---Genome-----------------------------------------------------------                
