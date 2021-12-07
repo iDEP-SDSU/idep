@@ -3,7 +3,7 @@
 # co-author: Eric Tulowetzke, eric.tulowetzke@jacks.sdstate.edu
 # Lab: Ge Lab
 # R version 4.0.5
-# Project: ShinyGO v74
+# Project: ShinyGO v75
 # File: server.R
 # Purpose of file:main server logic of app
 # Start data: NA (mm-dd-yyyy)
@@ -20,20 +20,43 @@ server <- function(input, output, session){
   observe({ 
     if( input$useDemo1 ) {
       updateTextInput(session, 'input_text', value = ExampleGeneList1 )
-    }
-   # if( input$useDemo2 ) {
-   #   updateTextInput(session, 'input_text', value = ExampleGeneList2 )
-   # }    
+    } 
   })
   
-  # update species for STRING-db related API access
-  
+  # update species for STRING-db related API access 
   # tried to solve the double reflashing problems	 
   #https://stackoverflow.com/questions/30991900/avoid-double-refresh-of-plot-in-shiny
   observe({  	updateSelectizeInput(session, "speciesName", choices = sort(STRING10_species$official_name) ) 	})
   #click_saved <- reactiveValues(GO = NULL)
   #observeEvent(eventExpr = input$selectGO, handlerExpr = { click_saved$GO <- input$selectGO })
-  
+
+  #-----------hide tabs when N/A----------------------------------
+  observeEvent(input$selectGO, {
+  # Show KEGG tab only when KEGG is selected
+    if(input$selectGO == "KEGG") {
+      showTab(inputId = "tabs", target = "2")
+    } else {
+     hideTab(inputId = "tabs", target = "2") 
+    }
+  # Show Groups tab only when GOBP is selected
+    if(input$selectGO == "GOBP" | input$selectGO == "GOCC" | input$selectGO == "GOMF" ) {
+      showTab(inputId = "tabs", target = "6")
+    } else {
+     hideTab(inputId = "tabs", target = "6") 
+    }
+  })
+
+  observe({
+   # Hide genome tab when STRINGdb is matched
+   if(input$goButton != 0) {
+     if(grepl("STRING", converted()$speciesMatched[1])) {
+       hideTab(inputId = "tabs", target = "8")
+     } else {
+       showTab(inputId = "tabs", target = "8") 
+     }
+   }
+  })
+
   # this defines an reactive object that can be accessed from other rendering functions
   converted <- reactive({
     if (input$goButton == 0)    return()
@@ -470,7 +493,7 @@ server <- function(input, output, session){
     }
   )
   
-  
+
   #----------------------------------------------------
   # STRING-db functionality
   # find Taxonomy ID from species official name 
@@ -746,7 +769,7 @@ server <- function(input, output, session){
         selected = "All"
       }
     
-    selectInput("selectGO", label=NULL,
+    selectInput("selectGO", label = h5("Pathway DB: Select KEGG for pathway diagrams"),
                 choices = choices,
                 selected = selected )    	
     
