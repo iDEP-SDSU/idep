@@ -18,7 +18,7 @@ Requirements:
 + More than 4GB memory
 + Most recent version of R and RStudio installed.
 
-1. Upgrade to the most recent version of R and Rstudio.
+1. Upgrade to the most recent version of R and Rstudio.(Important!!)
 2. Start RStudio and install all the R packages. As we need so many R packages, this may take several hours. You can let it run and get started on steps 3 and 4 below to save time. From RStudio console window:
 ```
 source https://raw.githubusercontent.com/iDEP-SDSU/idep/master/classes/librarySetup.R
@@ -29,7 +29,10 @@ source https://raw.githubusercontent.com/iDEP-SDSU/idep/master/classes/librarySe
 4. Download all the database files from [here](http://18.235.92.206:8080/). Unzip all files to a folder (C:/IDEP/data/data104), so that your database can be found by the most recent versions of iDEP and ShinyGO. For example, the convertIDs.db files should be at C:/IDEP/data/data104/convertIDs.db, and the pathway information files should be at C:/IDEP/data/data104/pathwayDB. 
 Below is an example folder structure. 
 
-![Folder structure](docs/folders.png)
+<p align="center">
+  <img width="209" height="200" src="docs/folders.png">
+</p>
+
 
 5. Start Rstudio and load the ui.R and server.R scripts in the folder C:/IDEP/shinyapps/idep94. And then click on Run app. Similarily, the ShinyGO app could be started at the folder, C:/IDEP/shinyapps/go74/. 
 
@@ -75,7 +78,7 @@ The setup.sh script was tested only on Ubuntu. Wait until the script shows 'iDEP
 6. Start the Shiny server with Docker-compose from the idep folder.
 ```
 cd ~/idep
-sudo docker-compose up -d --scale webapp=10 
+sudo docker-compose up -d --scale webapp=15 
 ```
 Now the server is running with 10 containers to serve many concurrent users. You should be able to use iDEP from a web browser with http://12.12.12.12/idep94/, where 12.12.12.12 is the IP address of the server. ShinyGO can used via http://12.12.12.12/go74/. The server's port 80 should be available and exposed.
 
