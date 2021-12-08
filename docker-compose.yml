@@ -5,7 +5,7 @@ services:
     image: webapp
     mem_limit: 12g
     mem_reservation: 6g
-    mem_swappiness: 0
+    mem_swappiness: 5
     expose:
       - "3838"
     volumes:
