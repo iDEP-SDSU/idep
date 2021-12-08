@@ -30,7 +30,7 @@ source https://raw.githubusercontent.com/iDEP-SDSU/idep/master/classes/librarySe
 Below is an example folder structure. 
 
 <p align="center">
-  <img width="209" height="200" src="docs/folders.png">
+  <img width="313" height="299" src="docs/folders.png">
 </p>
 
 
