@@ -49,7 +49,9 @@ server <- function(input, output, session){
    observe({    
    # Hide genome tab when STRINGdb is matched
    showTab(inputId = "tabs", target = "8")
-   if(input$goButton != 0 ) {
+  
+   if(input$goButton != 0 && !is.null(converted()$speciesMatched )) {
+     
      if(grepl("STRING", converted()$speciesMatched[1,1])) {
        hideTab(inputId = "tabs", target = "8")
      } 
