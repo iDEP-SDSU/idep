@@ -325,7 +325,7 @@ ui <- fluidPage(
  #---?-----------------------------------------------------------
         ,tabPanel("?"
                   ," For feedbacks, please"
-                  ,a("contact us, ",href="mailto:gelabinfo@gmail?Subject=ShinyGO" )
+                  ,a("contact us, ",href="mailto:gelabinfo@gmail.com?Subject=ShinyGO" )
                   , "or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank")
                   ,"For details, please see our", a("paper", href="https://doi.org/10.1093/bioinformatics/btz931", target="_blank")
                   ,"and a detailed", a("demo.", href="https://www.biorxiv.org/content/biorxiv/suppl/2018/05/04/315150.DC1/315150-1.pdf",target="_blank") 
