@@ -379,6 +379,11 @@ tags$head(
                   ,"Ge SX, Jung D & Yao R,", a(" Bioinformatics 2020", href="https://doi.org/10.1093/bioinformatics/btz931", target="_blank")
                   ,br(),br()
                   ,strong("Previous versions (still functional):")
+
+                  ,br()
+                  ,a("ShinyGO V0.74, "
+                     , href="http://bioinformatics.sdstate.edu/go74/")
+                  ,"based on database derived from Ensembl Release 104, archived on Feb. 8, 2022"
                   ,br()
                   ,a("ShinyGO V0.65, "
                      , href="http://bioinformatics.sdstate.edu/go65/")
