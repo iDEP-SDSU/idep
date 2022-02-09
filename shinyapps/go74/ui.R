@@ -87,8 +87,8 @@ ui <- fluidPage(
         tabPanel("Enrichment" 
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen
                                    ,br()
-                                   ,p("Feb. 8, 2022: ShinyGO v0.75  becomes default version.")
-                                   ,p("Nov. 15, 2021: Database update. ShinyGO v0.75 available in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update to 11.5.", style = "color:red")
+                                   ,p("Feb. 8, 2022: ShinyGO v0.75  becomes default version.", style = "color:red")
+                                   ,p("Nov. 15, 2021: Database update. ShinyGO v0.75 available in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update to 11.5.")
                                    ,p("Oct. 25, 2021: Interactive genome plot. Identificantion of genomic regions signficantly enriched with user genes.")
                                    ,p("Oct. 23, 2021: Version 0.741 A fully customizable enrichment chart! Switch between bar, dot or lollipop plots.  Detailed gene informations with links on the Genes tab.")
                                    ,p("Oct. 15, 2021: Version 0.74. Database updated to Ensembl Release 104 and STRING v11. We now recommends the use of background genes in enrichment analysis. V.0.74 is much faster with even large set of background genes.")

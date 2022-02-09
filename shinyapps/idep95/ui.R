@@ -127,8 +127,8 @@ iDEPversion,
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
-      ,p("Feb. 8, 2022: iDDEP v0.95 becomes default.")
-      ,p("Nov. 15, 2021: iDEP v0.95 available in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update from v11 to 11.5.", style = "color:red")
+      ,p("Feb. 8, 2022: iDDEP v0.95 becomes default.", style = "color:red")
+      ,p("Nov. 15, 2021: iDEP v0.95 available in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update from v11 to 11.5.")
       ,p("10/26/2021: The Genome view is now much improved! Automatically detects chromosomal regions enriched with genes having abnormaly high and low fold-changes.")
 
       ,p("10/15/21: For GO enrichment analysis, we now recommend using background genes, instead of all genes on the genome. In the KNN and DEG2 tabs, it is now the default that all genes passed the filter in Pre-Process tab are used as a customized background.")
