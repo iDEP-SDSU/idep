@@ -127,9 +127,8 @@ iDEPversion,
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
-      ,p("Nov. 15, 2021: ",a("iDEP v0.95", href="http://bioinformatics.sdstate.edu/idep95/"), " released in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update from v11 to 11.5.", style = "color:red")
+      ,p("Nov. 15, 2021: iDEP v0.95 released. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update from v11 to 11.5.", style = "color:red")
       ,p("10/26/2021: The Genome view is now much improved! Automatically detects chromosomal regions enriched with genes having abnormaly high and low fold-changes.")
-      ,p("iDEP v.0.94 based on Ensembl Release 104 and STRING-db V11. 9/3/2021")
 
       ,p("10/15/21: For GO enrichment analysis, we now recommend using background genes, instead of all genes on the genome. In the KNN and DEG2 tabs, it is now the default that all genes passed the filter in Pre-Process tab are used as a customized background.")
 
@@ -1281,7 +1280,7 @@ iDEPversion,
         ,h4("Previous versions of iDEP")
         ,a("iDEP 0.94 with Ensembl Release 104, archived on Feb. 8, 2022 "
         , href="http://bioinformatics.sdstate.edu/idep94/")
-        
+
         ,a("iDEP 0.93 with Ensembl Release 103, archived on Oct. 15, 2021 "
            , href="http://bioinformatics.sdstate.edu/idep93/")  
         ,br()
