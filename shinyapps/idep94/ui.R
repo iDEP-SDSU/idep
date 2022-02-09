@@ -136,6 +136,7 @@ iDEPversion,
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
      ,br()
+      ,p("Please use the new version 0.95 by going to ", a("iDEP 0.95", href="http://bioinformatics.sdstate.edu/idep/"))
      ,p("Nov. 15, 2021: ",a("iDEP v0.95", href="http://bioinformatics.sdstate.edu/idep95/"), " released in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update from v11 to 11.5.", style = "color:red")
       ,p("10/26/2021: The Genome view is now much improved! Automatically detects chromosomal regions enriched with genes having abnormaly high and low fold-changes.")
       ,p("iDEP v.0.94 based on Ensembl Release 104 and STRING-db V11. 9/3/2021")

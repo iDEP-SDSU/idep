@@ -87,6 +87,7 @@ ui <- fluidPage(
         tabPanel("Enrichment" 
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen
                                    ,br()
+                                   ,p("Please use the new version 0.75 by going to ", a("ShinyGO 0.75", href="http://bioinformatics.sdstate.edu/go/"))
                                    ,p("Nov. 15, 2021: Database update. ShinyGO v0.75 available in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update to 11.5.")
                                    ,p("Oct. 25, 2021: Interactive genome plot. Identificantion of genomic regions signficantly enriched with user genes.")
                                    ,p("Oct. 23, 2021: Version 0.741 A fully customizable enrichment chart! Switch between bar, dot or lollipop plots.  Detailed gene informations with links on the Genes tab.")
