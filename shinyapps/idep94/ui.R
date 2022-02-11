@@ -139,7 +139,7 @@ iDEPversion,
       ,p("Please use the new version ", a("iDEP 0.95.", href="http://bioinformatics.sdstate.edu/idep/"))
       ,p("Feb. 11, 2022: Like iDEP but your genome is not covered?", 
       a("Customized iDEP", href="http://bioinformatics.sdstate.edu/idepc/"), " is now available. 
-      Its database includes several custom genomes requested by users. To request your genome, fill in this ", 
+      Its database includes several custom genomes requested by users. To request to add new species/genome, fill in this ", 
       a("Form.", href="https://forms.gle/zLtLnqxkW187AgT76"), style = "color:red")
      ,p("Nov. 15, 2021: ",a("iDEP v0.95", href="http://bioinformatics.sdstate.edu/idep95/"), " released in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update from v11 to 11.5.", style = "color:red")
       ,p("10/26/2021: The Genome view is now much improved! Automatically detects chromosomal regions enriched with genes having abnormaly high and low fold-changes.")

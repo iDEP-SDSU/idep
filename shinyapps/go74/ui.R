@@ -90,7 +90,7 @@ ui <- fluidPage(
                                    ,p("Please use the new version  ", a("ShinyGO 0.75.", href="http://bioinformatics.sdstate.edu/go/"))
                                    ,p("Feb. 11, 2022: Like ShinyGO but your genome is not covered?", 
                                    a("Customized ShinyGO", href="http://bioinformatics.sdstate.edu/goc/"), " is now available. 
-                                   Its database includes several custom genomes requested by users. To request your genome, fill in this ", 
+                                   Its database includes several custom genomes requested by users. To request to add new species/genome, fill in this ", 
                                    a("Form.", href="https://forms.gle/zLtLnqxkW187AgT76"), style = "color:red")
                                    ,p("Nov. 15, 2021: Database update. ShinyGO v0.75 available in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update to 11.5.")
                                    ,p("Oct. 25, 2021: Interactive genome plot. Identificantion of genomic regions signficantly enriched with user genes.")
