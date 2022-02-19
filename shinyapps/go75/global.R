@@ -888,7 +888,7 @@ enrich.net2 <-  function (x, gene.set, node.id, node.name = node.id, pvalue,
     n <- min(nrow(x), n)
     x <- x[1:n, ]
     group.level <- sort(unique(group))
-    pvalues <- log10( x[, pvalue] )
+    pvalues <- log10( x[, pvalue] + 1e-200) # causes error when P value is zero
     for (i in 1:length(group.level)) {
         index <- x[, "Group"] == group.level[i]
         V(g)$shape[index] <- group.shape[i]
