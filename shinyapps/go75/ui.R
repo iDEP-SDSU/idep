@@ -95,6 +95,7 @@ tags$head(
                  ,value = 1
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen
                                    ,br()
+                                   ,p("Feb. 19, 2022: R upgraded from 4.05 to 4.1.2. This solved the STRING API issues. Some Bioconductor packages are also upgraded.", style = "color:red")
                                    ,p("Feb. 11, 2022: Like ShinyGO but your genome is not covered?", 
                                    a("Customized ShinyGO", href="http://bioinformatics.sdstate.edu/goc/"), " is now available. 
                                    Its database includes several custom genomes requested by users. To request to add a new species/genome, fill in this ", 

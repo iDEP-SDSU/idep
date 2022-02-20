@@ -136,7 +136,8 @@ iDEPversion,
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
      ,br()
-      ,p("Please use the new version ", a("iDEP 0.95.", href="http://bioinformatics.sdstate.edu/idep/"))
+      ,p("Please use the new version with latest annotation data", a("iDEP 0.95.", href="http://bioinformatics.sdstate.edu/idep/"))
+      ,p("Feb. 19, 2022: R upgraded from 4.05 to 4.1.2. This solved the STRING API issues. Some Bioconductor packages are also upgraded.", style = "color:red")
       ,p("Feb. 11, 2022: Like iDEP but your genome is not covered?", 
       a("Customized iDEP", href="http://bioinformatics.sdstate.edu/idepc/"), " is now available. 
       Its database includes several custom genomes requested by users. To request to add new species/genome, fill in this ", 
