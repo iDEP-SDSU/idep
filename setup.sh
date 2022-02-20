@@ -6,14 +6,15 @@
 cd idep
 
 #Build nginx image (this is fast)
-docker build ./nginx/. -t nginx  
+docker build ./nginx/. -t nginx  --pull
 
 # Build iDEP main docker container; this can take 3 hours; This is now skip by using DockerHub
-# docker build . -t webapp 
+# First pull the most recent version of Shiny container; otherwise R won't upgrade
+# docker build . -t webapp --pull
 
 #Using the docker image hosted on DockerHub. Make sure this is up-to-date. If in doubt, build the image as above.
 docker pull gexijin/idep:latest
-sudo docker tag gexijin/idep webapp
+sudo docker tag gexijin/idep webapp 
 
 
 echo 'Docker images have been built. Start downloading data.'
