@@ -633,7 +633,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
                                      #, categoryChoices = categoryChoices
 promoter <- function (converted,selectOrg, radio){
   idNotRecognized = as.data.frame("ID not recognized!")
-  
+  browser()
   if(is.null(converted) ) 
     return(idNotRecognized) # no ID
   

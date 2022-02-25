@@ -1,6 +1,5 @@
 ###################################################
 # Author: Steven Ge Xijin.Ge@sdstate.edu
-# co-author: Eric Tulowetzke, eric.tulowetzke@jacks.sdstate.edu
 # Lab: Ge Lab
 # R version 4.0.5
 # Project: ShinyGO v65
@@ -159,7 +158,7 @@ tags$head(
                   ,value = 2 
                   ,htmlOutput('listSigPathways')
                   ,br(),br(),imageOutput("KeggImage", width = "100%", height = "100%")				
-                  ,h4("Downloading pathway diagram from KEGG can takes 3 minutes. ")
+                  ,h4("Downloading pathway diagram from KEGG can take 3 minutes. ")
         )
 
  #---Enrichment Chart-----------------------------------------------------------
