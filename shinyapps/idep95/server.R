@@ -4971,9 +4971,9 @@ output$KmeansPromoter <- renderTable({
 	incProgress(1/input$nClusters, , detail = paste("Cluster",toupper(letters)[i]) )
 	#query = rownames(x)[which(bar == i)]
 	query = rownames(Kmeans()$x)[which(Kmeans()$bar == i)]	
-	convertedID = convertID(query,input$selectOrg, input$selectGO2 );#"gmax_eg_gene"
+	convertedID = convertID(query,input$selectOrg);#"gmax_eg_gene"
 	result <- promoter( convertedID,input$selectOrg,input$radioPromoterKmeans )
-	
+
 	if( is.null(result)  ) next;   # result could be NULL
 	if(  dim(result)[2] ==1) next;
 	result$List = toupper(letters)[i]    
@@ -7136,7 +7136,7 @@ output$DEG.Promoter <- renderTable({
 		incProgress(1/2 )	
 		query = rownames(genes)[which(fc*i<0)]
 		if(length(query) < minGenesEnrichment) next; 
-		convertedID = convertID(query,input$selectOrg, input$selectGO2 );#"gmax_eg_gene"
+		convertedID = convertID(query,input$selectOrg);#"gmax_eg_gene"
 		if(length(convertedID) < minGenesEnrichment) next; 
 		result <- promoter( convertedID,input$selectOrg,input$radio.promoter )
 		
