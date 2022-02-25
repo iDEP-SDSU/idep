@@ -158,7 +158,7 @@ tags$head(
                   ,value = 2 
                   ,htmlOutput('listSigPathways')
                   ,br(),br(),imageOutput("KeggImage", width = "100%", height = "100%")				
-                  ,h4("Downloading pathway diagram from KEGG can take 3 minutes. ")
+                  ,h5("Your genes are highlighted in red. Downloading pathway diagram from KEGG can take 3 minutes. ")
         )
 
  #---Enrichment Chart-----------------------------------------------------------
