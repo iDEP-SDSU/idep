@@ -8732,7 +8732,7 @@ mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species =
         if (is.na(kid.map[id.type])) 
             stop("Wrong input gene ID type for the species!")
         message("Info: Getting gene ID data from KEGG...")
-        gene.idmap = keggConv(kid.map2[id.type], species)
+        gene.idmap = KEGGREST::keggConv(kid.map2[id.type], species)
         message("Info: Done with data retrieval!")
         kegg.ids = gsub(paste(species, ":", sep = ""), "", names(gene.idmap))
         in.ids = gsub(paste0(kid.map2[id.type], ":"), "", gene.idmap)
