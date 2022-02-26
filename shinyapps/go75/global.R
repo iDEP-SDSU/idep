@@ -577,7 +577,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
         xB = as.data.frame( xB)
         colnames(xB)=c("pathwayID","overlapB")
         x2 = merge(x, xB, by='pathwayID', all.x = TRUE)       
-        
+
         x$Pval=phyper(x2$overlap - 1,
                       length(querySet),
                       length(querySetB) - length(querySet),   
@@ -633,7 +633,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
                                      #, categoryChoices = categoryChoices
 promoter <- function (converted,selectOrg, radio){
   idNotRecognized = as.data.frame("ID not recognized!")
-  browser()
+
   if(is.null(converted) ) 
     return(idNotRecognized) # no ID
   

@@ -887,7 +887,7 @@ server <- function(input, output, session){
            length( convertedB$IDs) < maxGenesBackground + 1) { # if more than 30k genes, ignore background genes.
           
           x <- x[ x$Set == "List", ] # remove background from selected genes
-          xB <- xB[ xB$Set == "Genome", ] # remove Genome genes from background
+          xB <- xB[ xB$Set == "List", ] # remove Genome genes from background
           xB$Set <- "Background"
           x <- rbind(x, xB)
           x2 <- x[which(x$gene_biotype == "protein_coding"),]  # only coding for some analyses
@@ -1035,13 +1035,13 @@ server <- function(input, output, session){
            length( convertedB$IDs) < maxGenesBackground + 1) { # if more than 30k genes, ignore background genes.
           
           x <- x[ x$Set == "List", ] # remove background from selected genes
-          xB <- xB[ xB$Set == "Genome", ] # remove Genome genes from background
+          xB <- xB[ xB$Set == "List", ] # remove Genome genes from background
           xB$Set <- "Background"
           x <- rbind(x, xB)
           x2 <- x[which(x$gene_biotype == "protein_coding"),]  # only coding for some analyses
         }
         # end background genes
-        
+
         
         if(dim(x)[1]>=minGenes) # only making plots if more than 20 genes
         { # only plot when there 10 genes or more   # some columns have too many missing values
@@ -1939,8 +1939,8 @@ output$genomePlotly <- renderPlotly({
            length( convertedB$IDs) < maxGenesBackground + 1) { # if more than 30k genes, ignore background genes.
           
           x <- x[ x$Set == "List", ] # remove background from selected genes
-          xB <- xB[ xB$Set == "Genome", ] # remove Genome genes from background
-          xB$Set <- "Genome"
+          xB <- xB[ xB$Set == "List", ] # remove Genome genes from background
+          xB$Set <- "Background"
           x <- rbind(x, xB)
         }
         # end background genes ------------

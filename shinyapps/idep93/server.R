@@ -4653,7 +4653,7 @@ PCAplots4Download <- reactive({
 output$downloadPCA <- downloadHandler(
       filename = "PCA_MDS_tSNE.eps",
       content = function(file) {
-	  cairo_ps(file, width = 6, height = 6)
+	  cairo_ps(file, width = 8, height = 6)
 	  PCAplots4Download()
         dev.off()
       })    
