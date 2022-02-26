@@ -5,12 +5,12 @@
 
 As a younger sister, [ShinyGO](http://ge-lab.org/go/) focuses on the enrichment analysis of gene lists. The same database is used. They live in the same GitHub repository. ShinyGO is published [here](https://doi.org/10.1093/bioinformatics/btz931). 
 
+## No Warranty
+iDEP and ShinyGO are both under active development, and have not been fully tested. With the help of many users, we are constantly fixing bugs/errors in both source code and sometimes database. We recommend that you confirm your findings using other tools before publishing or further studies.
 
 ## Local installation
-Local installation of this software is possible through steps below. But it is not supported or updated freqently. Local install is for non-profit organizations only. For-profit businesses please contact us. 
-
-iDEP and ShinyGO are both under active development, thanks to a grant from NHGRI. They have not been fully tested. So we are constantly fixing bugs/errors in both source code and sometime database. If you install locally, 
-please make sure to check for updates regularily here and download the latest versions of both the source code and database.  For most users, we recommend to visit our website. 
+Local installation of this software is possible through steps below. But it is not supported or updated freqently. Local install is for non-profit organizations only. For-profit businesses please contact us. If you install locally, 
+please check for updates regularily here and download the latest versions of both the source code and database.  For most users, we recommend to visit our website. 
 
 ## To run iDEP and ShinyGO on your local machine (Windows, MacOS, Linux):
 Requirements:
