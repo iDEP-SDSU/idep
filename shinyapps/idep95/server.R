@@ -646,6 +646,10 @@ matchedSpeciesInfo <- function (x) {
 # convert gene IDs to ensembl gene ids and find species
 # updated 10/15; some changes not included in Gavin's new version
 convertID <- function (query,selectOrg) {
+	# Solves the issue of app shut down when species is deleted after genes are uploaded.
+    if(is.null(selectOrg)) {
+      return(NULL)
+    }
 	querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,')))
 	# querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
     querSetString <- paste0("('", paste(querySet,collapse="', '"),"')")

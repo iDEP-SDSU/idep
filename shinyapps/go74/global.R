@@ -283,6 +283,10 @@ matchedSpeciesInfo <- function (x) {
 
 # convert gene IDs to ensembl gene ids and find species
 convertID <- function (query, selectOrg) {
+  # Solves the issue of app shut down when species is deleted after genes are uploaded.
+ if(is.null(selectOrg)) {
+   return(NULL)
+ }
  query <- gsub("\"|\'","",query) 
  	# remove " in gene ids, mess up SQL query				
 	# remove ' in gene ids				
