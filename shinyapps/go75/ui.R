@@ -150,7 +150,7 @@ tags$head(
                  ,p("FDR is calculated based on nominal P-value from the hypergeometric test. Fold Enrichment is defined as the percentage 
                     of genes in your list belonging to a pathway, divided by the corresponding percentage in the 
                     background. FDR tells us how likely the enrichment is by chance. Large gene-sets tend to have smaller FDR.
-                    Fold Enrichment indicates how drastically genes of a certain pathway is overrepresented. ")
+                    As a measure of effect size, Fold Enrichment indicates how drastically genes of a certain pathway is overrepresented. ")
 
 
         ) # enrichment tab
@@ -301,8 +301,9 @@ tags$head(
                                            choices = c(1, 2, 4, 6, 8, 10, 15, 20) ))
                     ,column(3, selectInput(inputId = "MAwindowSteps",
                                            label = h5("Steps in a window"),
-                                           selected = "2",
-                                           choices = c(1, 2, 3, 4)))
+                                           choices = unique(1:4),
+                                           selected = c(2)
+                                            ))
                     ,column(3, selectInput(inputId = "chRegionPval", 
                                            label = h5("FDR cutoff for windows"),
                                            selected = 0.00001,

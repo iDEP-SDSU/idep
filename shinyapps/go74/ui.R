@@ -88,6 +88,8 @@ ui <- fluidPage(
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen
                                    ,br()
                                    ,p("Please use the new version  ", a("ShinyGO 0.75.", href="http://bioinformatics.sdstate.edu/go/"))
+                                   ,p("Feb. 26, 2022: Fixed a bug regarding the Plot tab when background genes are used. Background genes were not correctly 
+                                    used to calculate the distributions of various gene characteristics. If these plots are important in your study, please re-analyze your genes.")
                                    ,p("Feb. 19, 2022: R upgraded from 4.05 to 4.1.2. This solved the STRING API issues. Some Bioconductor packages are also upgraded.", style = "color:red")
                                    ,p("Feb. 11, 2022: Like ShinyGO but your genome is not covered?", 
                                    a("Customized ShinyGO", href="http://bioinformatics.sdstate.edu/goc/"), " is now available. 
