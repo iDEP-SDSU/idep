@@ -94,6 +94,8 @@ tags$head(
                  ,value = 1
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen
                                    ,br()
+                                   ,p("Feb. 26, 2022: Fixed a bug regarding the Plot tab when background genes are used. Background genes were not correctly 
+                                    used to calculate the distributions of various gene characteristics. If these plots are important in your study, please re-analyze your genes.")
                                    ,p("Feb. 19, 2022: R upgraded from 4.05 to 4.1.2. This solved the STRING API issues. Some Bioconductor packages are also upgraded.", style = "color:red")
                                    ,p("Feb. 11, 2022: Like ShinyGO but your genome is not covered?", 
                                    a("Customized ShinyGO", href="http://bioinformatics.sdstate.edu/goc/"), " is now available. 
@@ -299,7 +301,7 @@ tags$head(
                                            choices = c(1, 2, 4, 6, 8, 10, 15, 20) ))
                     ,column(3, selectInput(inputId = "MAwindowSteps",
                                            label = h5("Steps in a window"),
-                                           selected = 2,
+                                           selected = "2",
                                            choices = c(1, 2, 3, 4)))
                     ,column(3, selectInput(inputId = "chRegionPval", 
                                            label = h5("FDR cutoff for windows"),
@@ -313,7 +315,7 @@ tags$head(
                         these genes are statistically enriched, compared to the density of genes in the background. 
                         We scanned the genome with a sliding window. Each window is further divided into several 
                         equal-sized steps for sliding. Within each window we used the hypergeometric test to 
-                        determine if the presence of your genes are significant. Essentially, the genes in
+                        determine if your genes are significantly overrepresented. Essentially, the genes in
                         each window define a gene set/pathway, and we carried out enrichment analysis. The
                         chromosomes may be only partly shown as we use the last gene's location to draw the line. 
                         Mouse over to see gene symbols. Zoom in regions of interest.")
