@@ -127,6 +127,9 @@ iDEPversion,
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
+      ,br(),h4(a("Trusted charities providing Aid in Ukraine.", 
+          href="https://www.charitywatch.org/charity-donating-articles/top-rated-charities-providing-aid-in-ukraine"))
+      ,p("Mar. 7, 2022: Fixed an R library issue affected KEGG diagrams for some organisms.")
       ,p("Feb. 19, 2022: R upgraded from 4.05 to 4.1.2. This solved the STRING API issues. Some Bioconductor packages are also upgraded.", style = "color:red")
       ,p("Feb. 11, 2022: Like iDEP but your genome is not covered?", 
       a("Customized iDEP", href="http://bioinformatics.sdstate.edu/idepc/"), " is now available. 

@@ -92,8 +92,10 @@ tags$head(
       tabsetPanel(id = "tabs", type = "tabs",
         tabPanel("Enrichment" 
                  ,value = 1
-                 ,conditionalPanel("input.goButton == 0 "  # welcome screen
-                                   ,br()
+                 ,conditionalPanel("input.goButton == 0 "  # welcome screen                                   
+                                   ,br(),h4(a("Trusted charities providing Aid in Ukraine.", 
+                                   href="https://www.charitywatch.org/charity-donating-articles/top-rated-charities-providing-aid-in-ukraine"))
+                                   ,p("Mar. 7, 2022: Fixed an R library issue affected KEGG diagrams for some organisms.")
                                    ,p("Feb. 26, 2022: Fixed a bug regarding the Plot tab when background genes are used. Background genes were not correctly 
                                     used to calculate the distributions of various gene characteristics. If these plots are important in your study, please re-analyze your genes.")
                                    ,p("Feb. 19, 2022: R upgraded from 4.05 to 4.1.2. This solved the STRING API issues. Some Bioconductor packages are also upgraded.", style = "color:red")
