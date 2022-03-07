@@ -15,7 +15,12 @@ list.of.packages <- c(
 list.of.bio.packages  <- c(
   "getDEE2", "limma", "DESeq2", "edgeR", "gage", "fgsea", "ReactomePA", "pathview", "PREDA",
   "impute", "runibic","QUBIC","rhdf5", "STRINGdb",
-  "PREDAsampledata", "sfsmisc", "lokern", "multtest", "hgu133plus2.db"
+  "PREDAsampledata", "sfsmisc", "lokern", "multtest", "hgu133plus2.db",
+  "org.Ag.eg.db","org.At.tair.db","org.Bt.eg.db","org.Ce.eg.db","org.Cf.eg.db",
+   "org.Dm.eg.db", "org.Dr.eg.db", "org.EcK12.eg.db","org.EcSakai.eg.db","org.Gg.eg.db",
+   "org.Hs.eg.db","org.Mm.eg.db","org.Mmu.eg.db","org.Pf.plasmo.db",
+   "org.Pt.eg.db","org.Rn.eg.db","org.Sc.sgd.db","org.Ss.eg.db","org.Xl.eg.db",
+   "BiocParallel"
 )
 
  if(1) { # remove all old packages, to solve problem caused by Bioconductor upgrade
