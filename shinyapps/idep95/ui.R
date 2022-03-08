@@ -127,8 +127,11 @@ iDEPversion,
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
-      ,br(),h4(a("Trusted charities providing Aid in Ukraine.", 
-          href="https://www.charitywatch.org/charity-donating-articles/top-rated-charities-providing-aid-in-ukraine"))
+                                   ,br(),h4("Trusted charities providing Aid in Ukraine selected by ", a("CharityWatch,",
+                                   href="https://www.charitywatch.org/charity-donating-articles/top-rated-charities-providing-aid-in-ukraine"),
+                                   "charities and individuals verified by",
+                                   a(" GoFundMe.", href=("https://www.gofundme.com/en-ie/c/act/donate-to-ukraine-relief?utm_source=email&utm_medium=marketing&utm_content=annoucement&utm_campaign=022522_helpukraine_send14_dedicatedpage"))
+                                   ), br()
       ,p("Mar. 7, 2022: Fixed an R library issue affected KEGG diagrams for some organisms.")
       ,p("Feb. 19, 2022: R upgraded from 4.05 to 4.1.2. This solved the STRING API issues. Some Bioconductor packages are also upgraded.", style = "color:red")
       ,p("Feb. 11, 2022: Like iDEP but your genome is not covered?", 
