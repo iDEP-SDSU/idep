@@ -94,9 +94,10 @@ tags$head(
         tabPanel("Enrichment" 
                  ,value = 1
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen
-                                   ,h3("Feb. 11, 2022:  ShinyGO 0.75 released with a customized database including annotation and pathway information for 5 species ", 
+                                   ,h3("Mar. 12, 2022: ShinyGO 0.75c released with customized annotation databases for 12 species.", style = "color:red")
+                                   ,p("Feb. 11, 2022:  ShinyGO 0.75c released with a customized database including annotation and pathway information for 5 species ", 
                                    a("requested", href="https://forms.gle/zLtLnqxkW187AgT76"), "by users.")
-                                   ,p("Feb. 8, 2022: ShinyGO v0.75 officially released. Old versions are still available. See the last tab.", style = "color:red")
+                                   ,p("Feb. 8, 2022: ShinyGO v0.75 officially released. Old versions are still available. See the last tab.")
                                    ,p("Nov. 15, 2021: Database update. ShinyGO v0.75 available in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update to 11.5.")
                                    ,p("Oct25, 2021: Interactive genome plot. Identificantion of genomic regions signficantly enriched with user genes.")
                                    ,p("Oct.23, 2021: Version 0.741 A fully customizable enrichment chart! Switch between bar, dot or lollipop plots.  Detailed gene informations with links on the Genes tab.")
