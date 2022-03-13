@@ -21,6 +21,7 @@ columnSelection = list("-log10(FDR)" = "EnrichmentFDR",
                         "Category Name" = "Pathway")
 
 ui <- fluidPage(
+  tags$head(includeHTML(("google_analytics.html"))),
 # reduce the space between label and widgets, globally
 tags$head(
   tags$style(HTML(
@@ -529,7 +530,7 @@ tags$head(
        )# bsModal 6	      
     ) # mainPanel
   ) #sidebarLayout
-  ,tags$head(includeScript("google_analytics.js")) # tracking usage
+ # ,tags$head(includeScript("google_analytics.js")) # tracking usage
 ) #fluidPage
 
 

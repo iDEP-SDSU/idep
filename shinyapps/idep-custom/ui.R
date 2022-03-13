@@ -1365,8 +1365,8 @@ iDEPversion,
        ) #column
      ) # fluidRow
    ) # tabPanel
-
-  ,tags$head(includeScript("ga.js")) # tracking usage  
+  ,tags$head(includeHTML(("google_analytics.html"))),
+  #,tags$head(includeScript("ga.js")) # tracking usage  
   )# Navibar
 
 ) #shinyUI
