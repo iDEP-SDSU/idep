@@ -127,7 +127,7 @@ iDEPversion,
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
-      ,h3("Mar. 12, 2022: ShinyGO 0.75c released with customized annotation databases for 12 species.", style = "color:red")
+      ,h3("Mar. 12, 2022: iDEP 0.95c released with customized annotation databases for 12 species.", style = "color:red")
       ,p("Feb. 11, 2022: This is a iDEP 0.95 with a customized database including annotation and pathway information for 5 species ",
        a("requested", href="https://forms.gle/zLtLnqxkW187AgT76"), " by users.")
       ,p("Feb. 8, 2022: iDDEP v0.95 becomes default. Old versions are still available. See the last tab.")
