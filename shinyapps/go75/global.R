@@ -628,6 +628,8 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   colnames(x)[9]= "Genes"
   x$n <- as.numeric(x$n) # convert total genes from character to numeric 10/21/19
   x <- subset(x,select = c(FDR,overlap,n,fold,description,memo,Genes) )
+  x <- x[order(x$FDR), ] # sort by FDR   4/1/2022 related to issue 23
+  x <- x[!duplicated(x$description), ] # remove duplicates   4/1/2022
   colnames(x) = c("Enrichment FDR", "nGenes",  "Pathway Genes", "Fold Enrichment","Pathway","URL", "Genes"  )
   }
 
