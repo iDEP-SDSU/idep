@@ -63,11 +63,11 @@ tags$head(
       fluidRow(
         column(6,
                numericInput(inputId = "minFDR",
-                            label = h5("P-value cutoff (FDR)"),
+                            label = h5("FDR cutoff"),
                             value = 0.05, step = 0.01)
         ),
         column(6,
-               selectInput("maxTerms", h5("# of top pathways to show"),
+               selectInput("maxTerms", h5("# Most significant pathways"),
                            choices = list("10" = 10,
                                           "20" = 20,
                                           "30" = 30,
@@ -75,12 +75,12 @@ tags$head(
                                           "50" = 50,
                                           "100" = 100,
                                           "500" = 500),
-                           selected = "30")
+                           selected = "20")
         )
       ),
       #tags$style(type='text/css', "#minFDR { width:100%;   margin-top:-15px}"),  
       # selectInput("selectOrg", label = NULL,"Best matching species",width='100%'),  
-      
+      checkboxInput("removeRedudantSets", "Remove redudant pathways", value = TRUE),
 
       tableOutput('species' ),
       actionButton("MGeneIDexamples", "Gene IDs examples"),
@@ -155,7 +155,9 @@ tags$head(
                  ,p("FDR is calculated based on nominal P-value from the hypergeometric test. Fold Enrichment is defined as the percentage 
                     of genes in your list belonging to a pathway, divided by the corresponding percentage in the 
                     background. FDR tells us how likely the enrichment is by chance. Large gene-sets tend to have smaller FDR.
-                    As a measure of effect size, Fold Enrichment indicates how drastically genes of a certain pathway is overrepresented. ")
+                    As a measure of effect size, Fold Enrichment indicates how drastically genes of a certain pathway is overrepresented. 
+                    When 'Remove redundant pathway' is selected, similar pathways sharing 95% of genes are represented by the most significant ones.
+                    ")
 
 
         ) # enrichment tab

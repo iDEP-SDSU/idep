@@ -65,7 +65,7 @@ kurtosis.log = 50  # log transform is enforced when kurtosis is big
 kurtosis.warning = 10 # log transformation recommnded 
 minGenesEnrichment = 2 # perform GO or promoter analysis only if more than this many genes
 PREDA_Permutations =1000
-redudantGeneSetsRatio = 0.9
+redudantGeneSetsRatio = 0.95
 maxGeneClustering = 12000  # max genes for hierarchical clustering and k-Means clustering. Slow if larger
 maxGeneWGCNA = 3000 # max genes for co-expression network
 maxFactors =6  # max number of factors in DESeq2 models
@@ -991,7 +991,7 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 	x$FDR = p.adjust(x$Pval,method="fdr")
 	x <- x[ order( x$FDR)  ,]  # sort according to FDR
 	
-	if(dim(x)[1] > maxTerms ) x = x[1:maxTerms,]	
+
 	
 	if(min(x$FDR) > minFDR) x=as.data.frame("No significant enrichment found!") else {
 		x <- x[which(x$FDR < minFDR),] 
@@ -1005,17 +1005,18 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 		if(reduced != FALSE && dim(x)[1] > 5){  # reduced=FALSE no filtering,  reduced = 0.9 filter sets overlap with 90%
 			n=  nrow(x)
 			tem=rep(TRUE,n )
-			geneLists = lapply(x$Genes, function(y) unlist( strsplit(as.character(y)," " )   ) )
+			geneLists = lapply(x$Genes, function(y) unlist( strsplit(as.character(y),"  " )   ) )
 			for( i in 2:n)
 				for( j in 1:(i-1) ) { 
 				  if(tem[j]) { # skip if this one is already removed
-					  commonGenes = length(intersect(geneLists[i] ,geneLists[j] ) )
-					  if( commonGenes/ length(geneLists[j] ) > reduced )
+					  commonGenes = length(intersect(geneLists[[i]] ,geneLists[[j]] ) )
+					  if( commonGenes/ length(geneLists[[j]] ) > reduced )
 						tem[i] = FALSE	
 				  }			
 				}								
-			x <- x[which(tem),]		
+			x <- x[which(tem), ]		
 		}
+	    if(dim(x)[1] > maxTerms ) x = x[1:maxTerms,]	
 
 	}
 			

@@ -100,6 +100,7 @@ server <- function(input, output, session){
     tem = input$selectOrg
     tem = input$selectGO
     tem = input$SortPathways
+    tem = input$removeRedudantSets
 
     isolate({ 
       withProgress(message= sample(quotes,1),detail="enrichment analysis", {
@@ -108,8 +109,11 @@ server <- function(input, output, session){
         temb = geneInfoLookup_background(); 
         if(class(temb) == "data.frame")
           temb <- temb[which( temb$Set == "List"),]  	  
+
+        if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
+        
         enrichment <- FindOverlap( converted(), tem, input$selectGO, input$selectOrg, input$minFDR, input$maxTerms, 
-                     converted_background(), temb )
+                     converted_background(), temb, reduced = reduced  )
         if(input$SortPathways == "Sort by FDR")
             enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
         if(input$SortPathways == "Sort by Fold Enrichment")
