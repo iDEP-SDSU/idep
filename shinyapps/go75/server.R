@@ -99,6 +99,8 @@ server <- function(input, output, session){
     tem = input$minFDR
     tem = input$selectOrg
     tem = input$selectGO
+    tem = input$SortPathways
+
     isolate({ 
       withProgress(message= sample(quotes,1),detail="enrichment analysis", {
         #gene info is passed to enable lookup of gene symbols
@@ -106,8 +108,18 @@ server <- function(input, output, session){
         temb = geneInfoLookup_background(); 
         if(class(temb) == "data.frame")
           temb <- temb[which( temb$Set == "List"),]  	  
-        FindOverlap( converted(), tem, input$selectGO, input$selectOrg, input$minFDR, input$maxTerms, 
+        enrichment <- FindOverlap( converted(), tem, input$selectGO, input$selectOrg, input$minFDR, input$maxTerms, 
                      converted_background(), temb )
+        if(input$SortPathways == "Sort by FDR")
+            enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
+        if(input$SortPathways == "Sort by Fold Enrichment")
+            enrichment$x <- enrichment$x[order(enrichment$x[, 4], decreasing = TRUE), ] 
+        if(input$SortPathways == "Sort by Genes")
+            enrichment$x <- enrichment$x[order(enrichment$x[, 2], decreasing = TRUE), ]  
+        if(input$SortPathways == "Sort by Category Name")
+            enrichment$x <- enrichment$x[order( enrichment$x[, 5]), ]  
+        return(enrichment)
+
       })
     })
   })
@@ -277,15 +289,6 @@ server <- function(input, output, session){
     
     withProgress(message= sample(quotes,1),detail=myMessage, {
       pathways <- significantOverlaps()$x;
-
-      if(input$SortPathways == "Sort by FDR")
-           pathways <- pathways[order(pathways[, 1]), ] 
-      if(input$SortPathways == "Sort by Fold Enrichment")
-           pathways <- pathways[order(pathways[, 4], decreasing = TRUE), ] 
-      if(input$SortPathways == "Sort by Genes")
-           pathways <- pathways[order(pathways[, 2], decreasing = TRUE), ]  
-      if(input$SortPathways == "Sort by Category Name")
-           pathways <- pathways[order( pathways[, 5]), ]  
 
       pathways$Pathway <- hyperText(pathways$Pathway, pathways$URL )
       
