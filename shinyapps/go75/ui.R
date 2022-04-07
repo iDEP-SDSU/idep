@@ -50,7 +50,8 @@ tags$head(
       ),
       tags$style(type="text/css", "textarea {width:100%}"),	  	
                 
-      tags$textarea(id = 'input_text', placeholder = 'Just paste a list of genes and click Submit. More adjustments below. Most types of gene IDs accepted. Double check the guessed species, and adjust if needed. ', rows = 8, ""),
+      tags$textarea(id = 'input_text', placeholder = 'Just paste a list of genes and click Submit. More adjustments below. Most types of gene IDs accepted. Double check the guessed species, and adjust if needed. '
+, rows = 8, ""),
       
       
       fluidRow(
@@ -67,7 +68,7 @@ tags$head(
                             value = 0.05, step = 0.01)
         ),
         column(6,
-               selectInput("maxTerms", h5("# Most significant pathways"),
+               selectInput("maxTerms", h5("# signifiant pathways"),
                            choices = list("10" = 10,
                                           "20" = 20,
                                           "30" = 30,
@@ -80,8 +81,25 @@ tags$head(
       ),
       #tags$style(type='text/css', "#minFDR { width:100%;   margin-top:-15px}"),  
       # selectInput("selectOrg", label = NULL,"Best matching species",width='100%'),  
-      checkboxInput("removeRedudantSets", "Remove redudant pathways", value = TRUE),
+      checkboxInput("removeRedudantSets", "Remove redundant pathways", value = TRUE),
 
+      fluidRow( 
+          column(6, numericInput( "minSetSize", 
+                                  label = h5("Pathway size: Min."), 
+                                  min   = 2, 
+                                  max   = 30, 
+                                  value = 5,
+                                  step  = 1) ),
+          column(6, numericInput( "maxSetSize", 
+                                  label = h5("Max."), 
+                                  min   = 1000, 
+                                  max   = 5000, 
+                                  value = 2000,
+                                  step  = 100) )
+        ), # fluidRow
+        #tags$style(type='text/css', "#minSetSize { width:100%;   margin-top:-12px}"),
+        #tags$style(type='text/css', "#maxSetSize { width:100%;   margin-top:-12px}"),
+        
       tableOutput('species' ),
       actionButton("MGeneIDexamples", "Gene IDs examples"),
       h5("Try ", a(" iDEP", href="https://bioinformatics.sdstate.edu/idep/",target="_blank"), "for RNA-Seq data analysis")

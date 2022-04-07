@@ -60,7 +60,7 @@ server <- function(input, output, session){
 
   # this defines an reactive object that can be accessed from other rendering functions
   converted <- reactive({
-    if (input$goButton == 0)    return()
+    if (input$goButton == 0 | nchar(input$input_text) < 20)    return()
     
     convertID(input$input_text,input$selectOrg );
     
@@ -94,13 +94,15 @@ server <- function(input, output, session){
   } )
   
   significantOverlaps <- reactive({
-    if (input$goButton == 0 | is.null( input$selectGO) ) return()
+    if (input$goButton == 0 | is.null( input$selectGO) | nchar(input$input_text) < 20 ) return()
     tem = input$maxTerms
     tem = input$minFDR
     tem = input$selectOrg
     tem = input$selectGO
     tem = input$SortPathways
     tem = input$removeRedudantSets
+    tem = input$minSetSize
+    tem = input$maxSetSize
 
     isolate({ 
       withProgress(message= sample(quotes,1),detail="enrichment analysis", {
@@ -111,9 +113,9 @@ server <- function(input, output, session){
           temb <- temb[which( temb$Set == "List"),]  	  
 
         if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
-        
+
         enrichment <- FindOverlap( converted(), tem, input$selectGO, input$selectOrg, input$minFDR, input$maxTerms, 
-                     converted_background(), temb, reduced = reduced  )
+                     converted_background(), temb, reduced = reduced, minSetSize = input$minSetSize, maxSetSize = input$maxSetSize  )
         if(input$SortPathways == "Sort by FDR")
             enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
         if(input$SortPathways == "Sort by Fold Enrichment")

@@ -440,7 +440,7 @@ hyperText <- function (textVector, urlVector){
 
 # Main function. Find a query set of genes enriched with functional category
 # For debug:  converted = converted(); gInfo = tem;  GO=input$selectGO; selectOrg=input$selectOrg;  minFDR=input$minFDR; input_maxTerms=input$maxTerms
-FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms, convertedB=NULL, gInfoB=NULL, reduced = FALSE) {
+FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms, convertedB=NULL, gInfoB=NULL, reduced = FALSE, minSetSize = 2, maxSetSize = 4000) {
   idNotRecognized = list(x=as.data.frame("ID not recognized!"),
                          groupings= as.data.frame("ID not recognized!")  )
   if(is.null(converted) ) return(idNotRecognized) # no ID
@@ -596,10 +596,14 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
         # number of genes in pathways in background genes  
         x$n <- as.numeric(x2$overlapB)     
       }
-  
+
   # end background genes------------------------------------------------------------
-  
-  x$FDR <- p.adjust(x$Pval, method="fdr")
+  x <- x[as.integer(x$n) > minSetSize, ]  # filter out smaller geneset
+  x <- x[as.integer(x$n) < maxSetSize, ]  # filter out big genesets
+  if(nrow(x) == 0)
+    return(list( x=as.data.frame("None of the selected genes are in the background genes!" )) )
+
+    x$FDR <- p.adjust(x$Pval, method="fdr")
   x <- x[order(x$FDR), ]  # sort according to FDR
 
 
