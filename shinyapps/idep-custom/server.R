@@ -65,7 +65,7 @@ kurtosis.log = 50  # log transform is enforced when kurtosis is big
 kurtosis.warning = 10 # log transformation recommnded 
 minGenesEnrichment = 2 # perform GO or promoter analysis only if more than this many genes
 PREDA_Permutations =1000
-redudantGeneSetsRatio = 0.9
+redudantGeneSetsRatio = 0.95
 maxGeneClustering = 12000  # max genes for hierarchical clustering and k-Means clustering. Slow if larger
 maxGeneWGCNA = 3000 # max genes for co-expression network
 maxFactors =6  # max number of factors in DESeq2 models
@@ -646,6 +646,10 @@ matchedSpeciesInfo <- function (x) {
 # convert gene IDs to ensembl gene ids and find species
 # updated 10/15; some changes not included in Gavin's new version
 convertID <- function (query,selectOrg) {
+	# Solves the issue of app shut down when species is deleted after genes are uploaded.
+    if(is.null(selectOrg)) {
+      return(NULL)
+    }
 	querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,')))
 	# querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
     querSetString <- paste0("('", paste(querySet,collapse="', '"),"')")
@@ -987,7 +991,7 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 	x$FDR = p.adjust(x$Pval,method="fdr")
 	x <- x[ order( x$FDR)  ,]  # sort according to FDR
 	
-	if(dim(x)[1] > maxTerms ) x = x[1:maxTerms,]	
+
 	
 	if(min(x$FDR) > minFDR) x=as.data.frame("No significant enrichment found!") else {
 		x <- x[which(x$FDR < minFDR),] 
@@ -1001,17 +1005,18 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 		if(reduced != FALSE && dim(x)[1] > 5){  # reduced=FALSE no filtering,  reduced = 0.9 filter sets overlap with 90%
 			n=  nrow(x)
 			tem=rep(TRUE,n )
-			geneLists = lapply(x$Genes, function(y) unlist( strsplit(as.character(y)," " )   ) )
+			geneLists = lapply(x$Genes, function(y) unlist( strsplit(as.character(y),"  " )   ) )
 			for( i in 2:n)
 				for( j in 1:(i-1) ) { 
 				  if(tem[j]) { # skip if this one is already removed
-					  commonGenes = length(intersect(geneLists[i] ,geneLists[j] ) )
-					  if( commonGenes/ length(geneLists[j] ) > reduced )
+					  commonGenes = length(intersect(geneLists[[i]] ,geneLists[[j]] ) )
+					  if( commonGenes/ length(geneLists[[j]] ) > reduced )
 						tem[i] = FALSE	
 				  }			
 				}								
-			x <- x[which(tem),]		
+			x <- x[which(tem), ]		
 		}
+	    if(dim(x)[1] > maxTerms ) x = x[1:maxTerms,]
 
 	}
 			
@@ -4390,7 +4395,7 @@ PCAplots4Download <- reactive({
 output$downloadPCA <- downloadHandler(
       filename = "PCA_MDS_tSNE.eps",
       content = function(file) {
-	  cairo_ps(file, width = 6, height = 6)
+	  cairo_ps(file, width = 8, height = 6)
 	  PCAplots4Download()
         dev.off()
       })    
@@ -4971,7 +4976,7 @@ output$KmeansPromoter <- renderTable({
 	incProgress(1/input$nClusters, , detail = paste("Cluster",toupper(letters)[i]) )
 	#query = rownames(x)[which(bar == i)]
 	query = rownames(Kmeans()$x)[which(Kmeans()$bar == i)]	
-	convertedID = convertID(query,input$selectOrg, input$selectGO2 );#"gmax_eg_gene"
+	convertedID = convertID(query,input$selectOrg);#"gmax_eg_gene"
 	result <- promoter( convertedID,input$selectOrg,input$radioPromoterKmeans )
 	
 	if( is.null(result)  ) next;   # result could be NULL
@@ -7136,7 +7141,7 @@ output$DEG.Promoter <- renderTable({
 		incProgress(1/2 )	
 		query = rownames(genes)[which(fc*i<0)]
 		if(length(query) < minGenesEnrichment) next; 
-		convertedID = convertID(query,input$selectOrg, input$selectGO2 );#"gmax_eg_gene"
+		convertedID = convertID(query,input$selectOrg);#"gmax_eg_gene"
 		if(length(convertedID) < minGenesEnrichment) next; 
 		result <- promoter( convertedID,input$selectOrg,input$radio.promoter )
 		
@@ -8732,7 +8737,7 @@ mypathview <- function (gene.data = NULL, cpd.data = NULL, pathway.id, species =
         if (is.na(kid.map[id.type])) 
             stop("Wrong input gene ID type for the species!")
         message("Info: Getting gene ID data from KEGG...")
-        gene.idmap = keggConv(kid.map2[id.type], species)
+        gene.idmap = KEGGREST::keggConv(kid.map2[id.type], species)
         message("Info: Done with data retrieval!")
         kegg.ids = gsub(paste(species, ":", sep = ""), "", names(gene.idmap))
         in.ids = gsub(paste0(kid.map2[id.type], ":"), "", gene.idmap)
