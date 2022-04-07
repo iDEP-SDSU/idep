@@ -1,6 +1,5 @@
 ###################################################
 # Author: Steven Ge Xijin.Ge@sdstate.edu
-# co-author: Eric Tulowetzke, eric.tulowetzke@jacks.sdstate.edu
 # Lab: Ge Lab
 # R version 4.0.5
 # Project: ShinyGO v65
@@ -21,7 +20,7 @@ columnSelection = list("-log10(FDR)" = "EnrichmentFDR",
                         "Category Name" = "Pathway")
 
 ui <- fluidPage(
-  tags$head(includeHTML(("google_analytics.html"))),
+ tags$head(includeHTML(("google_analytics.html"))), 
 # reduce the space between label and widgets, globally
 tags$head(
   tags$style(HTML(
@@ -52,7 +51,8 @@ tags$head(
       ),
       tags$style(type="text/css", "textarea {width:100%}"),	  	
                 
-      tags$textarea(id = 'input_text', placeholder = 'Just paste a list of genes and click Submit. More adjustments below. Most types of gene IDs accepted. Double check the guessed species, and adjust if needed. ', rows = 8, ""),
+      tags$textarea(id = 'input_text', placeholder = 'Just paste a list of genes and click Submit. More adjustments below. Most types of gene IDs accepted. Double check the guessed species, and adjust if needed. '
+, rows = 8, ""),
       
       
       fluidRow(
@@ -65,11 +65,11 @@ tags$head(
       fluidRow(
         column(6,
                numericInput(inputId = "minFDR",
-                            label = h5("P-value cutoff (FDR)"),
+                            label = h5("FDR cutoff"),
                             value = 0.05, step = 0.01)
         ),
         column(6,
-               selectInput("maxTerms", h5("# of top pathways to show"),
+               selectInput("maxTerms", h5("# signifiant pathways"),
                            choices = list("10" = 10,
                                           "20" = 20,
                                           "30" = 30,
@@ -77,13 +77,30 @@ tags$head(
                                           "50" = 50,
                                           "100" = 100,
                                           "500" = 500),
-                           selected = "30")
+                           selected = "20")
         )
       ),
       #tags$style(type='text/css', "#minFDR { width:100%;   margin-top:-15px}"),  
       # selectInput("selectOrg", label = NULL,"Best matching species",width='100%'),  
-      
+      checkboxInput("removeRedudantSets", "Remove redundant pathways", value = TRUE),
 
+      fluidRow( 
+          column(6, numericInput( "minSetSize", 
+                                  label = h5("Pathway size: Min."), 
+                                  min   = 2, 
+                                  max   = 30, 
+                                  value = 5,
+                                  step  = 1) ),
+          column(6, numericInput( "maxSetSize", 
+                                  label = h5("Max."), 
+                                  min   = 1000, 
+                                  max   = 5000, 
+                                  value = 2000,
+                                  step  = 100) )
+        ), # fluidRow
+        #tags$style(type='text/css', "#minSetSize { width:100%;   margin-top:-12px}"),
+        #tags$style(type='text/css', "#maxSetSize { width:100%;   margin-top:-12px}"),
+        
       tableOutput('species' ),
       actionButton("MGeneIDexamples", "Gene IDs examples"),
       h5("Try ", a(" iDEP", href="https://bioinformatics.sdstate.edu/idep/",target="_blank"), "for RNA-Seq data analysis")
@@ -94,7 +111,7 @@ tags$head(
       tabsetPanel(id = "tabs", type = "tabs",
         tabPanel("Enrichment" 
                  ,value = 1
-                 ,conditionalPanel("input.goButton == 0 "  # welcome screen
+                 ,conditionalPanel("input.goButton == 0 "  # welcome screen                                   
                                    ,h3("Mar. 12, 2022: ShinyGO 0.75c released with customized annotation databases for 12 species.", style = "color:red")
                                    ,p("Feb. 11, 2022:  ShinyGO 0.75c released with a customized database including annotation and pathway information for 5 species ", 
                                    a("requested", href="https://forms.gle/zLtLnqxkW187AgT76"), "by users.")
@@ -147,7 +164,10 @@ tags$head(
                  ,p("FDR is calculated based on nominal P-value from the hypergeometric test. Fold Enrichment is defined as the percentage 
                     of genes in your list belonging to a pathway, divided by the corresponding percentage in the 
                     background. FDR tells us how likely the enrichment is by chance. Large gene-sets tend to have smaller FDR.
-                    Fold Enrichment indicates how drastically genes of a certain pathway is overrepresented. ")
+                    As a measure of effect size, Fold Enrichment indicates how drastically genes of a certain pathway is overrepresented. 
+                    When 'Remove redundant pathway' is selected, similar pathways sharing 95% of genes are represented by the most significant pathway.
+                    Pathways that are too big or too small are excluded from analysis using the Pathway Size limits.
+                    ")
 
 
         ) # enrichment tab
@@ -157,7 +177,7 @@ tags$head(
                   ,value = 2 
                   ,htmlOutput('listSigPathways')
                   ,br(),br(),imageOutput("KeggImage", width = "100%", height = "100%")				
-                  ,h4("Downloading pathway diagram from KEGG can takes 3 minutes. ")
+                  ,h5("Your genes are highlighted in red. Downloading pathway diagram from KEGG can take 3 minutes. ")
         )
 
  #---Enrichment Chart-----------------------------------------------------------
@@ -298,8 +318,9 @@ tags$head(
                                            choices = c(1, 2, 4, 6, 8, 10, 15, 20) ))
                     ,column(3, selectInput(inputId = "MAwindowSteps",
                                            label = h5("Steps in a window"),
-                                           selected = 2,
-                                           choices = c(1, 2, 3, 4)))
+                                           choices = unique(1:4),
+                                           selected = c(2)
+                                            ))
                     ,column(3, selectInput(inputId = "chRegionPval", 
                                            label = h5("FDR cutoff for windows"),
                                            selected = 0.00001,
@@ -312,7 +333,7 @@ tags$head(
                         these genes are statistically enriched, compared to the density of genes in the background. 
                         We scanned the genome with a sliding window. Each window is further divided into several 
                         equal-sized steps for sliding. Within each window we used the hypergeometric test to 
-                        determine if the presence of your genes are significant. Essentially, the genes in
+                        determine if your genes are significantly overrepresented. Essentially, the genes in
                         each window define a gene set/pathway, and we carried out enrichment analysis. The
                         chromosomes may be only partly shown as we use the last gene's location to draw the line. 
                         Mouse over to see gene symbols. Zoom in regions of interest.")
@@ -530,7 +551,7 @@ tags$head(
        )# bsModal 6	      
     ) # mainPanel
   ) #sidebarLayout
- # ,tags$head(includeScript("google_analytics.js")) # tracking usage
+#  ,tags$head(includeScript("google_analytics.js")) # tracking usage
 ) #fluidPage
 
 

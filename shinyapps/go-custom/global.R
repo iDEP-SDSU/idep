@@ -21,7 +21,7 @@ library(DT,verbose=FALSE) 		# for renderDataTable
 
 
 # relative path to data files
-datapath = "../../data/customDB/" 
+datapath = "../../data/customDB/"   # production server
 STRING_DB_VERSION <- "11.5" # what version of STRINGdb needs to be used 
 Min_overlap <- 1
 minSetSize = 3;
@@ -32,6 +32,7 @@ PvalGeneInfo = 0.05; minGenes = 10 # min number of genes for plotting
 PvalGeneInfo1 = 0.01
 PvalGeneInfo2 = 0.001
 maxGenesBackground = 30000
+redudantGeneSetsRatio = 0.95 # remove redundant pathways if they share 90% of genes.
 pdf(NULL) # this prevents error Cannot open file 'Rplots.pdf'
 ExampleGeneList2=
 "Hus1 Rad1 Tp63 Tp73 Usp28 Rad9b Fanci Hus1b 
@@ -293,6 +294,10 @@ matchedSpeciesInfo <- function (x) {
 
 # convert gene IDs to ensembl gene ids and find species
 convertID <- function (query, selectOrg) {
+# Solves the issue of app shut down when species is deleted after genes are uploaded.
+ if(is.null(selectOrg)) {
+   return(NULL)
+ }
  query <- gsub("\"|\'","",query) 
  	# remove " in gene ids, mess up SQL query				
 	# remove ' in gene ids				
@@ -445,7 +450,7 @@ hyperText <- function (textVector, urlVector){
 
 # Main function. Find a query set of genes enriched with functional category
 # For debug:  converted = converted(); gInfo = tem;  GO=input$selectGO; selectOrg=input$selectOrg;  minFDR=input$minFDR; input_maxTerms=input$maxTerms
-FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms, convertedB=NULL, gInfoB=NULL) {
+FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms, convertedB=NULL, gInfoB=NULL, reduced = FALSE, minSetSize = 2, maxSetSize = 4000) {
   idNotRecognized = list(x=as.data.frame("ID not recognized!"),
                          groupings= as.data.frame("ID not recognized!")  )
   if(is.null(converted) ) return(idNotRecognized) # no ID
@@ -587,7 +592,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
         xB = as.data.frame( xB)
         colnames(xB)=c("pathwayID","overlapB")
         x2 = merge(x, xB, by='pathwayID', all.x = TRUE)       
-        
+
         x$Pval=phyper(x2$overlap - 1,
                       length(querySet),
                       length(querySetB) - length(querySet),   
@@ -601,10 +606,14 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
         # number of genes in pathways in background genes  
         x$n <- as.numeric(x2$overlapB)     
       }
-  
+
   # end background genes------------------------------------------------------------
-  
-  x$FDR <- p.adjust(x$Pval, method="fdr")
+  x <- x[as.integer(x$n) > minSetSize, ]  # filter out smaller geneset
+  x <- x[as.integer(x$n) < maxSetSize, ]  # filter out big genesets
+  if(nrow(x) == 0)
+    return(list( x=as.data.frame("None of the selected genes are in the background genes!" )) )
+
+    x$FDR <- p.adjust(x$Pval, method="fdr")
   x <- x[order(x$FDR), ]  # sort according to FDR
 
 
@@ -628,7 +637,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
 
   if(min(x$FDR, na.rm = TRUE) > minFDR) x=as.data.frame("No significant enrichment found!") else {
   x <- x[which(x$FDR < minFDR),]
-  if(dim(x)[1] > as.integer(input_maxTerms) ) x = x[ 1:as.integer(input_maxTerms), ]
+
   x= cbind(x,sapply( x$pathwayID, sharedGenesPrefered ) )
  
   colnames(x)[9]= "Genes"
@@ -637,6 +646,26 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   x <- x[order(x$FDR), ] # sort by FDR   4/1/2022 related to issue 23
   x <- x[!duplicated(x$description), ] # remove duplicates   4/1/2022
   colnames(x) = c("Enrichment FDR", "nGenes",  "Pathway Genes", "Fold Enrichment","Pathway","URL", "Genes"  )
+
+		# remove redudant gene sets
+		if(reduced != FALSE && dim(x)[1] > 5){  # reduced=FALSE no filtering,  reduced = 0.9 filter sets overlap with 90%
+			n=  nrow(x)
+			tem=rep(TRUE, n )
+      # note that it has to be two space characters for splitting 
+			geneLists = lapply(x$Genes, function(y) unlist( strsplit(as.character(y),"  " )   ) )
+			for( i in 2:n)
+				for( j in 1:(i-1) ) { 
+				  if(tem[j]) { # skip if this one is already removed
+					  commonGenes = length(intersect(geneLists[[i]] ,geneLists[[j]] ) )
+					  if( commonGenes/ length(geneLists[[j]]) > reduced )
+						tem[i] = FALSE	
+				  }			
+				}								
+			x <- x[which(tem), ]		
+		}
+  # only keep top pathways by FDR
+  if(dim(x)[1] > as.integer(input_maxTerms) ) x = x[ 1:as.integer(input_maxTerms), ]
+
   }
 
  dbDisconnect(pathway)
@@ -645,7 +674,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
                                      #, categoryChoices = categoryChoices
 promoter <- function (converted,selectOrg, radio){
   idNotRecognized = as.data.frame("ID not recognized!")
-  
+
   if(is.null(converted) ) 
     return(idNotRecognized) # no ID
   
@@ -934,7 +963,7 @@ enrichmentNetwork <- function(enrichedTerms, layoutButton=0, edge.cutoff = 5){
 	geneLists = lapply(enrichedTerms$Genes, function(x) unlist( strsplit(as.character(x)," " )   ) )
 	names(geneLists) = enrichedTerms$Pathways
 	enrichedTerms$Direction = gsub(" .*","",enrichedTerms$Direction )
-  
+
 	g <- enrich.net2(enrichedTerms, geneLists, node.id = "Pathways", numChar = 100, 
 	   pvalue = "adj.Pval",  pvalue.cutoff = 1, degree.cutoff = 0,
 	   n = 200, group = enrichedTerms$Direction, vertex.label.cex = 1, 
