@@ -174,7 +174,8 @@ tags$head(
                     of genes in your list belonging to a pathway, divided by the corresponding percentage in the 
                     background. FDR tells us how likely the enrichment is by chance. Large gene-sets tend to have smaller FDR.
                     As a measure of effect size, Fold Enrichment indicates how drastically genes of a certain pathway is overrepresented. 
-                    When 'Remove redundant pathway' is selected, similar pathways sharing 95% of genes are represented by the most significant ones.
+                    When 'Remove redundant pathway' is selected, similar pathways sharing 95% of genes are represented by the most significant pathway.
+                    Pathways that are too big or too small are excluded from analysis using the Pathway Size limits.
                     ")
 
 
