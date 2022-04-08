@@ -173,7 +173,7 @@ tags$head(
                  
 
                  ,p("All query genes are first converted to ENSEMBL gene IDs or STRING-db protein IDs. Our gene ID mapping and pathway 
-                     data are mostly derived from these two sources. For the 20 widely selected species, we also manually collected a
+                     data are mostly derived from these two sources. For the 20 widely studied species, we also manually collected a
                      large number of pathway databases from various sources.")
                  ,p("FDR is calculated based on nominal P-value from the hypergeometric test. Fold Enrichment is defined as the percentage 
                     of genes in your list belonging to a pathway, divided by the corresponding percentage in the 
