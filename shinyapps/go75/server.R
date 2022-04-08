@@ -32,17 +32,19 @@ server <- function(input, output, session){
 
   #-----------hide tabs when N/A----------------------------------
   observeEvent(input$selectGO, {
-  # Show KEGG tab only when KEGG is selected
-    if(input$selectGO == "KEGG") {
-      showTab(inputId = "tabs", target = "2")
-    } else {
-     hideTab(inputId = "tabs", target = "2") 
-    }
+
+  # Show KEGG tab only when KEGG is selected  #disabled as of 4/8/2022. Confused biologists.
+    #if(input$selectGO == "KEGG") {
+    #  showTab(inputId = "tabs", target = "2")
+    #} else {
+    # hideTab(inputId = "tabs", target = "2") 
+    #}
+
   # Show Groups tab only when GOBP is selected
     if(input$selectGO == "GOBP" | input$selectGO == "GOCC" | input$selectGO == "GOMF" ) {
-      showTab(inputId = "tabs", target = "6")
+      showTab(inputId = "tabs", target = "7")
     } else {
-     hideTab(inputId = "tabs", target = "6") 
+     hideTab(inputId = "tabs", target = "7") 
     }
   })
 
@@ -781,7 +783,7 @@ server <- function(input, output, session){
         selected = "All"
       }
     
-    selectInput("selectGO", label = h5("Pathway DB: Select KEGG for pathway diagrams"),
+    selectInput("selectGO", label = h5("Pathway database:"),
                 choices = choices,
                 selected = selected )    	
     
