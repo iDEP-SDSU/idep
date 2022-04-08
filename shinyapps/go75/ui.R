@@ -288,7 +288,7 @@ tags$head(
                                            max = 18,
                                            step = 1 ) )
                     ,column(3, numericInput(inputId = "treeHeight",
-                                           label = h5("Height (inches)"),
+                                           label = h5("Height(Not all combinations work)"),
                                            value = 6,
                                            min = 3,
                                            max = 18,
