@@ -276,10 +276,32 @@ tags$head(
         ,tabPanel("Tree"
                   ,value = 4 
                   ,h5("A hierarchical clustering tree summarizing the correlation among significant pathways 
-       listed in the Enrichment tab. Pathways with many shared genes are clustered together. 
-       Bigger dots indicate more significant P-values.")
-                  ,downloadButton('GOTermsTree4Download','Figure' )
+                      listed in the Enrichment tab. Pathways with many shared genes are clustered together. 
+                        Bigger dots indicate more significant P-values.")
+
+
+                  ,fluidRow(
+                    column(3, numericInput(inputId = "treeWidth",
+                                           label = h5("Width for download"),
+                                           value = 10,
+                                           min = 6,
+                                           max = 18,
+                                           step = 1 ) )
+                    ,column(3, numericInput(inputId = "treeHeight",
+                                           label = h5("Height (inches)"),
+                                           value = 6,
+                                           min = 3,
+                                           max = 18,
+                                           step = 1 ))
+                    ,column(3, downloadButton('GOTermsTree4Download','Figure' ))
+                    ,tags$style(type='text/css', "#GOTermsTree4Download { width:100%; margin-top: 25px;}")
+
+
+                  ) 
                   ,plotOutput('GOTermsTree')
+
+
+
         )
 
  #---Enrichment network-------------------------------------------------------        

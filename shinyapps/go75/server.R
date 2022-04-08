@@ -65,7 +65,7 @@ server <- function(input, output, session){
     if (input$goButton == 0 | nchar(input$input_text) < 20)    return()
     
     convertID(input$input_text,input$selectOrg );
-    
+
   } )
   
   
@@ -118,14 +118,17 @@ server <- function(input, output, session){
 
         enrichment <- FindOverlap( converted(), tem, input$selectGO, input$selectOrg, input$minFDR, input$maxTerms, 
                      converted_background(), temb, reduced = reduced, minSetSize = input$minSetSize, maxSetSize = input$maxSetSize  )
-        if(input$SortPathways == "Sort by FDR")
-            enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
-        if(input$SortPathways == "Sort by Fold Enrichment")
-            enrichment$x <- enrichment$x[order(enrichment$x[, 4], decreasing = TRUE), ] 
-        if(input$SortPathways == "Sort by Genes")
-            enrichment$x <- enrichment$x[order(enrichment$x[, 2], decreasing = TRUE), ]  
-        if(input$SortPathways == "Sort by Category Name")
-            enrichment$x <- enrichment$x[order( enrichment$x[, 5]), ]  
+
+        if(dim(enrichment$x)[2] > 1) {  # when there is no overlap, returns a data frame with 1 row and 1 column
+          if(input$SortPathways == "Sort by FDR")
+              enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
+          if(input$SortPathways == "Sort by Fold Enrichment")
+              enrichment$x <- enrichment$x[order(enrichment$x[, 4], decreasing = TRUE), ] 
+          if(input$SortPathways == "Sort by Genes")
+              enrichment$x <- enrichment$x[order(enrichment$x[, 2], decreasing = TRUE), ]  
+          if(input$SortPathways == "Sort by Category Name")
+              enrichment$x <- enrichment$x[order( enrichment$x[, 5]), ]  
+        }
         return(enrichment)
 
       })
@@ -378,7 +381,7 @@ server <- function(input, output, session){
   output$GOTermsTree4Download <- downloadHandler(
     filename = "GO_terms_Tree.tiff",
     content = function(file) {
-      tiff(file, width = 10, height = 6, units = 'in', res = 300, compression = 'lzw');
+      tiff(file, width = input$treeWidth, height = input$treeHeight, units = 'in', res = 300, compression = 'lzw');
       enrichmentPlot(significantOverlaps2(), 45  )
       dev.off()
     })

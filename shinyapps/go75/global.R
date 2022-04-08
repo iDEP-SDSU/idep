@@ -293,7 +293,7 @@ convertID <- function (query, selectOrg) {
 	# remove ' in gene ids				
 	# |\\.[0-9] remove anything after A35244.1 -> A35244  
 	#  some gene ids are like Glyma.01G002100
-	
+
 	querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,|;')))
 	# querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
     querSetString <- paste0("('", paste(querySet,collapse="', '"),"')")
