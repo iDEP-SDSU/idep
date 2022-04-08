@@ -378,14 +378,22 @@ server <- function(input, output, session){
     
   }, height=770, width=1000)
   
-  output$GOTermsTree4Download <- downloadHandler(
+  output$GOTermsTree4Download2 <- downloadHandler(
     filename = "GO_terms_Tree.tiff",
     content = function(file) {
       tiff(file, width = input$treeWidth, height = input$treeHeight, units = 'in', res = 300, compression = 'lzw');
       enrichmentPlot(significantOverlaps2(), 45  )
       dev.off()
     })
-  
+  output$GOTermsTree4Download <- downloadHandler(
+    filename = "GO_terms_Tree.svg",
+    content = function(file) {
+      svg(file, width = max(4, input$treeWidth, na.rm = TRUE), 
+        height = max(2, input$treeHeight, na.rm = TRUE)
+      );
+      enrichmentPlot(significantOverlaps2(), 45  )
+      dev.off()
+    })  
   output$enrichmentNetworkPlot <- renderPlot({
     if(is.null(significantOverlaps4())) return(NULL)
     
