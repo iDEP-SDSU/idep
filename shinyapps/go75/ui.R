@@ -1,12 +1,12 @@
 ###################################################
 # Author: Steven Ge Xijin.Ge@sdstate.edu
 # Lab: Ge Lab
-# R version 4.0.5
-# Project: ShinyGO v65
+# R version 4.1
+# Project: ShinyGO 
 # File: ui.R
 # Purpose of file:ui logic of app
 # Start data: NA (mm-dd-yyyy)
-# Data last modified: 06-22-2021
+# Data last modified: 04-8-2022
 #######################################################
 library(shiny,verbose=FALSE)
 library(shinyBS,verbose=FALSE) # for popup figures
@@ -68,7 +68,7 @@ tags$head(
                             value = 0.05, step = 0.01)
         ),
         column(6,
-               selectInput("maxTerms", h5("# signifiant pathways"),
+               selectInput("maxTerms", h5("# pathways to show"),
                            choices = list("10" = 10,
                                           "20" = 20,
                                           "30" = 30,
@@ -170,18 +170,24 @@ tags$head(
                  ,conditionalPanel("input.goButton != 0", 
                                    downloadButton('downloadEnrichment', 'Download table with gene IDs')			
                                    ,br(),br()
-                 )	
-                 ,p("All query genes are first converted to Ensembl gene IDs, and then compared with our pathway databases. 
-                    FDR is calculated based on nominal P-value from the hypergeometric test. Fold Enrichment is defined as the percentage 
+                 
+
+                 ,p("All query genes are first converted to ENSEMBL gene IDs or STRING-db protein IDs. Our gene ID mapping and pathway 
+                     data are mostly derived from these two sources. For the 20 widely selected species, we also manually collected a
+                     large number of pathway databases from various sources.")
+                 ,p("FDR is calculated based on nominal P-value from the hypergeometric test. Fold Enrichment is defined as the percentage 
                     of genes in your list belonging to a pathway, divided by the corresponding percentage in the 
-                    background. FDR tells us how likely the enrichment is by chance. Large pathways tend to have smaller FDR.
+                    background. FDR tells us how likely the enrichment is by chance. Due to increased statistical power, 
+                    large pathways tend to have smaller FDR.
                     As a measure of effect size, Fold Enrichment indicates how drastically genes of a certain pathway is overrepresented. 
-                    Pathways are first filtered based on a user specified FDR cutoff. Then the top 20 by FDR are shown in the table.
-                    Users can sort the pathways based on  FDR, Fold Enrichment, or names.
+                    This is a important metric, even though often ignored.")
+
+                 ,p("Pathways are first filtered based on a user specified FDR cutoff. Then the top 20 (default) most siginificant pathway are shown in the table.
+                    The pathways are sorted by Fold Enrichment by default.
                     When 'Remove redundant pathway' is selected, similar pathways sharing 95% of genes are represented by the most significant pathway.
                     Pathways that are too big or too small are excluded from analysis using the Pathway Size limits.
                     ")
-
+                 )	
 
         ) # enrichment tab
 
