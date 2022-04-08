@@ -288,12 +288,13 @@ tags$head(
                                            max = 18,
                                            step = 1 ) )
                     ,column(3, numericInput(inputId = "treeHeight",
-                                           label = h5("Height(Not all combinations work)"),
+                                           label = h5("Height(inches)"),
                                            value = 6,
                                            min = 3,
                                            max = 18,
                                            step = 1 ))
                     ,column(3, downloadButton('GOTermsTree4Download','Figure' ))
+                    ,column(3, h5("Some size combinations may not work. Try different sizes."))
                     ,tags$style(type='text/css', "#GOTermsTree4Download { width:100%; margin-top: 25px;}")
 
 
