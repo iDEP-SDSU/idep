@@ -32,17 +32,19 @@ server <- function(input, output, session){
 
   #-----------hide tabs when N/A----------------------------------
   observeEvent(input$selectGO, {
-  # Show KEGG tab only when KEGG is selected
-    if(input$selectGO == "KEGG") {
-      showTab(inputId = "tabs", target = "2")
-    } else {
-     hideTab(inputId = "tabs", target = "2") 
-    }
+
+ # Show KEGG tab only when KEGG is selected  #disabled as of 4/8/2022. Confused biologists.
+    #if(input$selectGO == "KEGG") {
+    #  showTab(inputId = "tabs", target = "2")
+    #} else {
+    # hideTab(inputId = "tabs", target = "2") 
+    #}
+
   # Show Groups tab only when GOBP is selected
     if(input$selectGO == "GOBP" | input$selectGO == "GOCC" | input$selectGO == "GOMF" ) {
-      showTab(inputId = "tabs", target = "6")
+      showTab(inputId = "tabs", target = "7")
     } else {
-     hideTab(inputId = "tabs", target = "6") 
+     hideTab(inputId = "tabs", target = "7") 
     }
   })
 
@@ -116,14 +118,17 @@ server <- function(input, output, session){
 
         enrichment <- FindOverlap( converted(), tem, input$selectGO, input$selectOrg, input$minFDR, input$maxTerms, 
                      converted_background(), temb, reduced = reduced, minSetSize = input$minSetSize, maxSetSize = input$maxSetSize  )
-        if(input$SortPathways == "Sort by FDR")
-            enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
-        if(input$SortPathways == "Sort by Fold Enrichment")
-            enrichment$x <- enrichment$x[order(enrichment$x[, 4], decreasing = TRUE), ] 
-        if(input$SortPathways == "Sort by Genes")
-            enrichment$x <- enrichment$x[order(enrichment$x[, 2], decreasing = TRUE), ]  
-        if(input$SortPathways == "Sort by Category Name")
-            enrichment$x <- enrichment$x[order( enrichment$x[, 5]), ]  
+
+        if(dim(enrichment$x)[2] > 1) {  # when there is no overlap, returns a data frame with 1 row and 1 column
+          if(input$SortPathways == "Sort by FDR")
+              enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
+          if(input$SortPathways == "Sort by Fold Enrichment")
+              enrichment$x <- enrichment$x[order(enrichment$x[, 4], decreasing = TRUE), ] 
+          if(input$SortPathways == "Sort by Genes")
+              enrichment$x <- enrichment$x[order(enrichment$x[, 2], decreasing = TRUE), ]  
+          if(input$SortPathways == "Sort by Category Name")
+              enrichment$x <- enrichment$x[order( enrichment$x[, 5]), ]  
+          }
         return(enrichment)
 
       })
@@ -372,15 +377,23 @@ server <- function(input, output, session){
     enrichmentPlot(significantOverlaps2(), 56  )
     
   }, height=770, width=1000)
-  
+
+  # output$GOTermsTree4Download2 <- downloadHandler(
+ #   filename = "GO_terms_Tree.tiff",
+ #   content = function(file) {
+ #     tiff(file, width = input$treeWidth, height = input$treeHeight, units = 'in', res = 300, compression = 'lzw');
+ #     enrichmentPlot(significantOverlaps2(), 45  )
+ #     dev.off()
+ #   }) 
   output$GOTermsTree4Download <- downloadHandler(
-    filename = "GO_terms_Tree.tiff",
+    filename = "GO_terms_Tree.svg",
     content = function(file) {
-      tiff(file, width = 10, height = 6, units = 'in', res = 300, compression = 'lzw');
+      svg(file, width = max(4, input$treeWidth, na.rm = TRUE), 
+        height = max(2, input$treeHeight, na.rm = TRUE)
+      );
       enrichmentPlot(significantOverlaps2(), 45  )
       dev.off()
-    })
-  
+    })    
   output$enrichmentNetworkPlot <- renderPlot({
     if(is.null(significantOverlaps4())) return(NULL)
     
@@ -781,7 +794,7 @@ server <- function(input, output, session){
         selected = "All"
       }
     
-    selectInput("selectGO", label = h5("Pathway DB: Select KEGG for pathway diagrams"),
+    selectInput("selectGO", label = h5("Pathway database:"),
                 choices = choices,
                 selected = selected )    	
     

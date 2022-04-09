@@ -69,7 +69,7 @@ tags$head(
                             value = 0.05, step = 0.01)
         ),
         column(6,
-               selectInput("maxTerms", h5("# signifiant pathways"),
+               selectInput("maxTerms", h5("# pathways to show"),
                            choices = list("10" = 10,
                                           "20" = 20,
                                           "30" = 30,
@@ -172,12 +172,19 @@ tags$head(
 
         ) # enrichment tab
 
- #---Tree-----------------------------------------------------------
+ #---KEGG-----------------------------------------------------------
         ,tabPanel("KEGG"
                   ,value = 2 
-                  ,htmlOutput('listSigPathways')
-                  ,br(),br(),imageOutput("KeggImage", width = "100%", height = "100%")				
-                  ,h5("Your genes are highlighted in red. Downloading pathway diagram from KEGG can take 3 minutes. ")
+          ,conditionalPanel("input.selectGO != 'KEGG' "   			
+            ,br(),br()
+            ,h5("Please select KEGG from the pathway databases to conduct enrichment analysis first. 
+            Then you can visualize your genes on any of the significant pathways. Only for some species.")
+          )
+          ,conditionalPanel("input.selectGO == 'KEGG' "   
+            ,htmlOutput('listSigPathways')
+            ,br(),br(),imageOutput("KeggImage", width = "100%", height = "100%")				
+            ,h5("Your genes are highlighted in red. Downloading pathway diagram from KEGG can take 3 minutes. ")
+          )
         )
 
  #---Enrichment Chart-----------------------------------------------------------
@@ -252,8 +259,31 @@ tags$head(
                   ,h5("A hierarchical clustering tree summarizing the correlation among significant pathways 
        listed in the Enrichment tab. Pathways with many shared genes are clustered together. 
        Bigger dots indicate more significant P-values.")
-                  ,downloadButton('GOTermsTree4Download','Figure' )
+
+
+                  ,fluidRow(
+                    column(3, numericInput(inputId = "treeWidth",
+                                           label = h5("Width for download"),
+                                           value = 10,
+                                           min = 6,
+                                           max = 18,
+                                           step = 1 ) )
+                    ,column(3, numericInput(inputId = "treeHeight",
+                                           label = h5("Height(inches)"),
+                                           value = 6,
+                                           min = 3,
+                                           max = 18,
+                                           step = 1 ))
+                    ,column(3, downloadButton('GOTermsTree4Download','Figure' ))
+                    ,column(3, h5("Some sizes may not work. Try different combinations. Figure needs to be wide as pathway names are long."))
+                    ,tags$style(type='text/css', "#GOTermsTree4Download { width:100%; margin-top: 25px;}")
+
+
+                  ) 
                   ,plotOutput('GOTermsTree')
+
+
+
         )
 
  #---Enrichment network-------------------------------------------------------        
@@ -281,7 +311,7 @@ tags$head(
 
  #---Genes-----------------------------------------------------------        
         ,tabPanel("Genes"
-                  ,value = 5 
+                  ,value = 6 
                  ,fluidRow(
                     column(3, downloadButton('downloadGeneInfo', 'Download') )
                     ,column(4, checkboxInput("showDetailedGeneInfo", "Detailed Description", value = FALSE) )
@@ -291,7 +321,7 @@ tags$head(
         )
  #---Groups-----------------------------------------------------------        
         ,tabPanel("Groups"
-                  ,value = 6
+                  ,value = 7
                   , downloadButton('downloadGrouping', 'Download')
                   , h5("Your genes are grouped by functional categories defined by high-level GO terms. ")  
                   , tableOutput("grouping")
@@ -299,7 +329,7 @@ tags$head(
         ) 
  #---Plots-----------------------------------------------------------        
         ,tabPanel("Plots"
-                  ,value = 7
+                  ,value = 8
                   , h5("The characteristics of your genes are compared with the rest in the genome. Chi-squared and Student's 
               t-tests are run to see if your genes have special characteristics when compared with all the other genes or, if uploaded, a customized background.")
                   , plotOutput("genePlot2", inline = TRUE,width='auto',height='auto')  
@@ -309,7 +339,7 @@ tags$head(
 
  #---Genome-----------------------------------------------------------        
         ,tabPanel("Genome"
-                  ,value = 8
+                  ,value = 9
                   ,plotlyOutput("genomePlotly",height = "900px")
                   ,fluidRow(
                     column(3, selectInput(inputId = "MAwindowSize",
@@ -342,7 +372,7 @@ tags$head(
 
  #---Genome-----------------------------------------------------------                
         ,tabPanel("Promoter"
-                  ,value = 9
+                  ,value = 10
                   ,radioButtons("radio", label = NULL, choices = list("Upstream 300bp as promoter" = 300, 
                                                                      "Upstream 600bp as promoter" = 600),selected = 300),
                   tableOutput("promoter"), 
@@ -355,7 +385,7 @@ tags$head(
         )  
  #---STRING-----------------------------------------------------------
         ,tabPanel("STRING"
-                  ,value = 10 
+                  ,value = 11
                   ,h5("Your genes are sent to STRING-db website for enrichment analysis 
             and retrieval of a protein-protein network. We tries 
             to match your species with the archaeal, bacterial, 
@@ -390,7 +420,7 @@ tags$head(
 
  #---?-----------------------------------------------------------
         ,tabPanel("?"
-                  ,value = 11 
+                  ,value = 12 
                   ," For feedbacks, please"
                   ,a("contact us, ",href="mailto:gelabinfo@gmail.com?Subject=ShinyGO" )
                   , "or visit our",a(" homepage.", href="http://ge-lab.org/",target="_blank")
