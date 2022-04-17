@@ -116,7 +116,7 @@ tags$head(
                     "Charities and individuals verified by",
                     a(" GoFundMe.", href=("https://www.gofundme.com/en-ie/c/act/donate-to-ukraine-relief?utm_source=email&utm_medium=marketing&utm_content=annoucement&utm_campaign=022522_helpukraine_send14_dedicatedpage"))
                     ), br()
-                    ,p("April 8, 2022: Add features to remove redundant pathways. Add filter to remove extrmely largee or small pathways. Changed interface to always show KEGG tab.")
+                    ,p("April 8, 2022: Add features to remove redundant pathways. Add filter to remove extrmely large or small pathways. Changed interface to always show KEGG tab.")
                     ,p("Mar. 7, 2022: Fixed an R library issue affected KEGG diagrams for some organisms.")
                     ,p("Feb. 26, 2022: Fixed a bug regarding the Plot tab when background genes are used. Background genes were not correctly 
                     used to calculate the distributions of various gene characteristics. If these plots are important in your study, please re-analyze your genes.")
@@ -259,19 +259,17 @@ tags$head(
                                            label = h5("Chart type"),
                                            choices = c("lollipop", "dotplot", "barplot"),
                                            selected = "lollipop"
-                                           ) )
+                                           ))
                     ,column(3, selectInput(inputId = "enrichChartAspectRatio",
                                            label = h5("Aspect Ratio"),
                                            choices = .1* (5:20),
                                            selected = 1.5
                                            ))
-                    ,column(3, downloadButton('enrichChartDownloadPNG', 'High Resolution'))
-                    ,column(3, downloadButton('enrichChartDownload', 'PDF'))
+                    ,column(3, mod_download_images_ui("download_barplot"))
 
-                  ) # 3rd row
-                  
+                  ) # 3rd row       
         )
-
+                  
  #---Tree-----------------------------------------------------------
         ,tabPanel("Tree"
                   ,value = 4 
@@ -279,27 +277,9 @@ tags$head(
                       listed in the Enrichment tab. Pathways with many shared genes are clustered together. 
                         Bigger dots indicate more significant P-values.")
 
-
-                  ,fluidRow(
-                    column(3, numericInput(inputId = "treeWidth",
-                                           label = h5("Width for download"),
-                                           value = 10,
-                                           min = 6,
-                                           max = 18,
-                                           step = 1 ) )
-                    ,column(3, numericInput(inputId = "treeHeight",
-                                           label = h5("Height(inches)"),
-                                           value = 6,
-                                           min = 3,
-                                           max = 18,
-                                           step = 1 ))
-                    ,column(3, downloadButton('GOTermsTree4Download','Figure' ))
-                    ,column(3, h5("Some sizes may not work. Try different combinations. Figure needs to be wide as pathway names are long."))
-                    ,tags$style(type='text/css', "#GOTermsTree4Download { width:100%; margin-top: 25px;}")
-
-
-                  ) 
+                  ,mod_download_images_ui("download_tree")
                   ,plotOutput('GOTermsTree')
+
 
 
 

@@ -372,28 +372,28 @@ server <- function(input, output, session){
   
   output$GOTermsTree <- renderPlot({
     if(input$goButton == 0) return(NULL)
-    
     if(is.null(significantOverlaps2() ) ) return(NULL)
-    enrichmentPlot(significantOverlaps2(), 56  )
+    #enrichmentPlot(significantOverlaps2(), 56  )
+    tree_plot()
     
   }, height=770, width=1000)
   
- # output$GOTermsTree4Download2 <- downloadHandler(
- #   filename = "GO_terms_Tree.tiff",
- #   content = function(file) {
- #     tiff(file, width = input$treeWidth, height = input$treeHeight, units = 'in', res = 300, compression = 'lzw');
- #     enrichmentPlot(significantOverlaps2(), 45  )
- #     dev.off()
- #   })
-  output$GOTermsTree4Download <- downloadHandler(
-    filename = "GO_terms_Tree.svg",
-    content = function(file) {
-      svg(file, width = max(4, input$treeWidth, na.rm = TRUE), 
-        height = max(2, input$treeHeight, na.rm = TRUE)
-      );
-      enrichmentPlot(significantOverlaps2(), 45  )
-      dev.off()
-    })  
+  tree_plot <- reactive({
+    if(input$goButton == 0) return(NULL)
+    if(is.null(significantOverlaps2() ) ) return(NULL)
+    p <- enrichmentPlot(significantOverlaps2(), 45)
+    return(p)
+  })
+
+  download_tree <- mod_download_images_server(
+    "download_tree",
+    filename = "tree_plot",
+    figure = tree_plot(),
+    width = 10,
+    height = 8
+  )
+
+
   output$enrichmentNetworkPlot <- renderPlot({
     if(is.null(significantOverlaps4())) return(NULL)
     
@@ -1371,6 +1371,14 @@ server <- function(input, output, session){
    width = function(){ 
      round(500 * as.numeric(input$enrichChartAspectRatio))
    }
+  )
+
+  download_barplot <- mod_download_images_server(
+    "download_barplot",
+    filename = "barplot",
+    figure = enrichChartObject(),
+    width = 10,
+    height = 8
   )
 
   output$enrichChartDownload <- downloadHandler(
