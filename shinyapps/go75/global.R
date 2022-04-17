@@ -1120,16 +1120,17 @@ showGeneIDs <- function(species, nGenes = 10){
 #' By Emma Spors, Ben Derenge 
 #'
 #' @param id,input,output,session Internal parameters for {shiny}.
-#'
+#' @param label is the label for the download button
 #' @noRd
 #'
 #' @importFrom shiny NS tagList
-mod_download_images_ui <- function(id) {
+#' 
+mod_download_images_ui <- function(id, label = "Download Plot") {
   ns <- NS(id)
   tagList(
     actionButton(
       inputId = ns("download_popup"),
-      label = "Download Plot"
+      label = label
     )
   )
 }
