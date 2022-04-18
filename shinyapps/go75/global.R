@@ -1229,7 +1229,7 @@ mod_download_images_server <- function(id, filename, figure, width = 8, height =
           width = figure_width(),
           height = figure_height()
         )
-        print(figure)
+        print(figure())
         dev.off()
       }
     )
@@ -1247,7 +1247,7 @@ mod_download_images_server <- function(id, filename, figure, width = 8, height =
           height = figure_height(),
           units = "in"
         )
-        print(figure)
+        print(figure())
         dev.off()
       }
     )
@@ -1263,7 +1263,7 @@ mod_download_images_server <- function(id, filename, figure, width = 8, height =
           width = figure_width(),
           height = figure_height()
         )
-        print(figure)
+        print(figure())
         dev.off()
       }
     )
