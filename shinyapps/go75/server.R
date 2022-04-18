@@ -378,11 +378,15 @@ server <- function(input, output, session){
     tree_plot()
     
   }, 
-    height = function(){  # changes height according to terms linearly, min 350, max 1200
+   height = function(){ 
      round(max(350, min(1200, round(18 * as.numeric(input$maxTerms)))))
+   },
+   width = function(){ 
+     round( max(350, min(1200, round(18 * as.numeric(input$maxTerms)))) * as.numeric(input$treeChartAspectRatio) )
    }
-   #,width = 1000
    )
+
+   
   
   tree_plot <- reactive({
     if(input$goButton == 0) return(NULL)
@@ -396,8 +400,8 @@ server <- function(input, output, session){
     "download_tree",
     filename = "tree_plot",
     figure = tree_plot(),
-    width = 10,
-    height = 8
+    width = 8,
+    height = round(8 / as.numeric(input$treeChartAspectRatio), 1)
   )
 
 
