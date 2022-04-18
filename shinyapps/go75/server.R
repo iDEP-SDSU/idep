@@ -443,7 +443,7 @@ server <- function(input, output, session){
       ) %>% visExport(type = "jpeg", 
                       name = "export-network", 
                       float = "left", 
-                      label = "Export as an image (only what's visible on the screen!)", 
+                      label = "Export image", 
                       background = "white", 
                       style= "") 
   })	
@@ -1334,7 +1334,11 @@ server <- function(input, output, session){
                ylab(NULL) + 
                guides(size  = guide_legend(order = 2, title = names(columns)[columns == size]), 
                       color = guide_colorbar(order = 1)) +
-               theme(axis.text=element_text( size = fontSize) ) 
+               theme(axis.text=element_text(size = fontSize), axis.title=element_text(size = 12) ) +
+               theme(legend.title = element_text(size = 12), # decrease legend font
+                 legend.text = element_text(size = 12)) +
+               guides(shape = guide_legend(override.aes = list(size = 5))) +
+               guides(color = guide_legend(override.aes = list(size = 5)))
 
         if(input$enrichChartType == "dotplot") {
           p <- p 
@@ -1367,9 +1371,12 @@ server <- function(input, output, session){
   output$enrichChart <- renderPlot({
     enrichChartObject()
    }, 
-   height = 500, 
+   # height increases as the number of terms increase. max at 1200, min 350
+   height = function(){ 
+     round(max(350, min(1200, round(18 * as.numeric(input$maxTerms)))))
+   },
    width = function(){ 
-     round(500 * as.numeric(input$enrichChartAspectRatio))
+     round( max(350, min(1200, round(18 * as.numeric(input$maxTerms)))) * as.numeric(input$enrichChartAspectRatio) )
    }
   )
 
@@ -1377,34 +1384,11 @@ server <- function(input, output, session){
     "download_barplot",
     filename = "barplot",
     figure = enrichChartObject(),
-    width = 10,
-    height = 8
+    width = 8,
+    height = round(8 / as.numeric(input$enrichChartAspectRatio), 1)
   )
 
-  output$enrichChartDownload <- downloadHandler(
-    filename = "Enrichment_chart.pdf",
-    content = function(file) {
-      pdf(
-        file, 
-        width = round(6 * as.numeric(input$enrichChartAspectRatio)), 
-        height = 6
-      )
-      print(enrichChartObject())
-      dev.off()
-    })
 
-  output$enrichChartDownloadPNG <- downloadHandler(
-    filename = "Enrichment_chart.png",
-    content = function(file) {
-      png(
-        file, 
-        width = round(2500 * as.numeric(input$enrichChartAspectRatio)), 
-        height = 2500,
-        res = 360
-      )
-      print(enrichChartObject())
-      dev.off()
-    }) 
     
   output$listSigPathways <- renderUI({
     tem = input$selectOrg

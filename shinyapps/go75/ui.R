@@ -74,7 +74,10 @@ tags$head(
                                           "30" = 30,
                                           "40" = 40,
                                           "50" = 50,
+                                          "60" = 60,
+                                          "80" = 80,
                                           "100" = 100,
+                                          "200" = 200,
                                           "500" = 500),
                            selected = "20")
         )
@@ -191,20 +194,6 @@ tags$head(
 
         ) # enrichment tab
 
- #---KEGG-----------------------------------------------------------
-        ,tabPanel("KEGG"
-          ,value = 2 
-          ,conditionalPanel("input.selectGO != 'KEGG' "   			
-            ,br(),br()
-            ,h5("Please select KEGG from the pathway databases to conduct enrichment analysis first. 
-            Then you can visualize your genes on any of the significant pathways. Only for some species.")
-          )
-          ,conditionalPanel("input.selectGO == 'KEGG' "   
-            ,htmlOutput('listSigPathways')
-            ,br(),br(),imageOutput("KeggImage", width = "100%", height = "100%")				
-            ,h5("Your genes are highlighted in red. Downloading pathway diagram from KEGG can take 3 minutes. ")
-          )
-        )
 
  #---Enrichment Chart-----------------------------------------------------------
         ,tabPanel("Chart"
@@ -262,11 +251,10 @@ tags$head(
                                            ))
                     ,column(3, selectInput(inputId = "enrichChartAspectRatio",
                                            label = h5("Aspect Ratio"),
-                                           choices = .1* (5:20),
-                                           selected = 1.5
+                                           choices = .1* (5:30),
+                                           selected = 1.8
                                            ))
-                    ,column(3, mod_download_images_ui("download_barplot"))
-
+                    ,column(3, style = "margin-top: 25px;", mod_download_images_ui("download_barplot"))
                   ) # 3rd row       
         )
                   
@@ -279,10 +267,6 @@ tags$head(
 
                   ,mod_download_images_ui("download_tree")
                   ,plotOutput('GOTermsTree')
-
-
-
-
         )
 
  #---Enrichment network-------------------------------------------------------        
@@ -306,6 +290,21 @@ tags$head(
        Darker nodes are more significantly enriched gene sets. 
        Bigger nodes represent larger gene sets.  
        Thicker edges represent more overlapped genes.")               		   
+        )
+
+ #---KEGG-----------------------------------------------------------
+        ,tabPanel("KEGG"
+          ,value = 2 
+          ,conditionalPanel("input.selectGO != 'KEGG' "   			
+            ,br(),br()
+            ,h5("Please select KEGG from the pathway databases to conduct enrichment analysis first. 
+            Then you can visualize your genes on any of the significant pathways. Only for some species.")
+          )
+          ,conditionalPanel("input.selectGO == 'KEGG' "   
+            ,htmlOutput('listSigPathways')
+            ,br(),br(),imageOutput("KeggImage", width = "100%", height = "100%")				
+            ,h5("Your genes are highlighted in red. Downloading pathway diagram from KEGG can take 3 minutes. ")
+          )
         )
 
  #---Genes-----------------------------------------------------------        
