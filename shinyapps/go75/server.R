@@ -373,14 +373,21 @@ server <- function(input, output, session){
   output$GOTermsTree <- renderPlot({
     if(input$goButton == 0) return(NULL)
     if(is.null(significantOverlaps2() ) ) return(NULL)
+    tem = input$maxTerms
     #enrichmentPlot(significantOverlaps2(), 56  )
     tree_plot()
     
-  }, height=770, width=1000)
+  }, 
+    height = function(){  # changes height according to terms linearly, min 350, max 1200
+     round(max(350, min(1200, round(18 * as.numeric(input$maxTerms)))))
+   }
+   #,width = 1000
+   )
   
   tree_plot <- reactive({
     if(input$goButton == 0) return(NULL)
     if(is.null(significantOverlaps2() ) ) return(NULL)
+    tem = input$maxTerms
     p <- enrichmentPlot(significantOverlaps2(), 45)
     return(p)
   })
@@ -1292,6 +1299,7 @@ server <- function(input, output, session){
     tem = input$SortPathwaysPlotLowColor
     tem = input$enrichChartType
     tem = input$enrichChartAspectRatio
+    tem = input$maxTerms
 
     isolate( {
 
@@ -1388,8 +1396,7 @@ server <- function(input, output, session){
     height = round(8 / as.numeric(input$enrichChartAspectRatio), 1)
   )
 
-
-    
+   
   output$listSigPathways <- renderUI({
     tem = input$selectOrg
     if (input$goButton == 0 | is.null(significantOverlaps())) return(NULL)

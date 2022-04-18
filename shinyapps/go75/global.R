@@ -1143,17 +1143,19 @@ mod_download_images_ui <- function(id, label = "Download Plot") {
 #' @param filename is a name of the output file without extensions
 #' @param figure is a graphics object. Note that ggplot2 objects can 
 #' be directly used, while base R graphics, we need to use 
-#' the savePlot() function.
+#' the savePlot() function. 
+#' Unsolved: When the rendered image is changed because of an input change,
+#' the downloaded image does not update.
+#' 
 #' @param width specifies a default width in inches
 #' @param height specifies default height in inches
 #' 
 mod_download_images_server <- function(id, filename, figure, width = 8, height = 6) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
-    
+
     min_size <- 2 # min for width or height
     max_size <- 30 # max for width or height
-
     #Check width
     figure_width <- reactive({
       if (is.numeric(input$width)) {

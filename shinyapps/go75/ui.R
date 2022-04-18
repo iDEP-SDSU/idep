@@ -119,7 +119,7 @@ tags$head(
                     "Charities and individuals verified by",
                     a(" GoFundMe.", href=("https://www.gofundme.com/en-ie/c/act/donate-to-ukraine-relief?utm_source=email&utm_medium=marketing&utm_content=annoucement&utm_campaign=022522_helpukraine_send14_dedicatedpage"))
                     ), br()
-                    ,p("April 17, 2022: Add more flexiblity for download figures in PDF, SVG and high-res PNG")
+                    ,p("April 17, 2022: Add more flexiblity for download figures in PDF, SVG and high-res PNG.")
                     ,p("April 8, 2022: Add features to remove redundant pathways. Add filter to remove extrmely large or small pathways. Changed interface to always show KEGG tab.")
                     ,p("Mar. 7, 2022: Fixed an R library issue affected KEGG diagrams for some organisms.")
                     ,p("Feb. 26, 2022: Fixed a bug regarding the Plot tab when background genes are used. Background genes were not correctly 
@@ -264,7 +264,8 @@ tags$head(
                   ,value = 4 
                   ,h5("A hierarchical clustering tree summarizing the correlation among significant pathways 
                       listed in the Enrichment tab. Pathways with many shared genes are clustered together. 
-                        Bigger dots indicate more significant P-values.")
+                        Bigger dots indicate more significant P-values. The width of the plot can be 
+                        changed by adjusting the width of your browser window.")
 
                   ,mod_download_images_ui("download_tree")
                   ,plotOutput('GOTermsTree')
