@@ -269,7 +269,7 @@ tags$head(
                   ,fluidRow(
                     column(width = 3, selectInput(inputId = "treeChartAspectRatio",
                                            label = h5("Aspect Ratio"),
-                                           choices = .1* (15:40),
+                                           choices = .1* (5:40),
                                            selected = 2.5
                                            ))
 

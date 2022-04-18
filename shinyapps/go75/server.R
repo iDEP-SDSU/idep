@@ -382,7 +382,7 @@ server <- function(input, output, session){
      round(max(350, min(1200, round(18 * as.numeric(input$maxTerms)))))
    },
    width = function(){ 
-     round( max(350, min(1200, round(18 * as.numeric(input$maxTerms)))) * as.numeric(input$treeChartAspectRatio) )
+     round( max(350, min(800, round(18 * as.numeric(input$maxTerms)))) * as.numeric(input$treeChartAspectRatio) )
    }
    )
 
