@@ -129,6 +129,19 @@ server <- function(input, output, session){
 
         enrichment <- significantOverlapsAll()
         if(dim(enrichment$x)[2] > 1) {  # when there is no overlap, returns a data frame with 1 row and 1 column
+
+        #keep top pathways
+        if(input$SortPathways == "Select by FDR, Rank by Fold Enrichment" ) {
+          #sort by FDR
+          enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
+          #filter/top 20
+          if(dim(enrichment$x)[1] > as.integer(input$maxTerms)) {
+            enrichment$x <- enrichment$x[1:as.integer(input$maxTerms), ]
+          } 
+          # rank by fold
+          enrichment$x <- enrichment$x[order(enrichment$x[, 4], decreasing = TRUE), ] 
+        } else {
+        
           if(input$SortPathways == "Sort by FDR")
               enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
           if(input$SortPathways == "Sort by Fold Enrichment")
@@ -146,11 +159,14 @@ server <- function(input, output, session){
           }
 
         }
-        
         #keep top pathways
         if(dim(enrichment$x)[1] > as.integer(input$maxTerms)) {
           enrichment$x <- enrichment$x[1:as.integer(input$maxTerms), ]
         }
+
+        }
+        
+
         return(enrichment)
 
 
