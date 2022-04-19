@@ -255,7 +255,7 @@ tags$head(
                     ,column(3, selectInput(inputId = "enrichChartAspectRatio",
                                            label = h5("Aspect Ratio"),
                                            choices = .1* (5:30),
-                                           selected = 1.8
+                                           selected = 2
                                            ))
                     ,column(3, style = "margin-top: 25px;", mod_download_images_ui("download_barplot"))
                   ) # 3rd row       
