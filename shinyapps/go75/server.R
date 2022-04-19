@@ -3,7 +3,7 @@
 # co-author: Eric Tulowetzke, eric.tulowetzke@jacks.sdstate.edu
 # Lab: Ge Lab
 # R version 4.0.5
-# Project: ShinyGO v75
+# Project: ShinyGO v76
 # File: server.R
 # Purpose of file:main server logic of app
 # Start data: NA (mm-dd-yyyy)
