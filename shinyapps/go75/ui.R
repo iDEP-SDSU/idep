@@ -30,7 +30,7 @@ tags$head(
   sidebarLayout(
     
     sidebarPanel(
-      titlePanel("ShinyGO v0.75: Gene Ontology Enrichment Analysis + more"),  
+      titlePanel("ShinyGO 0.76: Gene Ontology Enrichment Analysis + more"),  
        h5("Select or search your species."),
        fluidRow( 
          column(9, selectizeInput('selectOrg', 
