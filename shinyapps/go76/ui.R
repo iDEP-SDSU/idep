@@ -167,10 +167,11 @@ tags$head(
                               label = NULL,
                               choices = c("Sort by FDR" = "Sort by FDR", 
                                           "Sort by Fold Enrichment" = "Sort by Fold Enrichment", 
-                                          "Sort by FDR & Fold Enrichment" = "Sort by FDR & Fold Enrichment", 
+                                          "Sort by average ranks(FDR & Fold)" = "Sort by FDR & Fold Enrichment", 
+                                          "Select by FDR, sort by Fold Enrichment" = "Select by FDR, Rank by Fold Enrichment", 
                                           "Sort by Genes" =  "Sort by Genes", 
                                           "Sort by Category Name" = "Sort by Category Name"),
-                              selected = "Sort by FDR & Fold Enrichment" ),
+                              selected = "Sort by FDR" ),
                      style="algn:right")
 
                  ,tableOutput('EnrichmentTable')	
@@ -191,7 +192,9 @@ tags$head(
 
                  ,p("Pathways are first filtered based on a user specified FDR cutoff. Then the siginificant pathways are sorted by FDR, 
                  Fold Enrichment, or other metrics.
-                    When 'Sort by FDR and Fold Enrichment' is selected, pathways are sorted by the average of the ranks by FDR and Fold Enrichment. 
+                    When 'Sort by average ranks(FDR & Fold)' is selected, pathways are sorted by the average of the ranks by FDR and Fold Enrichment. 
+                    By selecting 'Select by FDR, sort by Fold Enrichment', users first select the top pathways by FDR, 
+                    then these are sorted by Fold enrichment.
                     When 'Remove redundant pathway' is selected, similar pathways sharing 95% of genes are represented by the most significant pathway.
                     Pathways that are too big or too small are excluded from analysis using the Pathway Size limits.
                     ")
