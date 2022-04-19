@@ -440,7 +440,7 @@ hyperText <- function (textVector, urlVector){
 
 # Main function. Find a query set of genes enriched with functional category
 # For debug:  converted = converted(); gInfo = tem;  GO=input$selectGO; selectOrg=input$selectOrg;  minFDR=input$minFDR; input_maxTerms=input$maxTerms
-FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms, convertedB=NULL, gInfoB=NULL, reduced = FALSE, minSetSize = 2, maxSetSize = 4000) {
+FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR,  convertedB=NULL, gInfoB=NULL, reduced = FALSE, minSetSize = 2, maxSetSize = 4000) {
   idNotRecognized = list(x=as.data.frame("ID not recognized!"),
                          groupings= as.data.frame("ID not recognized!")  )
   if(is.null(converted) ) return(idNotRecognized) # no ID
@@ -654,7 +654,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
 			x <- x[which(tem), ]		
 		}
   # only keep top pathways by FDR
-  if(dim(x)[1] > as.integer(input_maxTerms) ) x = x[ 1:as.integer(input_maxTerms), ]
+ # if(dim(x)[1] > as.integer(input_maxTerms) ) x = x[ 1:as.integer(input_maxTerms), ]
 
   }
 
@@ -1144,8 +1144,6 @@ mod_download_images_ui <- function(id, label = "Download Plot") {
 #' @param figure is a graphics object. Note that ggplot2 objects can 
 #' be directly used, while base R graphics, we need to use 
 #' the savePlot() function. 
-#' Unsolved: When the rendered image is changed because of an input change,
-#' the downloaded image does not update.
 #' 
 #' @param width specifies a default width in inches
 #' @param height specifies default height in inches

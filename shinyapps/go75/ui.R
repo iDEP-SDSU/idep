@@ -165,6 +165,7 @@ tags$head(
                               label = NULL,
                               choices = c("Sort by FDR" = "Sort by FDR", 
                                           "Sort by Fold Enrichment" = "Sort by Fold Enrichment", 
+                                          "Sort by FDR & Fold Enrichment" = "Sort by FDR & Fold Enrichment", 
                                           "Sort by Genes" =  "Sort by Genes", 
                                           "Sort by Category Name" = "Sort by Category Name"),
                               selected = "Sort by Fold Enrichment" ),
@@ -186,8 +187,9 @@ tags$head(
                     As a measure of effect size, Fold Enrichment indicates how drastically genes of a certain pathway is overrepresented. 
                     This is a important metric, even though often ignored.")
 
-                 ,p("Pathways are first filtered based on a user specified FDR cutoff. Then the top 20 (default) most siginificant pathway are shown in the table.
-                    The pathways are sorted by Fold Enrichment by default.
+                 ,p("Pathways are first filtered based on a user specified FDR cutoff. Then the siginificant pathways are sorted by FDR, 
+                 Fold Enrichment, or other metrics.
+                    When 'Sort by FDR and Fold Enrichment' is selected, pathways are sorted by the average of the ranks by FDR and Fold Enrichment. 
                     When 'Remove redundant pathway' is selected, similar pathways sharing 95% of genes are represented by the most significant pathway.
                     Pathways that are too big or too small are excluded from analysis using the Pathway Size limits.
                     ")
