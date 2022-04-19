@@ -131,7 +131,7 @@ server <- function(input, output, session){
         if(dim(enrichment$x)[2] > 1) {  # when there is no overlap, returns a data frame with 1 row and 1 column
 
         #keep top pathways
-        if(input$SortPathways == "Select by FDR, Rank by Fold Enrichment" ) {
+        if(input$SortPathways == "Select by FDR, sort by Fold Enrichment" ) {
           #sort by FDR
           enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
           #filter/top 20

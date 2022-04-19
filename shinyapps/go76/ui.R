@@ -168,10 +168,10 @@ tags$head(
                               choices = c("Sort by FDR" = "Sort by FDR", 
                                           "Sort by Fold Enrichment" = "Sort by Fold Enrichment", 
                                           "Sort by average ranks(FDR & Fold)" = "Sort by FDR & Fold Enrichment", 
-                                          "Select by FDR, sort by Fold Enrichment" = "Select by FDR, Rank by Fold Enrichment", 
+                                          "Select by FDR, sort by Fold Enrichment" = "Select by FDR, sort by Fold Enrichment", 
                                           "Sort by Genes" =  "Sort by Genes", 
                                           "Sort by Category Name" = "Sort by Category Name"),
-                              selected = "Sort by FDR" ),
+                              selected = "Select by FDR, sort by Fold Enrichment"),
                      style="algn:right")
 
                  ,tableOutput('EnrichmentTable')	
