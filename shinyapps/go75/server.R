@@ -148,8 +148,8 @@ server <- function(input, output, session){
         }
         
         #keep top pathways
-        if(dim(enrichment$x)[1] > input$maxTerms) {
-          enrichment$x <- enrichment$x[1:input$maxTerms, ]
+        if(dim(enrichment$x)[1] > as.integer(input$maxTerms)) {
+          enrichment$x <- enrichment$x[1:as.integer(input$maxTerms), ]
         }
         return(enrichment)
 
@@ -400,10 +400,10 @@ server <- function(input, output, session){
     
   }, 
    height = function(){ 
-     round(max(350, min(900, round(18 * as.numeric(input$maxTerms)))))
+     round(max(350, min(2500, round(18 * as.numeric(input$maxTerms)))))
    },
    width = function(){ 
-     width1 <- round( max(350, min(900, round(18 * as.numeric(input$maxTerms)))) * as.numeric(input$treeChartAspectRatio) )
+     width1 <- round( max(350, min(1000, round(18 * as.numeric(input$maxTerms)))) * as.numeric(input$treeChartAspectRatio) )
      return(min(width1, 1000)) # max width is 1000
    }
    )
@@ -1407,10 +1407,10 @@ server <- function(input, output, session){
    }, 
    # height increases as the number of terms increase. max at 1200, min 350
    height = function(){ 
-     round(max(350, min(1200, round(18 * as.numeric(input$maxTerms)))))
+     round(max(350, min(2500, round(18 * as.numeric(input$maxTerms)))))
    },
    width = function(){ 
-     round( max(350, min(1200, round(18 * as.numeric(input$maxTerms)))) * as.numeric(input$enrichChartAspectRatio) )
+     round( max(350, min(2500, round(18 * as.numeric(input$maxTerms)))) * as.numeric(input$enrichChartAspectRatio) )
    }
   )
 
