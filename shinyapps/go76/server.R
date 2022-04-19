@@ -3,7 +3,7 @@
 # co-author: Eric Tulowetzke, eric.tulowetzke@jacks.sdstate.edu
 # Lab: Ge Lab
 # R version 4.0.5
-# Project: ShinyGO v75
+# Project: ShinyGO v76
 # File: server.R
 # Purpose of file:main server logic of app
 # Start data: NA (mm-dd-yyyy)
@@ -32,17 +32,19 @@ server <- function(input, output, session){
 
   #-----------hide tabs when N/A----------------------------------
   observeEvent(input$selectGO, {
-  # Show KEGG tab only when KEGG is selected
-    if(input$selectGO == "KEGG") {
-      showTab(inputId = "tabs", target = "2")
-    } else {
-     hideTab(inputId = "tabs", target = "2") 
-    }
+
+  # Show KEGG tab only when KEGG is selected  #disabled as of 4/8/2022. Confused biologists.
+    #if(input$selectGO == "KEGG") {
+    #  showTab(inputId = "tabs", target = "2")
+    #} else {
+    # hideTab(inputId = "tabs", target = "2") 
+    #}
+
   # Show Groups tab only when GOBP is selected
     if(input$selectGO == "GOBP" | input$selectGO == "GOCC" | input$selectGO == "GOMF" ) {
-      showTab(inputId = "tabs", target = "6")
+      showTab(inputId = "tabs", target = "7")
     } else {
-     hideTab(inputId = "tabs", target = "6") 
+     hideTab(inputId = "tabs", target = "7") 
     }
   })
 
@@ -60,10 +62,10 @@ server <- function(input, output, session){
 
   # this defines an reactive object that can be accessed from other rendering functions
   converted <- reactive({
-    if (input$goButton == 0)    return()
+    if (input$goButton == 0 | nchar(input$input_text) < 20)    return()
     
     convertID(input$input_text,input$selectOrg );
-    
+
   } )
   
   
@@ -93,13 +95,14 @@ server <- function(input, output, session){
     
   } )
   
-  significantOverlaps <- reactive({
-    if (input$goButton == 0 | is.null( input$selectGO) ) return()
-    tem = input$maxTerms
+  significantOverlapsAll <- reactive({
+    if (input$goButton == 0 | is.null( input$selectGO) | nchar(input$input_text) < 20 ) return()
     tem = input$minFDR
     tem = input$selectOrg
     tem = input$selectGO
-    tem = input$SortPathways
+    tem = input$removeRedudantSets
+    tem = input$minSetSize
+    tem = input$maxSetSize
 
     isolate({ 
       withProgress(message= sample(quotes,1),detail="enrichment analysis", {
@@ -108,20 +111,49 @@ server <- function(input, output, session){
         temb = geneInfoLookup_background(); 
         if(class(temb) == "data.frame")
           temb <- temb[which( temb$Set == "List"),]  	  
-        enrichment <- FindOverlap( converted(), tem, input$selectGO, input$selectOrg, input$minFDR, input$maxTerms, 
-                     converted_background(), temb )
-        if(input$SortPathways == "Sort by FDR")
-            enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
-        if(input$SortPathways == "Sort by Fold Enrichment")
-            enrichment$x <- enrichment$x[order(enrichment$x[, 4], decreasing = TRUE), ] 
-        if(input$SortPathways == "Sort by Genes")
-            enrichment$x <- enrichment$x[order(enrichment$x[, 2], decreasing = TRUE), ]  
-        if(input$SortPathways == "Sort by Category Name")
-            enrichment$x <- enrichment$x[order( enrichment$x[, 5]), ]  
+
+        if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
+
+        enrichment <- FindOverlap( converted(), tem, input$selectGO, input$selectOrg, input$minFDR, 
+                     converted_background(), temb, reduced = reduced, minSetSize = input$minSetSize, maxSetSize = input$maxSetSize  )
         return(enrichment)
 
       })
     })
+  })
+
+    # Filtering and ranking pathways
+    significantOverlaps <- reactive({
+    if (input$goButton == 0 | is.null( input$selectGO) | nchar(input$input_text) < 20 ) return()
+    if(is.null(significantOverlapsAll())) return(NULL)
+
+        enrichment <- significantOverlapsAll()
+        if(dim(enrichment$x)[2] > 1) {  # when there is no overlap, returns a data frame with 1 row and 1 column
+          if(input$SortPathways == "Sort by FDR")
+              enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
+          if(input$SortPathways == "Sort by Fold Enrichment")
+              enrichment$x <- enrichment$x[order(enrichment$x[, 4], decreasing = TRUE), ] 
+          if(input$SortPathways == "Sort by Genes")
+              enrichment$x <- enrichment$x[order(enrichment$x[, 2], decreasing = TRUE), ]  
+          if(input$SortPathways == "Sort by Category Name")
+              enrichment$x <- enrichment$x[order( enrichment$x[, 5]), ]  
+          if(input$SortPathways == "Sort by FDR & Fold Enrichment"){ 
+            fdr_rank <- rank( enrichment$x[, 1] ) # rank by FDR
+            fold_rank <- rank( -1 * enrichment$x[, 4]) # rank by fold_enrichment, descending
+            average_rank <- (fdr_rank + fold_rank) / 2
+              enrichment$x <- enrichment$x[order(average_rank), ]  
+
+          }
+
+        }
+        
+        #keep top pathways
+        if(dim(enrichment$x)[1] > as.integer(input$maxTerms)) {
+          enrichment$x <- enrichment$x[1:as.integer(input$maxTerms), ]
+        }
+        return(enrichment)
+
+
   })
     
   output$species <-renderTable({
@@ -361,20 +393,40 @@ server <- function(input, output, session){
   
   output$GOTermsTree <- renderPlot({
     if(input$goButton == 0) return(NULL)
-    
     if(is.null(significantOverlaps2() ) ) return(NULL)
-    enrichmentPlot(significantOverlaps2(), 56  )
+    tem = input$maxTerms
+    #enrichmentPlot(significantOverlaps2(), 56  )
+    tree_plot()
     
-  }, height=770, width=1000)
+  }, 
+   height = function(){ 
+     round(max(350, min(2500, round(18 * as.numeric(input$maxTerms)))))
+   },
+   width = function(){ 
+     width1 <- round( max(350, min(1000, round(18 * as.numeric(input$maxTerms)))) * as.numeric(input$treeChartAspectRatio) )
+     return(min(width1, 1000)) # max width is 1000
+   }
+   )
+
+   
   
-  output$GOTermsTree4Download <- downloadHandler(
-    filename = "GO_terms_Tree.tiff",
-    content = function(file) {
-      tiff(file, width = 10, height = 6, units = 'in', res = 300, compression = 'lzw');
-      enrichmentPlot(significantOverlaps2(), 45  )
-      dev.off()
-    })
-  
+  tree_plot <- reactive({
+    if(input$goButton == 0) return(NULL)
+    if(is.null(significantOverlaps2() ) ) return(NULL)
+    tem = input$maxTerms
+    p <- enrichmentPlot(significantOverlaps2(), 45)
+    return(p)
+  })
+
+  download_tree <- mod_download_images_server(
+    "download_tree",
+    filename = "tree_plot",
+    figure = reactive({ tree_plot() }),
+    width = 8,
+    height = round(8 / as.numeric(input$treeChartAspectRatio), 1)
+  )
+
+
   output$enrichmentNetworkPlot <- renderPlot({
     if(is.null(significantOverlaps4())) return(NULL)
     
@@ -424,7 +476,7 @@ server <- function(input, output, session){
       ) %>% visExport(type = "jpeg", 
                       name = "export-network", 
                       float = "left", 
-                      label = "Export as an image (only what's visible on the screen!)", 
+                      label = "Export image", 
                       background = "white", 
                       style= "") 
   })	
@@ -775,7 +827,7 @@ server <- function(input, output, session){
         selected = "All"
       }
     
-    selectInput("selectGO", label = h5("Pathway DB: Select KEGG for pathway diagrams"),
+    selectInput("selectGO", label = h5("Pathway database:"),
                 choices = choices,
                 selected = selected )    	
     
@@ -1273,6 +1325,7 @@ server <- function(input, output, session){
     tem = input$SortPathwaysPlotLowColor
     tem = input$enrichChartType
     tem = input$enrichChartAspectRatio
+    tem = input$maxTerms
 
     isolate( {
 
@@ -1315,7 +1368,11 @@ server <- function(input, output, session){
                ylab(NULL) + 
                guides(size  = guide_legend(order = 2, title = names(columns)[columns == size]), 
                       color = guide_colorbar(order = 1)) +
-               theme(axis.text=element_text( size = fontSize) ) 
+               theme(axis.text=element_text(size = fontSize), axis.title=element_text(size = 12) ) +
+               theme(legend.title = element_text(size = 12), # decrease legend font
+                 legend.text = element_text(size = 12)) +
+               guides(shape = guide_legend(override.aes = list(size = 5))) +
+               guides(color = guide_legend(override.aes = list(size = 5)))
 
         if(input$enrichChartType == "dotplot") {
           p <- p 
@@ -1348,37 +1405,24 @@ server <- function(input, output, session){
   output$enrichChart <- renderPlot({
     enrichChartObject()
    }, 
-   height = 500, 
+   # height increases as the number of terms increase. max at 1200, min 350
+   height = function(){ 
+     round(max(350, min(2500, round(18 * as.numeric(input$maxTerms)))))
+   },
    width = function(){ 
-     round(500 * as.numeric(input$enrichChartAspectRatio))
+     round( max(350, min(2500, round(18 * as.numeric(input$maxTerms)))) * as.numeric(input$enrichChartAspectRatio) )
    }
   )
 
-  output$enrichChartDownload <- downloadHandler(
-    filename = "Enrichment_chart.pdf",
-    content = function(file) {
-      pdf(
-        file, 
-        width = round(6 * as.numeric(input$enrichChartAspectRatio)), 
-        height = 6
-      )
-      print(enrichChartObject())
-      dev.off()
-    })
+  download_barplot <- mod_download_images_server(
+    "download_barplot",
+    filename = "barplot",
+    figure = reactive({ enrichChartObject() }),
+    width = 8,
+    height = round(8 / as.numeric(input$enrichChartAspectRatio), 1)
+  )
 
-  output$enrichChartDownloadPNG <- downloadHandler(
-    filename = "Enrichment_chart.png",
-    content = function(file) {
-      png(
-        file, 
-        width = round(2500 * as.numeric(input$enrichChartAspectRatio)), 
-        height = 2500,
-        res = 360
-      )
-      print(enrichChartObject())
-      dev.off()
-    }) 
-    
+   
   output$listSigPathways <- renderUI({
     tem = input$selectOrg
     if (input$goButton == 0 | is.null(significantOverlaps())) return(NULL)

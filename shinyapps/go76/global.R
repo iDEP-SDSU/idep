@@ -32,6 +32,7 @@ PvalGeneInfo = 0.05; minGenes = 10 # min number of genes for plotting
 PvalGeneInfo1 = 0.01
 PvalGeneInfo2 = 0.001
 maxGenesBackground = 30000
+redudantGeneSetsRatio = 0.95 # remove redundant pathways if they share 90% of genes.
 pdf(NULL) # this prevents error Cannot open file 'Rplots.pdf'
 ExampleGeneList2=
 "Hus1 Rad1 Tp63 Tp73 Usp28 Rad9b Fanci Hus1b 
@@ -292,7 +293,7 @@ convertID <- function (query, selectOrg) {
 	# remove ' in gene ids				
 	# |\\.[0-9] remove anything after A35244.1 -> A35244  
 	#  some gene ids are like Glyma.01G002100
-	
+
 	querySet <- cleanGeneSet( unlist( strsplit( toupper(query),'\t| |\n|\\,|;')))
 	# querySet is ensgene data for example, ENSG00000198888, ENSG00000198763, ENSG00000198804
     querSetString <- paste0("('", paste(querySet,collapse="', '"),"')")
@@ -439,7 +440,7 @@ hyperText <- function (textVector, urlVector){
 
 # Main function. Find a query set of genes enriched with functional category
 # For debug:  converted = converted(); gInfo = tem;  GO=input$selectGO; selectOrg=input$selectOrg;  minFDR=input$minFDR; input_maxTerms=input$maxTerms
-FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms, convertedB=NULL, gInfoB=NULL) {
+FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR,  convertedB=NULL, gInfoB=NULL, reduced = FALSE, minSetSize = 2, maxSetSize = 4000) {
   idNotRecognized = list(x=as.data.frame("ID not recognized!"),
                          groupings= as.data.frame("ID not recognized!")  )
   if(is.null(converted) ) return(idNotRecognized) # no ID
@@ -595,10 +596,14 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
         # number of genes in pathways in background genes  
         x$n <- as.numeric(x2$overlapB)     
       }
-  
+
   # end background genes------------------------------------------------------------
-  
-  x$FDR <- p.adjust(x$Pval, method="fdr")
+  x <- x[as.integer(x$n) > minSetSize, ]  # filter out smaller geneset
+  x <- x[as.integer(x$n) < maxSetSize, ]  # filter out big genesets
+  if(nrow(x) == 0)
+    return(list( x=as.data.frame("None of the selected genes are in the background genes!" )) )
+
+    x$FDR <- p.adjust(x$Pval, method="fdr")
   x <- x[order(x$FDR), ]  # sort according to FDR
 
 
@@ -622,7 +627,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
 
   if(min(x$FDR, na.rm = TRUE) > minFDR) x=as.data.frame("No significant enrichment found!") else {
   x <- x[which(x$FDR < minFDR),]
-  if(dim(x)[1] > as.integer(input_maxTerms) ) x = x[ 1:as.integer(input_maxTerms), ]
+
   x= cbind(x,sapply( x$pathwayID, sharedGenesPrefered ) )
  
   colnames(x)[9]= "Genes"
@@ -631,6 +636,26 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR, input_maxTerms
   x <- x[order(x$FDR), ] # sort by FDR   4/1/2022 related to issue 23
   x <- x[!duplicated(x$description), ] # remove duplicates   4/1/2022
   colnames(x) = c("Enrichment FDR", "nGenes",  "Pathway Genes", "Fold Enrichment","Pathway","URL", "Genes"  )
+
+		# remove redudant gene sets
+		if(reduced != FALSE && dim(x)[1] > 5){  # reduced=FALSE no filtering,  reduced = 0.9 filter sets overlap with 90%
+			n=  nrow(x)
+			tem=rep(TRUE, n )
+      # note that it has to be two space characters for splitting 
+			geneLists = lapply(x$Genes, function(y) unlist( strsplit(as.character(y),"  " )   ) )
+			for( i in 2:n)
+				for( j in 1:(i-1) ) { 
+				  if(tem[j]) { # skip if this one is already removed
+					  commonGenes = length(intersect(geneLists[[i]] ,geneLists[[j]] ) )
+					  if( commonGenes/ length(geneLists[[j]]) > reduced )
+						tem[i] = FALSE	
+				  }			
+				}								
+			x <- x[which(tem), ]		
+		}
+  # only keep top pathways by FDR
+ # if(dim(x)[1] > as.integer(input_maxTerms) ) x = x[ 1:as.integer(input_maxTerms), ]
+
   }
 
  dbDisconnect(pathway)
@@ -805,13 +830,17 @@ enrichmentPlot <- function( enrichedTerms, rightMargin=33) {
   leafSize = -log10(as.numeric( enrichedTerms$adj.Pval[ix] ) ) # leaf size represent P values
   leafSize = .9*(leafSize-min(leafSize))/(max( leafSize )-min(leafSize)+1e-50) + .1   # scale more aggressively
   # leafSize = 1.*(leafSize)/max( leafSize ) + .1   # ratio scaling, less agressive
+
+
 	dend %>% 
 	as.dendrogram(hang=-1) %>%
 	set("leaves_pch", 19) %>%   # type of marker
 	set("leaves_cex", leafSize) %>% #Size
 	set("leaves_col", leafColors[leafType]) %>% # up or down genes
 	plot(horiz=TRUE)
-	
+  
+	return(recordPlot())
+
   #legend("top",pch=19, col=leafColors[1:2],legend=levels(leafType),bty = "n",horiz =T  )
   # add legend using a second layer
   #	par(lend = 1)           # square line ends for the color legend
@@ -820,6 +849,7 @@ enrichmentPlot <- function( enrichedTerms, rightMargin=33) {
 	
   
 }
+
 
 # numChar=100 maximum number of characters
 # n=200  maximum number of nodes
@@ -1077,3 +1107,169 @@ showGeneIDs <- function(species, nGenes = 10){
     return(resultAll)
 
 }
+
+
+
+#' download_images UI Function
+#'
+#' @description A shiny Module to enable downloading figures. Main idea is to 
+#' create the plot in a reactive function, which returns a plot object. 
+#' Call this function to print to render for shiny app, 
+#' or export as PDF, png, or SVG files.
+#' This module can be reused throughout a Shiny app.
+#' By Emma Spors, Ben Derenge 
+#'
+#' @param id,input,output,session Internal parameters for {shiny}.
+#' @param label is the label for the download button
+#' @noRd
+#'
+#' @importFrom shiny NS tagList
+#' 
+mod_download_images_ui <- function(id, label = "Download Plot") {
+  ns <- NS(id)
+  tagList(
+    actionButton(
+      inputId = ns("download_popup"),
+      label = label
+    )
+  )
+}
+
+
+#' download_images Server Functions
+#'
+#' @noRd
+#' @param id is module id
+#' @param filename is a name of the output file without extensions
+#' @param figure is a graphics object. Note that ggplot2 objects can 
+#' be directly used, while base R graphics, we need to use 
+#' the savePlot() function. 
+#' 
+#' @param width specifies a default width in inches
+#' @param height specifies default height in inches
+#' 
+mod_download_images_server <- function(id, filename, figure, width = 8, height = 6) {
+  moduleServer(id, function(input, output, session) {
+    ns <- session$ns
+
+    min_size <- 2 # min for width or height
+    max_size <- 30 # max for width or height
+    #Check width
+    figure_width <- reactive({
+      if (is.numeric(input$width)) {
+        # cutoff the input value to a range as shiny does not enforce
+        return(max(min_size, min(max_size, input$width, na.rm = TRUE)))
+      } else {
+        # use default value when entered text
+        return(width)
+      }
+    })
+
+    #Check height
+    figure_height <- reactive({
+      if (is.numeric(input$width)) {
+        # cutoff the input value to a range as shiny does not enforce
+        return(max(min_size, min(max_size, input$height, na.rm = TRUE)))
+      } else {
+        # use default value when entered text
+        return(height)
+      }
+    })
+
+    # Generate a popup UI when clicked. You can do this in server function?
+    observeEvent(
+      input$download_popup,
+      {
+        showModal(
+          modalDialog(
+            numericInput(               #Figure width
+              inputId = ns("width"),
+              label = "Width (in)",
+              value = width,
+              min = min_size,
+              max = max_size
+            ),
+            numericInput(               #Figure Height
+              inputId = ns("height"),
+              label = "Height (in)",
+              value = height,
+              min = min_size,
+              max = max_size
+            ),
+            h5("The plot will be rendered differently depending on size. When the dimensions are too small, 
+            error or blank plot will be generated."),
+            downloadButton(             #buttons
+              outputId = ns("dl_pdf"),
+              label = "PDF"
+            ),
+            downloadButton(
+              outputId = ns("dl_png"),
+              label = "PNG"
+            ),
+            downloadButton(
+              outputId = ns("dl_svg"),
+              label = "SVG"
+            ),
+            size = "s" # small dialog modal
+          )
+        )
+      }
+    )
+    
+    # Download PDF
+    output$dl_pdf <- downloadHandler(
+      filename = paste0(filename, ".pdf"),
+      content = function(file) {
+        # remove popup when downloaded
+        #on.exit(removeModal())
+        pdf(
+          file,
+          width = figure_width(),
+          height = figure_height()
+        )
+        print(figure())
+        dev.off()
+      }
+    )
+    
+    # Download PNG
+    output$dl_png <- downloadHandler(
+      filename = paste0(filename, ".png"),
+      content = function(file) {
+        # remove popup when downloaded
+        #on.exit(removeModal())
+        png(
+          file,
+          res = 360,
+          width = figure_width(),
+          height = figure_height(),
+          units = "in"
+        )
+        print(figure())
+        dev.off()
+      }
+    )
+
+    #download SVG
+    output$dl_svg <- downloadHandler(
+      filename = paste0(filename, ".svg"),
+      content = function(file) {
+        # remove popup when downloaded
+        #on.exit(removeModal())
+        svg(
+          file,
+          width = figure_width(),
+          height = figure_height()
+        )
+        print(figure())
+        dev.off()
+      }
+    )
+  })
+}
+
+## To be copied in the UI
+# mod_download_images_ui("download_images_ui_1")
+
+## To be copied in the server
+# mod_download_images_server("download_images_ui_1")

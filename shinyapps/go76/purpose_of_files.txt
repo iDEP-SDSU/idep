@@ -1,0 +1,32 @@
+Author: Eric Tulowetzke
+Lab: Ge Lab
+Project: iDEP v93
+File: README.md
+Purpose of file: Read me file for src folder for idep v93
+Start data: 06-06-2022 (mm-dd-yyyy)
+Data last modified: 06-06-2021, 12:46 PM CST (mm-dd-yyyy,TIME) 
+to help with github merge 
+
+
+All the files in this folder are source code files, for the current project. 
+I plan to treat this as an file where I can update on the purpose of each file in their progress. My current goal is to write a file for each specific task, this means to try to have shorter files which will make them easier to edit in the future I believe.
+
+File: gene_id_page_ser
+Status: done
+Purpose: server logic for second tab i.e. Gene ID Examples, which allow users view example of database
+
+File: server.R
+Status: done
+Purpose: Backend logic for application
+
+File: ui.R
+Status: done
+Purpose: Frontend logic for application
+
+File: global.R
+Status: done
+Purpose: global file for app (need more info here)
+
+File: purpose_of_package.txt
+Status: in-progess 
+Purpose: Explains use of each package
