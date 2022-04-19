@@ -95,13 +95,11 @@ server <- function(input, output, session){
     
   } )
   
-  significantOverlaps <- reactive({
+  significantOverlapsAll <- reactive({
     if (input$goButton == 0 | is.null( input$selectGO) | nchar(input$input_text) < 20 ) return()
-    tem = input$maxTerms
     tem = input$minFDR
     tem = input$selectOrg
     tem = input$selectGO
-    tem = input$SortPathways
     tem = input$removeRedudantSets
     tem = input$minSetSize
     tem = input$maxSetSize
@@ -116,9 +114,20 @@ server <- function(input, output, session){
 
         if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
 
-        enrichment <- FindOverlap( converted(), tem, input$selectGO, input$selectOrg, input$minFDR, input$maxTerms, 
+        enrichment <- FindOverlap( converted(), tem, input$selectGO, input$selectOrg, input$minFDR, 
                      converted_background(), temb, reduced = reduced, minSetSize = input$minSetSize, maxSetSize = input$maxSetSize  )
+        return(enrichment)
 
+      })
+    })
+  })
+
+    # Filtering and ranking pathways
+    significantOverlaps <- reactive({
+    if (input$goButton == 0 | is.null( input$selectGO) | nchar(input$input_text) < 20 ) return()
+    if(is.null(significantOverlapsAll())) return(NULL)
+
+        enrichment <- significantOverlapsAll()
         if(dim(enrichment$x)[2] > 1) {  # when there is no overlap, returns a data frame with 1 row and 1 column
           if(input$SortPathways == "Sort by FDR")
               enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
@@ -128,11 +137,23 @@ server <- function(input, output, session){
               enrichment$x <- enrichment$x[order(enrichment$x[, 2], decreasing = TRUE), ]  
           if(input$SortPathways == "Sort by Category Name")
               enrichment$x <- enrichment$x[order( enrichment$x[, 5]), ]  
+          if(input$SortPathways == "Sort by FDR & Fold Enrichment"){ 
+            fdr_rank <- rank( enrichment$x[, 1] ) # rank by FDR
+            fold_rank <- rank( -1 * enrichment$x[, 4]) # rank by fold_enrichment, descending
+            average_rank <- (fdr_rank + fold_rank) / 2
+              enrichment$x <- enrichment$x[order(average_rank), ]  
+
+          }
+
+        }
+        
+        #keep top pathways
+        if(dim(enrichment$x)[1] > input$maxTerms) {
+          enrichment$x <- enrichment$x[1:input$maxTerms, ]
         }
         return(enrichment)
 
-      })
-    })
+
   })
     
   output$species <-renderTable({
