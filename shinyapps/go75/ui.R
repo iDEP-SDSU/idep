@@ -168,7 +168,7 @@ tags$head(
                                           "Sort by FDR & Fold Enrichment" = "Sort by FDR & Fold Enrichment", 
                                           "Sort by Genes" =  "Sort by Genes", 
                                           "Sort by Category Name" = "Sort by Category Name"),
-                              selected = "Sort by Fold Enrichment" ),
+                              selected = "Sort by FDR & Fold Enrichment" ),
                      style="algn:right")
 
                  ,tableOutput('EnrichmentTable')	
