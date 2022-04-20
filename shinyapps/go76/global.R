@@ -440,7 +440,10 @@ hyperText <- function (textVector, urlVector){
 
 # Main function. Find a query set of genes enriched with functional category
 # For debug:  converted = converted(); gInfo = tem;  GO=input$selectGO; selectOrg=input$selectOrg;  minFDR=input$minFDR; input_maxTerms=input$maxTerms
-FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR,  convertedB=NULL, gInfoB=NULL, reduced = FALSE, minSetSize = 2, maxSetSize = 4000) {
+FindOverlap <- function (converted, gInfo, GO, selectOrg, convertedB=NULL, gInfoB=NULL, minSetSize = 2, maxSetSize = 4000) {
+  minFDR <- 0.2  # internal cutoff; avoids passing a large number of pathways
+  maxTerms <- 1000 # only keep 1000 pathways at the most
+
   idNotRecognized = list(x=as.data.frame("ID not recognized!"),
                          groupings= as.data.frame("ID not recognized!")  )
   if(is.null(converted) ) return(idNotRecognized) # no ID
@@ -637,24 +640,10 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, minFDR,  convertedB=NU
   x <- x[!duplicated(x$description), ] # remove duplicates   4/1/2022
   colnames(x) = c("Enrichment FDR", "nGenes",  "Pathway Genes", "Fold Enrichment","Pathway","URL", "Genes"  )
 
-		# remove redudant gene sets
-		if(reduced != FALSE && dim(x)[1] > 5){  # reduced=FALSE no filtering,  reduced = 0.9 filter sets overlap with 90%
-			n=  nrow(x)
-			tem=rep(TRUE, n )
-      # note that it has to be two space characters for splitting 
-			geneLists = lapply(x$Genes, function(y) unlist( strsplit(as.character(y),"  " )   ) )
-			for( i in 2:n)
-				for( j in 1:(i-1) ) { 
-				  if(tem[j]) { # skip if this one is already removed
-					  commonGenes = length(intersect(geneLists[[i]] ,geneLists[[j]] ) )
-					  if( commonGenes/ length(geneLists[[j]]) > reduced )
-						tem[i] = FALSE	
-				  }			
-				}								
-			x <- x[which(tem), ]		
-		}
-  # only keep top pathways by FDR
- # if(dim(x)[1] > as.integer(input_maxTerms) ) x = x[ 1:as.integer(input_maxTerms), ]
+
+
+  # only keep 1000 pathways at the most
+  if(dim(x)[1] > maxTerms ) x = x[ 1:maxTerms, ]
 
   }
 
