@@ -219,7 +219,33 @@ server <- function(input, output, session){
       
     }) # avoid showing things initially
   }, digits = -1,spacing="s",striped=TRUE,bordered = TRUE, width = "auto",hover=T)
- 
+
+
+    # Species match message ---------- stole from Gavin's code 4/20/22
+    observe({
+      req(input$selectOrg == speciesChoice[[1]]  # best matching species
+        && input$tabs == "1"                     # first tab
+        && !is.null(converted())                # finished
+      )
+      showNotification(
+        ui = paste(gsub('\\(.*' ,"", converted()$speciesMatched[1, ]), 
+                    " is the best matchin species. If that is not your
+                    species, please use the dropdown to select
+                    the correct species."),
+        id = "species_match",
+        duration = NULL,
+        type = "error"
+      )
+    })
+
+    # Remove message if the tab changes --------
+    observe({
+      req(input$tabs != "1")
+      removeNotification("species_match")
+    })
+
+
+
   output$showGeneIDs4Species <-renderTable({
     if (input$userSpecieIDexample == 0)    return()
       withProgress(message="Retrieving gene IDs (2 minutes)", {
