@@ -229,9 +229,9 @@ server <- function(input, output, session){
       )
       showNotification(
         ui = paste(gsub('\\(.*' ,"", converted()$speciesMatched[1, ]), 
-                    " is the best matchin species. If that is not your
-                    species, please use the dropdown to select
-                    the correct species."),
+                    " is the best matchin species. If that is incorrect,
+                     please use the dropdown to select
+                    your species."),
         id = "species_match",
         duration = NULL,
         type = "error"
