@@ -84,7 +84,7 @@ tags$head(
       ),
       #tags$style(type='text/css', "#minFDR { width:100%;   margin-top:-15px}"),  
       # selectInput("selectOrg", label = NULL,"Best matching species",width='100%'),  
-      checkboxInput("removeRedudantSets", "Remove redundant pathways", value = TRUE),
+
 
       fluidRow( 
           column(6, numericInput( "minSetSize", 
@@ -103,6 +103,7 @@ tags$head(
         #tags$style(type='text/css', "#minSetSize { width:100%;   margin-top:-12px}"),
         #tags$style(type='text/css', "#maxSetSize { width:100%;   margin-top:-12px}"),
         
+      checkboxInput("removeRedudantSets", "Remove redundant pathways", value = TRUE),        
       tableOutput('species' ),
       actionButton("MGeneIDexamples", "Gene IDs examples"),
       h5("Try ", a(" iDEP", href="https://bioinformatics.sdstate.edu/idep/",target="_blank"), "for RNA-Seq data analysis")
