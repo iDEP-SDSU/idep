@@ -119,37 +119,54 @@ server <- function(input, output, session){
   })
 
     # Filtering and ranking pathways
-    significantOverlaps <- reactive({
+  significantOverlaps <- reactive({
     if (input$goButton == 0 | is.null( input$selectGO) | nchar(input$input_text) < 20 ) return()
     if(is.null(significantOverlapsAll())) return(NULL)
 
-        enrichment <- significantOverlapsAll()
-        if(dim(enrichment$x)[2] > 1) {  # when there is no overlap, returns a data frame with 1 row and 1 column
+    enrichment <- significantOverlapsAll()
+    withProgress(message= sample(quotes,1), detail="Filtering pathways", {
+      if(dim(enrichment$x)[2] > 1) {  # when there is no overlap, returns a data frame with 1 row and 1 column
 
         #filter by FDR-------------------------------------------------------------
         enrichment$x <- enrichment$x[enrichment$x[, 1] <= input$minFDR, ] 
 
+        # remove redudant gene sets-------------------------------------------
+        if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
+        incProgress(0.2)
+        # reduced=FALSE no filtering,  reduced = 0.9 filter sets overlap with 90%
+        if(reduced != FALSE && dim(enrichment$x)[1] > 5){  
+          n=  nrow(enrichment$x)
+          flag1=rep(TRUE, n )
+          # note that it has to be two space characters for splitting 
+          geneLists <- lapply(
+            enrichment$x$Genes, 
+            function(y) unlist(strsplit(as.character(y)," |  |   " )) 
+          )   
+          pathways <- lapply(
+            enrichment$x$Pathway, 
+            function(y) unlist( strsplit(as.character(y)," |  |   " )) 
+          )   
+          for( i in 2:n)
+            for( j in 1:(i-1) ) { 
+              if(flag1[j]) { # skip if this one is already removed
+                ratio1 = length(intersect(geneLists[[i]], geneLists[[j]])) / 
+                        length(    union(geneLists[[i]], geneLists[[j]]))
 
-		# remove redudant gene sets-------------------------------------------
-    if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
-		if(reduced != FALSE && dim(enrichment$x)[1] > 5){  # reduced=FALSE no filtering,  reduced = 0.9 filter sets overlap with 90%
-			n=  nrow(enrichment$x)
-			tem=rep(TRUE, n )
-      # note that it has to be two space characters for splitting 
-			geneLists = lapply(enrichment$x$Genes, function(y) unlist( strsplit(as.character(y),"  " )   ) )
-			for( i in 2:n)
-				for( j in 1:(i-1) ) { 
-				  if(tem[j]) { # skip if this one is already removed
-					  commonGenes = length(intersect(geneLists[[i]] ,geneLists[[j]] ) )
-					  if( commonGenes/ length(geneLists[[j]]) > reduced )
-						tem[i] = FALSE	
-				  }			
-				}								
-			enrichment$x <- enrichment$x[which(tem), ]		
-		}
-
-
-        
+                # if sufficient genes overlap
+                if( ratio1  > reduced ) {
+                  # are pathway names similar
+                   ratio2 = length(intersect(pathways[[i]], pathways[[j]])) / 
+                            length(    union(pathways[[i]], pathways[[j]]))
+                   # if 50% of the words in the pathway name shared
+                   if(ratio2 > 0.5) 
+                     flag1[i] = FALSE 
+                }
+              }			
+            }
+          # remove similar pathways
+          enrichment$x <- enrichment$x[which(flag1), ]
+        }
+        incProgress(0.4)              
         #Sort and keep top pathways -------------------------------------------------------
         if(input$SortPathways == "Select by FDR, sort by Fold Enrichment" ) {
           #sort by FDR
@@ -176,15 +193,15 @@ server <- function(input, output, session){
               enrichment$x <- enrichment$x[order(average_rank), ]  
           }
         }
+        incProgress(0.9)
         #keep top pathways
         if(dim(enrichment$x)[1] > as.integer(input$maxTerms)) {
           enrichment$x <- enrichment$x[1:as.integer(input$maxTerms), ]
         }
+      }
+    }) #progress bar
 
-        }
-        
-
-        return(enrichment)
+    return(enrichment)
 
 
   })
