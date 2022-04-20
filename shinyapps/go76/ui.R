@@ -27,10 +27,9 @@ tags$head(
   ))
 ),
 
-  sidebarLayout(
-    
+  sidebarLayout(    
     sidebarPanel(
-      titlePanel("ShinyGO 0.76: Gene Ontology Enrichment Analysis + more"),  
+       titlePanel("ShinyGO 0.76"),  
        h5("Select or search your species."),
        fluidRow( 
          column(9, selectizeInput('selectOrg', 
@@ -102,11 +101,11 @@ tags$head(
         ), # fluidRow
         #tags$style(type='text/css', "#minSetSize { width:100%;   margin-top:-12px}"),
         #tags$style(type='text/css', "#maxSetSize { width:100%;   margin-top:-12px}"),
-        
+
       checkboxInput("removeRedudantSets", "Remove redundant pathways", value = TRUE),        
-      tableOutput('species' ),
       actionButton("MGeneIDexamples", "Gene IDs examples"),
-      h5("Try ", a(" iDEP", href="https://bioinformatics.sdstate.edu/idep/",target="_blank"), "for RNA-Seq data analysis")
+      h5("Try ", a(" iDEP", href="https://bioinformatics.sdstate.edu/idep/",target="_blank"), "for RNA-Seq data analysis"),
+      tableOutput('species' )
 
 
     ), # sidebarPanel
@@ -114,40 +113,24 @@ tags$head(
       tabsetPanel(id = "tabs", type = "tabs",
         tabPanel("Enrichment" 
                  ,value = 1
-                 ,conditionalPanel("input.goButton == 0 "  # welcome screen                                   
-                    ,br(),h4("Trusted charities providing aid in Ukraine selected by ", a("CharityWatch.",
+                 ,conditionalPanel("input.goButton == 0 "  # welcome screen                                 
+                    ,h4("Trusted charities providing aid in Ukraine selected by ", a("CharityWatch.",
                     href="https://www.charitywatch.org/charity-donating-articles/top-rated-charities-providing-aid-in-ukraine"),
                     "Charities and individuals verified by",
                     a(" GoFundMe.", href=("https://www.gofundme.com/en-ie/c/act/donate-to-ukraine-relief?utm_source=email&utm_medium=marketing&utm_content=annoucement&utm_campaign=022522_helpukraine_send14_dedicatedpage"))
-                    ), br()
+                    ) 
                     ,p("April 19, 2022: ShinyGO 0.76 released. Improved pathway filtering, pathway sorting, figure downloading. 
                        Version 0.75 is available", a("here.", href="http://bioinformatics.sdstate.edu/go75"))
-                    ,p("April 17, 2022: Add more flexiblity for download figures in PDF, SVG and high-res PNG.")
-                    ,p("April 8, 2022: Add features to remove redundant pathways. Add filter to remove extrmely large or small pathways. Changed interface to always show KEGG tab.")
-                    ,p("Mar. 7, 2022: Fixed an R library issue affected KEGG diagrams for some organisms.")
-                    ,p("Feb. 26, 2022: Fixed a bug regarding the Plot tab when background genes are used. Background genes were not correctly 
-                    used to calculate the distributions of various gene characteristics. If these plots are important in your study, please re-analyze your genes.")
-                    ,p("Feb. 19, 2022: R upgraded from 4.05 to 4.1.2. This solved the STRING API issues. Some Bioconductor packages are also upgraded.", style = "color:red")
-                    ,p("Feb. 11, 2022: Like ShinyGO but your genome is not covered?", 
+                   ,p("Feb. 11, 2022: Like ShinyGO but your genome is not covered?", 
                     a("Customized ShinyGO", href="http://bioinformatics.sdstate.edu/goc/"), " is now available. 
                     Its database includes several custom genomes requested by users. To request to add a new species/genome, fill in this ", 
                     a("Form.", href="https://forms.gle/zLtLnqxkW187AgT76"), style = "color:red")
-                    ,p("Feb. 8, 2022: ShinyGO v0.75 officially released. Old versions are still available. See the last tab.", style = "color:red")
-                    ,p("Nov. 15, 2021: Database update. ShinyGO v0.75 available in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update to 11.5.")
-                    ,p("Oct25, 2021: Interactive genome plot. Identificantion of genomic regions signficantly enriched with user genes.")
-                    ,p("Oct.23, 2021: Version 0.741 A fully customizable enrichment chart! Switch between bar, dot or lollipop plots.  Detailed gene informations with links on the Genes tab.")
-                    ,p("Oct. 15, 2021: Version 0.74. Database updated to Ensembl Release 104 and STRING v11. We now recommends the use of background genes in enrichment analysis. V.0.74 is much faster with even large set of background genes.")
-                    ,p("We recently hired Jenny for database updates and user support.",
-                        a("Email Jenny ",href="mailto:gelabinfo@gmail.com?Subject=ShinyGO"),
+                   ,p(a("Email Jenny ",href="mailto:gelabinfo@gmail.com?Subject=ShinyGO"),
                         "for questions, suggestions or data contributions.") 
-
-                                   
-                                   #,h4("If your gene IDs are not recognized, please let us know. We might be able to add customized gene mappings to Ensembl gene IDs.")
-                                   
-                                   ,p("2/3/2020: Now published by", a("Bioinformatics.", href="https://doi.org/10.1093/bioinformatics/btz931",target="_blank"))
-                                   ,p("Just paste your gene list to get enriched GO terms and othe pathways for over 400 plant and animal species, 
-				    based on annotation from Ensembl , Ensembl plants and Ensembl Metazoa. An additional 5000 genomes 
-				    (including bacteria and fungi) are   annotated based on STRING-db (v.11). In addition, it also produces
+                    ,h3("A graphical tool for gene enrichment analysis")                                        
+                    ,p("Just paste your gene list to get enriched GO terms and othe pathways for over 420 plant and animal species, 
+				    based on annotation from Ensembl, Ensembl plants and Ensembl Metazoa. An additional 5000 genomes 
+				    (including bacteria and fungi) are annotated based on STRING-db (v.11). In addition, it also produces
 				    KEGG pathway diagrams with your genes highlighted, hierarchical clustering trees and networks summarizing 
 				    overlapping terms/pathways, protein-protein interaction networks, gene characterristics plots, and enriched promoter motifs. 
                  See example outputs below:")			
@@ -434,7 +417,7 @@ tags$head(
         )	
 
  #---?-----------------------------------------------------------
-        ,tabPanel("?"
+        ,tabPanel("About"
                   ,value = 12
                   ," For feedbacks, please"
                   ,a("contact us, ",href="mailto:gelabinfo@gmail.com?Subject=ShinyGO" )
@@ -446,55 +429,51 @@ tags$head(
                   ,br(),br()
                   ,strong("Citation:")
                   ,br()
-                  ,"Ge SX, Jung D & Yao R,", a(" Bioinformatics 2020", href="https://doi.org/10.1093/bioinformatics/btz931", target="_blank")
+                  ,"Ge SX, Jung D & Yao R,", a(" Bioinformatics 2020.", href="https://doi.org/10.1093/bioinformatics/btz931", target="_blank")
+                  ," If you use the KEGG diagram, please also cite the papers for ", 
+                  a("pathview, ", href="https://doi.org/10.1093/bioinformatics/btt285"), "and ",
+                  a("KEGG.", href="https://doi.org/10.1093/nar/gkaa970")              
+
                   ,br(),br()
                   ,strong("Previous versions (still functional):")
                   ,br()
                   ,a("ShinyGO V0.75, "
                      , href="http://bioinformatics.sdstate.edu/go75/")
-                  ,"based on database derived from Ensembl Release 104 with revision, archived on April 4, 2022"
+                  ,"based on Ensembl Release 104 with revision, archived on April 4, 2022"
                   ,br()
                   ,a("ShinyGO V0.74, "
                      , href="http://bioinformatics.sdstate.edu/go74/")
-                  ,"based on database derived from Ensembl Release 104, archived on Feb. 8, 2022"
+                  ,"based on Ensembl Release 104, archived on Feb. 8, 2022"
                   ,br()
                   ,a("ShinyGO V0.65, "
                      , href="http://bioinformatics.sdstate.edu/go65/")
-                  ,"based on database derived from Ensembl Release 103, archived on Oct. 15, 2021"
+                  ,"based on Ensembl Release 103, archived on Oct. 15, 2021"
                   ,br()
                   ,a("ShinyGO V0.61, "
                      , href="http://bioinformatics.sdstate.edu/go61/")
-                  ,"based on database derived from Ensembl Release 96, archived on May 23, 2020"
+                  ,"based on Ensembl Release 96, archived on May 23, 2020"
                   ,br()		 
                   ,a("ShinyGO V0.60, "
                      , href="http://bioinformatics.sdstate.edu/go60/")
-                  ,"based on database derived from Ensembl BioMart version 96, archived on Nov 6, 2019"
+                  ,"based on Ensembl Release version 96, archived on Nov 6, 2019"
                   ,br()
                   ,a("ShinyGO V0.51, "
                      , href="http://bioinformatics.sdstate.edu/go51/")
-                  ,"based on database derived from Ensembl BioMart version 95, archived on May 20, 2019"
+                  ,"based on Ensembl Release version 95, archived on May 20, 2019"
                   ,br()
                   ,a("ShinyGO V0.50, "
                      , href="http://bioinformatics.sdstate.edu/go50/")
-                  ,"based on database derived from Ensembl BioMart version 92, archived on March 29, 2019"
+                  ,"based on Ensembl Release version 92, archived on March 29, 2019"
                   ,br()		
                   ,a("ShinyGO V0.41, "
                      , href="http://bioinformatics.sdstate.edu/go41/")
-                  ,"based on database derived from Ensembl BioMart version 91, archived on July 11, 2018"
+                  ,"based on Ensembl Release version 91, archived on July 11, 2018"
                   ,br()
                   
-                  ,h5( "Based on gene onotlogy (GO) annotation and gene ID mapping of ",
-                       a( "315 animal and  plant genomes ",href="https://idepsite.wordpress.com/species/",target="_blank"), 
-                       "in Ensembl BioMart release 96 as of 5/20/2019."	 
-                       , "In addition, 115 archaeal, 1678 bacterial, and 238 eukaryotic genomes are annotated based on STRING-db v10. 
-            Additional pathway data are being collected for some model species from difference sources."
+                 
                        ,h5( "Genomes based on STRING-db is marked as STRING-db. If the same genome is included in both Ensembl and STRING-db, users should 
             use Ensembl annotation, as it is more updated and is supported in more functional modules. ")
-                       ,includeHTML("human_mouse_source.html")
-                       
-                       ,br()
-                       ,br(),br()
-                       
+
                        #,includeHTML("help.htm")
                        ,h4("Input:")
                        ,"A list of gene ids, separated by tab, space, comma or the newline characters.
@@ -523,9 +502,23 @@ tags$head(
                        ,br(),br()	
                        ,"ShinyGO also detects transcription factor (TF) binding motifs enriched in the promoters of user's genes."
                        ,br(),br(),img(src='promoter.png', align = "center",width="717", height="288")			 
-                       
+
+                       ,includeHTML("human_mouse_source.html")                       
                        
                        ,br(),h4("Changes:")
+                     ,p("April 17, 2022: Add more flexiblity for download figures in PDF, SVG and high-res PNG.")
+                    ,p("April 8, 2022: Add features to remove redundant pathways. Add filter to remove extrmely large or small pathways. Changed interface to always show KEGG tab.")
+                    ,p("Mar. 7, 2022: Fixed an R library issue affected KEGG diagrams for some organisms.")
+                    ,p("Feb. 26, 2022: Fixed a bug regarding the Plot tab when background genes are used. Background genes were not correctly 
+                    used to calculate the distributions of various gene characteristics. If these plots are important in your study, please re-analyze your genes.")
+                    ,p("Feb. 19, 2022: R upgraded from 4.05 to 4.1.2. This solved the STRING API issues. Some Bioconductor packages are also upgraded.", style = "color:red")
+ 
+                    ,p("Feb. 8, 2022: ShinyGO v0.75 officially released. Old versions are still available. See the last tab.", style = "color:red")
+                    ,p("Nov. 15, 2021: Database update. ShinyGO v0.75 available in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update to 11.5.")
+                    ,p("Oct25, 2021: Interactive genome plot. Identificantion of genomic regions signficantly enriched with user genes.")
+                    ,p("Oct.23, 2021: Version 0.741 A fully customizable enrichment chart! Switch between bar, dot or lollipop plots.  Detailed gene informations with links on the Genes tab.")
+                    ,p("Oct. 15, 2021: Version 0.74. Database updated to Ensembl Release 104 and STRING v11. We now recommends the use of background genes in enrichment analysis. V.0.74 is much faster with even large set of background genes.")
+ 
                        ,h5("6/6/2021: V0.66 Adjusted interface. ")
                        ,h5("6/2/2021: V0.66 add customized background genes.")
                        ,h5("5/23/2021: V0.65 Database update to Ensembl 103 and STRING-db v11.")
@@ -537,7 +530,7 @@ tags$head(
                        ,h5("4/27/2018: V0.41 Change to ggplot2, add grid and gridExtra packages")		
                        ,h5("4/24/2018: V0.4 Add STRING API, KEGG diagram, tree display and network.")
                        
-                  ) ) 	
+                  )	
       ) #tabsetPanel
       ,bsModal("ModalExamplePPI", "Protein-protein interaction(PPIs) networks ", "ModalPPI", size = "large"
                ,h5("By sending your genes to the STRING website, 
