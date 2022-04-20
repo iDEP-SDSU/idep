@@ -160,27 +160,32 @@ tags$head(
 
                  ,tableOutput('EnrichmentTable')	
                  ,conditionalPanel("input.goButton != 0", 
-                                   downloadButton('downloadEnrichment', 'Download table with gene IDs')			
-                                   ,br(),br()
+                                   downloadButton('downloadEnrichment', 'Top Pathways shown above'),
+                                   downloadButton('downloadEnrichmentAll', 'All Significant Pathways'),                                   			
+                                   br(),br()
                  
 
                  ,p("All query genes are first converted to ENSEMBL gene IDs or STRING-db protein IDs. Our gene ID mapping and pathway 
-                     data are mostly derived from these two sources. For the 20 widely studied species, we also manually collected a
-                     large number of pathway databases from various sources.")
+                     data are mostly derived from these two sources. For the 20 most studied species, we also manually collected a
+                     large number of pathwaysfrom various public databases.")
                  ,p("FDR is calculated based on nominal P-value from the hypergeometric test. Fold Enrichment is defined as the percentage 
                     of genes in your list belonging to a pathway, divided by the corresponding percentage in the 
                     background. FDR tells us how likely the enrichment is by chance. Due to increased statistical power, 
-                    large pathways tend to have smaller FDR.
+                    large pathways tend to have smaller FDRs.
                     As a measure of effect size, Fold Enrichment indicates how drastically genes of a certain pathway is overrepresented. 
                     This is a important metric, even though often ignored.")
 
-                 ,p("Pathways are first filtered based on a user specified FDR cutoff. Then the siginificant pathways are sorted by FDR, 
-                 Fold Enrichment, or other metrics.
-                    When 'Sort by average ranks(FDR & Fold)' is selected, pathways are sorted by the average of the ranks by FDR and Fold Enrichment. 
-                    By selecting 'Select by FDR, sort by Fold Enrichment', users first select the top pathways by FDR, 
-                    then these are sorted by Fold enrichment.
+                 ,p("Only pathways that are within the specified size limits are used for enrichment analysis.
+                    After the analysis is done, pathways are first filtered based on a user specified FDR cutoff. 
+                    Then the siginificant pathways are sorted by FDR, Fold Enrichment, or other metrics.
+                    When 'Sort by average ranks(FDR & Fold)' is selected, significant pathways are 
+                    sorted by the average of the ranks by FDR and Fold Enrichment. 
+                    By selecting 'Select by FDR, sort by Fold Enrichment', 
+                    users first select the top pathways by FDR, 
+                    then these are sorted by Fold Enrichment.
                     When 'Remove redundant pathway' is selected, similar pathways sharing 95% of genes are represented by the most significant pathway.
-                    Pathways that are too big or too small are excluded from analysis using the Pathway Size limits.
+                    Redundant pathways also needs to share 50% the same words in their names.
+                    
                     ")
                  )	
 

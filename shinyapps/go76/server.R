@@ -128,7 +128,7 @@ server <- function(input, output, session){
       if(dim(enrichment$x)[2] > 1) {  # when there is no overlap, returns a data frame with 1 row and 1 column
 
         #filter by FDR-------------------------------------------------------------
-        enrichment$x <- enrichment$x[enrichment$x[, 1] <= input$minFDR, ] 
+        enrichment$x <- enrichment$x[enrichment$x[, 1] < input$minFDR, ] 
 
         # remove redudant gene sets-------------------------------------------
         if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
@@ -224,27 +224,18 @@ server <- function(input, output, session){
     # Species match message ---------- stole from Gavin's code 4/20/22
     observe({
       req(input$selectOrg == speciesChoice[[1]]  # best matching species
-        && input$tabs == "1"                     # first tab
         && !is.null(converted())                # finished
       )
       showNotification(
         ui = paste(gsub('\\(.*' ,"", converted()$speciesMatched[1, ]), 
-                    " is the best matchin species. If that is incorrect,
+                    ": is the best matching species. If that is incorrect,
                      please use the dropdown to select
                     your species."),
         id = "species_match",
         duration = NULL,
         type = "error"
-      )
+      )    
     })
-
-    # Remove message if the tab changes --------
-    observe({
-      req(input$tabs != "1")
-      removeNotification("species_match")
-    })
-
-
 
   output$showGeneIDs4Species <-renderTable({
     if (input$userSpecieIDexample == 0)    return()
@@ -625,7 +616,12 @@ server <- function(input, output, session){
     }
   )
  
-
+  output$downloadEnrichmentAll <- downloadHandler(
+    filename = function() {"enrichment_all.csv"},
+    content = function(file) {
+      write.csv(significantOverlapsAll()$x, file, row.names=FALSE)
+    }
+  )
 
 
   #----------------------------------------------------
