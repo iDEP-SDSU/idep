@@ -796,6 +796,7 @@ geneInfo <- function (converted,selectOrg){
 	if(length(ix) == 1)  # if only one file           #WBGene0000001 some ensembl gene ids in lower case
 	{ x = read.csv(as.character(geneInfoFiles[ix]) ); 
       x[,1]= toupper(x[,1]) 
+	  x$symbol <- gsub(" ", "", x$symbol) # remove spaces before gene symbol
       # if symbol is missing use Ensembl IDs
       x$symbol[ is.na( x$symbol) ] <- x[, 1]
       # if duplicated symbol, paste Ensembl id to the end
