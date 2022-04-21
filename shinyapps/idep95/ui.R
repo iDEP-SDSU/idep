@@ -132,6 +132,7 @@ iDEPversion,
                                    "charities and individuals verified by",
                                    a(" GoFundMe.", href=("https://www.gofundme.com/en-ie/c/act/donate-to-ukraine-relief?utm_source=email&utm_medium=marketing&utm_content=annoucement&utm_campaign=022522_helpukraine_send14_dedicatedpage"))
                                    ), br()
+      ,p("April 20, 2022: Plot one or more genes is now working. Bug fixed.")
       ,p("Mar. 7, 2022: Fixed an R library issue affected KEGG diagrams for some organisms.")
       ,p("Feb. 19, 2022: R upgraded from 4.05 to 4.1.2. This solved the STRING API issues. Some Bioconductor packages are also upgraded.", style = "color:red")
       ,p("Feb. 11, 2022: Like iDEP but your genome is not covered?", 
@@ -264,7 +265,7 @@ iDEPversion,
                  "examineDataB", size = "large", DT::dataTableOutput('examineData'))
          
         ,bsModal("modalExample1021", "Search for genes", "genePlot1", size = "large", 
-          textInput("geneSearch", "Enter full or partial gene ID, or list of genes separated by semicolon:", "HOXA1;e2f2;tp53"),
+          textInput("geneSearch", "Enter full or partial gene ID, or list of genes separated by semicolon:", "SNCA;Robo3;GAPDH"),
           checkboxInput("genePlotBox", label = "Show individual samples", value = FALSE),
           plotOutput("genePlot"),
           conditionalPanel("input.genePlotBox == 0", 
