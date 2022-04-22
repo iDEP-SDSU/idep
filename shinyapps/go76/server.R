@@ -500,8 +500,8 @@ server <- function(input, output, session){
     "download_tree",
     filename = "tree_plot",
     figure = reactive({ tree_plot() }),
-    width = 8,
-    height = round(8 / as.numeric(input$treeChartAspectRatio), 1)
+    width = 10,
+    height = round(10 / as.numeric(input$treeChartAspectRatio), 1)
   )
 
 
@@ -1503,7 +1503,7 @@ server <- function(input, output, session){
     "download_barplot",
     filename = "barplot",
     figure = reactive({ enrichChartObject() }),
-    width = 12,
+    width = 8,
     height = round(8 / as.numeric(input$enrichChartAspectRatio), 1)
   )
 
