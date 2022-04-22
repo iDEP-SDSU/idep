@@ -198,6 +198,17 @@ server <- function(input, output, session){
         if(dim(enrichment$x)[1] > as.integer(input$maxTerms)) {
           enrichment$x <- enrichment$x[1:as.integer(input$maxTerms), ]
         }
+
+        if(input$abbreviatePathway){
+          enrichment$x[, 5] <- gsub("Positive regulation", "Pos. reg.", enrichment$x[, 5])
+          enrichment$x[, 5] <- gsub("Negative regulation", "Neg. reg.", enrichment$x[, 5])
+          enrichment$x[, 5] <- gsub("Regulation", "Reg.", enrichment$x[, 5])
+          enrichment$x[, 5] <- gsub(" regulation ", " reg. ", enrichment$x[, 5])
+          enrichment$x[, 5] <- gsub(" process ", " proc. ", enrichment$x[, 5])
+          enrichment$x[, 5] <- substr(enrichment$x[, 5], 1, 80) #maximum 80 characters
+        }
+        
+
       }
     }) #progress bar
 
@@ -1398,6 +1409,7 @@ server <- function(input, output, session){
     tem = input$enrichChartType
     tem = input$enrichChartAspectRatio
     tem = input$maxTerms
+    tem = input$abbreviatePathway
 
     isolate( {
 
@@ -1405,6 +1417,7 @@ server <- function(input, output, session){
 
         # Remove spaces in col names
         colnames(goTable) <- gsub(" ","", colnames(goTable))
+
 
         x       = input$SortPathwaysPlotX  
         size    = input$SortPathwaysPlotSize
@@ -1490,7 +1503,7 @@ server <- function(input, output, session){
     "download_barplot",
     filename = "barplot",
     figure = reactive({ enrichChartObject() }),
-    width = 8,
+    width = 12,
     height = round(8 / as.numeric(input$enrichChartAspectRatio), 1)
   )
 
