@@ -270,7 +270,7 @@ tags$head(
                     column(width = 3, selectInput(inputId = "treeChartAspectRatio",
                                            label = h5("Aspect Ratio"),
                                            choices = .1* (5:40),
-                                           selected = 2.5
+                                           selected = 2
                                            ))
 
                     ,column(3, style = "margin-top: 25px;", mod_download_images_ui("download_tree", label = "Download"))
