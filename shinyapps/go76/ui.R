@@ -101,8 +101,11 @@ tags$head(
         ), # fluidRow
         #tags$style(type='text/css', "#minSetSize { width:100%;   margin-top:-12px}"),
         #tags$style(type='text/css', "#maxSetSize { width:100%;   margin-top:-12px}"),
-
-      checkboxInput("removeRedudantSets", "Remove redundant pathways", value = TRUE),        
+      fluidRow( 
+          column(6, checkboxInput("removeRedudantSets", "Remove redundancy", value = TRUE) ),
+          column(6, checkboxInput("abbreviatePathway", "Abbreviate pathways", value = TRUE))
+        ), # fluidRow
+             
       actionButton("MGeneIDexamples", "Gene IDs examples"),
       h5("Try ", a(" iDEP", href="https://bioinformatics.sdstate.edu/idep/",target="_blank"), "for RNA-Seq data analysis"),
       tableOutput('species' )
@@ -183,8 +186,9 @@ tags$head(
                     By selecting 'Select by FDR, sort by Fold Enrichment', 
                     users first select the top pathways by FDR, 
                     then these are sorted by Fold Enrichment.
-                    When 'Remove redundant pathway' is selected, similar pathways sharing 95% of genes are represented by the most significant pathway.
-                    Redundant pathways also needs to share 50% the same words in their names.
+                    When 'Remove redundancy' is selected, similar pathways sharing 95% of genes are represented by the most significant pathway.
+                    Redundant pathways also needs to share 50% of the words in their names. When 'Remove redundancy' is selected longer pathway names 
+                    are also represented by the first 80 characters. 
                     
                     ")
                  )	
