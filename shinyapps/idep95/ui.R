@@ -408,7 +408,7 @@ iDEPversion,
         ,htmlOutput("selectGO3")
         ,tags$style(type='text/css', "#selectGO3 { width:100%;   margin-top:-9px}")
         ,checkboxInput("removeRedudantSets", "Remove redudant genesets", value = TRUE)
-        ,checkboxInput("useFilteredAsBackground", "Filtered genes as background for enrichment", value = TRUE)
+        ,checkboxInput("useFilteredAsBackground", "Filtered genes as background for enrichment", value = FALSE)
         ,actionButton("ModalEnrichmentPlotKmeans", "Visualize enrichment")
         ,downloadButton('downloadKmeansGO',"Enrichment details")             
         ,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/k-means/",target="_blank")
@@ -649,7 +649,7 @@ iDEPversion,
         ,htmlOutput("selectGO2")
         ,checkboxInput("UseFilteredGenesEnrich", 
                          label = "Filtered genes as background for enrichment", 
-                         value = TRUE)
+                         value = FALSE)
         ,tags$style(type='text/css', "#selectGO2 { width:100%;   margin-top:-9px}")
         ,actionButton("ModalEnrichmentPlot", "Enrichment tree")
      
