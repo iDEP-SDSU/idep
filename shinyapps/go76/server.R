@@ -124,11 +124,46 @@ server <- function(input, output, session){
     if(is.null(significantOverlapsAll())) return(NULL)
 
     enrichment <- significantOverlapsAll()
-    withProgress(message= sample(quotes,1), detail="Filtering pathways", {
+    withProgress(message= sample(quotes,1), detail="Sorting and filtering pathways", {
       if(dim(enrichment$x)[2] > 1) {  # when there is no overlap, returns a data frame with 1 row and 1 column
 
         #filter by FDR-------------------------------------------------------------
         enrichment$x <- enrichment$x[enrichment$x[, 1] < input$minFDR, ] 
+
+        incProgress(0.1)    
+        #Sort and keep top pathways -------------------------------------------------------
+        if(input$SortPathways == "Select by FDR, sort by Fold Enrichment" ) {
+          #sort by FDR
+          enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
+          #filter/top 20
+          if(dim(enrichment$x)[1] > as.integer(input$maxTerms)) {
+            enrichment$x <- enrichment$x[1:as.integer(input$maxTerms), ]
+          } 
+          # rank by fold
+          enrichment$x <- enrichment$x[order(enrichment$x[, 4], decreasing = TRUE), ] 
+        } else {        
+          if(input$SortPathways == "Sort by FDR")
+              enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
+          if(input$SortPathways == "Sort by Fold Enrichment")
+              enrichment$x <- enrichment$x[order(enrichment$x[, 4], decreasing = TRUE), ] 
+          if(input$SortPathways == "Sort by Genes")
+              enrichment$x <- enrichment$x[order(enrichment$x[, 2], decreasing = TRUE), ]  
+          if(input$SortPathways == "Sort by Category Name")
+              enrichment$x <- enrichment$x[order( enrichment$x[, 5]), ]  
+          if(input$SortPathways == "Sort by FDR & Fold Enrichment"){ 
+            fdr_rank <- rank( enrichment$x[, 1] ) # rank by FDR
+            fold_rank <- rank( -1 * enrichment$x[, 4]) # rank by fold_enrichment, descending
+            average_rank <- (fdr_rank + fold_rank) / 2
+              enrichment$x <- enrichment$x[order(average_rank), ]  
+          }
+        }
+        incProgress(0.3)
+
+        #preliminary filtering to save time on string manipulations
+        if(dim(enrichment$x)[1] > 3 * as.integer(input$maxTerms)) {
+          enrichment$x <- enrichment$x[1: (3 * as.integer(input$maxTerms)), ]
+        }
+
 
         # remove redudant gene sets-------------------------------------------
         if(input$removeRedudantSets) reduced = redudantGeneSetsRatio else reduced = FALSE
@@ -166,34 +201,8 @@ server <- function(input, output, session){
           # remove similar pathways
           enrichment$x <- enrichment$x[which(flag1), ]
         }
-        incProgress(0.4)              
-        #Sort and keep top pathways -------------------------------------------------------
-        if(input$SortPathways == "Select by FDR, sort by Fold Enrichment" ) {
-          #sort by FDR
-          enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
-          #filter/top 20
-          if(dim(enrichment$x)[1] > as.integer(input$maxTerms)) {
-            enrichment$x <- enrichment$x[1:as.integer(input$maxTerms), ]
-          } 
-          # rank by fold
-          enrichment$x <- enrichment$x[order(enrichment$x[, 4], decreasing = TRUE), ] 
-        } else {        
-          if(input$SortPathways == "Sort by FDR")
-              enrichment$x <- enrichment$x[order(enrichment$x[, 1]), ] 
-          if(input$SortPathways == "Sort by Fold Enrichment")
-              enrichment$x <- enrichment$x[order(enrichment$x[, 4], decreasing = TRUE), ] 
-          if(input$SortPathways == "Sort by Genes")
-              enrichment$x <- enrichment$x[order(enrichment$x[, 2], decreasing = TRUE), ]  
-          if(input$SortPathways == "Sort by Category Name")
-              enrichment$x <- enrichment$x[order( enrichment$x[, 5]), ]  
-          if(input$SortPathways == "Sort by FDR & Fold Enrichment"){ 
-            fdr_rank <- rank( enrichment$x[, 1] ) # rank by FDR
-            fold_rank <- rank( -1 * enrichment$x[, 4]) # rank by fold_enrichment, descending
-            average_rank <- (fdr_rank + fold_rank) / 2
-              enrichment$x <- enrichment$x[order(average_rank), ]  
-          }
-        }
-        incProgress(0.9)
+        incProgress(0.9)  
+
         #keep top pathways
         if(dim(enrichment$x)[1] > as.integer(input$maxTerms)) {
           enrichment$x <- enrichment$x[1:as.integer(input$maxTerms), ]
