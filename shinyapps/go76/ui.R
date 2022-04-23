@@ -90,7 +90,7 @@ tags$head(
                                   label = h5("Pathway size: Min."), 
                                   min   = 2, 
                                   max   = 30, 
-                                  value = 5,
+                                  value = 2,
                                   step  = 1) ),
           column(6, numericInput( "maxSetSize", 
                                   label = h5("Max."), 
