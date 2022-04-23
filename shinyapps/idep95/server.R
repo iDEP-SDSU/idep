@@ -992,7 +992,8 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 	x$FDR = p.adjust(x$Pval,method="fdr")
 	x <- x[ order( x$FDR)  ,]  # sort according to FDR
 	
-
+	# only retain twice as many as final terms; this saves a lot of time
+    if(dim(x)[1] > 2 * maxTerms ) x = x[1:(2 * maxTerms), ]	
 	
 	if(min(x$FDR) > minFDR) x=as.data.frame("No significant enrichment found!") else {
 		x <- x[which(x$FDR < minFDR),] 
@@ -1003,21 +1004,41 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
 		colnames(x) = c("Corrected P value (FDR)", "Genes in list", "Total genes in category","Functional Category","Genes"  )
 
 		# remove redudant gene sets
-		if(reduced != FALSE && dim(x)[1] > 5){  # reduced=FALSE no filtering,  reduced = 0.9 filter sets overlap with 90%
-			n=  nrow(x)
-			tem=rep(TRUE,n )
-			geneLists = lapply(x$Genes, function(y) unlist( strsplit(as.character(y),"  " )   ) )
-			for( i in 2:n)
-				for( j in 1:(i-1) ) { 
-				  if(tem[j]) { # skip if this one is already removed
-					  commonGenes = length(intersect(geneLists[[i]] ,geneLists[[j]] ) )
-					  if( commonGenes/ length(geneLists[[j]] ) > reduced )
-						tem[i] = FALSE	
-				  }			
-				}								
-			x <- x[which(tem), ]		
+        if(reduced != FALSE && dim(x)[1] > 5){  
+          n=  nrow(x)
+          flag1=rep(TRUE, n )
+          # note that it has to be two space characters for splitting 
+          geneLists <- lapply(
+            x$Genes, 
+            function(y) unlist(strsplit(as.character(y)," |  |   " )) 
+          )   
+          pathways <- lapply(
+            x$'Functional Category', 
+            function(y) unlist( strsplit(as.character(y)," |  |   " )) 
+          )   
+          for( i in 2:n)
+            for( j in 1:(i-1) ) { 
+              if(flag1[j]) { # skip if this one is already removed
+                ratio1 = length(intersect(geneLists[[i]], geneLists[[j]])) / 
+                        length(    union(geneLists[[i]], geneLists[[j]]))
+
+                # if sufficient genes overlap
+                if( ratio1  > reduced ) {
+                  # are pathway names similar
+                   ratio2 = length(intersect(pathways[[i]], pathways[[j]])) / 
+                            length(    union(pathways[[i]], pathways[[j]]))
+                   # if 50% of the words in the pathway name shared
+                   if(ratio2 > 0.5) 
+                     flag1[i] = FALSE 
+                }
+              }			
+            }
+          # remove similar pathways
+          x <- x[which(flag1), ]
 		}
-	    if(dim(x)[1] > maxTerms ) x = x[1:maxTerms,]	
+
+
+
 
 	}
 			

@@ -132,6 +132,7 @@ iDEPversion,
                                    "charities and individuals verified by",
                                    a(" GoFundMe.", href=("https://www.gofundme.com/en-ie/c/act/donate-to-ukraine-relief?utm_source=email&utm_medium=marketing&utm_content=annoucement&utm_campaign=022522_helpukraine_send14_dedicatedpage"))
                                    ), br()
+      ,p("April 23, 2022: DEG2 tab is now much faster! I hope people complained about it earlier!")
       ,p("April 20, 2022: Plot one or more genes is now working. Bug fixed.")
       ,p("Mar. 7, 2022: Fixed an R library issue affected KEGG diagrams for some organisms.")
       ,p("Feb. 19, 2022: R upgraded from 4.05 to 4.1.2. This solved the STRING API issues. Some Bioconductor packages are also upgraded.", style = "color:red")
@@ -408,7 +409,7 @@ iDEPversion,
         ,htmlOutput("selectGO3")
         ,tags$style(type='text/css', "#selectGO3 { width:100%;   margin-top:-9px}")
         ,checkboxInput("removeRedudantSets", "Remove redudant genesets", value = TRUE)
-        ,checkboxInput("useFilteredAsBackground", "Filtered genes as background for enrichment", value = FALSE)
+        ,checkboxInput("useFilteredAsBackground", "Filtered genes as background for enrichment", value = TRUE)
         ,actionButton("ModalEnrichmentPlotKmeans", "Visualize enrichment")
         ,downloadButton('downloadKmeansGO',"Enrichment details")             
         ,a(h5("?",align = "right"), href="https://idepsite.wordpress.com/k-means/",target="_blank")
@@ -649,7 +650,7 @@ iDEPversion,
         ,htmlOutput("selectGO2")
         ,checkboxInput("UseFilteredGenesEnrich", 
                          label = "Filtered genes as background for enrichment", 
-                         value = FALSE)
+                         value = TRUE)
         ,tags$style(type='text/css', "#selectGO2 { width:100%;   margin-top:-9px}")
         ,actionButton("ModalEnrichmentPlot", "Enrichment tree")
      
