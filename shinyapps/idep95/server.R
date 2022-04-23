@@ -1036,10 +1036,7 @@ FindOverlap <- function (converted,gInfo, GO,selectOrg,minFDR, reduced = FALSE, 
           # remove similar pathways
           x <- x[which(flag1), ]
 		}
-
-
-
-
+	    if(dim(x)[1] > maxTerms ) x = x[1:maxTerms, ]	
 	}
 			
 	dbDisconnect(pathway)
