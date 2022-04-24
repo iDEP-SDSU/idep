@@ -990,8 +990,8 @@ iDEPversion,
       # sidebar of Bicluster --------------------------------------------------------------------------------
       sidebarPanel(
         h5("Visualize your fold-changes of all genes on all KEGG pathways"),
+        htmlOutput('keggPathwaysAll'),        
         htmlOutput("listComparisonsKEGG"),        
-        htmlOutput('keggPathwaysAll'),
         selectInput("maxFCKEGG", "Fold-change (log2) cutoff in color code :", 
             choices = c(0.5, 1, 1.5, 2, 3, 4),
             selected = 2),  
