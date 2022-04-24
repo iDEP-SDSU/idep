@@ -132,6 +132,7 @@ iDEPversion,
                                    "charities and individuals verified by",
                                    a(" GoFundMe.", href=("https://www.gofundme.com/en-ie/c/act/donate-to-ukraine-relief?utm_source=email&utm_medium=marketing&utm_content=annoucement&utm_campaign=022522_helpukraine_send14_dedicatedpage"))
                                    ), br()
+      ,p("April 23, 2022: KEGG diagram on the Pathway tab is now working! Please email Jenny if you see any issues!")
       ,p("April 23, 2022: DEG2 tab is now much faster! I hope people complained about it earlier!")
       ,p("April 20, 2022: Plot one or more genes is now working. Bug fixed.")
       ,p("Mar. 7, 2022: Fixed an R library issue affected KEGG diagrams for some organisms.")
