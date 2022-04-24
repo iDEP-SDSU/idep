@@ -737,7 +737,7 @@ idType_Entrez <- dbGetQuery(convert, paste("select distinct * from idIndex where
 if(dim(idType_Entrez)[1] != 1) {cat("Warning! entrezgene ID not found!")}
 idType_Entrez = as.numeric( idType_Entrez[1,1])
 idType_KEGG <- dbGetQuery(convert, paste("select distinct * from idIndex where idType = 'kegg'" ))
-if(dim(idType_KEGG)[1] != 1) {cat("Warning! KEGG ID not found!")}
+# if(dim(idType_KEGG)[1] != 1) {cat("Warning! KEGG ID not found!")}
 idType_KEGG = as.numeric( idType_KEGG[1,1])
 
 convertEnsembl2Entrez <- function (query,Species) { 
@@ -745,13 +745,13 @@ convertEnsembl2Entrez <- function (query,Species) {
 	speciesID <- orgInfo$id[ which(orgInfo$ensembl_dataset == Species)]  # note uses species Identifying
 	# idType 6 for entrez gene ID
 	result <- dbGetQuery( convert,
-						paste( " select  id,ens,species from mapping where ens IN ('", paste(querySet,collapse="', '"),
-								"') AND  idType ='",idType_Entrez,"'",sep="") )	# slow
+						paste0( " SELECT  id,ens from mapping where species = '", speciesID, "'",
+                                " AND idType ='",idType_Entrez,"'", 
+                                " AND ens IN ('", paste(querySet,collapse="', '"), "')" ) )
 							
 	if( dim(result)[1] == 0  ) return(NULL)
-	result <- subset(result, species==speciesID, select = -species)
 
-	ix = match(result$ens,names(query)  )
+	ix = match(result$ens,names(query))
 
 	tem <- query[ix];  names(tem) = result$id
 	return(tem)
