@@ -132,6 +132,7 @@ iDEPversion,
                                    "charities and individuals verified by",
                                    a(" GoFundMe.", href=("https://www.gofundme.com/en-ie/c/act/donate-to-ukraine-relief?utm_source=email&utm_medium=marketing&utm_content=annoucement&utm_campaign=022522_helpukraine_send14_dedicatedpage"))
                                    ), br()
+      ,p("April 24, 2022: Add a tab for visualizing the fold-change of all genes in all KEGG diagrams across all comparisons!")
       ,p("April 23, 2022: KEGG diagram on the Pathway tab is now working! Please email Jenny if you see any issues!")
       ,p("April 23, 2022: DEG2 tab is now much faster! I hope people complained about it earlier!")
       ,p("April 20, 2022: Plot one or more genes is now working. Bug fixed.")
@@ -992,7 +993,7 @@ iDEPversion,
         h5("Visualize your fold-changes of all genes on all KEGG pathways"),
         htmlOutput('keggPathwaysAll'),        
         htmlOutput("listComparisonsKEGG"),        
-        selectInput("maxFCKEGG", "Fold-change (log2) cutoff in color code :", 
+        selectInput("maxFCKEGG", "Fold-change (log2) cutoff in color code", 
             choices = c(0.5, 1, 1.5, 2, 3, 4),
             selected = 2),  
         "Please cite the papers for ", 
