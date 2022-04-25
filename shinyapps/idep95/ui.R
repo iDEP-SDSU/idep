@@ -40,7 +40,7 @@ iDEPversion,
                 ))                    
       ,h5(" and just click the tabs for some magic!", style = "color:red")
       ,p(HTML("<div align=\"right\"> <A HREF=\"javascript:history.go(0)\">Reset</A></div>" ))
-      ,strong("1. Select or search for your species.")
+      ,strong("1. Recommended: Select or search for your species. ")
       ,fluidRow( 
          column(9, selectizeInput('selectOrg', 
                      label    = NULL,

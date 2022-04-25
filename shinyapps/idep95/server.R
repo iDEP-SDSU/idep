@@ -128,8 +128,7 @@ speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
 # add a defult element to list    # new element name       value
 
 speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
-speciesChoice <- append( setNames( "BestMatch","Best matching species"), speciesChoice  )
-
+speciesChoice <- append( setNames( "BestMatch","Best matching. Slow!!"), speciesChoice  )
 # move one element to the 2nd place
 move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
 i= which( names(speciesChoice) == "Vitis vinifera"); speciesChoice <- move2(i)
