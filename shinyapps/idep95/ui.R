@@ -133,34 +133,19 @@ iDEPversion,
                                    a(" GoFundMe.", href=("https://www.gofundme.com/en-ie/c/act/donate-to-ukraine-relief?utm_source=email&utm_medium=marketing&utm_content=annoucement&utm_campaign=022522_helpukraine_send14_dedicatedpage"))
                                    ), br()
       ,p("April 24, 2022: Add a tab for visualizing the fold-change of all genes in all KEGG diagrams across all comparisons!")
-      ,p("April 23, 2022: KEGG diagram on the Pathway tab is now working! Please email Jenny if you see any issues!")
-      ,p("April 23, 2022: DEG2 tab is now much faster! I hope people complained about it earlier!")
-      ,p("April 20, 2022: Plot one or more genes is now working. Bug fixed.")
-      ,p("Mar. 7, 2022: Fixed an R library issue affected KEGG diagrams for some organisms.")
-      ,p("Feb. 19, 2022: R upgraded from 4.05 to 4.1.2. This solved the STRING API issues. Some Bioconductor packages are also upgraded.", style = "color:red")
+ 
       ,p("Feb. 11, 2022: Like iDEP but your genome is not covered?", 
       a("Customized iDEP", href="http://bioinformatics.sdstate.edu/idepc/"), " is now available. 
       Its database includes several custom genomes requested by users. To request to add new species/genome, fill in this ", 
       a("Form.", href="https://forms.gle/zLtLnqxkW187AgT76"), style = "color:red")
-      ,p("Feb. 8, 2022: iDDEP v0.95 becomes default. Old versions are still available. See the last tab.")
-      ,p("Nov. 15, 2021: iDEP v0.95 available in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update from v11 to 11.5.")
-      ,p("10/26/2021: The Genome view is now much improved! Automatically detects chromosomal regions enriched with genes having abnormaly high and low fold-changes.")
-
-      ,p("10/15/21: For GO enrichment analysis, we now recommend using background genes, instead of all genes on the genome. In the KNN and DEG2 tabs, it is now the default that all genes passed the filter in Pre-Process tab are used as a customized background.")
-
-      ,p("We updated instruction for local installation", a("here.", href="https://github.com/iDEP-SDSU/idep#readme"), 
-          "The most recent database file is now publically available, free of charge for non-profit organizations.")
-
-      ,p("Check out the 50,000+ datasets of uniformly processed public RNA-seq data ", a("here!", href="http://bioinformatics.sdstate.edu/reads/" ))
-      ,p( a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), "Dr. Ge is notorisly slow in responding to emails.") 
+  ,p( a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), "Dr. Ge is notorisly slow in responding to emails.") 
 
       ,p("iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.", style = "color:red")
+      ,h3("iDEP: Integrated Differential Expression and Pathway analysis")
+      ,br(),img(src='flowchart.png', align = "center",width="562", height="383")  
+      ,br(),img(src='figs.gif', align = "center",width="640", height="480")
 
-      ,p("10/18/20: Interactive network enables users to easily visualize the relatedness 
-           of pathways, similar to EnrichmentMap. Using the Network buttons on DEG2 and Pathway tabs,
-           you can generate and export interactive networks like this one below. You can move the nodes by dragging them, zoom in by scrolling, 
-			   and shift the entire network by click on an empty point and drag. ")
-      ,includeHTML("enrichmentPlotNetwork.html")
+    
        #,img(src='flowchart.png', align = "center",width="562", height="383")
      # ) # conditionalPanel
 
@@ -1399,8 +1384,25 @@ iDEPversion,
        ,h5("5/10/2021: V0.93 updated to Ensembl Release 103 and String-DB v11.")
        ,h5("10/15/21: For GO enrichment analysis, we now recommend using background genes, instead of all genes on the genome. In the KNN and DEG2 tabs, it is now the default that all genes passed the filter in Pre-Process tab are used as a customized background.")
       ,h4("10/18/20: Interactive network enabling users to easily visualize the relatedness of significant pathways similar to EnrichmentMap. ")
+     ,p("April 23, 2022: KEGG diagram on the Pathway tab is now working! Please email Jenny if you see any issues!")
+      ,p("April 23, 2022: DEG2 tab is now much faster! I hope people complained about it earlier!")
+      ,p("April 20, 2022: Plot one or more genes is now working. Bug fixed.")
+      ,p("Mar. 7, 2022: Fixed an R library issue affected KEGG diagrams for some organisms.")
+      ,p("Feb. 19, 2022: R upgraded from 4.05 to 4.1.2. This solved the STRING API issues. Some Bioconductor packages are also upgraded.", style = "color:red")
+      ,p("Feb. 8, 2022: iDDEP v0.95 becomes default. Old versions are still available. See the last tab.")
+      ,p("Nov. 15, 2021: iDEP v0.95 available in testing mode. It includes Ensembl database update, new species from Ensembl Fungi and Ensembl Protists, and STRINGdb (5090 species) update from v11 to 11.5.")
+      ,p("10/26/2021: The Genome view is now much improved! Automatically detects chromosomal regions enriched with genes having abnormaly high and low fold-changes.")
 
+      ,p("10/15/21: For GO enrichment analysis, we now recommend using background genes, instead of all genes on the genome. In the KNN and DEG2 tabs, it is now the default that all genes passed the filter in Pre-Process tab are used as a customized background.")
 
+      ,p("We updated instruction for local installation", a("here.", href="https://github.com/iDEP-SDSU/idep#readme"), 
+          "The most recent database file is now publically available, free of charge for non-profit organizations.")
+
+      ,p("Check out the 50,000+ datasets of uniformly processed public RNA-seq data ", a("here!", href="http://bioinformatics.sdstate.edu/reads/" ))
+     ,p("10/18/20: Interactive network enables users to easily visualize the relatedness 
+           of pathways, similar to EnrichmentMap. Using the Network buttons on DEG2 and Pathway tabs,
+           you can generate and export interactive networks like this one below. You can move the nodes by dragging them, zoom in by scrolling, 
+			   and shift the entire network by click on an empty point and drag. ")    
        ,br(),br()
        ,h5("In loving memory of my parents. X.G.")
 
