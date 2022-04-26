@@ -299,11 +299,18 @@ convertID <- function (query, selectOrg) {
     querSetString <- paste0("('", paste(querySet,collapse="', '"),"')")
 	# ('ENSG00000198888', 'ENSG00000198763', 'ENSG00000198804')
 
+	#use a small set of genes to guess species and idType; to improve speed
+  testQueriesString <- querSetString
+	if(length(querySet) > 100) {
+	  testQueries <- sample(querySet, 100) 
+	  testQueriesString <- paste0("('", paste(testQueries, collapse="', '"),"')")
+  }
+
 	if(selectOrg == speciesChoice[[1]]) {# if best match
 
 	  #First send a query to determine the species
 	  query_species <- paste0( "select species, idType, COUNT(species) as freq from mapping where id IN ", 
-	                      querSetString," GROUP by species,idType")
+	                      testQueriesString," GROUP by species,idType")
 	  species_ranked <- dbGetQuery(convert, query_species)
 
 	  if( dim(species_ranked)[1] == 0  ) return(NULL)	  	
@@ -364,7 +371,7 @@ convertID <- function (query, selectOrg) {
 	}
 	result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id
 	result <- result[which(!duplicated(result[,1]) ),] # remove duplicates in user ID
-	colnames(speciesMatched) = c("Matched Species (genes)" ) 
+	colnames(speciesMatched) = c("Matched Species (%genes)" ) 
 	conversionTable <- result[,1:2]; colnames(conversionTable) = c("User_input","ensembl_gene_id")
 	conversionTable$Species = sapply(result[,3], findSpeciesByIdName )
 

@@ -128,7 +128,7 @@ speciesChoice <- setNames(as.list( orgInfo$id ), orgInfo$name2 )
 # add a defult element to list    # new element name       value
 
 speciesChoice <- append( setNames( "NEW","**NEW SPECIES**"), speciesChoice  )
-speciesChoice <- append( setNames( "BestMatch","Best matching. Slow!!"), speciesChoice  )
+speciesChoice <- append( setNames( "BestMatch","Best guess."), speciesChoice  )
 # move one element to the 2nd place
 move2 <- function(i) c(speciesChoice[1:2],speciesChoice[i],speciesChoice[-c(1,2,i)])
 i= which( names(speciesChoice) == "Vitis vinifera"); speciesChoice <- move2(i)
@@ -656,9 +656,11 @@ convertID <- function (query,selectOrg) {
 	# ('ENSG00000198888', 'ENSG00000198763', 'ENSG00000198804')
 
 	#use a small set of genes to guess species and idType; to improve speed
-	if(length(querySet) > 100)
-	testQueries <- sample(querySet, 100) else testQueries <- querySet
-	testQueriesString <- paste0("('", paste(testQueries, collapse="', '"),"')")
+	testQueriesString <- querSetString
+	if(length(querySet) > 100) {
+	  testQueries <- sample(querySet, 100) 
+	  testQueriesString <- paste0("('", paste(testQueries, collapse="', '"),"')")
+	}
 
 	if(selectOrg == speciesChoice[[1]]) {# if best match      
 
@@ -724,7 +726,7 @@ convertID <- function (query,selectOrg) {
 	}
 	result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id
 	result <- result[which(!duplicated(result[,1]) ),] # remove duplicates in user ID
-	colnames(speciesMatched) = c("Matched Species (genes)" ) 
+	colnames(speciesMatched) = c("Matched Species (%genes)" ) 
 	conversionTable <- result[,1:2]; colnames(conversionTable) = c("User_input","ensembl_gene_id")
 	conversionTable$Species = sapply(result[,3], findSpeciesByIdName )
 
@@ -2967,7 +2969,21 @@ output$debug <- renderTable({
 	return( as.data.frame (x[1:20,] ))
 	},include.rownames=TRUE)
 
-
+    # Species match message ---------- stole from Gavin's code 4/20/22
+    observe({
+      req(input$selectOrg == speciesChoice[[1]]  # best matching species
+        && !is.null(converted())                # finished
+      )
+      showNotification(
+        ui = paste(gsub('\\(.*' ,"", converted()$speciesMatched[1, ]), 
+                    ": is the best matching species. If that is incorrect,
+                     please use the dropdown to select
+                    your species."),
+        id = "species_match",
+        duration = NULL,
+        type = "error"
+      )    
+    })
 ################################################################
 #   Pre-process
 ################################################################
