@@ -132,14 +132,15 @@ iDEPversion,
                                    "charities and individuals verified by",
                                    a(" GoFundMe.", href=("https://www.gofundme.com/en-ie/c/act/donate-to-ukraine-relief?utm_source=email&utm_medium=marketing&utm_content=annoucement&utm_campaign=022522_helpukraine_send14_dedicatedpage"))
                                    ), br()
+      ,p("April 25, 2022: Gene ID conversion is much faster now, even when species has to be guessed. So is the DEG2 tab.")
       ,p("April 24, 2022: Add a tab for visualizing the fold-change of all genes in all KEGG diagrams across all comparisons!")
- 
+
       ,p("Feb. 11, 2022: Like iDEP but your genome is not covered?", 
       a("Customized iDEP", href="http://bioinformatics.sdstate.edu/idepc/"), " is now available. 
       Its database includes several custom genomes requested by users. To request to add new species/genome, fill in this ", 
       a("Form.", href="https://forms.gle/zLtLnqxkW187AgT76"), style = "color:red")
   ,p( a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), "Dr. Ge is notorisly slow in responding to emails.") 
-
+      ,p("If it is slow, restart from a new browser window (not a new tab). You will be assigned to a new worker computer.")
       ,p("iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.", style = "color:red")
       ,h3("iDEP: Integrated Differential Expression and Pathway analysis")
       ,br(),img(src='flowchart.png', align = "center",width="562", height="383")  
