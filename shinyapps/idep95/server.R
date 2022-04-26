@@ -643,7 +643,8 @@ matchedSpeciesInfo <- function (x) {
 }
 
 # convert gene IDs to ensembl gene ids and find species
-# updated 10/15; some changes not included in Gavin's new version
+# updated 10/15/21; some changes not included in Gavin's new version
+# update 4/25/2022: use a smaller set of genes for determinaing spieces
 convertID <- function (query,selectOrg) {
 	# Solves the issue of app shut down when species is deleted after genes are uploaded.
     if(is.null(selectOrg)) {
@@ -654,11 +655,16 @@ convertID <- function (query,selectOrg) {
     querSetString <- paste0("('", paste(querySet,collapse="', '"),"')")
 	# ('ENSG00000198888', 'ENSG00000198763', 'ENSG00000198804')
 
-	if(selectOrg == speciesChoice[[1]]) {# if best match
+	#use a small set of genes to guess species and idType; to improve speed
+	if(length(querySet) > 100)
+	testQueries <- sample(querySet, 100) else testQueries <- querySet
+	testQueriesString <- paste0("('", paste(testQueries, collapse="', '"),"')")
+
+	if(selectOrg == speciesChoice[[1]]) {# if best match      
 
 	  #First send a query to determine the species
 	  query_species <- paste0( "select species, idType, COUNT(species) as freq from mapping where id IN ", 
-	                      querSetString," GROUP by species,idType")
+	                      testQueriesString, " GROUP by species,idType")
 	  species_ranked <- dbGetQuery(convert, query_species)
 
 	  if( dim(species_ranked)[1] == 0  ) return(NULL)	  	
@@ -2924,7 +2930,7 @@ output$contents <- renderTable({
 output$species <-renderTable({   
       if (is.null(input$file1) && input$goButton == 0)    return()
       isolate( {  #tem <- convertID(input$input_text,input$selectOrg );
-	  	  withProgress(message=sample(quotes,1), detail="Converting gene IDs", {
+	  	  withProgress(message=sample(quotes,1), detail="Converting gene IDs. Up to 5 minutes...", {
                   tem <- converted()
 			incProgress(1, detail = paste("Done"))	  })
 		  
