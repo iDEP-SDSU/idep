@@ -330,7 +330,7 @@ convertID <- function (query, selectOrg) {
 		  names(sortedCounts)[1] <- names(tem)    
 		} 
 		recognized =names(sortedCounts[1])
-	
+
 		speciesMatched=sortedCounts
 		speciesMatched <- as.data.frame( speciesMatched )	
 		orgName <- sapply(as.numeric(gsub(" .*","",names(sortedCounts) ) ), findSpeciesByIdName  )
