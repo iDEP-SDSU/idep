@@ -1,0 +1,75 @@
+Package: idepGolem
+Title: An Amazing Shiny App
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "firstname",
+           family = "lastname",
+           role = c("aut", "cre"),
+           email = "your@email.com")
+Description: What the package does (one paragraph).
+License: What license is it under?
+Imports: 
+    biclust,
+    Biobase,
+    BiocGenerics,
+    circlize,
+    ComplexHeatmap,
+    config (>= 0.3.1),
+    DBI,
+    dendextend,
+    DESeq2,
+    dplyr,
+    DT,
+    dynamicTreeCut,
+    e1071,
+    edgeR,
+    factoextra,
+    fgsea,
+    flashClust,
+    gage,
+    GetoptLong,
+    ggplot2,
+    golem (>= 0.3.1),
+    gplots,
+    graphics,
+    grDevices,
+    grid,
+    htmltools (>= 0.5.2),
+    igraph,
+    InteractiveComplexHeatmap,
+    KEGGREST,
+    limma,
+    loose.rock,
+    magrittr,
+    ottoPlots,
+    pathview,
+    PGSEA,
+    pkgload,
+    plotly,
+    png,
+    PREDA,
+    PREDAsampledata,
+    QUBIC,
+    ReactomePA,
+    reshape2,
+    RSQLite,
+    runibic,
+    shiny (>= 1.6.0),
+    shinybusy,
+    shinyjs,
+    stats,
+    stringr,
+    SummarizedExperiment,
+    tidyr,
+    tidyselect,
+    tippy,
+    utils,
+    visNetwork,
+    WGCNA
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.2
+Suggests: 
+    rmarkdown,
+    knitr
+VignetteBuilder: knitr

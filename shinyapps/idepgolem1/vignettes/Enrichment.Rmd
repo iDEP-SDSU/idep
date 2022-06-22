@@ -1,0 +1,263 @@
+---
+title: "Enrichment"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Enrichment}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+#library(idepGolem)
+devtools::load_all()
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# Make data for enrichment functions
+idep_data <- get_idep_data()
+
+YOUR_DATA_PATH <- "E:/idep_9_24/data/data103/data_go/BcellGSE71176_p53.csv"
+YOUR_EXPERIMENT_PATH <- "E:/idep_9_24/data/data103/data_go/BcellGSE71176_p53_sampleInfo.csv"
+
+expression_file <- data.frame(
+  datapath = YOUR_DATA_PATH
+)
+experiment_file <- data.frame(
+  datapath = YOUR_EXPERIMENT_PATH
+)
+
+load_data <- input_data(
+  expression_file = expression_file,
+  experiment_file = experiment_file,
+  go_button = FALSE,
+  demo_data_file = idep_data$demo_data_file,
+  demo_metadata_file = idep_data$demo_metadata_file
+)
+
+converted <- convert_id(
+  query = rownames(load_data$data),
+  idep_data = idep_data,
+  select_org = "BestMatch"
+)
+
+all_gene_info <- gene_info(
+  converted = converted,
+  select_org = "BestMatch",
+  idep_data = idep_data
+)
+
+converted_data <- convert_data(
+  converted = converted,
+  no_id_conversion = FALSE,
+  data = load_data$data
+)
+
+gene_names <- get_all_gene_names(
+  mapped_ids = converted_data$mapped_ids,
+  all_gene_info = all_gene_info
+)
+
+processed_data <- pre_process(
+  data = converted_data$data,
+  missing_value = "geneMedian",
+  data_file_format = 1,
+  low_filter_fpkm = NULL,
+  n_min_samples_fpkm = NULL,
+  log_transform_fpkm = NULL,
+  log_start_fpkm = NULL,
+  min_counts = .5,
+  n_min_samples_count = 1,
+  counts_transform = 1,
+  counts_log_start = 4,
+  no_fdr = NULL
+)
+```
+
+One important aspect of iDEP is the ability to take a subset of genes and
+perform pathway analysis to determine the pathways that are significantly
+enriched with different testing effects. The iDEP data base has biological
+pathways for each species in the database, and with each pathway there is a
+list of gene IDs that correspond with that process. We then calculate a p-value
+for the proportion of genes from a pathway in the subset to the proportion of 
+genes subsetted to the entire background. The link below explains the most basic
+and popular method of determining overlap and enrichment. There are two
+functions to perform pathway analysis. The first one will be described in the
+section below.
+
+**Enrichment Link**
+https://tv.qiagenbioinformatics.com/video/19605716/understanding-the-p-value-of
+
+###### Get Gene Sets
+
+Performing pathway analysis for the subsetted list of genes requires only the
+pahtways that have at least one gene in their gene list. We use a database
+query to ensure that all the pathways that have genes from the subset will be
+returned in the gene sets. Creating a query requires a subset of the
+`gene_names` data frame. For this example, we will simply use the first 100 rows
+of the data. iDEP has many different methods to create interesting subsets,
+including differential expression analysis. Depending on the structure of the
+subsetted genes, use the code chunk below to filter `gene_names`.
+
+```{r eval=FALSE}
+gene_names_query <- gene_names[gene_names$ensembl_ID == rownames(example_data), ]
+```
+
+The `converted` parameter will be the return from the `convert_id` function
+call. The input for `go` determines which portion of the pathway database to use
+for the analysis. To determine the choices for this input, we can run the
+function `gmt_category`. This will return the portions of the database that have
+pathways corresponding to the matched species. The first two parameters are
+returned objects in the "Load_Data" instruction. The next is the organism that
+the expression data is for, an input that has been used in previous functions.
+`gmt_file` is a datapath to a gmt file, but only if the species is new and not
+in the iDEP database. Lastly, the data from the `get_idep_data` call is filled
+in. An example call for the demonstration data is in the code chunk below.
+
+```{r}
+gmt_choices <- gmt_category(
+  converted = converted,
+  converted_data = converted_data$data,
+  select_org = "BestMatch",
+  gmt_file = NULL,
+  idep_data = idep_data
+)
+```
+
+Search this list for the desired portion, and specify it with either
+`gmt_choices[[2]]` or the string denoting the section. For `gmt_choices[[2]]` it
+would be "GOBP". The next parameter, `select_org`, should be the same as the
+chunk above. The input  `gmt_file` is only used if you are working with a
+species that is not in the iDEP database. If this is the case, and there is a
+GMT file that goes with the species, the input will be the datapath stored in a
+data frame. For details on this, see the first instruction `Load_Data`. The next
+inputs are objects that are also covered in the first instruction. With all the
+correct inputs, we are now going to actually subset `gene_names` and create a
+query. We will use the `process_heatmap_data` function which is described in the
+"Clustering" instruction. This final workflow is demonstrated in the chunk
+below.
+
+```{r}
+heatmap_data <- process_heatmap_data(
+  data = processed_data$data,
+  n_genes_max = 150,
+  n_genes_min = 0,
+  gene_centering = TRUE,
+  gene_normalize = TRUE,
+  sample_centering = FALSE,
+  sample_normalize = FALSE,
+  all_gene_names = gene_names,
+  select_gene_id = "symbol"
+)
+
+gene_names_query <- gene_names[gene_names$symbol %in% rownames(heatmap_data), ]
+
+gene_sets <- read_pathway_sets(
+  all_gene_names_query = gene_names_query,
+  converted = converted,
+  go = "GOBP",
+  select_org = "BestMatch",
+  gmt_file = NULL,
+  idep_data = idep_data,
+  gene_info = all_gene_info
+)
+```
+
+<br>
+
+###### Calculating Overlap
+
+To use the `find_overlap` function, we are going to work with the returned
+object `gene_sets` from above. This function performs the operation to
+statistically determine the pathways that are enriched according to the gene
+query that was submitted. The function above returns a list with objects that
+will be inputted into parameters of the `find_overlap` function. The parameter 
+`pathway_table` is found at `gene_sets$pathway_table`. This input is a table
+that is returned from the `read_pathway_sets` function. It contains information
+on the pathways that were found by querying the database. The parameter
+`query_set` is the vector of ensembl IDs that were used as the query subset.
+The next input parameter `total_genes`, is the total number of genes in the
+database for the matched species. `processed_data` is the input parameter for
+the data matrix that has gone through the pre-processing functions. The
+`gene_info` parameter takes in the `all_gene_info` list that was create in the
+"Load_Data" instruction. The input parameter `go` takes in the selection for the
+portion of the database. This input should be the same as what was inputted for
+`go` in the function `read_pathway_sets`. 
+
+The next parameter takes in the `idep_data` list that is created from the iDEP
+database. `sub_pathway_files` is the parameter that takes in the pathway files
+that were found in the previous function to have information for the matched
+species. `use_filtered_background` is TURE/FALSE for which gene set to use as
+the background when calculating overlap. For TRUE, the background gene set will
+be the genes in the processed data matrix that passed the filtering. If the
+value is set to FALSE, the background will be all the gene IDs that were found
+in the iDEP database for the matched species. It is recommended to use the value
+TRUE, as this will give the most accurate p-value for which pathways are
+enriched. The video in the  introduction gives details about the meaning of
+enriched. `select_org` is the input that specifies the species that the
+expression data is for. Finally, the last input parameter is `reduced` and can
+be set to FALSE, or a decimal value. If a decimal value is inputted, this will
+filter out all the pathways that have a greater proportion of genes in common
+with another pathway than the inputted decimal. If FALSE is inputted, no
+pathways will be removed with redudant gene sets. This results of this function
+be examined in the next section.
+
+```{r}
+pathway_info <- find_overlap(
+  pathway_table = gene_sets$pathway_table,
+  query_set = gene_sets$query_set,
+  total_genes = gene_sets$total_genes,
+  processed_data = processed_data$data,
+  gene_info = all_gene_info,
+  go = "GOBP",
+  idep_data = idep_data,
+  sub_pathway_files = gene_sets$pathway_files,
+  use_filtered_background = TRUE,
+  select_org = "BestMatch",
+  reduced = .75
+)
+```
+
+<br>
+
+###### Examining Results
+
+The table below is the first four columns of the results data frame that was 
+created in the example enrichment analysis. The fifth column is difficult to put
+into a table because it contains the gene sets for all the significant pathways
+that were found. The first column in this table is the adjusted p-value for the
+significance of the overlap calculated for the pathway. The next column denotes
+the amount of genes from the query that were associated with the given pathway.
+The next column gives the total number of genes that were associated with the
+pathway. Finally, the last column is the functional category or description of
+what the pathway is biologically responsible for. To see the genes for the
+functional category from the query, run `pathway_info[, 5]`. If there is no
+significantly enriched pathways, the data frame will say "No significant
+enrichment found!" 
+
+```{r}
+DT::datatable(
+  pathway_info[, 1:4],
+  options = list(dom = "ft"),
+  rownames = FALSE,
+  selection = "single"
+)
+```
+
+<br>
+
+###### Conclusion
+
+This instruction covered the steps needed to perform enrichment analysis on a
+subset of genes. Using these steps it is possible to determine the pathways that
+are enriched based off the ratio of genes in the subset corresponding to the
+pathway and genes in the background corresponding to the pathway. The goal is to
+determine the pathways that are being affected by the different treatments and
+effects. For troubleshooting, all functions have documentation and the code is
+available on Github. (https://github.com/gexijin/idepGolem)

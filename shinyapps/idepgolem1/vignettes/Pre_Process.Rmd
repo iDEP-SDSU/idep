@@ -1,0 +1,333 @@
+---
+title: "Pre-Process"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Pre_Process}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+options(rmarkdown.html_vignette.check_title = FALSE)
+```
+
+```{r setup}
+#library(idepGolem)
+devtools::load_all()
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# Make data for pre-processing functions
+idep_data <- get_idep_data()
+
+YOUR_DATA_PATH <- "E:/idep_9_24/data/data103/data_go/BcellGSE71176_p53.csv"
+YOUR_EXPERIMENT_PATH <- "E:/idep_9_24/data/data103/data_go/BcellGSE71176_p53_sampleInfo.csv"
+
+expression_file <- data.frame(
+  datapath = YOUR_DATA_PATH
+)
+experiment_file <- data.frame(
+  datapath = YOUR_EXPERIMENT_PATH
+)
+
+load_data <- input_data(
+  expression_file = expression_file,
+  experiment_file = experiment_file,
+  go_button = FALSE,
+  demo_data_file = idep_data$demo_data_file,
+  demo_metadata_file = idep_data$demo_metadata_file
+)
+
+converted <- convert_id(
+  query = rownames(load_data$data),
+  idep_data = idep_data,
+  select_org = "BestMatch"
+)
+
+all_gene_info <- gene_info(
+  converted = converted,
+  select_org = "BestMatch",
+  idep_data = idep_data
+)
+
+converted_data <- convert_data(
+  converted = converted,
+  no_id_conversion = FALSE,
+  data = load_data$data
+)
+
+gene_names <- get_all_gene_names(
+  mapped_ids = converted_data$mapped_ids,
+  all_gene_info = all_gene_info
+)
+```
+
+This instruction builds off the objects and functions from the "Load_Data"
+vignette. Please see that document before using the functions described below.
+We will now transform and process the data based off the type that is being
+studied. The package also provides visualization functions that will provide a
+foundation for exploratory data analysis and good overview of the data.
+
+#### **`pre_process`** Function
+
+Processing the data requires many options to ensure the data gets to the desired
+form. This is the data that will be used in the exploratory analysis to come.
+The data to be processed is the `converted_data` from the "Load_Data" vignette.
+The parameters `missing_value` and `data_file_format` have a list of input
+values to select from for processing. These values and descriptions can be found
+in the tables below. The `missing_value` parameter determines how missing data
+entries will be filled in, and the `data_file_format` parameter tells the
+function what type of data is being processed. Depending on the
+`data_file_format` chosen, additional parameters will need to be provided. These
+are explained below.
+
+Input (`missing_value`)    Description
+-------------------------  -----------------------------------------------------------
+`geneMedian`               Substitute median expression value for gene across all samples
+`treatAsZero`              Substitute "0" for all missing values
+`geneMedianInGroup`        Substitute median expression value for gene within sample group
+
+Input (`data_file_format`)   Description
+---------------------------  -----------------------------------------------------------------------
+`1`                          Read counts data (recommended)
+`2`                          Normalized expression values (RNA-seq FPKM, micro-array, etc.)
+`3`                          Fold-changes and corrected P values from CuffDiff or any other program
+
+<br>
+
+##### **Read counts data**
+
+For read counts data, the parameters `min_counts`, `n_min_samples_counts`,
+`counts_transform` and `counts_log_start` need input values. The parameters 
+`min_counts` and `n_min_samples` work to filter the genes out of the data that
+do not have sufficient counts. The function counts the columns that have more
+counts than `min_counts` for each gene and filters out the genes with less
+columns than `n_min_samples`. For example, if you only wanted genes with more
+than 0 counts for each sample, you would set `min_counts = .5` and 
+`n_min_samples = ncol(converted_data)`. The parameter `counts_transform`
+specifies the transformation to perform on the counts data. This parameter has 3
+input options which are outlined below. If `counts_transform = 1`,
+`counts_log_start` determines the constant to add to CPM to ensure that there
+are no `log(0)` errors. All other parameters can be set to `NULL`
+
+Input (`counts_transform`)   Description
+---------------------------  --------------------------------------------------
+`1`                          EdgeR: log2(CPM+c) (Counts per Million + constant) (Visit https://www.rdocumentation.org/packages/SparkR/versions/2.1.2/topics/log2)
+`2`                          VST: variance stabilizing transform (Visit https://www.rdocumentation.org/packages/DESeq2/versions/1.12.3/topics/vst)
+`3`                          rlog: regularized log (slow) (Visit https://www.rdocumentation.org/packages/DESeq2/versions/1.12.3/topics/rlog)
+
+<br>
+
+##### **Normalized expression values Parameters**
+
+If the data being processed is for normalized expression values, the parameters
+`low_filter_fpkm`, `n_min_samples_fpkm`, `log_transform_fpkm` and 
+`log_start_fpkm` need input values. The parameters `low_filter_fpkm` and
+`n_min_samples_fpkm` work together to filter out the genes that do not have
+enough counts. The function will count the columns that are greater than
+`low_filter_fpkm` and discard the gene if it is not more than
+`n_min_samples_fpkm` columns. The parameter `log_transform_fpkm` is `TRUE/FALSE`
+for whether to perform a log transform on the data or not. If
+`log_transform = TRUE`, then `log_start_fpkm` is the value that will be added to
+ensure there are no `log(0)` errors. All other values can be set to `NULL`.
+
+<br>
+
+##### **Fold-changes and corrected P values**
+
+For fold-changes and corrected p-values, there is only one additional parameter
+to provide an input for, `no_fdr`. This is a logical `TRUE/FALSE` to specify
+whether the data contains corrected p-values or not. `TRUE` denotes fold-change
+only data. All other parameters can be set to `NULL`.
+
+<br>
+<br>
+
+The demonstration loaded in the "Load_Data" instruction is read counts data. The
+code below shows an example use of the `pre_process` function using the example
+data. This data has the converted ensembl IDs. We will return a large list of
+the results of the processing from this function. The objects in this list are
+defined in the table below.
+
+Output               Description
+-------------------  -------------
+data                 Data matrix that has the pre-process operations performed to it.
+mean_kurtosis        The calculated kurtosis of the mean counts for a gene. (Visit https://www.rdocumentation.org/packages/e1071/versions/1.7-2/topics/kurtosis)
+raw_counts           The raw counts before pre-processing.
+data_type_warning    Set to "1" if iDEP recognizes the data as different than the inputted `data_file_format`.
+data_size            Length 4 vector giving the dimensions of the data before and after processing.
+p_vals               For fold-change data has p-values, they are returned here. 
+
+```{r}
+processed_data <- pre_process(
+  data = converted_data$data,
+  missing_value = "geneMedian",
+  data_file_format = 1,
+  low_filter_fpkm = NULL,
+  n_min_samples_fpkm = NULL,
+  log_transform_fpkm = NULL,
+  log_start_fpkm = NULL,
+  min_counts = .5,
+  n_min_samples_count = 1,
+  counts_transform = 1,
+  counts_log_start = 4,
+  no_fdr = NULL
+)
+```
+
+#### Exploratory Data Analysis
+
+Now that the data has been processed, we can begin data analysis. It is possible
+to create unique and informative plots with the processed data, and iDEP has
+built in functions to assist with that. These plots can then also be saved in
+an object and have additional ggplot features added to them.
+
+<br>
+
+#### **`total_counts_ggplot`** Function
+
+This function will only work for read counts data, so if that is not the format
+of the processed data, please skip this function. For read counts data, this
+function creates a barplot to show the counts in millions for each sample in the
+data. `counts_data` is the raw counts that is returned from the `pre_process`
+function. `sample_info` is the experiment design data from the `input_data`
+function. 
+
+```{r fig.height=5.5, fig.width=7.5}
+total_counts_ggplot(
+  counts_data = processed_data$raw_counts,
+  sample_info = load_data$sample_info
+)
+```
+
+<br>
+
+#### **`eda_scatter`** Function
+
+Another useful plot is a scatter plot of the transformed expression for two
+samples in the data. `eda_scatter` provides a scatter plot of two specified
+sample (columns) of the processed data. `plot_xaxis` and `plot_yaxis` are
+string names of the columns to be plotted. The options for these inputs can be
+seen using `colnames(processed_data$data)`. `processed_data` is the returned
+data from the `pre_process` function. 
+
+```{r fig.height=5.5, fig.width=7.5}
+colnames(processed_data$data)
+
+eda_scatter(
+  processed_data = processed_data$data,
+  plot_xaxis = "p53_IR_1",
+  plot_yaxis = "p53_mock_1"
+)
+```
+
+<br>
+
+#### **`eda_density`** Function
+
+This plotting function provides a plot of the distribution of counts values for
+each sample in the data. The information is displayed in a density ridge plot in
+the ggplot format. Again, the data provided is returned from the `pre_process`
+function. The `sample_info` provides information on each sample in the dataset.
+
+```{r fig.height=5.5, fig.width=7.5}
+eda_density(
+  processed_data = processed_data$data,
+  sample_info = load_data$sample_info
+)
+```
+
+<br>
+
+#### `merge_data` Function
+
+The current data is using the converted ensembl IDs as rownames in a large data
+matrix, but the following function will create a data frame containing the gene
+names from the `get_all_gene_names` function. `merge_data` takes the
+`gene_names` data frame and a data matrix with ID rownames and creates a data
+frame with columns for each ID that idep has matched from the original IDs.
+This is useful to view different IDs for the same gene. It also enables writing
+CSV files that can be saved and be used to reproduce results from iDEP. The
+following code will merge the gene names with the raw counts data and the
+transformed data from `pre_process`.
+
+```{r}
+merged_raw_counts <- merge_data(
+  all_gene_names = gene_names,
+  data = processed_data$raw_counts,
+  merge_ID = "ensembl_ID"
+)
+
+merged_data <- merge_data(
+  all_gene_names = gene_names,
+  data = processed_data$data,
+  merge_ID = "ensembl_ID"
+)
+```
+
+<br>
+
+#### Plotting Individual Genes
+
+iDEP also has a function that visualizes individual genes and their expression
+behavior across the samples. It is possible to determine the genes to plot by
+looking at the merged or processed data. It is also possible to use the 
+`gene_names` data frame to search for a gene ID. The code below demonstrates how
+to search for a gene ID.
+
+```{r}
+gene_names[grep("H4c1", gene_names$symbol), ]
+```
+
+Depending on the type of gene ID that is desired for the plot, the function
+below will swap the gene IDs with the processed data matrix. This new data
+matrix will be used in the individual plot function using the selected ID type
+and the desired gene. The code below shows how to swap the gene IDs to the
+symbol name.
+
+```{r}
+ind_plot_data <- rowname_id_swap(
+  data_matrix = processed_data$data,
+  all_gene_names = gene_names,
+  select_gene_id = "symbol"
+)
+```
+
+The function `individual_plots` will create the plot for the desired gene. We
+will use the data that we created in the code above for `individual_data`. If
+the data comes with an experiment file, the sample information that was loaded
+in the first instruction will be used in `sample_info`. The gene to be plotted
+can be specified in the `selected_gene` parameter. Multiple genes can be
+inputted as a vector to plot them at the same time and compare. There are two
+different types of plots that can be outputted with this function. The parameter
+`gene_plot_box` controls which plot will be outputted. Setting this input to
+TRUE will output a lineplot that gives the expression across all samples. FALSE
+will output a bar plot that gives the mean expression across the groups detected
+in the sample names. For the barplot, `use_sd` as TRUE will give a standard
+deviation bar instead of a standard error bar. `lab_rotate` controls the
+rotation of the x-axis labels. The outputted object is a formatted ggplot.
+
+```{r fig.height=5.5, fig.width=7.5}
+individual_plots(
+  individual_data = ind_plot_data,
+  sample_info = load_data$sample_info,
+  selected_gene = "H4c1",
+  gene_plot_box = FALSE,
+  use_sd = FALSE,
+  lab_rotate = 90
+)
+```
+
+<br>
+
+#### Conclusion
+
+This concludes all the functions utilized in the Pre-Process portion of the iDEP
+package. The data can be plotted in many different ways, but hopefully the
+functions detailed above provide a good starting point. For troubleshooting, all
+functions have documentation and the code is available on Github.
+(https://github.com/gexijin/idepGolem)

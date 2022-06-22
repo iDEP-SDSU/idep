@@ -1,0 +1,190 @@
+---
+title: "Load Data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Load_Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+options(rmarkdown.html_vignette.check_title = FALSE)
+```
+
+```{r setup}
+#library(idepGolem)
+devtools::load_all()
+```
+
+This instruction will document how to Load Data and create the data objects that
+will be used in the rest of iDEP's functions. This corresponds to the functions
+that are utilized in the Load Data tab of the iDEP webpage. The step-by-step
+will guide you through loading and running the initial functions to set up the
+rest of iDEP analysis.
+
+#### Initial Data Paths
+
+To begin working with iDEP the first step is to identify your working directory
+and set it to the path where your data is located. The first two files that will
+be worked with is the expression data file and the file containing information
+on the experiment design and groupings for the samples. The design for the
+expression data file should have the gene IDs as the first column. The ensuing
+columns should each correspond to a sample, with the name of the sample in the
+first row. The data should then be then correspond (row, column) as the count
+for (gene, sample). If an experiment data file is included for the data, the
+structure should be similar to the expression data file. The first column should
+be the name of an experiment effect. The ensuing column then label each specific
+sample. The data will then correspond (row, column) as the group for a
+(effect, sample). This instruction will use the built-in demo expression and
+experiment files. The first code block will set the data paths to these files
+which will be filled into the first functions. We will also run the 
+`get_idep_data` function to return a list of the data objects used in the iDEP
+data analysis.
+
+```{r Create Data Paths}
+idep_data <- get_idep_data()
+
+YOUR_DATA_PATH <- "E:/idep_9_24/data/data103/data_go/BcellGSE71176_p53.csv"
+YOUR_EXPERIMENT_PATH <- "E:/idep_9_24/data/data103/data_go/BcellGSE71176_p53_sampleInfo.csv"
+
+expression_file <- data.frame(
+  datapath = YOUR_DATA_PATH
+)
+experiment_file <- data.frame(
+  datapath = YOUR_EXPERIMENT_PATH
+)
+```
+
+#### **`input_data`** Function
+
+This function will read the data from the given data paths and return a list
+with the data objects. `data` will be the data matrix of expression data that
+was detailed in the paragraph above. `data` will have row names as the gene IDs
+and column names matching the names of the samples that each column represents.
+`sample_info` will be the experiment design information that was detailed above.
+The structure will be the transpose of the original file structure, with the the
+rownames now being the column names of the original file. The column names of 
+this data matrix will label an effect in the experiment. For example, in the
+demo data `sample_info`, the column names are ("p53", "Treatment") for the muted
+gene and radiation treatment. If there is no experiment file, the function will
+only return the expression data.
+
+For this example, we will store the data in a list called `load_data`.
+
+```{r Load Data}
+load_data <- input_data(
+  expression_file = expression_file,
+  experiment_file = experiment_file,
+  go_button = FALSE,
+  demo_data_file = idep_data$demo_data_file,
+  demo_metadata_file = idep_data$demo_metadata_file
+)
+```
+
+#### iDEP Database Functions
+
+The next step of process is to use the gene IDs from the expression data to get
+the gene information and determine the species that the expression samples are
+from using the iDEP database. The following functions will also convert the IDs,
+if they are recognized, to ensembl and symbol name. These functions have an
+input parameter to specify the species that the data is for. The line below will
+shows how to search iDEP to find the numeric code for the species you wish to
+use. To allow iDEP to find the species, use `"BestMatch"`. To use a numeric code
+for a specfic species, make sure to use string quotes, for example `"107"`.
+
+```{r}
+# Species search for input data
+idep_data$species_choice[grep("Mouse", names(idep_data$species_choice))]
+```
+
+Each iDEP database function is outlined below.
+
+1. **`convert_id`**
+
+    This function will take in a 'query' and use the 'idep_data' to match the 
+    provided gene IDs with the corresponding ensembl ID. The IDs from the
+    inputted data are currently the rownames of the data frame `data` stored in
+    the list `load_data`. `select_org` is a parameter to provide the species
+    that the expression data is from. `convert_id` returns a list containing
+    information about the query results. The converted IDs are are accessed by
+    `converted$ids`. `print(converted$species_matched[1,])` shows the species
+    that was recognized by the provided gene IDs.
+    
+```{r}
+converted <- convert_id(
+  query = rownames(load_data$data),
+  idep_data = idep_data,
+  select_org = "BestMatch"
+)
+
+print(converted$species_matched[1,])
+```
+    
+
+2. **`gene_info`**
+
+    Gathering the information on the converted ensembl IDs is the next step. 
+    The `converted` results are passed into the `gene_info` function to retrieve
+    gene name information that is stored in `idep_data` as well. If `select_org`
+    is `"BestMatch"`, the function will use the matched species from converted
+    to retrieve the gene data. If a species code is provided, it will use that
+    species directly. `gene_info` will then read a gene data file from the
+    `idep_data` and return the resulting data frame. This data will be used to
+    map to more informative gene names in the coming functions.
+    
+```{r}
+all_gene_info <- gene_info(
+  converted = converted,
+  select_org = "BestMatch",
+  idep_data = idep_data
+)
+```
+    
+    
+3. **`convert_data`**
+
+    This step will return the original data from `input_data` with the converted
+    ensembl IDs as rownames, and a data frame of the mapped IDs. It uses the IDs
+    that were matched with `convert_id` to swap the current rownames with the 
+    corresponding ensembl ID. `no_id_conversion` can be set to `TRUE` if the 
+    desired IDs are the original ones, but the simpler solution is to simply not
+    run the function. The returned list contains the data with converted IDs in 
+    `data` and IDs in `mapped_ids`.
+    
+```{r}
+converted_data <- convert_data(
+  converted = converted,
+  no_id_conversion = FALSE,
+  data = load_data$data
+)
+```
+
+
+4. **`get_all_gene_names`**
+
+    This function combines all the gene name information that has been gathered
+    in the preceding functions. `mapped_ids` are the matched IDs from 
+    `converted`, and `all_gene_info` is the data read from idep based off the
+    identified species. This function returns a data frame with `User_ID` as the
+    original IDs, `ensembl_ID` containing the converted IDs, and `symbol`
+    containing the informative gene names. This data frame can be used
+    throughout the package to matach gene IDs.
+    
+```{r}
+gene_names <- get_all_gene_names(
+  mapped_ids = converted_data$mapped_ids,
+  all_gene_info = all_gene_info
+)
+```
+
+#### Conclusion
+
+This concludes the function calls and processes from the first tab of the iDEP
+program. There is no real data manipulation that happens, but the objects that
+are created are essential for the processes that will happen in the following
+instructions. For troubleshooting, all functions have documentation and the code
+is available on Github. (https://github.com/gexijin/idepGolem)
