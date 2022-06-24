@@ -108,7 +108,7 @@ remotes::install_github("espors/ottoPlots") # for download plots
 if(0)
 remotes::install_github(
   "espors/idepGolem@test_depolyment", 
-  force = TRUE
+  force = TRUE,
   ask = FALSE, 
   dependencies = TRUE, 
   quiet = FALSE, 
