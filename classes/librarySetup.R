@@ -104,11 +104,14 @@ list.of.bio.packages = c(list.of.bio.packages, "PGSEA") # add package for testin
 
 # install from GitHub
 remotes::install_github("espors/ottoPlots") # for download plots
+
+if(0)
 remotes::install_github(
   "espors/idepGolem@test_depolyment", 
+  force = TRUE
   ask = FALSE, 
   dependencies = TRUE, 
-  quiet=TRUE, 
+  quiet = FALSE, 
   upgrade = "never"  # do not ask for upgrade for dependencies
   )
 list.of.packages = c(list.of.packages, "ottoPlots", "idepGolem", "WGCNA") # add package for testing
