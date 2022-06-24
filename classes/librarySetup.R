@@ -1,6 +1,8 @@
 
 # Install packages for iDEP and associated apps
 # revised 6/23/2022. 
+# Install R packages, Bioconductor packages, then install ottoPlots and idepGolem. 
+# idepGolem has dependencies. 
 
 ###############################################################################
 # List of packages on CRAN
@@ -102,7 +104,13 @@ list.of.bio.packages = c(list.of.bio.packages, "PGSEA") # add package for testin
 
 # install from GitHub
 remotes::install_github("espors/ottoPlots") # for download plots
-remotes::install_github("espors/idepGolem@test_depolyment", force = T, dependencies = T, ask = F)
+remotes::install_github(
+  "espors/idepGolem@test_depolyment", 
+  ask = FALSE, 
+  dependencies = TRUE, 
+  quiet=TRUE, 
+  upgrade = "never"  # do not ask for upgrade for dependencies
+  )
 list.of.packages = c(list.of.packages, "ottoPlots", "idepGolem", "WGCNA") # add package for testing
 
 ###############################################################################
