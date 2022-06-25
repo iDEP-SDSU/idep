@@ -105,7 +105,7 @@ list.of.bio.packages = c(list.of.bio.packages, "PGSEA") # add package for testin
 # install from GitHub
 remotes::install_github("espors/ottoPlots") # for download plots
 
-if(0)
+
 remotes::install_github(
   "espors/idepGolem@test_depolyment", 
   force = TRUE,
