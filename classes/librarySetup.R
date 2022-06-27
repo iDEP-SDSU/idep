@@ -91,7 +91,7 @@ while(notInstalledPackageCount != 0){
     notInstalledPackageCount = length(new.packages) + length(new.bio.packages)
   }
 }
-
+ 
 ###############################################################################
 #  Install special packages
 ###############################################################################
