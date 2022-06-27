@@ -1,0 +1,3 @@
+[submodule "shinyapps/idepgolem1"]
+	path = shinyapps/idepgolem1
+	url = https://github.com/espors/idepGolem.git
