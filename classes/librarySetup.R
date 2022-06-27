@@ -26,6 +26,7 @@ list.of.bio.packages  <- c(
   "PREDAsampledata", "sfsmisc", "lokern", "multtest", "hgu133plus2.db",
   "BiocParallel", "ComplexHeatmap", "InteractiveComplexHeatmap", "SummarizedExperiment",
   "impute", "preprocessCore", # required by WGCNA
+  "PCAtools"
   "org.Ag.eg.db","org.At.tair.db","org.Bt.eg.db","org.Ce.eg.db","org.Cf.eg.db",
   "org.Dm.eg.db", "org.Dr.eg.db", "org.EcK12.eg.db","org.EcSakai.eg.db","org.Gg.eg.db",
   "org.Hs.eg.db","org.Mm.eg.db","org.Mmu.eg.db","org.Pf.plasmo.db",
@@ -110,7 +111,7 @@ remotes::install_github(
   "espors/idepGolem@test_depolyment", 
   force = TRUE,
   ask = FALSE, 
-  dependencies = TRUE, 
+  dependencies = TRUE, # many CRAN packages are installed, but not Bioconductor
   quiet = FALSE, 
   upgrade = "never"  # do not ask for upgrade for dependencies
   )
