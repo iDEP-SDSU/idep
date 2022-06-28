@@ -108,7 +108,7 @@ remotes::install_github("espors/ottoPlots") # for download plots
 
 
 remotes::install_github(
-  "espors/idepGolem@test_depolyment", 
+  "espors/idepGolem@deployment", 
   force = TRUE,
   ask = FALSE, 
   dependencies = TRUE, # many CRAN packages are installed, but not Bioconductor
