@@ -14,7 +14,8 @@ list.of.packages <- c(
   "plotly",
   "e1071", "reshape2", "DT",
   "data.table", "Rcpp", "flashClust","statmod","biclust","igraph","Rtsne",
-  "visNetwork", "feather","shinyjs","reactable", "remotes"
+  "visNetwork", "feather","shinyjs","reactable", "remotes",
+  "ggalt" # required by PCAtools
 )
 
 ###############################################################################
