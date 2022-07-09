@@ -47,7 +47,7 @@ iDEPversion,
                      choices  = " ",
                      multiple = TRUE,
                      options  = list( maxItems     = 1,               
-                                      placeholder  = 'Best matching species',
+                                      placeholder  = 'Loading ...',
                                       onInitialize = I('function() { this.setValue(""); }')) 
                   )), 
         column(3, actionButton("MorgInfo", "Info"))  
@@ -1415,4 +1415,4 @@ iDEPversion,
   ,tags$head(includeHTML(("google_analytics_GA4.html")))
   )# Navibar
 
-) #shinyUI
+) #shinyUIBest matching species
