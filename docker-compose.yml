@@ -26,4 +26,4 @@ services:
     ports:
         - "80:80"
     volumes:
-        - ./data/:/data/
+        - ./data/shared:/data/
