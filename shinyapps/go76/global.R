@@ -359,14 +359,24 @@ convertID <- function (query, selectOrg) {
 		
 		
 	} else { # if species is selected
-
+   
 	  querySTMT <- paste0( "select distinct id,ens,species,idType from mapping where species = '", selectOrg,
 	                      "' AND id IN ", querSetString) 
 	  result <- dbGetQuery(convert, querySTMT)
 
-	  if( dim(result)[1] == 0  ) return(NULL)
-		result <- result[which(result$species == selectOrg ) ,]
 		if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
+
+    # resolve multiple ID types, get the most matched
+    bestIDtype <- as.integer(
+      names(
+        sort(
+          table(result$idType), 
+          decreasing = TRUE
+        )
+      )[1]
+    )
+    result <- result[result$idType == bestIDtype, ]
+
 		speciesMatched <- as.data.frame(paste("Using selected species ", findSpeciesByIdName(selectOrg) )  )
 	}
 	result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id
