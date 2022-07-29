@@ -1571,6 +1571,12 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedComparisons=NULL, sampleInfo = NULL,modelFactors=NULL, blockFactor = NULL, referenceLevels=NULL){
 	library(DESeq2,verbose=FALSE) # count data analysis
     #library("BiocParallel")
+	# if factors are not selected, ignore the design matrix
+    # this solve the error cased when design matrix is available but
+    # factors are not selected.
+	if(is.null(modelFactors)) {
+		sampleInfo <- NULL
+	}
 	groups = as.character ( detectGroups( colnames( rawCounts ), sampleInfo) )
 	g = unique(groups)# order is reversed	
 	
