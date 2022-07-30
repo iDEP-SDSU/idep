@@ -3,7 +3,7 @@
 # hosted at http://ge-lab.org/idep/
 # manuscript: https://www.biorxiv.org/content/early/2018/04/20/148411 
 
-iDEPversion = "iDEP 0.951"     
+iDEPversion = "iDEP 0.96"     
 
 ################################################################
 # R packages
@@ -92,7 +92,7 @@ STRING_DB_VERSION <- "11.0" # what version of STRINGdb needs to be used
 
 # relative path to data files
 datapath = "../../data/data104b/"   # production server
-datapath = Sys.getenv("IDEP_DATABASE")[1]
+#datapath = Sys.getenv("IDEP_DATABASE")[1]
 sqlite  <- dbDriver("SQLite")
 convert <- dbConnect( sqlite, paste0(datapath, "convertIDs.db"), flags=SQLITE_RO)  #read only mode
 keggSpeciesID = read.csv(paste0(datapath, "data_go/KEGG_Species_ID.csv"))
