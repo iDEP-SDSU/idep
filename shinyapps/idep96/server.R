@@ -72,9 +72,9 @@ maxFactors =6  # max number of factors in DESeq2 models
 set.seed(2) # seed for random number generator
 mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
 #Each row of this matrix represents a color scheme;
-maxSamples = 100   # DESeq2 gets really slow when more than 50 samples
+maxSamples = 200   # DESeq2 gets really slow when more than 50 samples
 maxSamplesDefault = 30   # change default from DESeq2 to limma
-maxComparisons = 20 # max number of pair wise comparisons in DESeq2
+maxComparisons = 50 # max number of pair wise comparisons in DESeq2
 hmcols <- colorRampPalette(rev(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF",
 "#E0F3F8", "#91BFDB", "#4575B4")))(75)
 heatColors = rbind(  greenred(75),     bluered(75),     
@@ -1606,10 +1606,11 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 	return( list(results= NULL, comparisons = NULL, Exp.type="Failed to parse sample names to define groups. 
 		Cannot perform DEGs and pathway analysis. Please double check column names! Use WT_Rep1, WT_Rep2 etc. ", topGenes=NULL)) 
 	# remove samples without replicates
-	g <- rownames(reps)[which(reps[,1] >1)]
-	ix <- which( groups %in% g)  
-	groups <- groups[ix]   
-	rawCounts <- rawCounts[,ix] 
+	#g <- rownames(reps)[which(reps[,1] >1)]
+	#ix <- which( groups %in% g)  
+	#groups <- groups[ix]   
+	#rawCounts <- rawCounts[,ix] 
+
 	Exp.type = paste(length(g)," sample groups detected.")	
 	
 	# if too many samples 
