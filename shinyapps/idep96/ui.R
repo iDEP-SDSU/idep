@@ -1313,9 +1313,12 @@ iDEPversion,
                           ,"Experiment design file"))
         ,br()
         ,h4("Previous versions of iDEP")
+        ,a("iDEP 0.95 with Ensembl Release 104, archived on July. 30, 2022 "
+        , href="http://bioinformatics.sdstate.edu/idep95/")
+        ,br()
         ,a("iDEP 0.94 with Ensembl Release 104, archived on Feb. 8, 2022 "
         , href="http://bioinformatics.sdstate.edu/idep94/")
-
+        ,br()
         ,a("iDEP 0.93 with Ensembl Release 103, archived on Oct. 15, 2021 "
            , href="http://bioinformatics.sdstate.edu/idep93/")  
         ,br()
