@@ -133,7 +133,7 @@ iDEPversion,
                                    a(" GoFundMe.", href=("https://www.gofundme.com/en-ie/c/act/donate-to-ukraine-relief?utm_source=email&utm_medium=marketing&utm_content=annoucement&utm_campaign=022522_helpukraine_send14_dedicatedpage"))
                                    ), br()
       ,h3("July 30, 2022: iDEP updated to v0.96. Fixed a bug in the DEG1 tab regarding the different comparisons. iDEP now works even when factors have more
-      than two levels. The downside is that some comparisons for non-reference levels is difficult to make.")
+      than two levels. The downside is that some comparisons for non-reference levels are difficult to make. Users have to change the reference levels and rerun.")
       ,p("April 25, 2022: Gene ID conversion is much faster now, even when species has to be guessed. So is the DEG2 tab.")
       ,p("April 24, 2022: Add a tab for visualizing the fold-change of all genes in all KEGG diagrams across all comparisons!")
 
@@ -569,11 +569,22 @@ iDEPversion,
             
       mainPanel(
         plotOutput('sigGeneStats')
-        ,br(),br(),
-        h4("Numbers of differentially expressed genes for all comparisons.
+        ,br(),br()
+        ,h4("Numbers of differentially expressed genes for all comparisons.
            \"B-A\" means B vs. A. Interaction terms start with \"I:\". 
-           Unnamed factors are at reference level. ")
+           Unnamed factors are at reference level.") 
         ,tableOutput('sigGeneStatsTable')
+        ,p("In the demo data, if you select, \"mu\" and \"mock\" 
+           as reference levels for the two factors and select the interaction term, then  
+           \"IR-mock\" represents genes induced by IR in mutant, which lacks a functional P53 protein. 
+           \"wt-mu\" indicates genes differentially expressed in wt compared with mutant, under mock condition.
+           The interaction term \"I:p53_wt-Treatment_IR\" tells us the extra response 
+           to IR in wildtype compared with mutant. In otherwords, 
+           this is the p53-dependent changes in gene expression in response to IR. ")
+        ,p("If you want to obtain the genes up- or down-regulated by IR in the wildtype, 
+        you will need to set the reference level for genotype to \"wt\" and rerun DESeq2. Similarily, 
+        to obtain the DEGs between mutant and wildtype, both with IR, set the reference level for treatment as IR
+        and rerun DESeq2. ")
     
         ,bsModal("modalExample", "Venn Diagram", "showVenn", size = "large",
            checkboxInput("UpDownRegulated", label = "Split gene lists by up- or down-regulation", value = FALSE)
@@ -1312,29 +1323,32 @@ iDEPversion,
                           downloadButton('downloadSampleInfoFile'
                           ,"Experiment design file"))
         ,br()
-        ,h4("Previous versions of iDEP")
-        ,a("iDEP 0.95 with Ensembl Release 104, archived on July. 30, 2022 "
+        ,h4("All versions of iDEP")
+         ,a("iDEP 0.96 with Ensembl Release 104, released July 30, 2022 "
+        , href="http://bioinformatics.sdstate.edu/idep96/")
+        ,br()       
+        ,a("iDEP 0.95 with Ensembl Release 104, released Feb. 8, 2022 "
         , href="http://bioinformatics.sdstate.edu/idep95/")
         ,br()
-        ,a("iDEP 0.94 with Ensembl Release 104, archived on Feb. 8, 2022 "
+        ,a("iDEP 0.94 with Ensembl Release 104, released on Oct. 15, 2021 "
         , href="http://bioinformatics.sdstate.edu/idep94/")
         ,br()
-        ,a("iDEP 0.93 with Ensembl Release 103, archived on Oct. 15, 2021 "
+        ,a("iDEP 0.93 with Ensembl Release 103, released May 20, 2021 "
            , href="http://bioinformatics.sdstate.edu/idep93/")  
         ,br()
-        ,a("iDEP 0.92 with Ensembl Release 100, archived on May 20, 2021 "
+        ,a("iDEP 0.92 with Ensembl Release 100, released May 20, 2021 "
            , href="http://bioinformatics.sdstate.edu/idep92/")  
         ,br()
-        ,a("iDEP 0.90 with Ensembl Release 96, archived on May 20, 2021 "
+        ,a("iDEP 0.90 with Ensembl Release 96, released May 19, 2021 "
            , href="http://bioinformatics.sdstate.edu/idep90/")  
         ,br()
-        ,a("iDEP 0.85 with Ensembl Release 95, archived on May 19, 2019 "
+        ,a("iDEP 0.85 with Ensembl Release 95, released March 29, 2019 "
            , href="http://bioinformatics.sdstate.edu/idep85/")  
         ,br()
-        ,a("iDEP 0.82 with Ensembl  Release 92, archived on March 29, 2019 "
+        ,a("iDEP 0.82 with Ensembl  Release 92, released July 11, 2018 "
            , href="http://bioinformatics.sdstate.edu/idep82/")  
         ,br()
-        ,a("iDEP 0.73 with Ensembl  Release 91, archived on July 11, 2018 "
+        ,a("iDEP 0.73 with Ensembl  Release 91,  released December 2017 "
             , href="http://bioinformatics.sdstate.edu/idep73/")  
         ,br()
         ,h4("Citation")  
