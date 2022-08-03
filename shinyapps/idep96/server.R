@@ -1555,11 +1555,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 		top <- function (comp) {
 			tem <- topTable(fit2, number = 1e12,coef=comp,sort.by="M" ) 
 			if(dim(tem)[1] == 0) { return (1) 
-			} else	{ 			
-				# compute fold change for the first gene (ranked by absolute value)
-				tem2 = as.numeric( x[ which(rownames(x)== rownames(tem)[1]) , ] )
-				names(tem2) = colnames(x) 
-					
+			} else	{ 							
 				return( tem[,c(1,5)]) 
 			}  
 													
