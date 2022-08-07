@@ -1417,7 +1417,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 			fit <- eBayes(fit, trend=limmaTrend)	
 			
 			#-----------Making comaprisons
-			if( length(keyModelFactors) != 2 | length(blockFactor) >1 )  { # if only one factor, or more than two then use all pairwise comparisons
+			if( length(keyModelFactors) != 2  )  { # if only one factor, or more than two then use all pairwise comparisons
 				comparisons = gsub(".*: ","",selectedComparisons)
 				comparisons = gsub(" vs\\. ","-",comparisons)
 			} else if( length(keyModelFactors) == 2 ){ # two key factors
@@ -1473,33 +1473,24 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 					contrast2 = contrast2[,keep,drop=F]
 					comparisons2 = colnames(contrast2) 				 
 				}
-
-				# "stage: MN vs. EN"  -->  c("MN_AB-EN_AB", "EN_Nodule-EN_AB") 
-				#  comparisons in all levels of the other factor 
-				transformComparisons <- function (comparison1){
-					tem = gsub(".*: ","",comparison1)
-					tem = unlist(strsplit(tem, " vs\\. ") ) # control  mutant							
-					factor1= gsub(":.*","",comparison1)
-
-					ix = match(factor1, keyModelFactors) # 1: first factor, 2: 2nd factor
-					otherFactor = keyModelFactors[3-ix]   # 3-1 = 2; 3-1=1
-					otherFactorLevels = unique( sampleInfo2[,otherFactor] )				
-					comparisons = c( )
-					
-					for (factorLevels in otherFactorLevels) {
-						if( ix == 1){
-							comparisons = c( comparisons, paste(paste0( tem, "_",factorLevels),collapse="-") )
-						} else {
-							comparisons = c( comparisons,  paste(paste0(factorLevels, "_", tem),collapse="-") )
-						}
-					}
-					return(comparisons)		
-				}	
-				
-				comparisons = unlist( sapply(selectedComparisons, transformComparisons ))
-				comparisons = as.vector(comparisons)
-			
 			} # two factors
+
+			
+      # formulate comparison---------------------------
+      #"stage: MN vs. EN"  -->  c("MN_AB-EN_AB", "EN_Nodule-EN_AB") 
+      comparisons <- unlist(
+        sapply(
+          selectedComparisons, 
+          function(x){
+            transform_comparisons(
+                comparison = x,
+                key_model_factors = keyModelFactors,
+                sample_info = sampleInfo2
+            ) 
+          }           
+        )
+      )
+      comparisons <- as.vector(comparisons)
 			
 			# make contrasts
 			contrast1 <- makeContrasts(contrasts=comparisons[1], levels=design)
@@ -1520,10 +1511,14 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 			# fit <- lmFit(eset,design,block=targets$Subject,correlation=corfit$consensus)
 
 			if(length(blockFactor) >= 1 ) { # if a factor is selected as block
-				if(length(blockFactor) >= 1 ) 
-					blockFactor = blockFactor[1] # if multiple use the first one
-
-				block = sampleInfo[, blockFactor]  # the column not used
+			# default use the first block
+				block <- sampleInfo[, blockFactor[1]]
+				# if more than one block factor, paste them together to make one vector
+						if(length(blockFactor) > 1) {
+				for( i in 2:length(blockFactor)){
+					block <- paste(block, blockFactor[i])
+				}
+				}			
 			
 				if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
 					v <- voom(rawCounts, design);
@@ -1957,6 +1952,68 @@ findContrastSamples <- function(selectContrast, allSampleNames,sampleInfo=NULL, 
 	return(iz)
 }
 
+#' comparisons in all levels of the other factor 
+#' "stage: MN vs. EN"  -->  c("MN_AB-EN_AB", "EN_Nodule-EN_AB") 
+#' 
+#' @param comparison Comparison
+#' @param key_model_factors model factors
+#' @sample_info a matrix of experimental design
+#'  returned list
+#' 
+#' @export
+#' @return a list of comparisons
+#  
+transform_comparisons <- function(
+  comparison,
+  key_model_factors,
+  sample_info
+) {
+
+  levels <- gsub(".*: ", "", comparison)
+  # two levels of contrast: IR mock
+  levels <- unlist(strsplit(levels, " vs\\. ")) 							
+  current_factor <- gsub(":.*", "", comparison)
+
+  comparisons <- c()
+  for( factor in key_model_factors){
+    if(factor == current_factor) {
+      if(factor == key_model_factors[1]) { # if it is the first factor
+        comparisons <- paste0(   # IR-mock_
+          comparisons,
+          paste0(levels, collapse = "-"),
+          "_" 
+        )
+      } else { # if it is not the first: wt_  --> "wt_IR-wt_mock_"
+        comparisons <- paste0(
+          comparisons, 
+          levels[1],  
+          "-", 
+          comparisons,
+          levels[2], 
+          "_" 
+        )
+      }
+    } else { #  not current factor
+      other_factor_levels <- unique(sample_info[, factor])
+      comparison0 = c()
+      for(other_factor_level in other_factor_levels)	{
+        # "wt-null_mock_"
+        comparison1 <- paste0(comparisons, other_factor_level, "_")
+        # "wt_mock-null_mock_"
+        comparison1 <- gsub("-", paste0("_", other_factor_level, "-"), comparison1)
+        #collect for levels
+        comparison0 <- c(comparison0, comparison1)
+      }
+      # update for factor
+      comparisons <- comparison0
+    }
+  }
+  # remove the last "_"
+  comparisons <- gsub("_$", "", comparisons)
+
+  return(comparisons)		
+}	
+
 # a program for ploting enrichment results by highlighting the similarities among terms
 # must have columns: Direction, adj.Pval   Pathways Genes
 #  Direction	adj.Pval	nGenes	Pathways		Genes
@@ -2347,6 +2404,7 @@ readData <- reactive ({
 				
 				x = x[order(- apply(x[,2:dim(x)[2]],1,sd) ),]  # sort by SD
 				x <- x[!duplicated(x[,1]) ,]  # remove duplicated genes
+				x <- x[!is.na(x[,1]) ,]  # remove duplicated genes
 				rownames(x) <- x[,1]
 				x <- as.matrix(x[,c(-1)])
 				
@@ -4474,7 +4532,6 @@ Kmeans <- reactive({ # Kmeans clustering
 	set.seed(input$KmeansReRun)
 	k=input$nClusters
 	
-
 	
 	cl = kmeans(x,k,iter.max = 50)
 	#myheatmap(cl$centers)	
