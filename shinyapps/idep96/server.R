@@ -665,8 +665,16 @@ convertID <- function (query,selectOrg) {
 	if(selectOrg == speciesChoice[[1]]) {# if best match      
 
 	  #First send a query to determine the species
-	  query_species <- paste0( "select species, idType, COUNT(species) as freq from mapping where id IN ", 
-	                      testQueriesString, " GROUP by species,idType")
+
+		query_species <- paste0(
+		"SELECT species, idType, COUNT(species)
+		as freq FROM
+		(SELECT DISTINCT id, species, idType
+			FROM mapping WHERE id IN ",
+			testQueriesString,
+		")  GROUP BY species,idType"
+		) 
+
 	  species_ranked <- dbGetQuery(convert, query_species)
 
 	  if( dim(species_ranked)[1] == 0  ) return(NULL)	  	
