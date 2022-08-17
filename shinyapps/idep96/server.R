@@ -3,7 +3,7 @@
 # hosted at http://ge-lab.org/idep/
 # manuscript: https://www.biorxiv.org/content/early/2018/04/20/148411 
 
-iDEPversion = "iDEP 0.951"     
+iDEPversion = "iDEP 0.96"     
 
 ################################################################
 # R packages
@@ -72,9 +72,9 @@ maxFactors =6  # max number of factors in DESeq2 models
 set.seed(2) # seed for random number generator
 mycolors = sort(rainbow(20))[c(1,20,10,11,2,19,3,12,4,13,5,14,6,15,7,16,8,17,9,18)] # 20 colors for kNN clusters
 #Each row of this matrix represents a color scheme;
-maxSamples = 100   # DESeq2 gets really slow when more than 50 samples
+maxSamples = 200   # DESeq2 gets really slow when more than 50 samples
 maxSamplesDefault = 30   # change default from DESeq2 to limma
-maxComparisons = 20 # max number of pair wise comparisons in DESeq2
+maxComparisons = 50 # max number of pair wise comparisons in DESeq2
 hmcols <- colorRampPalette(rev(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF",
 "#E0F3F8", "#91BFDB", "#4575B4")))(75)
 heatColors = rbind(  greenred(75),     bluered(75),     
@@ -665,6 +665,7 @@ convertID <- function (query,selectOrg) {
 	if(selectOrg == speciesChoice[[1]]) {# if best match      
 
 	  #First send a query to determine the species
+
 		query_species <- paste0(
 		"SELECT species, idType, COUNT(species)
 		as freq FROM
@@ -673,9 +674,18 @@ convertID <- function (query,selectOrg) {
 			testQueriesString,
 		")  GROUP BY species,idType"
 		) 
+
 	  species_ranked <- dbGetQuery(convert, query_species)
 
-	  if( dim(species_ranked)[1] == 0  ) return(NULL)	  	
+	  if( dim(species_ranked)[1] == 0  ) return(NULL)	 
+	      # for each species only keep the idType with most genes
+    species_ranked <- species_ranked[
+      order(-species_ranked$freq),
+    ]
+    species_ranked <- species_ranked[
+      !duplicated(species_ranked$species),
+    ]   
+
 	  sortedCounts <- species_ranked$freq 
 	  names(sortedCounts) <- paste(species_ranked$species, species_ranked$idType)
 	  sortedCounts <- sort(sortedCounts, decreasing = TRUE)
@@ -683,8 +693,8 @@ convertID <- function (query,selectOrg) {
 		# Try to use Ensembl instead of STRING-db genome annotation
 		if(length(sortedCounts) > 1) # if more than 1 species matched
         if( sortedCounts[1] <= sortedCounts[2] *1.1  # if the #1 species and #2 are close
-             && as.numeric( gsub(" .*", "", names(sortedCounts[1]))) > sum( annotatedSpeciesCounts[1:3])  # 1:3 are Ensembl species
-             && as.numeric( gsub(" .*", "", names(sortedCounts[2]))) < sum( annotatedSpeciesCounts[1:3])    ) {
+             && as.numeric( gsub(" .*", "", names(sortedCounts[1]))) < 0  # 1:3 are Ensembl species
+             && as.numeric( gsub(" .*", "", names(sortedCounts[2]))) > 0   ) {
 		  tem <- sortedCounts[2]
 		  sortedCounts[2] <- sortedCounts[1]
 		  names(sortedCounts)[2] <- names(sortedCounts)[1]
@@ -1423,7 +1433,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 			fit <- eBayes(fit, trend=limmaTrend)	
 			
 			#-----------Making comaprisons
-			if( length(keyModelFactors) != 2 | length(blockFactor) >1 )  { # if only one factor, or more than two then use all pairwise comparisons
+			if( length(keyModelFactors) != 2  )  { # if only one factor, or more than two then use all pairwise comparisons
 				comparisons = gsub(".*: ","",selectedComparisons)
 				comparisons = gsub(" vs\\. ","-",comparisons)
 			} else if( length(keyModelFactors) == 2 ){ # two key factors
@@ -1479,33 +1489,24 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 					contrast2 = contrast2[,keep,drop=F]
 					comparisons2 = colnames(contrast2) 				 
 				}
-
-				# "stage: MN vs. EN"  -->  c("MN_AB-EN_AB", "EN_Nodule-EN_AB") 
-				#  comparisons in all levels of the other factor 
-				transformComparisons <- function (comparison1){
-					tem = gsub(".*: ","",comparison1)
-					tem = unlist(strsplit(tem, " vs\\. ") ) # control  mutant							
-					factor1= gsub(":.*","",comparison1)
-
-					ix = match(factor1, keyModelFactors) # 1: first factor, 2: 2nd factor
-					otherFactor = keyModelFactors[3-ix]   # 3-1 = 2; 3-1=1
-					otherFactorLevels = unique( sampleInfo2[,otherFactor] )				
-					comparisons = c( )
-					
-					for (factorLevels in otherFactorLevels) {
-						if( ix == 1){
-							comparisons = c( comparisons, paste(paste0( tem, "_",factorLevels),collapse="-") )
-						} else {
-							comparisons = c( comparisons,  paste(paste0(factorLevels, "_", tem),collapse="-") )
-						}
-					}
-					return(comparisons)		
-				}	
-				
-				comparisons = unlist( sapply(selectedComparisons, transformComparisons ))
-				comparisons = as.vector(comparisons)
-			
 			} # two factors
+
+			
+      # formulate comparison---------------------------
+      #"stage: MN vs. EN"  -->  c("MN_AB-EN_AB", "EN_Nodule-EN_AB") 
+      comparisons <- unlist(
+        sapply(
+          selectedComparisons, 
+          function(x){
+            transform_comparisons(
+                comparison = x,
+                key_model_factors = keyModelFactors,
+                sample_info = sampleInfo2
+            ) 
+          }           
+        )
+      )
+      comparisons <- as.vector(comparisons)
 			
 			# make contrasts
 			contrast1 <- makeContrasts(contrasts=comparisons[1], levels=design)
@@ -1526,10 +1527,14 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 			# fit <- lmFit(eset,design,block=targets$Subject,correlation=corfit$consensus)
 
 			if(length(blockFactor) >= 1 ) { # if a factor is selected as block
-				if(length(blockFactor) >= 1 ) 
-					blockFactor = blockFactor[1] # if multiple use the first one
-
-				block = sampleInfo[, blockFactor]  # the column not used
+			# default use the first block
+				block <- sampleInfo[, blockFactor[1]]
+				# if more than one block factor, paste them together to make one vector
+						if(length(blockFactor) > 1) {
+				for( i in 2:length(blockFactor)){
+					block <- paste(block, blockFactor[i])
+				}
+				}			
 			
 				if( !is.null(rawCounts) && countsDEGMethods == 2) {  # voom
 					v <- voom(rawCounts, design);
@@ -1561,11 +1566,7 @@ DEG.limma <- function (x, maxP_limma=.1, minFC_limma=2, rawCounts,countsDEGMetho
 		top <- function (comp) {
 			tem <- topTable(fit2, number = 1e12,coef=comp,sort.by="M" ) 
 			if(dim(tem)[1] == 0) { return (1) 
-			} else	{ 			
-				# compute fold change for the first gene (ranked by absolute value)
-				tem2 = as.numeric( x[ which(rownames(x)== rownames(tem)[1]) , ] )
-				names(tem2) = colnames(x) 
-					
+			} else	{ 							
 				return( tem[,c(1,5)]) 
 			}  
 													
@@ -1612,10 +1613,11 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 	return( list(results= NULL, comparisons = NULL, Exp.type="Failed to parse sample names to define groups. 
 		Cannot perform DEGs and pathway analysis. Please double check column names! Use WT_Rep1, WT_Rep2 etc. ", topGenes=NULL)) 
 	# remove samples without replicates
-	g <- rownames(reps)[which(reps[,1] >1)]
-	ix <- which( groups %in% g)  
-	groups <- groups[ix]   
-	rawCounts <- rawCounts[,ix] 
+	#g <- rownames(reps)[which(reps[,1] >1)]
+	#ix <- which( groups %in% g)  
+	#groups <- groups[ix]   
+	#rawCounts <- rawCounts[,ix] 
+
 	Exp.type = paste(length(g)," sample groups detected.")	
 	
 	# if too many samples 
@@ -1778,88 +1780,6 @@ DEG.DESeq2 <- function (  rawCounts,maxP_limma=.05, minFC_limma=2, selectedCompa
 				names(topGenes)[pk] = comparisons2[kk];  # assign name to comprison
 			}
 	}
-
-	Interactions = c()
-	if( !is.null(modelFactors) )
-		Interactions = modelFactors[ grepl(":",modelFactors )]
-		
-#---  add comprisons for non-reference levels. It adds to the results1 object.	
-	if( length(Interactions)>0 ) { # if there is interaction
-		factorLookup=c() # a factor whose values are factors and names are factor and level combination conditionTreated, genotypeWT
-		levelLookup = c()
-		
-		for( i in 1:dim(sampleInfo)[2]) {
-			sampleInfo2 = unique(sampleInfo)
-			tem = rep(toupper(letters)[i],dim(sampleInfo2)[1]  )
-			names(tem) = paste0(toupper(letters)[i],sampleInfo2[,i])
-			factorLookup = c(factorLookup,tem)  
-			
-			tem = as.character( sampleInfo2[,i] )
-			names(tem) = paste0(toupper(letters)[i],sampleInfo2[,i])
-			levelLookup = c(levelLookup, tem)
-		}
-		
-		# split  genotypeI.conditionTrt --> c("genotype","I","conditoin","Trt")
-		splitInteractionTerms <- function (term) {
-			if(!grepl("\\.",term) ) return(NULL)
-			terms2 = unlist(strsplit(term,"\\.") )
-					 # factor1, level1, factor2, level2
-			return(c(factorLookup[terms2[1]], levelLookup[terms2[1]],factorLookup[terms2[2]], levelLookup[terms2[2]]   ) )
-		}
-		# none interaction terms 
-		NoneInterTerms = resultsNames(dds)[ !grepl( "\\.", resultsNames(dds)) ]
-		NoneInterTerms=NoneInterTerms[-1]
-		allInteractionTerms = resultsNames(dds)[ grepl( "\\.", resultsNames(dds)) ]
-
-
-		for( kk in 1:length(NoneInterTerms) ) { # for each none interaction term
-			if(!is.null(modelFactors) ) {# if not just group comparison using sample names
-					#current factor
-					cFactor = gsub("_.*","",NoneInterTerms[kk] )
-				
-					for(interactionTerm in allInteractionTerms ) {
-					
-						splited = splitInteractionTerms (interactionTerm)  # 4 components
-						if (cFactor != splited[1] & cFactor != splited[3]  ) 
-							next;						
-						
-						selected = results(dds, list(c( NoneInterTerms[kk],interactionTerm ) ) ) 
-						comparisonName = paste0( NoneInterTerms[kk],"__", gsub("\\.","",interactionTerm) )
-						
-						if( cFactor == splited[1] )
-							otherLevel = splited[4] else otherLevel = splited[2]
-							
-						comparisonName = paste0(#names(factorsCoded)[which(factorsCoded==cFactor)], # real factor name
-												gsub("_vs_","-", substr(NoneInterTerms[kk], 3, nchar(NoneInterTerms[kk]  )  )), # the comparison
-												"_for_",otherLevel)
-						comparisons2 = c(comparisons2, comparisonName)
-						selected$calls =0   
-						selected$calls [which( selected$log2FoldChange > log2(minFC_limma) & selected$padj < maxP_limma ) ]  <-  1
-						selected$calls [ which( selected$log2FoldChange <  -log2(minFC_limma) & selected$padj < maxP_limma ) ] <-  -1
-						colnames(selected)= paste( comparisonName, "___",colnames(selected),sep="" )
-						selected = as.data.frame(selected)
-						if (pp==0){  # if first one with significant genes, collect gene list and Pval+ fold
-							result1 = selected; pp = 1; 
-							# selected[,2] <- -1 * selected[,2] # reverse fold change direction
-							topGenes[[1]] = selected[,c(2,6)]; 
-							names(topGenes)[1] = comparisonName; } else 
-							{ result1 = merge(result1,selected,by="row.names"); 
-								rownames(result1) = result1[,1]; 
-								result1 <- result1[,-1]
-								pk= pk+1; 
-								# selected[,2] <- -1 * selected[,2] # reverse fold change direction
-								topGenes[[pk]] = selected[,c(2,6)]; 
-								names(topGenes)[pk] = comparisonName;  # assign name to comprison
-							}
-					} #for	
-						
-			} #if
-		} #for
-	
-	
-	} #if
-
-
 
 #---
 	#if( length(comparisons) == 1) topGenes <- topGenes[[1]] # if only one comparison, topGenes is not a list, just a data frame itself.
@@ -2047,6 +1967,68 @@ findContrastSamples <- function(selectContrast, allSampleNames,sampleInfo=NULL, 
 
 	return(iz)
 }
+
+#' comparisons in all levels of the other factor 
+#' "stage: MN vs. EN"  -->  c("MN_AB-EN_AB", "EN_Nodule-EN_AB") 
+#' 
+#' @param comparison Comparison
+#' @param key_model_factors model factors
+#' @sample_info a matrix of experimental design
+#'  returned list
+#' 
+#' @export
+#' @return a list of comparisons
+#  
+transform_comparisons <- function(
+  comparison,
+  key_model_factors,
+  sample_info
+) {
+
+  levels <- gsub(".*: ", "", comparison)
+  # two levels of contrast: IR mock
+  levels <- unlist(strsplit(levels, " vs\\. ")) 							
+  current_factor <- gsub(":.*", "", comparison)
+
+  comparisons <- c()
+  for( factor in key_model_factors){
+    if(factor == current_factor) {
+      if(factor == key_model_factors[1]) { # if it is the first factor
+        comparisons <- paste0(   # IR-mock_
+          comparisons,
+          paste0(levels, collapse = "-"),
+          "_" 
+        )
+      } else { # if it is not the first: wt_  --> "wt_IR-wt_mock_"
+        comparisons <- paste0(
+          comparisons, 
+          levels[1],  
+          "-", 
+          comparisons,
+          levels[2], 
+          "_" 
+        )
+      }
+    } else { #  not current factor
+      other_factor_levels <- unique(sample_info[, factor])
+      comparison0 = c()
+      for(other_factor_level in other_factor_levels)	{
+        # "wt-null_mock_"
+        comparison1 <- paste0(comparisons, other_factor_level, "_")
+        # "wt_mock-null_mock_"
+        comparison1 <- gsub("-", paste0("_", other_factor_level, "-"), comparison1)
+        #collect for levels
+        comparison0 <- c(comparison0, comparison1)
+      }
+      # update for factor
+      comparisons <- comparison0
+    }
+  }
+  # remove the last "_"
+  comparisons <- gsub("_$", "", comparisons)
+
+  return(comparisons)		
+}	
 
 # a program for ploting enrichment results by highlighting the similarities among terms
 # must have columns: Direction, adj.Pval   Pathways Genes
@@ -2438,6 +2420,7 @@ readData <- reactive ({
 				
 				x = x[order(- apply(x[,2:dim(x)[2]],1,sd) ),]  # sort by SD
 				x <- x[!duplicated(x[,1]) ,]  # remove duplicated genes
+				x <- x[!is.na(x[,1]) ,]  # remove duplicated genes
 				rownames(x) <- x[,1]
 				x <- as.matrix(x[,c(-1)])
 				
@@ -4565,7 +4548,6 @@ Kmeans <- reactive({ # Kmeans clustering
 	set.seed(input$KmeansReRun)
 	k=input$nClusters
 	
-
 	
 	cl = kmeans(x,k,iter.max = 50)
 	#myheatmap(cl$centers)	

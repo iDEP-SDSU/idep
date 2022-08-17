@@ -22,6 +22,7 @@ library(DT,verbose=FALSE) 		# for renderDataTable
 
 # relative path to data files
 datapath = "../../data/data104b/"   # production server
+#datapath = Sys.getenv("IDEP_DATABASE")[1]
 STRING_DB_VERSION <- "11.5" # what version of STRINGdb needs to be used 
 Min_overlap <- 1
 minSetSize = 3;
@@ -309,11 +310,26 @@ convertID <- function (query, selectOrg) {
 	if(selectOrg == speciesChoice[[1]]) {# if best match
 
 	  #First send a query to determine the species
-	  query_species <- paste0( "select species, idType, COUNT(species) as freq from mapping where id IN ", 
-	                      testQueriesString," GROUP by species,idType")
+    query_species <- paste0(
+      "SELECT species, idType, COUNT(species)
+      as freq FROM
+      (SELECT DISTINCT id, species, idType
+        FROM mapping WHERE id IN ",
+        testQueriesString,
+      ")  GROUP BY species,idType"
+    )                        
 	  species_ranked <- dbGetQuery(convert, query_species)
 
-	  if( dim(species_ranked)[1] == 0  ) return(NULL)	  	
+	  if( dim(species_ranked)[1] == 0  ) return(NULL)
+
+    # for each species only keep the idType with most genes
+    species_ranked <- species_ranked[
+      order(-species_ranked$freq),
+    ]
+    species_ranked <- species_ranked[
+      !duplicated(species_ranked$species),
+    ]   
+
 	  sortedCounts <- species_ranked$freq 
 	  names(sortedCounts) <- paste(species_ranked$species, species_ranked$idType)
 	  sortedCounts <- sort(sortedCounts, decreasing = TRUE)
@@ -321,8 +337,8 @@ convertID <- function (query, selectOrg) {
 		# Try to use Ensembl instead of STRING-db genome annotation
 		if(length(sortedCounts) > 1) # if more than 1 species matched
         if( sortedCounts[1] <= sortedCounts[2] *1.1  # if the #1 species and #2 are close
-             && as.numeric( gsub(" .*", "", names(sortedCounts[1]))) > sum( annotatedSpeciesCounts[1:3])  # 1:3 are Ensembl species
-             && as.numeric( gsub(" .*", "", names(sortedCounts[2]))) < sum( annotatedSpeciesCounts[1:3])    ) {
+             && as.numeric( gsub(" .*", "", names(sortedCounts[1]))) < 0  #  Ensembl species
+             && as.numeric( gsub(" .*", "", names(sortedCounts[2]))) > 0    ) {
 		  tem <- sortedCounts[2]
 		  sortedCounts[2] <- sortedCounts[1]
 		  names(sortedCounts)[2] <- names(sortedCounts)[1]
@@ -359,14 +375,24 @@ convertID <- function (query, selectOrg) {
 		
 		
 	} else { # if species is selected
-
+   
 	  querySTMT <- paste0( "select distinct id,ens,species,idType from mapping where species = '", selectOrg,
 	                      "' AND id IN ", querSetString) 
 	  result <- dbGetQuery(convert, querySTMT)
 
-	  if( dim(result)[1] == 0  ) return(NULL)
-		result <- result[which(result$species == selectOrg ) ,]
 		if( dim(result)[1] == 0  ) return(NULL) #stop("ID not recognized!")
+
+    # resolve multiple ID types, get the most matched
+    bestIDtype <- as.integer(
+      names(
+        sort(
+          table(result$idType), 
+          decreasing = TRUE
+        )
+      )[1]
+    )
+    result <- result[result$idType == bestIDtype, ]
+
 		speciesMatched <- as.data.frame(paste("Using selected species ", findSpeciesByIdName(selectOrg) )  )
 	}
 	result <- result[which(!duplicated(result[,2]) ),] # remove duplicates in ensembl_gene_id
