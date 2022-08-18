@@ -117,6 +117,8 @@ tags$head(
         tabPanel("Enrichment" 
                  ,value = 1
                  ,conditionalPanel("input.goButton == 0 "  # welcome screen                                 
+                     ,h3("If this server is busy, try our", a("mirror sever", href="http://149.165.154.220/go/"), " hosted by NSF funded JetStream2.")
+                     ,br()
                     ,h4("Trusted charities providing aid in Ukraine selected by ", a("CharityWatch.",
                     href="https://www.charitywatch.org/charity-donating-articles/top-rated-charities-providing-aid-in-ukraine"),
                     "Charities and individuals verified by",
@@ -603,6 +605,7 @@ tags$head(
   ) #sidebarLayout
   ,tags$head(includeScript("google_analytics.js")) # tracking usage
   ,tags$head(includeHTML(("google_analytics_GA4.html")))
+  ,tags$head(includeHTML(("../google_analytics_golem.html")))
 ) #fluidPage
 
 

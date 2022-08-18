@@ -127,6 +127,7 @@ iDEPversion,
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat')
+      ,h3("If this server is busy, try our", a("mirror sever", href="http://149.165.154.220/idep/"), " hosted by NSF funded JetStream2.")
                                    ,br(),h4("Trusted charities providing Aid in Ukraine selected by ", a("CharityWatch,",
                                    href="https://www.charitywatch.org/charity-donating-articles/top-rated-charities-providing-aid-in-ukraine"),
                                    "charities and individuals verified by",
@@ -1433,6 +1434,7 @@ iDEPversion,
 
   ,tags$head(includeScript("ga.js")) # tracking usage  
   ,tags$head(includeHTML(("google_analytics_GA4.html")))
+  ,tags$head(includeHTML(("../google_analytics_golem.html")))
   )# Navibar
 
 ) #shinyUI
