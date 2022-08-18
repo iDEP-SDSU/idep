@@ -26,7 +26,7 @@ source https://raw.githubusercontent.com/iDEP-SDSU/idep/master/classes/librarySe
 
 3. Download iDEP source code and example data files from GitHub. The best is to click the green "Code" button and select "Download ZIP" on this [page](https://github.com/iDEP-SDSU/idep). Unzip to a folder such as C:/IDEP, so that it contains all the subfolders such as config, classes, shinyapps, and so on.
 
-4. Download all the database files from [here](http://18.235.92.206:8080/). Unzip all files to a folder (C:/IDEP/data/data104b), so that your database can be found by the most recent versions of iDEP and ShinyGO. For example, the convertIDs.db files should be at C:/IDEP/data/data104b/convertIDs.db, and the pathway information files should be at C:/IDEP/data/data104b/pathwayDB. 
+4. Download all the database files from [here](http://bioinformatics.sdstate.edu/data/). Unzip all files to a folder (C:/IDEP/data/data104b), so that your database can be found by the most recent versions of iDEP and ShinyGO. For example, the convertIDs.db files should be at C:/IDEP/data/data104b/convertIDs.db, and the pathway information files should be at C:/IDEP/data/data104b/pathwayDB. 
 Below is an example folder structure. 
 
 <p align="center">
