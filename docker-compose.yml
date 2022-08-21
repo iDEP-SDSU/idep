@@ -15,6 +15,7 @@ services:
       - ./shinylog/:/var/log/shiny-server/
       - ./config/:/etc/shiny-server/
       - ./classes/:/usr/local/src/myscripts/
+      - "${IDEP_DATABASE}":"${IDEP_DATABASE}"
     env_file:
       - ./idep.env
     #command: ["/usr/bin/shiny-server.sh"]  # not used; cause error
