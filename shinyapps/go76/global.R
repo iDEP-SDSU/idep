@@ -20,9 +20,12 @@ library(visNetwork)
 library(DT,verbose=FALSE) 		# for renderDataTable
 
 
-# relative path to data files
-datapath = "../../data/data104b/"   # production server
-#datapath = Sys.getenv("IDEP_DATABASE")[1]
+# if environmental variable is not set, use relative path
+datapath <- Sys.getenv("IDEP_DATABASE")[1]
+if(nchar(datapath) == 0) {
+   datapath = "../../data/data104b/"
+}
+
 STRING_DB_VERSION <- "11.5" # what version of STRINGdb needs to be used 
 Min_overlap <- 1
 minSetSize = 3;
