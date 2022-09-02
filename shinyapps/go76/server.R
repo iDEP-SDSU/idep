@@ -358,8 +358,8 @@ server <- function(input, output, session){
       df <- df[, which(!apply(is.na(df), 2, sum) == nrow(df))]
       df$Species <- gsub("STRINGdb", "", df$Species)
 
-      df$Type <- gsub(".*_", "", df$Type)
-      df$Type <- gsub("pseudogene", "pseudo", df$Type)
+#      df$Type <- gsub(".*_", "", df$Type)
+      df$Type <- gsub(".*pseudogene", "pseudo", df$Type)
       # coding is not shown
       df$Type <- gsub("coding", "C", df$Type)
       df$Chr[nchar(df$Chr) > 5] <- ""
