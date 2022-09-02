@@ -336,7 +336,7 @@ server <- function(input, output, session){
           ), ]
           merged$start_position <- merged$start_position/1e6
           colnames(merged) <- c("Pasted","Symbol", "Ensembl Gene ID",  "Entrez",
-                                "Gene Type", "Species", "Chr", "Position (Mbp)", "Description" )
+                                "Type", "Species", "Chr", "Position (Mbp)", "Description" )
           i = 1:dim(merged)[1]
         }
       }
@@ -357,6 +357,12 @@ server <- function(input, output, session){
       # Remove columns with all missing values; chr and start possition in STRINGdb species
       df <- df[, which(!apply(is.na(df), 2, sum) == nrow(df))]
       df$Species <- gsub("STRINGdb", "", df$Species)
+
+      df$Type <- gsub(".*_", "", df$Type)
+      df$Type <- gsub("pseudogene", "pseudo", df$Type)
+      # coding is not shown
+      df$Type <- gsub("coding", "C", df$Type)
+      df$Chr[nchar(df$Chr) > 5] <- ""
 
       # first see if it is Ensembl gene ID-----------------------
       ix <- grepl("ENS", df$'Ensembl Gene ID')  
