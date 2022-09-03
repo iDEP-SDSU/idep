@@ -90,9 +90,12 @@ STRING_DB_VERSION <- "11.0" # what version of STRINGdb needs to be used
 #   Input files
 ################################################################
 
-# relative path to data files
-datapath = "../../data/data104b/"   # production server
-#datapath = Sys.getenv("IDEP_DATABASE")[1]
+
+# if environmental variable is not set, use relative path
+datapath <- Sys.getenv("IDEP_DATABASE")[1]
+if(nchar(datapath) == 0) {
+   datapath = "../../data/data104b/"
+}
 sqlite  <- dbDriver("SQLite")
 convert <- dbConnect( sqlite, paste0(datapath, "convertIDs.db"), flags=SQLITE_RO)  #read only mode
 keggSpeciesID = read.csv(paste0(datapath, "data_go/KEGG_Species_ID.csv"))
@@ -9161,7 +9164,7 @@ attributes(my.keggview.native) <- attributes(tmpfun)  # don't know if this is re
 	randomString <- gsub(".*file","",tempfile()) 
 	tempFolder <- tempdir() # tempFolder = "temp";
 	outfile <- paste( tempFolder,"/",pathID,".",randomString,".png",sep="")
-	
+
 	pv.out <- mypathview(gene.data = fold, pathway.id = pathID, kegg.dir = tempFolder,  out.suffix = randomString, species = keggSpecies, kegg.native=TRUE)
 	if(0) {  # this works but sometimes messes up with current folder, shiny cannot find database files.
 		wd = getwd()

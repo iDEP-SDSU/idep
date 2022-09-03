@@ -29,7 +29,7 @@ tags$head(
 
   sidebarLayout(    
     sidebarPanel(
-       titlePanel("ShinyGO 0.76"),  
+       titlePanel("ShinyGO 0.76.1"),  
        h5("Select or search your species."),
        fluidRow( 
          column(9, selectizeInput('selectOrg', 
@@ -124,6 +124,9 @@ tags$head(
                     "Charities and individuals verified by",
                     a(" GoFundMe.", href=("https://www.gofundme.com/en-ie/c/act/donate-to-ukraine-relief?utm_source=email&utm_medium=marketing&utm_content=annoucement&utm_campaign=022522_helpukraine_send14_dedicatedpage"))
                     ) 
+                    ,p("Sept 3, 2022: ShinyGO 0.76.1. In this small improvement, we improved how we count the number of genes for 
+                    calculating P value. A gene must match at least one pathway in the selected pathway database. Otherwise this gene 
+                    is ignored in the calculation of P values based on hypergeometric distribution. This applies to both query and background genes. ")
                     ,p("April 19, 2022: ShinyGO 0.76 released. Improved pathway filtering, pathway sorting, figure downloading. 
                        Version 0.75 is available", a("here.", href="http://bioinformatics.sdstate.edu/go75"))
                    ,p("Feb. 11, 2022: Like ShinyGO but your genome is not covered?", 
