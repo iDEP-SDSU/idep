@@ -486,13 +486,13 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, convertedB=NULL, gInfo
 
   querySet <- converted$IDs;
   #start.time <- proc.time()[3]
-  if(!is.null(gInfo) )
-     if( class(gInfo) == "data.frame" )
-       if(dim(gInfo)[1] > 1) {  # some species does not have geneInfo. STRING
-	     # only coding
-	     querySet <- intersect( querySet, 
-                                gInfo[which( gInfo$gene_biotype == "protein_coding"), 1] )
-	}
+#  if(!is.null(gInfo) )
+#     if( class(gInfo) == "data.frame" )
+#       if(dim(gInfo)[1] > 1) {  # some species does not have geneInfo. STRING
+#	     # only coding
+#	     querySet <- intersect( querySet, 
+#                                gInfo[which( gInfo$gene_biotype == "protein_coding"), 1] )
+#	}
 
   if(length(querySet) == 0) return(idNotRecognized )
 
@@ -533,7 +533,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, convertedB=NULL, gInfo
   
   if( dim(result)[1] ==0) {return(list( x=as.data.frame("No matching pathway data find!" )) )}
 
-  #cat("\nTime:", proc.time()[3] - start.time)
+
 
    # given a pathway id, it finds the overlapped genes, symbol preferred
   sharedGenesPrefered <- function(pathwayID) {
@@ -566,7 +566,26 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, convertedB=NULL, gInfo
 #  pathwayInfo <- pathwayInfo[, -4] # remove memo/URL
    
   x = merge(x0,pathwayInfo, by.x='pathwayID', by.y='id')
-  
+
+  # only keep the query genes that have one pathway match
+  # this is for more accurate size of query in P value
+  querySet <- unique(result$gene)
+
+  # if not using background genes, calculate total genes using pathwayDB
+  if(is.null(convertedB) || is.null(gInfoB)) {
+    sql_query <- "SELECT COUNT ( DISTINCT gene ) FROM pathway "
+
+    if (GO != "All") {
+      sql_query <- paste(
+        sql_query,
+        " WHERE category='", GO, "'",
+        sep = "")
+    }
+    totalGenes <- DBI::dbGetQuery(pathway, sql_query)
+    totalGenes <- as.integer(totalGenes)
+  }
+
+
     # filtered pathways with enrichment ratio less than one
     #x <- x[ which( x$overlap/ length(querySet) / (as.numeric(x$n) / totalGenes ) > 1)  ,]
     x$Pval <- phyper(x$overlap - 1,
@@ -577,7 +596,7 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, convertedB=NULL, gInfo
     x$fold <- x$overlap/length(querySet) / (as.numeric(x$n) / totalGenes )
     # further filter by nominal P value
     #x <- subset(x, Pval < 0.2)
-  
+
 
   #Background genes----------------------------------------------------
   if(!is.null(convertedB) && 
@@ -617,10 +636,15 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, convertedB=NULL, gInfo
         resultB <- dbGetQuery( pathway, sqlQueryB  )
         if( dim(resultB)[1] ==0) {return(list( x=as.data.frame("No matching species or gene ID file!" )) )}    
         xB = table(resultB$pathwayID)
+
+        #update querySet, only keep genes with one pathway mapping
+        querySetB <- unique(resultB$gene)
+
         rm(resultB)
         xB = as.data.frame( xB)
         colnames(xB)=c("pathwayID","overlapB")
         x2 = merge(x, xB, by='pathwayID', all.x = TRUE)       
+        
 
         x$Pval=phyper(x2$overlap - 1,
                       length(querySet),
@@ -630,10 +654,12 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, convertedB=NULL, gInfo
 
         # calculate fold enrichment compared to background
                   
-        x$fold <- x$overlap/length(querySet) /                    # ratio in query
+        x$fold <- (x$overlap/length(querySet)) /                    # ratio in query
                   ( as.numeric(x2$overlapB) / length(querySetB) ) # ratio in background
         # number of genes in pathways in background genes  
-        x$n <- as.numeric(x2$overlapB)     
+        #x$n <- as.numeric(x2$overlapB)     
+
+        #write.csv(x2, "pathway_table_bg_go.csv", row.names = F)
       }
 
   # end background genes------------------------------------------------------------
@@ -643,7 +669,9 @@ FindOverlap <- function (converted, gInfo, GO, selectOrg, convertedB=NULL, gInfo
     return(list( x=as.data.frame("None of the selected genes are in the background genes!" )) )
 
     x$FDR <- p.adjust(x$Pval, method="fdr")
+
   x <- x[order(x$FDR), ]  # sort according to FDR
+
 
 
   # Gene groups for high level GOBP terms
