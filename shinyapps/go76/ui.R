@@ -29,7 +29,7 @@ tags$head(
 
   sidebarLayout(    
     sidebarPanel(
-       titlePanel("ShinyGO 0.76.1"),  
+       titlePanel("ShinyGO 0.76"),  
        h5("Select or search your species."),
        fluidRow( 
          column(9, selectizeInput('selectOrg', 
@@ -116,13 +116,14 @@ tags$head(
       tabsetPanel(id = "tabs", type = "tabs",
         tabPanel("Enrichment" 
                  ,value = 1
-                 ,conditionalPanel("input.goButton == 0 "  # welcome screen
-                     ,br()                              
-                     ,h3("Just in case of this server is down, please bookmark a ", a("mirror sever", href="http://149.165.154.220/go/"), " hosted by NSF funded JetStream2.")
+                 ,conditionalPanel("input.goButton == 0 "  # welcome screen                                 
+                     ,h3("If this server is busy, try our", a("mirror sever", href="http://149.165.154.220/go/"), " hosted by NSF funded JetStream2.")
                      ,br()
-                    ,p("Sept 3, 2022: ShinyGO 0.76.1. In this small improvement, we improved how we count the number of genes for 
-                    calculating P value. A gene must match at least one pathway in the selected pathway database. Otherwise this gene 
-                    is ignored in the calculation of P values based on hypergeometric distribution. This applies to both query and background genes. ")
+                    ,h4("Trusted charities providing aid in Ukraine selected by ", a("CharityWatch.",
+                    href="https://www.charitywatch.org/charity-donating-articles/top-rated-charities-providing-aid-in-ukraine"),
+                    "Charities and individuals verified by",
+                    a(" GoFundMe.", href=("https://www.gofundme.com/en-ie/c/act/donate-to-ukraine-relief?utm_source=email&utm_medium=marketing&utm_content=annoucement&utm_campaign=022522_helpukraine_send14_dedicatedpage"))
+                    ) 
                     ,p("April 19, 2022: ShinyGO 0.76 released. Improved pathway filtering, pathway sorting, figure downloading. 
                        Version 0.75 is available", a("here.", href="http://bioinformatics.sdstate.edu/go75"))
                    ,p("Feb. 11, 2022: Like ShinyGO but your genome is not covered?", 
@@ -606,7 +607,3 @@ tags$head(
   ,tags$head(includeHTML(("google_analytics_GA4.html")))
   ,tags$head(includeHTML(("../google_analytics_golem.html")))
 ) #fluidPage
-
-
-
-
