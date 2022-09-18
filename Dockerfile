@@ -12,6 +12,8 @@ RUN apt-get update -qq && apt-get install -y \
   libudunits2-dev \
   libmariadbclient-dev \
   libpng-dev \
+  libproj-dev \
+  vim \
   wget \
   unzip
 
