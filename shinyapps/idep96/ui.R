@@ -126,9 +126,28 @@ iDEPversion,
 
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
-      ,htmlOutput('fileFormat')
-      ,h3("Just in case of this server is down, please bookmark a ", a("mirror sever", href="http://149.165.154.220/idep/"), " hosted by NSF funded JetStream2.")
-      ,h3("July 30, 2022: iDEP updated to v0.96. Fixed a bug in the DEG1 tab regarding the different comparisons. iDEP now works even when factors have more
+      ,htmlOutput('fileFormat'),
+      h4("Comming soon! All new iDEP 1.0, which we have been working on for the last two 
+      years."),
+      h3(
+        "If you find iDEP helpful, please ",
+        a(
+          "send us a brief email.",
+          href = "mailto:gelabinfo@gmail.com?Subject=iDEP support letter"
+        )
+      ),
+      p(" If you state your general research area and how iDEP
+      makes you more productive, we can use it as a support letter when we
+        apply for the next round
+        of funding.
+        Hundreds of strong, enthusiastic letters sent to us in 2019
+        were essential when we applied for the current
+        grant from NIH/NHGRI (R01HG010805),
+        which expires in 20 months. Your letters will help sustain
+        and improve this service.")
+
+      ,h4("Just in case of this server is down, please bookmark a ", a("mirror sever", href="http://149.165.154.220/idep/"), " hosted by NSF funded JetStream2.")
+      ,h4("July 30, 2022: iDEP updated to v0.96. Fixed a bug in the DEG1 tab regarding the different comparisons. iDEP now works even when factors have more
       than two levels. The downside is that some comparisons for non-reference levels are difficult to make. Users have to change the reference levels and rerun.")
       ,p("April 25, 2022: Gene ID conversion is much faster now, even when species has to be guessed. So is the DEG2 tab.")
       ,p("April 24, 2022: Add a tab for visualizing the fold-change of all genes in all KEGG diagrams across all comparisons!")
