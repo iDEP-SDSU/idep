@@ -605,5 +605,4 @@ tags$head(
   ) #sidebarLayout
   ,tags$head(includeScript("google_analytics.js")) # tracking usage
   ,tags$head(includeHTML(("google_analytics_GA4.html")))
-  ,tags$head(includeHTML(("../google_analytics_golem.html")))
 ) #fluidPage

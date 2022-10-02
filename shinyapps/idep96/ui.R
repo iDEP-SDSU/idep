@@ -1447,7 +1447,6 @@ iDEPversion,
 
   ,tags$head(includeScript("ga.js")) # tracking usage  
   ,tags$head(includeHTML(("google_analytics_GA4.html")))
-  ,tags$head(includeHTML(("../google_analytics_golem.html")))
   )# Navibar
 
 ) #shinyUI
