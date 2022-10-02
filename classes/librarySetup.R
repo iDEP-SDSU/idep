@@ -108,11 +108,11 @@ remotes::install_github("espors/ottoPlots") # for download plots
 
 
 remotes::install_github(
-  "espors/idepGolem@test_depolyment", 
+  "espors/idepGolem", 
   force = TRUE,
-  ask = FALSE, 
+  ask = FALSE,
   dependencies = TRUE, # many CRAN packages are installed, but not Bioconductor
-  quiet = FALSE, 
+  quiet = FALSE,
   upgrade = "never"  # do not ask for upgrade for dependencies
   )
 list.of.packages = c(list.of.packages, "ottoPlots", "idepGolem", "WGCNA") # add package for testing
