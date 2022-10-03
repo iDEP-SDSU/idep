@@ -29,23 +29,23 @@ mkdir data104
 cd data104
 
 
-wget http://18.235.92.206:8080/convertIDs.db.tar.gz
+wget http://bioinformatics.sdstate.edu/data/current_version/convertIDs.db.tar.gz
 tar xvzf convertIDs.db.tar.gz
 rm convertIDs.db.tar.gz
 
-wget http://18.235.92.206:8080/data_go.tar.gz
+wget http://bioinformatics.sdstate.edu/data/current_version/data_go.tar.gz
 tar xvzf data_go.tar.gz
 rm data_go.tar.gz
 
-wget http://18.235.92.206:8080/geneInfo.tar.gz
+wget http://bioinformatics.sdstate.edu/data/current_version/geneInfo.tar.gz
 tar xvzf geneInfo.tar.gz
 rm geneInfo.tar.gz
 
-wget http://18.235.92.206:8080/motif.tar.gz
+wget http://bioinformatics.sdstate.edu/data/current_version/motif.tar.gz
 tar xvzf motif.tar.gz
 rm motif.tar.gz
 
-wget http://18.235.92.206:8080/pathwayDB.tar.gz
+wget http://bioinformatics.sdstate.edu/data/current_version/pathwayDB.tar.gz
 tar xvzf pathwayDB.tar.gz
 rm pathwayDB.tar.gz
 
