@@ -127,12 +127,18 @@ iDEPversion,
       ,div(id='loadMessage',
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat'),
-      h4("Comming soon! All new iDEP 1.0, which we have been working on for the last two 
-      years."),
+      h3(
+        "All new ",
+        a(
+          "iDEP 1.0",
+          href = "http://bioinformatics.sdstate.edu/idepg/"
+        ),
+        " released in testing mode!"
+      ),
       h3(
         "If you find iDEP helpful, please ",
         a(
-          "send us a brief email.",
+          "send us a brief email to support us.",
           href = "mailto:gelabinfo@gmail.com?Subject=iDEP support letter"
         )
       ),
