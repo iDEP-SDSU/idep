@@ -135,12 +135,14 @@ iDEPversion,
         ),
         " released in testing mode!"
       ),
+
       h3(
-        "If you find iDEP helpful, please ",
+        "Please ",
         a(
-          "send us a brief email to support us.",
+          "send us a brief email",
           href = "mailto:gelabinfo@gmail.com?Subject=iDEP support letter"
-        )
+        ),
+        " to show your support."
       ),
       p(" If you state your general research area and how iDEP
       makes you more productive, we can use it as a support letter when we
@@ -161,7 +163,9 @@ iDEPversion,
       a("Customized iDEP", href="http://bioinformatics.sdstate.edu/idepc/"), " is now available. 
       Its database includes several custom genomes requested by users. To request to add new species/genome, fill in this ", 
       a("Form.", href="https://forms.gle/zLtLnqxkW187AgT76"), style = "color:red")
-  ,p( a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), "Dr. Ge is notorisly slow in responding to emails.") 
+  ,p( a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), 
+               "Follow ", a("Dr Ge on Twitter", href = "https://twitter.com/StevenXGe"),
+              " for updates. ") 
       ,p("If it is slow, restart from a new browser window (not a new tab). You will be assigned to a new worker computer.")
       ,p("iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.", style = "color:red")
       ,h3("iDEP: Integrated Differential Expression and Pathway analysis")
