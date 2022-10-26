@@ -157,7 +157,7 @@ iDEPversion,
       ,h4(
         "If this server is busy, please use a mirror sever ",
         a("http://ge-lab.org/idep/", href = "http://149.165.154.220/idep/"),
-        ", hosted by NSF-funded JetStream2."
+        " hosted by NSF-funded JetStream2."
       )
       ,h4("July 30, 2022: iDEP updated to v0.96. Fixed a bug in the DEG1 tab regarding the different comparisons. iDEP now works even when factors have more
       than two levels. The downside is that some comparisons for non-reference levels are difficult to make. Users have to change the reference levels and rerun.")
