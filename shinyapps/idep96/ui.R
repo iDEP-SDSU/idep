@@ -131,7 +131,7 @@ iDEPversion,
         "All new ",
         a(
           "iDEP 1.0",
-          href = "http://bioinformatics.sdstate.edu/idepg/"
+          href = "http://149.165.154.220/idepg/"
         ),
         " released in testing mode!"
       ),
