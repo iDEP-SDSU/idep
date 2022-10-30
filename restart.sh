@@ -11,7 +11,7 @@ git checkout master
 git pull
 cd ../..
 
-sudo docker system prune --volumes
+#sudo docker system prune --volumes
 sudo docker-compose down 
 #free buffer/cache  https://unix.stackexchange.com/questions/87908/how-do-you-empty-the-buffers-and-cache-on-a-linux-system
 sudo sh -c 'echo 1 >/proc/sys/vm/drop_caches'
