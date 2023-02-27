@@ -4,3 +4,6 @@
 [submodule "shinyapps/go"]
 	path = shinyapps/go
 	url = https://github.com/gexijin/shinygo.git
+[submodule "shinyapps/idep11"]
+	path = shinyapps/idep11
+	url = https://github.com/gexijin/idepGolem.git
