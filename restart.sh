@@ -1,15 +1,15 @@
-git pull
+#git pull
 
-git submodule update --init --recursive
+#git submodule update --init --recursive
 
-cd shinyapps/go
-git checkout master
-git pull
+#cd shinyapps/go
+#git checkout master
+#git pull
 
-cd ../idepgolem1
-git checkout master
-git pull
-cd ../..
+#cd ../idepgolem1
+#git checkout master
+#git pull
+#cd ../..
 
 # Restart docker dameon; sometimes it causes problem
 sudo systemctl restart docker
