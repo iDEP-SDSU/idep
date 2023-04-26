@@ -1,7 +1,8 @@
-# iDEP and ShinyGO:   Graphical tools for analyzing genomics data  
+# iDEP and ShinyGO webserver
 ## Let the data speak for itself!
+Interactive tools for analyzing genomics data.  
 
-This repository is now only host code for our webserver and some legacy scripts. GitHub repositories for [iDEP]x(https://github.com/gexijin/idepGolem) and [ShinyGO.](https://github.com/gexijin/shinygo).
+This repository now only hosts code for our webserver and some legacy scripts. Please visit repositories for [iDEP](https://github.com/gexijin/idepGolem) and [ShinyGO.](https://github.com/gexijin/shinygo), which are linked as submodules. 
 
 [iDEP](http://bioinformatics.sdstate.edu/idep/) is a Shiny app for analyzing RNA-seq or other transcriptomic data. See [documentation](https://idepsite.wordpress.com/) and [paper](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2486-6). Please visit the GitHub repository for the [new version of iDEP]x(https://github.com/gexijin/idepGolem)
 
