@@ -128,51 +128,18 @@ iDEPversion,
            h4('Loading R packages, please wait ... ... ...'))
       ,htmlOutput('fileFormat'),
       h3(
-        "All new ",
+        "Try the all new iDEP 1.1 at our",
         a(
-          "iDEP 1.0",
-          href = "http://bioinformatics.sdstate.edu/idepg/"
-        ),
-        " released in testing mode!"
-      ),
-
-      h3(
-        "Please ",
-        a(
-          "send us a brief email",
-          href = "mailto:gelabinfo@gmail.com?Subject=iDEP support letter"
-        ),
-        " to show your support."
-      ),
-      p(" If you state your general research area and how iDEP
-      makes you more productive, we can use it as a support letter when we
-        apply for the next round
-        of funding.
-        Hundreds of strong, enthusiastic letters sent to us in 2019
-        were essential when we applied for the current
-        grant from NIH/NHGRI (R01HG010805),
-        which expires in 20 months. Your letters will help sustain
-        and improve this service.")
-
-      ,h4(
-        "If this server is busy, please use a mirror sever ",
-        a("http://ge-lab.org/idep/", href = "http://149.165.154.220/idep/"),
-        " hosted by NSF-funded JetStream2."
+          "test server.",
+          href = "http://149.165.154.220/"
+        )
       )
-      ,h4("July 30, 2022: iDEP updated to v0.96. Fixed a bug in the DEG1 tab regarding the different comparisons. iDEP now works even when factors have more
-      than two levels. The downside is that some comparisons for non-reference levels are difficult to make. Users have to change the reference levels and rerun.")
-      ,p("April 25, 2022: Gene ID conversion is much faster now, even when species has to be guessed. So is the DEG2 tab.")
-      ,p("April 24, 2022: Add a tab for visualizing the fold-change of all genes in all KEGG diagrams across all comparisons!")
-      ,p("Feb. 11, 2022: Like iDEP but your genome is not covered?", 
-      a("Customized iDEP", href="http://bioinformatics.sdstate.edu/idepc/"), " is now available. 
-      Its database includes several custom genomes requested by users. To request to add new species/genome, fill in this ", 
-      a("Form.", href="https://forms.gle/zLtLnqxkW187AgT76"), style = "color:red")
-  ,p( a("Email Jenny for questions.",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), 
+      ,h4("The new version includes both software and database updates. With Ensembl 107 and STRING-db 11.5, our database now has annotation for 14,000 species!")
+
+     ,p("Email Jenny for questions ", a("(gelabinfo@gmail.com).",href="mailto:gelabinfo@gmail.com?Subject=iDEP"), 
                "Follow ", a("Dr Ge on Twitter", href = "https://twitter.com/StevenXGe"),
               " for updates. ") 
-      ,p("If it is slow, restart from a new browser window (not a new tab). You will be assigned to a new worker computer.")
-      ,p("iDEP has not been thoroughly tested. Please let us know if you find any issue/bug.", style = "color:red")
-      ,h3("iDEP: Integrated Differential Expression and Pathway analysis")
+
       ,br(),img(src='flowchart.png', align = "center",width="562", height="383")  
       ,br(),img(src='figs.gif', align = "center",width="640", height="480")
 
@@ -1351,7 +1318,18 @@ iDEPversion,
                           downloadButton('downloadSampleInfoFile'
                           ,"Experiment design file"))
         ,br()
+
         ,h4("All versions of iDEP")
+        ,a(
+          "iDEP 1.1 with Ensembl Release 107, Released April 26, 2023",
+          href = "http://bioinformatics.sdstate.edu/idepg/"
+        )
+        ,br()
+        ,a(
+          "iDEP 1.0 with Ensembl Release 104, Released Nov. 1, 2022",
+          href = "http://bioinformatics.sdstate.edu/idepg/"
+        )
+        ,br()
          ,a("iDEP 0.96 with Ensembl Release 104, released July 30, 2022 "
         , href="http://bioinformatics.sdstate.edu/idep96/")
         ,br()       
