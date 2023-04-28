@@ -96,6 +96,7 @@ datapath <- Sys.getenv("IDEP_DATABASE")[1]
 if(nchar(datapath) == 0) {
    datapath = "../../data/data104b/"
 }
+#datapath = "C:/work/iDEP_data/data104b/"
 sqlite  <- dbDriver("SQLite")
 convert <- dbConnect( sqlite, paste0(datapath, "convertIDs.db"), flags=SQLITE_RO)  #read only mode
 keggSpeciesID = read.csv(paste0(datapath, "data_go/KEGG_Species_ID.csv"))
