@@ -131,7 +131,7 @@ iDEPversion,
         "Try the all new iDEP 1.1 at our",
         a(
           "test server.",
-          href = "http://149.165.154.220/"
+          href = "http://149.165.154.220/idep11/"
         )
       )
       ,h4("The new version includes both software and database updates. With Ensembl 107 and STRING-db 11.5, our database now has annotation for 14,000 species!")
