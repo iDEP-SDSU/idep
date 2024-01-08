@@ -25,8 +25,8 @@ echo 'Docker images have been built. Start downloading data.'
 
 mkdir data
 cd data
-mkdir data104
-cd data104
+mkdir data104b
+cd data104b
 
 
 wget http://bioinformatics.sdstate.edu/data/current_version/convertIDs.db.tar.gz
