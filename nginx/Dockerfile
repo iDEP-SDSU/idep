@@ -1,6 +1,6 @@
 # Nginx with sticky module
 # More detail about sticky module: https://bitbucket.org/nginx-goodies/nginx-sticky-module-ng/overview
-FROM imkulikov/nginx-sticky
+FROM nginx:1.15-alpine
 
 # File Author / Maintainer
 MAINTAINER Ge Lab
