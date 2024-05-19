@@ -11,7 +11,8 @@ RUN apt-get update -qq && apt-get install -y \
   libxml2  \
   libssl-dev \
   libudunits2-dev \
-  libmariadbclient-dev \
+  libmariadb-dev-compat \
+  libmariadb-dev \
   libpng-dev \
   libproj-dev \
   vim \
