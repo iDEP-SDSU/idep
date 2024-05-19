@@ -1,5 +1,6 @@
 FROM rocker/shiny:latest
 #FROM debian # for testing
+RUN echo "\noptions(shiny.port=3838, shiny.host='0.0.0.0')" >> /usr/local/lib/R/etc/Rprofile.site
 
 MAINTAINER Ge lab "xijin.ge@sdstate.edu"
 RUN apt-get update || apt-get update
@@ -19,7 +20,7 @@ RUN apt-get update -qq && apt-get install -y \
 
 # COPY ./RSet /usr/local/src/myscripts
 COPY ./classes /usr/local/src/myscripts
-COPY ./shinyapps /srv/shiny-server
+COPY ./shinyapps /app
 
 RUN mkdir -p /srv/data/geneInfo
 RUN mkdir -p /srv/data/gmt
