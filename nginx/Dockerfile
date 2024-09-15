@@ -7,3 +7,9 @@ MAINTAINER Ge Lab
 
 # Copy custom configuration file from the current directory
 COPY nginx.conf /etc/nginx/nginx.conf
+
+# for HTTPS
+RUN mkdir -p /etc/pki/nginx/private
+COPY fullchain.pem /etc/pki/nginx/server.crt
+COPY privkey.pem /etc/pki/nginx/private/server.key
+RUN chown nginx /etc/pki/nginx/server.crt /etc/pki/nginx/private/server.key
