@@ -25,5 +25,6 @@ services:
         - webapp
     ports:
         - "80:80"
+        - "443:443"
     volumes:
         - ./data/shared:/data/
