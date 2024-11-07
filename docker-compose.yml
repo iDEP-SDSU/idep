@@ -3,7 +3,7 @@ services:
   webapp:
     build: .
     image: webapp
-    mem_limit: 12g
+    mem_limit: 10g
     mem_reservation: 6g
     mem_swappiness: 5
     expose:
@@ -20,10 +20,11 @@ services:
   nginx:
     build: ./nginx
     image: nginx
-    cpus: 0.1
+    cpus: 0.5
     links:
         - webapp
     ports:
         - "80:80"
+        - "443:443"
     volumes:
         - ./data/shared:/data/
