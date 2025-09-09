@@ -101,6 +101,11 @@ install.packages("http://www.bioconductor.org/packages//2.11/data/annotation/src
 install.packages("https://bioconductor.org/packages/3.10/bioc/src/contrib/PGSEA_1.60.0.tar.gz", 
                  repos=NULL, type="source")
 install.packages("WGCNA") # requires three Bioconductor packages: GO.db, impute, preprocessCore
+
+#dependencies for ggalt
+install.packages(c('proj4', 'ash', 'extrafont'))
+install.packages("https://cran.r-project.org/src/contrib/Archive/ggalt/ggalt_0.4.0.tar.gz",   repos = NULL, type = "source")
+
 list.of.bio.packages = c(list.of.bio.packages, "PGSEA") # add package for testing
 
 # install from GitHub

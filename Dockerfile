@@ -13,6 +13,8 @@ RUN apt-get update -qq && apt-get install -y \
   libmariadb-dev \
   libpng-dev \
   libproj-dev \
+  libmagick++-6.q16-dev \
+  imagemagick-6.q16 \
   vim \
   wget \
   unzip
