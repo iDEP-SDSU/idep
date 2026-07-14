@@ -8,6 +8,8 @@ services:
     mem_swappiness: 5
     expose:
       - "3838"
+    environment:
+      IDEP_TELEMETRY_SQLITE: ../../usage/idep_telemetry.sqlite
     volumes:
       - ./shinyapps/:/srv/shiny-server/
       - ./data/:/srv/data/:ro
