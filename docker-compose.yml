@@ -10,11 +10,12 @@ services:
       - "3838"
     volumes:
       - ./shinyapps/:/srv/shiny-server/
-      - ./data/:/srv/data/
+      - ./data/:/srv/data/:ro
       - ./countsData/:/srv/countsData/            # read app
       - ./shinylog/:/var/log/shiny-server/
       - ./config/:/etc/shiny-server/
       - ./classes/:/usr/local/src/myscripts/
+      - ./usage/:/srv/usage/
     #command: ["/usr/bin/shiny-server.sh"]  # not used; cause error
     
   nginx:
@@ -27,4 +28,4 @@ services:
         - "80:80"
         - "443:443"
     volumes:
-        - ./data/shared:/data/
+        - ./data/shared:/data/:ro
