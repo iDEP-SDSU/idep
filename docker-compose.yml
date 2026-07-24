@@ -2,10 +2,9 @@ version: '2.2'
 services:
   webapp:
     build: .
-    image: webapp
+    image: webapp:latest
     mem_limit: 10g
     mem_reservation: 6g
-    mem_swappiness: 5
     expose:
       - "3838"
     environment:
