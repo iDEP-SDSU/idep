@@ -1,106 +1,204 @@
 # ShinyProxy deployment for iDEP and ShinyGO
 
-Alternative to the nginx + shiny-server stack in the repo root. ShinyProxy gives
-each user session its own container started from the existing `webapp:latest`
-image, running R directly — shiny-server is not involved.
+Replaces the nginx + shiny-server stack in the repo root. Every app that
+`config/shiny-server.conf` used to publish is served here, at the same URL, so
+existing bookmarks and links in published papers keep working.
 
-| URL | spec | command in the container |
+Each user session gets its own container. shiny-server is not involved.
+
+## The two tiers
+
+| | current | legacy |
 | --- | --- | --- |
-| `/idep/` | `idep` | `idep250::run_app()` — R package installed in the image |
-| `/go/` | `go` | `shiny::runApp("/srv/shiny-server/go86")` — mounted from `shinyapps/go86` |
-| `/` | — | ShinyProxy's app list |
+| apps | `/idep/` `/go/` | the other 33 |
+| image | `webapp:latest` | `webapp:2026` (pinned) |
+| pool | pre-warmed, 48 + 60 free seats | none — cold start on first visit |
+| idle cost | ~13.5 GB | **zero** |
+| first load | 0.3 – 2.5 s | 1.6 – 9.6 s |
+
+The legacy tier is pinned to a dated image tag **on purpose**. Rebuilding
+`webapp:latest` every ~2 years moves R and every Bioconductor package under the
+apps. Old iDEP and ShinyGO versions were never tested against those, and they
+exist precisely so that published analyses stay reproducible — pinning is what
+makes that true. `container-image` is a per-spec setting, which is the one
+thing the old shiny-server layout could not express: there, all 30 apps shared
+whatever R the single image happened to have.
 
 ```
 :80   nginx        container, --network host, config in nginx/nginx.conf
-       |  /idep/ -> 127.0.0.1:8080/app/idep/
-       |  /go/   -> 127.0.0.1:8080/app/go/
-       |  /      -> 127.0.0.1:8080/            (JS, CSS, /api/, /app_proxy/)
+       |  /            -> shinyapps/dist  (static, straight off disk)
+       |  /data/       -> data/shared     (static, autoindex)
+       |  /idep/ /go/  -> 127.0.0.1:8080/app/<id>/
+       |  /idep73/ ... -> 127.0.0.1:8080/app/<id>/
+       |  anything else with no matching file -> 127.0.0.1:8080
        v
 :8080 ShinyProxy   JAR on the host, config in application.yml,
        |           drives Docker via /var/run/docker.sock
-       +-- webapp:latest containers, published on 127.0.0.1:2000x
+       +-- webapp:latest / webapp:2026 containers on 127.0.0.1:2000x
 ```
 
 ## Operating it
 
-```bash
-./start.sh          # ShinyProxy on :8080 + nginx on :80
-./stop.sh           # stops both, removes leftover app containers
-./bench.sh 4        # time 4 cold sessions; BASE=http://127.0.0.1 SPEC=go ./bench.sh
-./bench_shinyserver.sh   # same timing for the old shiny-server path, to compare
-```
-
-- **Nothing survives a reboot except nginx.** The nginx container has
-  `--restart unless-stopped` but the ShinyProxy JAR does not, so after a reboot
-  nginx answers :80 with 502 until you run `./start.sh`. Add a systemd unit if
-  this becomes the production path.
-- **Do not run the root `docker-compose.yml` at the same time** — both want :80.
-- Logs: `startup.log` (console) and `shinyproxy.log` (structured). App container
-  stdout via `docker logs sp-container-…`.
-
-Health check:
+Everything goes through one script:
 
 ```bash
-docker ps --format '{{.Names}}' | grep -c '^sp-container'   # containers up (60 idle)
-grep -c 'Created Seat' startup.log                          # seats created (108 idle)
-curl -so /dev/null -w '%{http_code}\n' -L http://127.0.0.1/idep/
+./idep.sh start           # ShinyProxy on :8080 + nginx on :80
+./idep.sh stop            # stops both, sweeps leftover app containers
+./idep.sh restart
+./idep.sh status          # process / container / capacity summary
+./idep.sh logs            # tail -f startup.log
+./idep.sh check <id>      # really launch one app and time it to served HTML
+./idep.sh check all       # smoke test every app (~2 min)
+./idep.sh pin <tag>       # freeze webapp:latest as webapp:<tag>
+./idep.sh update [--pull] # rebuild or pull the image, then restart
 ```
 
-## After rebuilding `webapp:latest`
+`check` drives ShinyProxy's API the way a browser does and polls until R
+actually serves HTML, then releases the seat. A plain `curl` of an app URL is
+not a health check — ShinyProxy returns its loading page with HTTP 200 before
+the container exists.
 
-Running containers keep the old image, and ShinyProxy never cycles them on its
-own. **`/admin/delegate-proxy` is not usable here** — `authentication: none`
-means there are no admin users, so it returns 403. Restart instead:
+`parity` reads `config/shiny-server.conf` and asserts that every `location` it
+publishes has an nginx route here, that the route resolves to a real spec, and
+that the spec runs the same directory shiny-server ran. Run it after editing
+either config, and on production before decommissioning shiny-server. Retire
+the subcommand along with `shiny-server.conf` — once that file is gone,
+`application.yml` is the only source of truth and there is nothing to compare
+against.
+
+For reboot survival install the unit — otherwise nginx comes back by itself and
+answers :80 with 502 until someone runs `./idep.sh start`:
 
 ```bash
-docker pull gexijin/idep:latest && docker tag gexijin/idep webapp   # if pulling
-./stop.sh && ./start.sh
+sudo cp shinyproxy.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now shinyproxy
 ```
 
-The pool is back to 60 warm containers in well under a minute.
+Benchmarks: `./bench.sh 4` times cold sessions (`SPEC=go74 ./bench.sh`);
+`./bench_shinyserver.sh` does the same against the old stack, to compare.
+
+**Do not run the root `docker-compose.yml` at the same time** — both want :80.
+
+## Updating the image
+
+Roughly every two years, with updated R and packages:
+
+```bash
+./idep.sh update            # build from the repo Dockerfile
+./idep.sh update --pull     # or pull gexijin/idep:latest
+```
+
+`update` tags the outgoing image `webapp:pre-<date>` before replacing it, then
+restarts — running containers keep the old image otherwise, and ShinyProxy
+never cycles them on its own. (`/admin/delegate-proxy` is not usable here:
+`authentication: none` means there are no admin users, so it returns 403.)
+
+Only `/idep/` and `/go/` move to the new image. The legacy specs stay on
+`webapp:2026` and **should never be repointed at `:latest`** — that is the whole
+point of the tier. When you eventually want to freeze a newer vintage for a new
+generation of legacy apps:
+
+```bash
+./idep.sh pin 2028          # webapp:latest -> webapp:2028
+```
+
+then set `container-image: webapp:2028` on the specs that should hold there.
+Images are ~30 GB on disk; keeping one per vintage is cheap next to the 1.4 TB
+free here.
 
 ## Adding an app
 
-Copy a block under `proxy.specs` in `application.yml`, then add two lines to
-`nginx/nginx.conf`:
+Three lines in `application.yml` — everything else is inherited from the
+`&legacy` anchor by YAML merge key:
 
 ```yaml
-    - id: reads
-      display-name: ...
-      container-image: webapp:latest
-      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/reads", host = "0.0.0.0", port = 3838)']
-      port: 3838
-      container-volumes: [/home/exouser/idep/shinyapps/reads:/srv/shiny-server/reads:ro, ...]
-      container-env: {IDEP_DATABASE: /srv/data}
-      container-memory-limit: 8g
-      minimum-seats-available: 4
+    - <<: *legacy
+      id: go90
+      display-name: ShinyGO 0.90
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go90", host = "0.0.0.0", port = 3838)']
 ```
+
+and two in `nginx/nginx.conf`:
 
 ```nginx
-location = /reads { return 301 /reads/; }
-location /reads/  { proxy_pass http://shinyproxy/app/reads/; }
+location = /go90 { return 301 /go90/; }
+location /go90/  { proxy_pass http://shinyproxy/app/go90/; }
 ```
 
-Database paths must be passed explicitly — the apps' relative-path fallbacks
-only resolve under shiny-server's working directory. iDEP reads `IDEP_DATA_DIR`,
-ShinyGO reads `IDEP_DATABASE`; both point at `/srv/data`, mounted read-only
-from `../data`.
+`container-cmd` is spelled out per app rather than inherited, so the file says
+plainly which directory each spec runs.
+
+## How the legacy apps find their databases
+
+They hardcode relative paths — `"../../data/data104b/"`, `"../go/geneInfo/"`.
+`shiny::runApp("/srv/shiny-server/idep73")` sets the working directory to the
+app directory, exactly as shiny-server did, so with the whole `shinyapps` tree
+mounted at `/srv/shiny-server` and the databases at `/srv/data`, every one of
+those paths resolves to the same file it did before. That is why the legacy
+anchor mounts the whole tree instead of a single app directory.
+
+The golem-packaged versions read an environment variable instead and append
+their own database version to it. Both names are set on every legacy spec —
+`IDEP_DATABASE` (ShinyGO, `idepGolem*`) and `IDEP_DATA_DIR` (`idep250`) — which
+is harmless where unused:
+
+| app | package | database |
+| --- | --- | --- |
+| `/idep/` | `idep250` 2.5.0 | `data115` |
+| `/idep210/` | `idepGolem` 2.4.4 | `data113` |
+| `/idep20/` | `idepGolem201` 2.0 | `data107` |
+| `/go/` | `go86` source | `data115` |
+
+The tree is mounted **read-only**, which shiny-server's was not. An app that
+writes into its own directory will fail — drop the `:ro` if one does.
+
+## Status on this test host
+
+`./idep.sh parity` passes: all 37 `location` entries in the old
+`shiny-server.conf` are published here, on the same directories. That is 35
+specs — `/idep` and `/idep250` share one, as do `/go` and `/go86`.
+
+`./idep.sh check all` passes 22 of 35. Every failure is a missing input on
+*this* machine, not configuration:
+
+- `idep11` `idepg` `go80` `go77` — submodules not checked out here
+  (`git submodule update --init`)
+- `go85` `go82` `go81` `datamap` — directories not present on this host
+- `go74` `go75` `go76` — need `data104b`
+- `go65` — needs `data103`
+- `goc` — needs `customDB`
+
+Only `data96`, `data113` and `data115` are present here. Apps differ in when
+they touch the database: `go74` opens it in `global.R` and so fails to start at
+all, while `go41` and `idep73` start fine and only fail once a user picks a
+species — so a green check is not proof the database underneath is right.
+
+**On production, where all of these exist, `./idep.sh check all` should be 35 of
+35.** Anything still failing there is a real problem.
 
 ## Configuration reference
 
-Current values in `application.yml`, and what to change them for.
-
-| | iDEP | ShinyGO | |
+| | iDEP | ShinyGO | legacy |
 | --- | --- | --- | --- |
-| `minimum-seats-available` | 48 | 60 | floor on **free** seats, not a total — the pool grows past it under load |
-| `seats-per-container` | 1 | 5 | users sharing one R process |
-| `allow-container-re-use` | `false` | *(unset)* | `false` = fresh R process per user; **only valid when `seats-per-container` is 1** |
-| idle containers | 48 | 12 | **60 total, 108 seats, ~13.5 GB** |
+| `minimum-seats-available` | 48 | 60 | unset — no pre-init |
+| `seats-per-container` | 1 | 5 | 5 |
+| `allow-container-re-use` | `false` | *(unset)* | *(unset)* |
+| idle containers | 48 | 12 | 0 |
+
+`minimum-seats-available` is a floor on **free** seats, not a total — the pool
+grows past it under load. Setting it at all is what enables pre-initialization,
+which is why omitting it on the legacy tier makes those apps cost nothing.
+
+`allow-container-re-use: false` gives every user a fresh R process and is
+**only valid when `seats-per-container` is 1**.
 
 Global:
 
-- `max-total-instances: 108` — counts **seats (users), not containers**. Past
-  it, new sessions get "not enough capacity"; existing ones are untouched.
+- `max-total-instances: 132` — counts **seats (users), not containers**. 108
+  for the two current apps plus 24 of headroom so a busy day on the old
+  versions cannot starve `/idep/` and `/go/`. Past it, new sessions get "not
+  enough capacity"; existing ones are untouched.
 - `container-memory-limit: 8g` — a *cap*, not a reservation: containers sit at
   224 MB and grow only as the user loads data. Exceeding it OOM-kills that
   container (exit 137) and nothing else.
@@ -116,17 +214,17 @@ across containers before packing them.
 
 ## Measured on this host (32 cores, 122 GB)
 
-| | iDEP | ShinyGO |
-| --- | --- | --- |
-| warm seat available | 1.9 – 2.5 s | 0.3 – 0.4 s |
-| cold container (pool empty) | 6.4 – 6.7 s | 3.8 s |
-| shiny-server equivalent | 3.9 s cold / 1.9 s warm | — |
+| | iDEP | ShinyGO | legacy (cold) |
+| --- | --- | --- | --- |
+| warm seat available | 1.9 – 2.5 s | 0.3 – 0.4 s | — |
+| cold container (pool empty) | 6.4 – 6.7 s | 3.8 s | 1.6 – 9.6 s |
+| shiny-server equivalent | 3.9 s cold / 1.9 s warm | — | ~3 s |
 
 Idle container: 224 MB, 0.05 % CPU. 40 cold containers booted at once: all ready
-in 14 s, peak load 8 of 32. The 8.9 GB database is a read-only bind mount, so it
-sits in the host page cache once and is shared by every container.
+in 14 s, peak load 8 of 32. The database is a read-only bind mount, so it sits
+in the host page cache once and is shared by every container.
 
-**Capacity caveat.** 108 seats is an aggressive cap. Idle it is fine, but 108
+**Capacity caveat.** 132 seats is an aggressive cap. Idle it is fine, but 132
 *working* sessions at even 2 GB each would exceed 122 GB — the cap bounds the
 count, not the sum of real usage. There is no measurement here of what a working
 iDEP session costs, only idle (224 MB) and the 8 GB ceiling. Watch
@@ -139,5 +237,12 @@ iDEP session costs, only idle (224 MB) and the 8 GB ceiling. Watch
   That one setting would rewrite the browser URL back to `/app/idep/`.
 - ShinyProxy has no per-app URL setting (`target-path` is the path *inside* the
   container), which is why nginx does the mapping.
-- `shinyproxy-3.2.4.jar` and `*.log` are gitignored; re-download the jar from
-  <https://www.shinyproxy.io/downloads/>.
+- nginx's `try_files ... @shinyproxy` fallback is what lets the static site and
+  ShinyProxy share the root. ShinyProxy's own `/js/`, `/css/`, `/webjars/` and
+  `/app_proxy/` live inside the JAR, never on disk, so they never collide with
+  a file in `dist/` and never need to be listed.
+- The stack is HTTP-only, matching the root `nginx.conf` it replaces. The certs
+  in `../nginx/` are untracked and unused; add a `listen 443 ssl` block and
+  mount them if you want TLS here.
+- `shinyproxy-3.2.4.jar`, `*.log` and `shinyproxy.pid` are gitignored;
+  re-download the jar from <https://www.shinyproxy.io/downloads/>.

@@ -38,6 +38,8 @@ shinyapps/Human__hsapiens_gene_ensembl.db
 shinyapps/tem.csv
 shinyapps/tem2.csv
 
-# ShinyProxy test setup
+# ShinyProxy deployment
 shinyproxy/*.jar
 shinyproxy/*.log
+shinyproxy/*.log.*.gz
+shinyproxy/shinyproxy.pid

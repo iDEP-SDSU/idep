@@ -1,11 +1,19 @@
 # ShinyProxy configuration: one container per user session.
 #
-# Both apps run from the existing `webapp:latest` image. iDEP is an installed
-# R package (idep250); ShinyGO is a plain ui.R/server.R app mounted from
-# shinyapps/go86. Neither goes through shiny-server.
+# Two tiers of app:
 #
-# nginx (shinyproxy/nginx) terminates :80 and maps /idep/ and /go/ onto the
-# ShinyProxy paths below.
+#   current  /idep/ /go/            webapp:latest, pre-warmed pools, heavy use
+#   legacy   everything else        webapp:2026,   cold start, occasional use
+#
+# The legacy tier is pinned to a dated image tag on purpose. Rebuilding
+# `webapp:latest` every ~2 years moves R and every Bioconductor package under
+# the apps; old iDEP/ShinyGO versions were never tested against those and exist
+# precisely so old results stay reproducible. Pinning is what makes that true.
+# See "Updating the image" in README.md -- never repoint the legacy anchor at
+# :latest.
+#
+# nginx (shinyproxy/nginx) terminates :80, serves the static site from
+# shinyapps/dist, and maps the friendly paths below onto /app/<id>/.
 proxy:
   title: iDEP & ShinyGO
   port: 8080
@@ -26,12 +34,17 @@ proxy:
   heartbeat-rate: 10000
   heartbeat-timeout: 900000       # reclaim a container 15 min after the tab closes
 
-  # Hard ceiling on concurrent *seats* (i.e. users), not containers -- because
-  # ShinyGO packs 5 users per container, 108 seats is only ~60 containers idle.
+  # Hard ceiling on concurrent *seats* (i.e. users), not containers. 108 covers
+  # the two current apps; the extra 24 is headroom for legacy sessions so an
+  # unusual day on the old versions cannot starve /idep/ and /go/.
   # Past this ShinyProxy shows "not enough capacity" instead of OOM-ing the host.
-  max-total-instances: 108
+  max-total-instances: 132
 
   specs:
+
+    # ---------------------------------------------------------------- current
+    # Pre-warmed pools on webapp:latest. These two carry essentially all traffic.
+
     - id: idep
       display-name: iDEP 2.50
       description: Integrated Differential Expression and Pathway analysis
@@ -90,6 +103,223 @@ proxy:
       # Containers are then never restarted on their own; use the admin
       # endpoint /admin/delegate-proxy to cycle them after an image update.
       scale-down-delay: 5
+
+    # ----------------------------------------------------------------- legacy
+    # Old versions, kept so published analyses stay reproducible. No
+    # minimum-seats-available, so each costs *nothing* until someone opens it:
+    # the first visitor waits for a cold container (~4-7 s), and it is reclaimed
+    # 15 min after the last tab closes.
+    #
+    # Every entry below inherits this block via a YAML merge key and overrides
+    # only id / display-name / description / container-cmd. To add an app: copy
+    # the four lines, point container-cmd at its directory under shinyapps/, and
+    # add two lines to nginx/nginx.conf.
+    #
+    # Why the whole shinyapps tree is mounted rather than one directory: these
+    # apps hardcode relative database paths ("../../data/data96/", "../go/") and
+    # shiny::runApp() sets the working directory to the app directory, exactly
+    # as shiny-server did. With the tree at /srv/shiny-server and the databases
+    # at /srv/data, every one of those paths resolves to the same file it did
+    # under shiny-server.
+    #
+    # It is mounted read-only, which shiny-server's was not. An app that writes
+    # into its own directory will fail here -- drop the ":ro" if one does.
+
+    - &legacy
+      id: idep210
+      display-name: iDEP 2.10
+      description: Legacy version
+      container-image: webapp:2026
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep210", host = "0.0.0.0", port = 3838)']
+      port: 3838
+      container-volumes:
+        - /home/exouser/idep/shinyapps:/srv/shiny-server:ro
+        - /home/exouser/idep/data:/srv/data:ro
+        - /home/exouser/idep/countsData:/srv/countsData:ro
+      # Both names are set on every legacy app: the ShinyGO line reads
+      # IDEP_DATABASE, the golem-packaged iDEP line reads IDEP_DATA_DIR, and the
+      # pre-golem versions read neither (they hardcode ../../data/dataNNN/).
+      # Each app appends its own database version to whichever it uses.
+      container-env:
+        IDEP_DATABASE: /srv/data
+        IDEP_DATA_DIR: /srv/data
+      container-memory-limit: 8g
+      # Five users share one R process, as they shared one shiny-server process.
+      seats-per-container: 5
+      scale-down-delay: 5
+
+    # --- iDEP ---------------------------------------------------------------
+
+    - <<: *legacy
+      id: idep20
+      display-name: iDEP 2.0
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep20", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: idep11
+      display-name: iDEP 1.1
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep11", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: idep96
+      display-name: iDEP 0.96
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep96", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: idep95
+      display-name: iDEP 0.95
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep95", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: idep94
+      display-name: iDEP 0.94
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep94", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: idep93
+      display-name: iDEP 0.93
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep93", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: idep92
+      display-name: iDEP 0.92
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep92", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: idep90
+      display-name: iDEP 0.90
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep90", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: idep85
+      display-name: iDEP 0.85
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep85", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: idep82
+      display-name: iDEP 0.82
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep82", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: idep73
+      display-name: iDEP 0.73
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep73", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: idepg
+      display-name: iDEP Golem
+      description: Development build
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idepgolem1", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: idepc
+      display-name: iDEP custom
+      description: Custom database build
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep-custom", host = "0.0.0.0", port = 3838)']
+
+    # --- ShinyGO ------------------------------------------------------------
+
+    - <<: *legacy
+      id: go85
+      display-name: ShinyGO 0.85
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go85", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: go82
+      display-name: ShinyGO 0.82
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go82", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: go81
+      display-name: ShinyGO 0.81
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go81", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: go80
+      display-name: ShinyGO 0.80
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go80", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: go77
+      display-name: ShinyGO 0.77
+      # Directory is "go", not "go77" -- the shinygo submodule.
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: go76
+      display-name: ShinyGO 0.76
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go76", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: go75
+      display-name: ShinyGO 0.75
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go75", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: go74
+      display-name: ShinyGO 0.74
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go74", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: go65
+      display-name: ShinyGO 0.65
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go65", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: go61
+      display-name: ShinyGO 0.61
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go61", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: go60
+      display-name: ShinyGO 0.60
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go60", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: go51
+      display-name: ShinyGO 0.51
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go51", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: go50
+      display-name: ShinyGO 0.50
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go50", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: go41
+      display-name: ShinyGO 0.41
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go41", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: goc
+      display-name: ShinyGO custom
+      description: Custom database build
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go-custom", host = "0.0.0.0", port = 3838)']
+
+    # --- utilities ----------------------------------------------------------
+
+    - <<: *legacy
+      id: datamap
+      display-name: Data map
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/datamap", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: reads
+      display-name: Read counts
+      description: Pre-processed RNA-seq counts from ARCHS4 and DEE2
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/reads", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: go2gmt
+      display-name: GO to GMT
+      description: Export GO annotation as gene sets
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go2gmt", host = "0.0.0.0", port = 3838)']
+
+    - <<: *legacy
+      id: combine
+      display-name: Combine files
+      description: Extract and combine read-count or FPKM files
+      container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/combine", host = "0.0.0.0", port = 3838)']
 
 logging:
   file:
