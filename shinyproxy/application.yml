@@ -1,0 +1,103 @@
+# ShinyProxy configuration: one container per user session.
+#
+# Both apps run from the existing `webapp:latest` image. iDEP is an installed
+# R package (idep250); ShinyGO is a plain ui.R/server.R app mounted from
+# shinyapps/go86. Neither goes through shiny-server.
+#
+# nginx (shinyproxy/nginx) terminates :80 and maps /idep/ and /go/ onto the
+# ShinyProxy paths below.
+proxy:
+  title: iDEP & ShinyGO
+  port: 8080
+  authentication: none
+  # No navbar: the apps have their own headers, and users should not be
+  # offered "Restart app" / "Stop app" controls.
+  hide-navbar: true
+  container-backend: docker
+
+  docker:
+    url: unix:///var/run/docker.sock
+    # ShinyProxy runs on the host, so containers publish a port on the
+    # docker bridge and are reached over localhost.
+    internal-networking: false
+
+  container-wait-time: 180000     # allow 3 min for a container to become ready
+  seat-wait-time: 300000          # how long a user waits for a free seat
+  heartbeat-rate: 10000
+  heartbeat-timeout: 900000       # reclaim a container 15 min after the tab closes
+
+  # Hard ceiling on concurrent *seats* (i.e. users), not containers -- because
+  # ShinyGO packs 5 users per container, 108 seats is only ~60 containers idle.
+  # Past this ShinyProxy shows "not enough capacity" instead of OOM-ing the host.
+  max-total-instances: 108
+
+  specs:
+    - id: idep
+      display-name: iDEP 2.50
+      description: Integrated Differential Expression and Pathway analysis
+      container-image: webapp:latest
+      container-cmd:
+        - R
+        - -e
+        # Sys.setenv first: the image's /usr/local/lib/R/etc/Renviron.site
+        # hardcodes a relative IDEP_TELEMETRY_SQLITE and R's Renviron files
+        # override the process env, so container-env alone is discarded and
+        # telemetry silently falls back to no-op. Drop this once the image
+        # stops shipping that line.
+        - Sys.setenv(IDEP_TELEMETRY_SQLITE = "/srv/usage/idep_telemetry.sqlite"); options(golem.app.prod = TRUE); idep250::run_app(options = list(host = "0.0.0.0", port = 3838))
+      port: 3838
+      container-volumes:
+        - /home/exouser/idep/data:/srv/data:ro
+        - /home/exouser/idep/countsData:/srv/countsData:ro
+        - /home/exouser/idep/usage:/srv/usage
+      container-env:
+        IDEP_DATA_DIR: /srv/data
+        IDEP_TELEMETRY_SQLITE: /srv/usage/idep_telemetry.sqlite
+      container-memory-limit: 8g
+      # Keep spare containers booted so arrivals skip the ~6.5 s cold start
+      # (setting minimum-seats-available is what enables pre-initialization).
+      # 48 free seats = 48 idle containers, ~11 GB.
+      minimum-seats-available: 48
+      # One user per container: iDEP sessions are memory-heavy (8 GB cap) and
+      # run long single-threaded computations, so sharing an R process would
+      # make users block each other and share one OOM fate.
+      seats-per-container: 1
+      allow-container-re-use: false   # every user gets a fresh R process
+      scale-down-delay: 5
+
+    - id: go
+      display-name: ShinyGO 8.6
+      description: Enrichment analysis of gene lists
+      container-image: webapp:latest
+      container-cmd:
+        - R
+        - -e
+        - shiny::runApp("/srv/shiny-server/go86", host = "0.0.0.0", port = 3838)
+      port: 3838
+      container-volumes:
+        - /home/exouser/idep/shinyapps/go86:/srv/shiny-server/go86:ro
+        - /home/exouser/idep/data:/srv/data:ro
+      container-env:
+        IDEP_DATABASE: /srv/data
+      container-memory-limit: 8g
+      # 60 free seats at 5 per container = 12 idle containers, ~2.7 GB.
+      minimum-seats-available: 60
+      # ShinyGO is light -- gene lists, a 5 MB upload cap, sub-second start and
+      # short computations -- so five users can share one R process cheaply.
+      seats-per-container: 5
+      # allow-container-re-use is not set: it is only valid with
+      # seats-per-container = 1, and sharing implies re-use by definition.
+      # Containers are then never restarted on their own; use the admin
+      # endpoint /admin/delegate-proxy to cycle them after an image update.
+      scale-down-delay: 5
+
+logging:
+  file:
+    name: shinyproxy.log
+
+server:
+  # nginx sets X-Forwarded-*; trust it so generated URLs use the public host.
+  forward-headers-strategy: native
+  servlet:
+    session:
+      timeout: 3600

@@ -37,3 +37,7 @@ shinyapps/Abingdon island giant tortoise__cabingdonii_gene_ensembl.db
 shinyapps/Human__hsapiens_gene_ensembl.db
 shinyapps/tem.csv
 shinyapps/tem2.csv
+
+# ShinyProxy test setup
+shinyproxy/*.jar
+shinyproxy/*.log
