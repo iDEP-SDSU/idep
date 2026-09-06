@@ -64,6 +64,14 @@ refuse_if_unit_active() {
 
 jar_path() { ls shinyproxy-*.jar 2>/dev/null | sort -V | tail -1; }
 
+# Major version of $JAVA (8 prints "1.8", which parses as 1 and is refused
+# like anything below 17); empty if $JAVA is not runnable.
+java_major() {
+    command -v "$JAVA" >/dev/null || return 1
+    "$JAVA" -version 2>&1 | grep -oP 'version "\K[0-9]+' | head -1
+}
+JAVA_HINT="install java-21-openjdk-headless (RHEL) / openjdk-21-jre-headless (Debian) and set JAVA=/usr/lib/jvm/jre-21/bin/java (see ls /usr/lib/jvm), or: sudo alternatives --config java"
+
 # PID of the running ShinyProxy: trust the pidfile, fall back to whoever holds
 # the port (covers a JAR started before this script existed).
 sp_pid() {
@@ -102,9 +110,8 @@ render_templates() {
 cmd_start() {
     local jar; jar=$(jar_path)
     [ -n "$jar" ] || die "no shinyproxy-*.jar here; download it from https://www.shinyproxy.io/downloads/"
-    command -v "$JAVA" >/dev/null || die "$JAVA not found; ShinyProxy needs Java 17 or newer (dnf install java-21-openjdk-headless / apt-get install openjdk-21-jre-headless)"
-    local jv; jv=$("$JAVA" -version 2>&1 | grep -oP 'version "\K[0-9]+' | head -1)
-    [ "${jv:-0}" -ge 17 ] || die "$JAVA is Java ${jv:-?}; ShinyProxy 3.2 needs 17 or newer. Install java-21-openjdk-headless and set JAVA=/usr/lib/jvm/jre-21/bin/java (see ls /usr/lib/jvm), or: sudo alternatives --config java"
+    local jv; jv=$(java_major) || die "$JAVA not found; ShinyProxy needs Java 17 or newer: $JAVA_HINT"
+    [ "${jv:-0}" -ge 17 ] || die "$JAVA is Java ${jv:-?}; ShinyProxy 3.2 needs 17 or newer: $JAVA_HINT"
     render_templates "$jar"
 
     # Fail loudly now rather than on every app launch: a missing pinned image
@@ -420,6 +427,11 @@ cmd_unit() {
     [ -f shinyproxy.service.in ] || die "shinyproxy.service.in not found"
     id -nG | tr ' ' '\n' | grep -qx docker \
         || echo "warning: $(id -un) is not in the docker group; the unit sets Group=docker" >&2
+    # The unit inherits JAVA only if it is set now; an old default java would
+    # make the service fail on its first boot.
+    local jv; jv=$(java_major)
+    [ "${jv:-0}" -ge 17 ] \
+        || echo "warning: $JAVA is Java ${jv:-not runnable}; the unit will fail to start. $JAVA_HINT, then re-run unit with JAVA exported" >&2
     # JAVA= given explicitly (not the `java` default): write it into the unit,
     # otherwise drop the placeholder line.
     local java_env='/^@JAVA_ENV@$/d'
