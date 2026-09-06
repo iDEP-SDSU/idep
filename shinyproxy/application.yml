@@ -5,6 +5,11 @@
 #   current  /idep/ /go/            webapp:latest, pre-warmed pools, heavy use
 #   legacy   everything else        webapp:2026,   cold start, occasional use
 #
+# Spec ids carry the version (idep250, go86, idep210, ...). /idep/ and /go/
+# are aliases in nginx onto whichever spec is current; releasing a new
+# version means adding a spec and moving the alias, never editing the old
+# spec. See "Moving /idep/ and /go/ to a new version" in README.md.
+#
 # The legacy tier is pinned to a dated image tag on purpose. Rebuilding
 # `webapp:latest` every ~2 years moves R and every Bioconductor package under
 # the apps; old iDEP/ShinyGO versions were never tested against those and exist
@@ -49,9 +54,10 @@ proxy:
   specs:
 
     # ---------------------------------------------------------------- current
-    # Pre-warmed pools on webapp:latest. These two carry essentially all traffic.
+    # Pre-warmed pools on webapp:latest. These two carry essentially all
+    # traffic; nginx serves them as /idep/ and /go/ as well as by version.
 
-    - id: idep
+    - id: idep250
       display-name: iDEP 2.50
       description: Integrated Differential Expression and Pathway analysis
       container-image: webapp:latest
@@ -84,7 +90,7 @@ proxy:
       allow-container-re-use: false   # every user gets a fresh R process
       scale-down-delay: 5
 
-    - id: go
+    - id: go86
       display-name: ShinyGO 8.6
       description: Enrichment analysis of gene lists
       container-image: webapp:latest

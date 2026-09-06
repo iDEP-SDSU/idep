@@ -1,7 +1,7 @@
 #!/bin/bash
 # Times a fresh anonymous ShinyProxy session all the way to served app HTML.
 # Uses SHINYPROXY_PUBLIC_PATH so it works with and without seat pre-init.
-N=${1:-4}; GAP=${2:-20}; BASE=${BASE:-http://127.0.0.1:8080}; SPEC=${SPEC:-idep}
+N=${1:-4}; GAP=${2:-20}; BASE=${BASE:-http://127.0.0.1:8080}; SPEC=${SPEC:-idep250}
 for run in $(seq 1 $N); do
   CJ=$(mktemp)
   curl -s -c $CJ -b $CJ -L -o /dev/null ${BASE:-http://127.0.0.1:8080}/
@@ -19,7 +19,7 @@ for run in $(seq 1 $N); do
   done
   END=$(date +%s.%N)
   printf 'run %d: proxy ready %.2fs | app HTML (HTTP %s) %.2fs\n' "$run" "$(echo "$UP-$START"|bc)" "$code" "$(echo "$END-$START"|bc)"
-  curl -s -c $CJ -b $CJ -X DELETE "${BASE:-http://127.0.0.1:8080}/api/proxy/$ID" >/dev/null
+  curl -s -c $CJ -b $CJ -X PUT -H 'Content-Type: application/json' -d '{"status":"Stopping"}' "${BASE:-http://127.0.0.1:8080}/api/proxy/$ID/status" >/dev/null
   rm -f $CJ
   sleep $GAP
 done

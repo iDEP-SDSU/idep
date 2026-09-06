@@ -157,6 +157,31 @@ then set `container-image: webapp:2028` on the specs that should hold there.
 Images are ~30 GB on disk; keeping one per vintage is cheap next to the 1.4 TB
 free here.
 
+## Moving /idep/ and /go/ to a new version
+
+Spec ids carry the version: `idep250`, `go86`, `idep210`, ... . `/idep/` and
+`/go/` are nginx aliases onto the current spec, so a release never edits an
+existing spec — the old version keeps its URL and its behaviour. To ship
+iDEP 2.60 (ShinyGO is the same with `go`):
+
+1. Build the new image (`./idep.sh update`) with the `idep260` package in it.
+2. Copy the `idep250` block in `application.yml` to a new spec `idep260`,
+   changing the id, display name and the `idep260::run_app` call. Give it
+   the `minimum-seats-available` pool.
+3. Demote `idep250`: drop `minimum-seats-available` and
+   `allow-container-re-use`, set `seats-per-container: 5`, and point
+   `container-image` at a tag that still has the `idep250` package
+   (`./idep.sh pin <tag>` before the update creates one). It now costs
+   nothing until someone visits.
+4. In `nginx/nginx.conf`, add `location = /idep260` and `location /idep260/`
+   lines like the ones for `/idep250/`, then repoint `location /idep/` at
+   `/app/idep260/`.
+5. `./idep.sh restart`, then `./idep.sh check idep260` and `check idep250`.
+
+The `/idep/` route is a proxy alias, not a redirect, so the address bar keeps
+showing `/idep/` and bookmarks keep following the latest version. Change the
+line to `return 301 /idep250/;` if you would rather the version show.
+
 ## Adding an app
 
 Three lines in `application.yml` — everything else is inherited from the
@@ -207,7 +232,8 @@ writes into its own directory will fail — drop the `:ro` if one does.
 
 `./idep.sh parity` passes: all 37 `location` entries in the old
 `shiny-server.conf` are published here, on the same directories. That is 35
-specs — `/idep` and `/idep250` share one, as do `/go` and `/go86`.
+specs — `/idep` and `/idep250` both route to spec `idep250`, `/go` and `/go86`
+to `go86`.
 
 `./idep.sh check all` passes 22 of 35. Every failure is a missing input on
 *this* machine, not configuration:
@@ -315,7 +341,7 @@ iDEP session costs, only idle (224 MB) and the 8 GB ceiling. Watch
 
 - **Do not enable `track-app-url`.** `/idep/` is a real proxy pass, not a
   redirect, and works because every asset ShinyProxy emits is rooted at `/`.
-  That one setting would rewrite the browser URL back to `/app/idep/`.
+  That one setting would rewrite the browser URL back to `/app/idep250/`.
 - `templates/app.html` is generated; edit `templates/frame-escape.html` (see
   "Links between apps").
 - ShinyProxy has no per-app URL setting (`target-path` is the path *inside* the

@@ -244,8 +244,9 @@ cmd_check() {
     printf '%-10s HTTP %s  %.1fs\n' "$id" "$code" "$(echo "$(date +%s.%N) - $start" | bc)"
 
     # Release the seat so a check does not leave a container idling for 15 min.
-    [ -n "$proxy_id" ] && curl -s -c "$cj" -b "$cj" -X DELETE \
-        "http://127.0.0.1:$SP_PORT/api/proxy/$proxy_id" >/dev/null
+    # ShinyProxy 3 stops a proxy through its status; DELETE answers 405.
+    [ -n "$proxy_id" ] && curl -s -c "$cj" -b "$cj" -X PUT -H 'Content-Type: application/json' \
+        -d '{"status":"Stopping"}' "http://127.0.0.1:$SP_PORT/api/proxy/$proxy_id/status" >/dev/null
 
     [ "$code" = "200" ]
 }
