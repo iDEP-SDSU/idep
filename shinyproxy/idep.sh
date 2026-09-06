@@ -45,6 +45,7 @@ app_containers() { docker ps -aq --filter "label=openanalytics.eu/sp-proxy-id"; 
 # never leave a stale hand-edited copy behind -- the snippet is all we own.
 render_templates() {
     local jar=$1
+    command -v unzip >/dev/null || die "unzip is required to read app.html out of $jar"
     mkdir -p templates
     [ -f templates/frame-escape.html ] || die "templates/frame-escape.html missing"
     {

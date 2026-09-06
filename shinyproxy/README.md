@@ -198,13 +198,15 @@ thing to maintain. If an upgrade renames the `<head lang="en">` anchor the
 insertion targets, `start` refuses to run rather than silently serving the
 stock page.
 
-The script runs in the page being *loaded*, so it takes effect on whichever
-server the link points to. The links in the apps are absolute URLs to
-production, so on this test host they leave the stack and show production
-inside the frame; the escape only becomes visible once production runs this
-stack. Side effect: no third-party site can embed an app in a frame, which is
-what the `frame-ancestors 'none'` policy in the root `nginx.conf` already
-declares (report-only).
+It works only when both apps are on the same origin. Chrome blocks a
+cross-origin frame from navigating the top window unless that document itself
+has a user gesture, and the click happened in the previous document, so the
+attempt is refused with "Unsafe attempt to initiate navigation ... nor has it
+received a user gesture". The links in the apps are absolute URLs to
+production, so on this test host they leave the stack, show production inside
+the frame, and the escape does nothing; it only takes effect once production
+runs this stack and the links become same-origin. For the same reason it does
+not stop a third-party site from embedding an app.
 
 ## Configuration reference
 

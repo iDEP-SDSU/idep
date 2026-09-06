@@ -10,13 +10,15 @@
             // first URL, the first container keeps its seat because its
             // heartbeat never stops, and a reload brings the first app back.
             //
-            // Cross-origin parents cannot be inspected, but navigating `top`
-            // is allowed after a user click, which is how we always get here.
-            // Plain assignment (not replace) keeps the first app in history,
-            // so Back returns to it and ShinyProxy resumes that session.
-            // Side effect: third-party sites cannot embed an app in a frame,
-            // which matches the frame-ancestors 'none' policy production
-            // already declares.
+            // Same-origin only in practice. Chrome refuses a cross-origin
+            // frame's attempt to navigate the top window unless *this*
+            // document has a user gesture, and the click that brought us here
+            // happened in the previous document ("Unsafe attempt to initiate
+            // navigation ... nor has it received a user gesture"). So a link
+            // to another host stays nested; the app's own target="_blank" is
+            // the only fix for that. Plain assignment (not replace) keeps the
+            // first app in history, so Back returns to it and ShinyProxy
+            // resumes that session.
             if (window.top !== window.self) {
                 window.top.location.href = window.location.href;
             }
