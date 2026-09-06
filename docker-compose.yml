@@ -2,8 +2,11 @@ services:
   webapp:
     build: .
     image: webapp:latest
-    mem_limit: 10g
+    mem_limit: 12g
     mem_reservation: 6g
+    memswap_limit: 13g
+    restart: unless-stopped
+
     expose:
       - "3838"
     environment:
