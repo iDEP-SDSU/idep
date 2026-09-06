@@ -1,0 +1,23 @@
+        <!-- Inserted into ShinyProxy's stock app.html by ./idep.sh (render_templates). -->
+        <script>
+            // Take over the tab when this page is loaded inside a frame.
+            //
+            // ShinyProxy shows every app inside an <iframe> on this page. A
+            // link from one app to another without target="_blank" -- iDEP's
+            // "old versions are still usable", the legacy apps' "try the new
+            // version" -- navigates that iframe, so the second app loads
+            // nested inside the first one's page: the address bar keeps the
+            // first URL, the first container keeps its seat because its
+            // heartbeat never stops, and a reload brings the first app back.
+            //
+            // Cross-origin parents cannot be inspected, but navigating `top`
+            // is allowed after a user click, which is how we always get here.
+            // Plain assignment (not replace) keeps the first app in history,
+            // so Back returns to it and ShinyProxy resumes that session.
+            // Side effect: third-party sites cannot embed an app in a frame,
+            // which matches the frame-ancestors 'none' policy production
+            // already declares.
+            if (window.top !== window.self) {
+                window.top.location.href = window.location.href;
+            }
+        </script>

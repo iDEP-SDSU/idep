@@ -21,6 +21,12 @@ proxy:
   # No navbar: the apps have their own headers, and users should not be
   # offered "Restart app" / "Stop app" controls.
   hide-navbar: true
+  # Stock ShinyProxy pages, except app.html, which ./idep.sh regenerates from
+  # the JAR on every start with templates/frame-escape.html inserted: an app
+  # page loaded inside a frame (a link from one app to another) takes over the
+  # tab instead of staying nested. Relative to the working directory, which
+  # both idep.sh and the systemd unit set to this directory.
+  template-path: ./templates/
   container-backend: docker
 
   docker:

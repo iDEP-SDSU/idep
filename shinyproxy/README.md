@@ -177,6 +177,35 @@ species — so a green check is not proof the database underneath is right.
 **On production, where all of these exist, `./idep.sh check all` should be 35 of
 35.** Anything still failing there is a real problem.
 
+## Links between apps
+
+ShinyProxy shows every app inside an `<iframe>` on its own page. A link from
+one app to another that has no `target` -- iDEP's "old versions are still
+usable", the legacy apps' "try the new version" -- navigates that iframe, so
+the second app loads nested inside the first one's page: the address bar
+keeps the first URL, the first container keeps its seat because its heartbeat
+never stops, and a reload brings the first app back.
+
+Two fixes, both in use. The apps themselves should put `target="_blank"` on
+such links; that is the real fix and needs nothing from this directory. As a
+safety net for links that lack it, `templates/frame-escape.html` is a few
+lines of JavaScript that make a framed app page take over the tab.
+`./idep.sh start` inserts it into the stock `app.html` from the JAR and writes
+the result to `templates/app.html`, which `proxy.template-path` points
+ShinyProxy at. The generated file is gitignored and rebuilt on every start, so
+a ShinyProxy upgrade cannot leave a stale copy behind; the snippet is the only
+thing to maintain. If an upgrade renames the `<head lang="en">` anchor the
+insertion targets, `start` refuses to run rather than silently serving the
+stock page.
+
+The script runs in the page being *loaded*, so it takes effect on whichever
+server the link points to. The links in the apps are absolute URLs to
+production, so on this test host they leave the stack and show production
+inside the frame; the escape only becomes visible once production runs this
+stack. Side effect: no third-party site can embed an app in a frame, which is
+what the `frame-ancestors 'none'` policy in the root `nginx.conf` already
+declares (report-only).
+
 ## Configuration reference
 
 | | iDEP | ShinyGO | legacy |
@@ -235,6 +264,8 @@ iDEP session costs, only idle (224 MB) and the 8 GB ceiling. Watch
 - **Do not enable `track-app-url`.** `/idep/` is a real proxy pass, not a
   redirect, and works because every asset ShinyProxy emits is rooted at `/`.
   That one setting would rewrite the browser URL back to `/app/idep/`.
+- `templates/app.html` is generated; edit `templates/frame-escape.html` (see
+  "Links between apps").
 - ShinyProxy has no per-app URL setting (`target-path` is the path *inside* the
   container), which is why nginx does the mapping.
 - nginx's `try_files ... @shinyproxy` fallback is what lets the static site and
