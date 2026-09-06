@@ -309,7 +309,7 @@ Global:
   across every spec. Since the pools grow without bound under load, this is
   the only cap on concurrent sessions. Past it, new sessions get "not enough
   capacity"; existing ones are untouched.
-- `container-memory-limit: 8g` — a *cap*, not a reservation: containers sit at
+- `container-memory-limit: 15g` — a *cap*, not a reservation: containers sit at
   224 MB and grow only as the user loads data. Exceeding it OOM-kills that
   container (exit 137) and nothing else.
 - `heartbeat-timeout: 900000` — reclaim 15 min after the browser tab closes.
@@ -337,15 +337,15 @@ in the host page cache once and is shared by every container.
 **Capacity caveat.** 200 seats is an aggressive cap. Idle it is fine, but 200
 *working* sessions at even 1 GB each would exceed 122 GB — the cap bounds the
 count, not the sum of real usage. There is no measurement here of what a working
-iDEP session costs, only idle (224 MB) and the 8 GB ceiling. The total is
+iDEP session costs, only idle (224 MB) and the 15 GB ceiling. The total is
 bounded by `memory-cap.sh` instead, below; watch `docker stats` under real
 traffic to see how far from it a normal day sits.
 
 ## Capping total container memory
 
-ShinyProxy limits memory per container only (`container-memory-limit: 8g`)
+ShinyProxy limits memory per container only (`container-memory-limit: 15g`)
 and has no setting for the total, so the seat cap alone leaves the host
-exposed to `200 × 8 GB`. `memory-cap.sh` closes that gap one level down:
+exposed to `200 × 15 GB`. `memory-cap.sh` closes that gap one level down:
 
 ```bash
 sudo ./memory-cap.sh install          # once per host; budget is MEMORY_MAX at the top of the script
@@ -374,9 +374,12 @@ containers on the host, ShinyProxy's or not; nginx (~70 MB) and the Guacamole
 pair here share it. Containers created before the cap stay outside it until
 recreated; `status` lists them.
 
-The budget is `MEMORY_MAX` at the top of the script, 106G: host RAM minus
-16 GiB for the OS, the page cache and the ShinyProxy JVM (2 GB heap cap,
-~1.3 GB resident after a busy hour). To change it, edit that line and run
+The budget is `MEMORY_MAX` at the top of the script, 140G, sized for the
+production server; keep at least 16 GiB of host RAM outside it for the OS, the
+page cache and the ShinyProxy JVM (2 GB heap cap, ~1.3 GB resident after a
+busy hour). On a host with less RAM than the budget, such as this 122 GB test
+server, the slice never binds and only the per-container limit protects the
+host. To change it, edit that line and run
 `install` again; the new value is applied to the running slice in place, no
 Docker restart.
 

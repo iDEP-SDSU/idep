@@ -7,8 +7,8 @@
 #   sudo ./memory-cap.sh remove           lift the cap again
 #
 # ShinyProxy can only limit memory per container (container-memory-limit,
-# 8 GB here) and has no notion of a total, so 200 seats x 8 GB is nominally
-# 1.6 TB on a 122 GB host. This puts every container Docker starts into one
+# 15 GB here) and has no notion of a total, so 200 seats x 15 GB is nominally
+# 3 TB. This puts every container Docker starts into one
 # systemd slice, containers.slice, with a MemoryMax. When the containers'
 # combined usage reaches it the kernel first drops reclaimable page cache
 # inside the slice, then OOM-kills the largest process in it -- one heavy R
@@ -29,12 +29,13 @@
 set -eu
 
 # ---------------------------------------------------------------- the budget
-# Combined memory for every container on the host. What is left over goes to
-# the OS, the page cache and the ShinyProxy JVM (2 GB heap cap): 16 GiB on a
-# 122 GB host is comfortable. Any systemd size works ("90G", "80%").
-# To change it later, edit this line and run `sudo ./memory-cap.sh install`
-# again: the new value is applied in place, no Docker restart.
-MEMORY_MAX=106G
+# Combined memory for every container on the host, sized for the production
+# server. What is left over goes to the OS, the page cache and the ShinyProxy
+# JVM (2 GB heap cap); keep at least 16 GiB back. Any systemd size works
+# ("90G", "80%"). To change it, edit this line and run
+# `sudo ./memory-cap.sh install` again: the new value is applied in place,
+# no Docker restart.
+MEMORY_MAX=140G
 # ----------------------------------------------------------------------------
 
 SLICE=containers.slice

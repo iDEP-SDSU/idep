@@ -37,7 +37,7 @@ Restart=on-failure
 RestartSec=5
 SuccessExitStatus=143
 
-# 60+ R containers each allowed 8 GB on a host with no swap: if memory runs
+# 40+ R containers each allowed 15 GB on a host with no swap: if memory runs
 # out, have the kernel kill one of them rather than the proxy that owns them.
 OOMScoreAdjust=-900
 

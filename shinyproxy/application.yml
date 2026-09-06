@@ -79,13 +79,13 @@ proxy:
       container-env:
         IDEP_DATA_DIR: /srv/data
         IDEP_TELEMETRY_SQLITE: /srv/usage/idep_telemetry.sqlite
-      container-memory-limit: 8g
+      container-memory-limit: 15g
       # Keep spare containers booted so arrivals skip the ~6.5 s cold start
       # (setting minimum-seats-available is what enables pre-initialization).
       # This is a floor on *spare* seats, topped up as users take them, not a
       # cap on users. 20 free seats = 20 idle containers, ~4.6 GB.
       minimum-seats-available: 20
-      # One user per container: iDEP sessions are memory-heavy (8 GB cap) and
+      # One user per container: iDEP sessions are memory-heavy (15 GB cap) and
       # run long single-threaded computations, so sharing an R process would
       # make users block each other and share one OOM fate.
       seats-per-container: 1
@@ -106,7 +106,7 @@ proxy:
         - /home/exouser/idep/data:/srv/data:ro
       container-env:
         IDEP_DATABASE: /srv/data
-      container-memory-limit: 8g
+      container-memory-limit: 15g
       # 20 free seats = 20 idle containers, ~4.4 GB.
       minimum-seats-available: 20
       # One user per container, as for iDEP: a fresh R process per session
@@ -155,7 +155,7 @@ proxy:
       container-env:
         IDEP_DATABASE: /srv/data
         IDEP_DATA_DIR: /srv/data
-      container-memory-limit: 8g
+      container-memory-limit: 15g
       # Five users share one R process, as they shared one shiny-server process.
       seats-per-container: 5
       scale-down-delay: 5
