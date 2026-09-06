@@ -337,8 +337,45 @@ in the host page cache once and is shared by every container.
 **Capacity caveat.** 200 seats is an aggressive cap. Idle it is fine, but 200
 *working* sessions at even 1 GB each would exceed 122 GB — the cap bounds the
 count, not the sum of real usage. There is no measurement here of what a working
-iDEP session costs, only idle (224 MB) and the 8 GB ceiling. Watch
-`docker stats` under real traffic and set the cap to `~106 GB / observed p95`.
+iDEP session costs, only idle (224 MB) and the 8 GB ceiling. The total is
+bounded by `memory-cap.sh` instead, below; watch `docker stats` under real
+traffic to see how far from it a normal day sits.
+
+## Capping total container memory
+
+ShinyProxy limits memory per container only (`container-memory-limit: 8g`)
+and has no setting for the total, so the seat cap alone leaves the host
+exposed to `200 × 8 GB`. `memory-cap.sh` closes that gap one level down:
+
+```bash
+sudo ./memory-cap.sh install          # budget = host RAM − 16 GiB (106G here)
+sudo ./memory-cap.sh install 90G      # or pick one
+sudo ./memory-cap.sh status
+sudo ./memory-cap.sh remove
+```
+
+`install` writes a systemd slice, `containers.slice`, with that `MemoryMax`,
+and sets `cgroup-parent` in `/etc/docker/daemon.json` so Docker starts every
+container inside it. When the containers' combined usage reaches the budget
+the kernel first drops the page cache charged to the slice (the database
+bind mount, mostly), then OOM-kills the largest process in it — one heavy R
+session, which its user sees as "This app has crashed" — and everything
+outside the slice (the OS, Docker, the ShinyProxy JVM, this shell) is never
+touched. Verified here: a slice held to 200 MB kills an R process the moment
+it allocates 320 MB, exit 137, `oom_kill` counted in the slice's
+`memory.events`.
+
+Both files persist, so nothing needs re-running at boot; `install` is
+idempotent and only restarts Docker — which restarts every container, then
+ShinyProxy to rebuild the pool — when `daemon.json` actually changed. The
+budget applies to *all* containers on the host, ShinyProxy's or not; nginx
+(~70 MB) and the Guacamole pair here share it. Containers created before the
+cap stay outside it until recreated; `status` lists them.
+
+The 16 GiB kept back is for the OS, the page cache and the ShinyProxy JVM
+(2 GB heap cap, ~1.3 GB resident after a busy hour). To change the budget
+later, run `install` again with a size; it edits the slice in place without a
+Docker restart.
 
 ## Gotchas
 
