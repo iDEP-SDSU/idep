@@ -14,7 +14,13 @@
 # Once installed, use `systemctl start|stop|restart shinyproxy`. While the
 # unit is active, `./idep.sh start|stop|restart` refuses to run: a manual
 # stop races systemd's restart, and a JVM that had to be SIGKILLed counts
-# as a failure. status, check, parity, pin and logs work as before.
+# as a failure. `./idep.sh update` restarts through systemctl instead;
+# status, check, parity, pin and logs work as before.
+#
+# ExecStart/ExecStop go through /bin/bash rather than executing idep.sh
+# directly: with SELinux enforcing (RHEL), systemd may only execute files
+# labeled as executables, and a checkout under /docker or $HOME is not
+# (default_t / user_home_t) -- direct execution fails with 203/EXEC.
 [Unit]
 Description=ShinyProxy stack for iDEP and ShinyGO
 Requires=docker.service
@@ -29,8 +35,8 @@ PIDFile=@DIR@/shinyproxy.pid
 User=@USER@
 Group=docker
 WorkingDirectory=@DIR@
-ExecStart=@DIR@/idep.sh start
-ExecStop=@DIR@/idep.sh stop
+ExecStart=/bin/bash @DIR@/idep.sh start
+ExecStop=/bin/bash @DIR@/idep.sh stop
 
 # Bring ShinyProxy back if it crashes or is OOM-killed. On restart idep.sh
 # start sweeps the containers the dead instance left behind.

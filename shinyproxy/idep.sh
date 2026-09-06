@@ -24,13 +24,15 @@ SP_PORT=8080
 NGINX_NAME=sp-nginx
 # Pinned: `latest` is nginx mainline and moves under us on every start.
 NGINX_IMAGE=nginx:1.30
-# TLS material for :443: the certificate production already has, at the
-# paths the previous nginx.conf read it from. A test host without those
-# falls back to the untracked copies under ../nginx/. Override either with
+# TLS material for :443. Preferred: a host copy at the RHEL paths the old
+# nginx image used internally; otherwise the untracked pair under ../nginx/
+# that the old image was built from (nginx/Dockerfile copies it in), which is
+# what a production checkout certainly has. Override either with
 # CERT_PEM=... CERT_KEY=... ./idep.sh start (or Environment= in the unit).
-if [ -z "${CERT_PEM:-}" ] && [ -f /etc/pki/nginx/server.pem ]; then
+if [ -z "${CERT_PEM:-}" ] && [ -f /etc/pki/nginx/server.pem ] \
+        && [ -f /etc/pki/nginx/private/server.key ]; then
     CERT_PEM=/etc/pki/nginx/server.pem
-    CERT_KEY=${CERT_KEY:-/etc/pki/nginx/private/server.key}
+    CERT_KEY=/etc/pki/nginx/private/server.key
 fi
 CERT_PEM=${CERT_PEM:-$ROOT/nginx/idep_ssl.pem}
 CERT_KEY=${CERT_KEY:-$ROOT/nginx/idep.key}
@@ -93,7 +95,7 @@ render_templates() {
 cmd_start() {
     local jar; jar=$(jar_path)
     [ -n "$jar" ] || die "no shinyproxy-*.jar here; download it from https://www.shinyproxy.io/downloads/"
-    command -v java >/dev/null || die "java not found; ShinyProxy needs Java 17 or newer (apt-get install openjdk-21-jre-headless)"
+    command -v java >/dev/null || die "java not found; ShinyProxy needs Java 17 or newer (dnf install java-21-openjdk-headless / apt-get install openjdk-21-jre-headless)"
     render_templates "$jar"
 
     # Fail loudly now rather than on every app launch: a missing pinned image
@@ -144,7 +146,12 @@ cmd_start() {
     docker rm -f "$NGINX_NAME" >/dev/null 2>&1
     docker run -d --name "$NGINX_NAME" --network host --restart unless-stopped \
         "${nginx_mounts[@]}" "$NGINX_IMAGE" >/dev/null || die "nginx failed to start"
-    echo "nginx up on :443 (:80 redirects)"
+    # It listens within a second; wait so that a status check right after
+    # start (or after `systemctl restart`, which returns here) sees it.
+    for _ in $(seq 1 20); do
+        curl -sko /dev/null --max-time 2 https://127.0.0.1/ && break; sleep 0.5
+    done
+    echo "nginx up on :443 (:80 redirects), cert $CERT_PEM"
     echo "  https://$(hostname -I | awk '{print $1}')/"
 }
 
@@ -226,6 +233,7 @@ cmd_check() {
     # calls below is global, and fires on this frame's return too.
     local cj=""
     [ -n "$id" ] || die "usage: ./idep.sh check <spec-id>       (or: check all)"
+    command -v bc >/dev/null || die "bc is required (dnf/apt install bc)"
 
     if [ "$id" = "all" ]; then
         local rc=0
@@ -282,13 +290,32 @@ cmd_pin() {
 }
 
 cmd_update() {
+    # Under the unit, stopping the JVM ourselves would leave systemd thinking
+    # the service exited cleanly and the replacement untracked by it, so the
+    # restart goes through systemctl. Same state list as refuse_if_unit_active:
+    # `activating` means ExecStart is still polling :8080 after a reboot or a
+    # crash, and a bare stop/start would fight it.
+    local via_unit=0
+    case "$(systemctl is-active shinyproxy 2>/dev/null)" in
+        active|activating|deactivating|reloading) via_unit=1 ;;
+    esac
+    # That restart needs sudo; find out now, not after a 30-minute build.
+    if [ "$via_unit" = 1 ]; then
+        sudo -v || die "update restarts through systemctl and needs sudo"
+    fi
+
     # Freeze the outgoing image before it is replaced. Legacy specs reference
     # a dated tag, so this snapshot is what keeps them reproducible; without it
-    # the environment they were tested against is gone for good.
+    # the environment they were tested against is gone for good. A second run
+    # on the same day keeps the first snapshot: that is the older vintage.
     local stamp; stamp=$(date +%Y%m%d)
     if docker image inspect webapp:latest >/dev/null 2>&1; then
-        docker tag webapp:latest "webapp:pre-$stamp"
-        echo "outgoing image saved as webapp:pre-$stamp"
+        if docker image inspect "webapp:pre-$stamp" >/dev/null 2>&1; then
+            echo "webapp:pre-$stamp already exists (earlier update today); keeping it"
+        else
+            docker tag webapp:latest "webapp:pre-$stamp"
+            echo "outgoing image saved as webapp:pre-$stamp"
+        fi
     fi
 
     if [ "${1:-}" = "--pull" ]; then
@@ -299,8 +326,16 @@ cmd_update() {
     fi
 
     echo "restarting so running containers pick up the new image..."
-    cmd_stop
-    cmd_start
+    if [ "$via_unit" = 1 ]; then
+        # sudo's cached credentials may have expired during the build; if this
+        # fails the image is already in place and only the restart is missing.
+        sudo systemctl restart shinyproxy \
+            || die "image built, but the restart failed; run: sudo systemctl restart shinyproxy"
+        cmd_status
+    else
+        cmd_stop
+        cmd_start
+    fi
 }
 
 cmd_parity() {

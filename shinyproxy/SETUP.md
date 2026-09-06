@@ -17,24 +17,55 @@ The script starts ShinyProxy as a plain JAR on the host, so the host needs:
 | what | why | check |
 | --- | --- | --- |
 | Java 17 or newer | ShinyProxy 3.2.x is a Spring Boot JAR | `java -version` |
-| `unzip` | `idep.sh start` extracts `app.html` from the JAR | `command -v unzip` |
-| Docker, with the login user in the `docker` group | ShinyProxy talks to `/var/run/docker.sock` | `docker ps` without sudo |
+| `unzip`, `bc`, `curl`, `ss`, `python3` | `start` extracts `app.html` from the JAR with unzip; `check` and `memory-cap.sh status` use bc; every probe uses curl; `ss` finds a ShinyProxy whose pidfile is gone; `memory-cap.sh` edits `daemon.json` with python3 | the loop below prints nothing missing |
+| Docker on cgroup v2 with the systemd driver | `memory-cap.sh` puts every container in one systemd slice and refuses otherwise | `docker info -f '{{.CgroupDriver}} {{.CgroupVersion}}'` prints `systemd 2` |
+| the login user in the `docker` group | ShinyProxy talks to `/var/run/docker.sock`; the old stack was run with `sudo`, so this may not be set up yet | `docker ps` without sudo |
 | `nginx:1.30` image pulled | pinned in `idep.sh`; pre-pull so a reboot does not depend on Docker Hub | `docker pull nginx:1.30` |
 
+Production is RHEL 9, which ships cgroup v2 and Docker CE defaults to the
+systemd driver there, so the third row should already hold:
+
 ```bash
-sudo apt-get install -y openjdk-21-jre-headless unzip
+sudo dnf install -y java-21-openjdk-headless unzip bc iproute python3 curl
+for t in java unzip bc curl ss python3; do command -v $t >/dev/null || echo "MISSING $t"; done
+sudo usermod -aG docker "$USER"   # then log out and back in
+docker ps                          # must work without sudo
+docker info -f '{{.CgroupDriver}} {{.CgroupVersion}}'
 docker pull nginx:1.30
+getenforce                         # Enforcing on a stock RHEL host; see step 11
 ```
+
+(On Debian/Ubuntu: `apt-get install -y openjdk-21-jre-headless unzip bc iproute2 python3 curl`.)
 
 `idep.sh start` refuses to run without `java` or `unzip` on the PATH.
 
 ## 2. Check out the branch and its submodules
 
+Production has files that were edited in place rather than committed (the
+root `nginx/nginx.conf` almost certainly, since master commits 40 upstreams
+and runs 50; possibly `config/shiny-server.conf`). `git checkout` refuses to
+switch branches over a modified tracked file, and a `git stash` would
+conflict on `nginx/nginx.conf`, which this branch rewrites. Commit them on
+`master` instead; that also means a rollback (`git checkout master`) brings
+production's own files back:
+
 ```bash
 cd /docker/idep
+git status                        # tracked files with local edits?
+git commit -am "Production in-place edits"   # if any
 git fetch origin
 git checkout shinyproxy
-git submodule update --init      # idep11, go80, idepgolem1, go
+git submodule update --init       # idep11, go80, idepgolem1, go
+```
+
+The new stack does not read the root `nginx/` or `docker-compose.yml`, but
+`./idep.sh parity` (step 10) does read `config/shiny-server.conf`. If
+production's copy differs from the committed one, put it back for the
+comparison so parity checks what production really served:
+
+```bash
+git diff master -- config/shiny-server.conf          # anything?
+git checkout master -- config/shiny-server.conf      # then: git checkout shinyproxy -- config/shiny-server.conf
 ```
 
 Confirm every app directory that `config/shiny-server.conf` publishes is
@@ -55,8 +86,8 @@ this directory:
 
 ```bash
 cd /docker/idep/shinyproxy
-wget https://www.shinyproxy.io/downloads/shinyproxy-3.2.4.jar
-ls shinyproxy-*.jar
+curl -LO https://www.shinyproxy.io/downloads/shinyproxy-3.2.4.jar
+ls -l shinyproxy-*.jar           # ~150 MB
 ```
 
 `idep.sh` picks the highest-versioned `shinyproxy-*.jar` it finds here.
@@ -96,11 +127,30 @@ containers run as root, but the directory then cannot be removed without sudo.
 
 ## 7. TLS
 
-`start` uses `/etc/pki/nginx/server.pem` and
-`/etc/pki/nginx/private/server.key` when they exist, the same files the old
-nginx used, so production needs nothing here. On a host without them set
-`CERT_PEM` and `CERT_KEY` (see README, "TLS"). `start` refuses to run without
-both files.
+`start` looks for the certificate in two places and takes the host pair
+when **both** of its files exist, otherwise the checkout pair:
+
+1. `/etc/pki/nginx/server.pem` + `/etc/pki/nginx/private/server.key` on the
+   host (the RHEL convention).
+2. `nginx/idep_ssl.pem` + `nginx/idep.key` in the checkout, untracked.
+
+The old stack **copied** the pair from `nginx/` into its nginx image at the
+`/etc/pki/nginx` paths (see `nginx/Dockerfile`), so the checkout copy is the
+one production definitely has; whether the host also has a copy under
+`/etc/pki` is unknown. Check both, and if both exist make sure the host one
+is not an older certificate, because it wins silently:
+
+```bash
+cd /docker/idep
+ls -l /etc/pki/nginx/server.pem /etc/pki/nginx/private/server.key nginx/idep_ssl.pem nginx/idep.key
+openssl x509 -enddate -subject -noout -in /etc/pki/nginx/server.pem   # if it exists
+openssl x509 -enddate -subject -noout -in nginx/idep_ssl.pem
+```
+
+`start` prints which pair it used. To force a particular one set `CERT_PEM`
+and `CERT_KEY` (see README, "TLS"). `start` refuses to run without both
+files. The `.pem` must be the
+server certificate followed by any intermediate, as before.
 
 ## 8. Stop the old stack
 
@@ -165,9 +215,23 @@ sudo systemctl enable shinyproxy
 systemctl status shinyproxy
 ```
 
+The unit runs `idep.sh` through `/bin/bash` on purpose. With SELinux
+enforcing (the RHEL default), systemd may only execute files whose label is
+an executable type, and a checkout under `/docker` or a home directory is
+`default_t` or `user_home_t`; executing the script directly fails with
+`status=203/EXEC` and "Permission denied" in the journal even though
+`./idep.sh start` works from a shell. Executing `/bin/bash` and handing it
+the script sidesteps that. If the unit still fails to start:
+
+```bash
+sudo journalctl -u shinyproxy -n 30
+sudo ausearch -m avc -ts recent           # SELinux denials, if any
+```
+
 From now on use `systemctl start|stop|restart shinyproxy` rather than
-`./idep.sh` directly, so systemd's view stays right. Reboot once and confirm
-the site answers without manual intervention.
+`./idep.sh` directly, so systemd's view stays right; `./idep.sh update` does
+this by itself when the unit is active. Reboot once and confirm the site
+answers without manual intervention.
 
 ## 12. Afterwards
 
@@ -176,3 +240,31 @@ the site answers without manual intervention.
 - Once the old stack is gone for good, `config/shiny-server.conf` and the
   `parity` subcommand can be retired; `application.yml` becomes the only
   source of truth for which apps exist.
+
+## Rolling back
+
+If the new stack has to come down, the old one goes back up from the
+`master` branch. Do not run `docker compose` from the `shinyproxy` branch: it
+carries test-host commits to the root `nginx/nginx.conf` (sticky cookie,
+least_time) that use NGINX Plus-only directives and list only 20 upstreams,
+so the nginx image built from that branch does not start.
+
+```bash
+cd /docker/idep/shinyproxy
+sudo systemctl disable --now shinyproxy 2>/dev/null || ./idep.sh stop   # unit not installed yet? stop by hand
+./idep.sh status                          # both DOWN, 0 containers
+cd /docker/idep
+git checkout master                       # brings back production's committed files (step 2)
+docker tag webapp:2026 webapp:latest      # only if ./idep.sh update has ever run: compose runs everything on :latest
+sudo docker compose up -d --no-build --scale webapp=50
+```
+
+The container memory cap can stay; it simply bounds the 50 compose
+containers instead, and `webapp:2026` is just a tag. To lift the cap anyway,
+do it **before** `git checkout master` (the script is not on master) and
+before `compose up` (it needs a Docker restart, which would bounce every
+container):
+
+```bash
+sudo ./memory-cap.sh remove && sudo systemctl restart docker
+```

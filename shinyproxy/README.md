@@ -86,7 +86,9 @@ sudo systemctl enable --now shinyproxy
 
 `unit` renders `shinyproxy.service.in` with the current user and the path of
 this directory, because systemd cannot expand variables in `User=`,
-`WorkingDirectory=` or `ExecStart=`. Re-run it if the checkout moves.
+`WorkingDirectory=` or `ExecStart=`. Re-run it if the checkout moves. The
+unit runs the script via `/bin/bash` so that SELinux (enforcing on RHEL)
+lets systemd execute it from a checkout that is not labeled `bin_t`.
 
 The unit tracks the JVM through `shinyproxy.pid` and restarts it if it
 crashes or is OOM-killed; `start` sweeps the containers a dead instance left
@@ -97,10 +99,11 @@ calling the script directly so systemd's view stays right.
 
 nginx terminates TLS with the certificate production already has. `start`
 mounts it from `/etc/pki/nginx/server.pem` and
-`/etc/pki/nginx/private/server.key` — the same files the previous nginx.conf
-read — when they exist, and otherwise from the untracked `../nginx/idep_ssl.pem`
-and `../nginx/idep.key` (a test-host copy; gitignored, key mode 600). Either
-path can be overridden:
+`/etc/pki/nginx/private/server.key` — the paths the previous nginx image
+used internally — when **both** exist on the host, and otherwise from the
+untracked `../nginx/idep_ssl.pem` and `../nginx/idep.key`, the pair the
+previous image was built from (gitignored, key mode 600). `start` prints
+which one it used. Either path can be overridden:
 
 ```bash
 CERT_PEM=/path/to/fullchain.pem CERT_KEY=/path/to/privkey.key ./idep.sh start
@@ -148,7 +151,9 @@ Roughly every two years, with updated R and packages:
 
 `update` tags the outgoing image `webapp:pre-<date>` before replacing it, then
 restarts — running containers keep the old image otherwise, and ShinyProxy
-never cycles them on its own. (`/admin/delegate-proxy` is not usable here:
+never cycles them on its own. When `shinyproxy.service` is active the restart
+goes through `sudo systemctl restart shinyproxy`, so systemd keeps tracking
+the new JVM. (`/admin/delegate-proxy` is not usable here:
 `authentication: none` means there are no admin users, so it returns 403.)
 
 Only `/idep/` and `/go/` move to the new image. The legacy specs stay on
