@@ -44,7 +44,7 @@ shinyproxy/                      ShinyProxy stack (this branch)
   application.yml                app specs: current tier (/idep/, /go/) and pinned legacy tier
   nginx/nginx.conf               routes /<app>/ -> ShinyProxy on 127.0.0.1:8080
   idep.sh                        start/stop/status/check/pin/update, the only entry point
-  shinyproxy.service             systemd unit
+  shinyproxy.service.in          systemd unit template, rendered by ./idep.sh unit
   templates/                     ShinyProxy page templates (frame-escape for iframe links)
   bench*.sh                      cold-start benchmarks for both stacks
 data/                            species databases (gitignored, ~100s of GB), /srv/data

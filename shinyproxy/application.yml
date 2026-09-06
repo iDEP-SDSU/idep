@@ -17,6 +17,11 @@
 # See "Updating the image" in README.md -- never repoint the legacy anchor at
 # :latest.
 #
+# Bind mounts are written as ${IDEP_ROOT}/...: Spring resolves the placeholder
+# from the environment, and idep.sh exports IDEP_ROOT as the repo checkout
+# (the parent of this directory) when it launches the JAR. Nothing here
+# depends on where the repo lives or who runs it.
+#
 # nginx (shinyproxy/nginx) terminates :80, serves the static site from
 # shinyapps/dist, and maps the friendly paths below onto /app/<id>/.
 proxy:
@@ -73,9 +78,9 @@ proxy:
         - Sys.setenv(IDEP_TELEMETRY_SQLITE = "/srv/usage/idep_telemetry.sqlite"); options(golem.app.prod = TRUE); idep250::run_app(options = list(host = "0.0.0.0", port = 3838))
       port: 3838
       container-volumes:
-        - /home/exouser/idep/data:/srv/data:ro
-        - /home/exouser/idep/countsData:/srv/countsData:ro
-        - /home/exouser/idep/usage:/srv/usage
+        - ${IDEP_ROOT}/data:/srv/data:ro
+        - ${IDEP_ROOT}/countsData:/srv/countsData:ro
+        - ${IDEP_ROOT}/usage:/srv/usage
       container-env:
         IDEP_DATA_DIR: /srv/data
         IDEP_TELEMETRY_SQLITE: /srv/usage/idep_telemetry.sqlite
@@ -102,8 +107,8 @@ proxy:
         - shiny::runApp("/srv/shiny-server/go86", host = "0.0.0.0", port = 3838)
       port: 3838
       container-volumes:
-        - /home/exouser/idep/shinyapps/go86:/srv/shiny-server/go86:ro
-        - /home/exouser/idep/data:/srv/data:ro
+        - ${IDEP_ROOT}/shinyapps/go86:/srv/shiny-server/go86:ro
+        - ${IDEP_ROOT}/data:/srv/data:ro
       container-env:
         IDEP_DATABASE: /srv/data
       container-memory-limit: 15g
@@ -145,9 +150,9 @@ proxy:
       container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep210", host = "0.0.0.0", port = 3838)']
       port: 3838
       container-volumes:
-        - /home/exouser/idep/shinyapps:/srv/shiny-server:ro
-        - /home/exouser/idep/data:/srv/data:ro
-        - /home/exouser/idep/countsData:/srv/countsData:ro
+        - ${IDEP_ROOT}/shinyapps:/srv/shiny-server:ro
+        - ${IDEP_ROOT}/data:/srv/data:ro
+        - ${IDEP_ROOT}/countsData:/srv/countsData:ro
       # Both names are set on every legacy app: the ShinyGO line reads
       # IDEP_DATABASE, the golem-packaged iDEP line reads IDEP_DATA_DIR, and the
       # pre-golem versions read neither (they hardcode ../../data/dataNNN/).

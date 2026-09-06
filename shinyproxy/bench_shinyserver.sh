@@ -1,16 +1,17 @@
 #!/bin/bash
 # Cold-start the app the way the current production stack does it:
 # a webapp container running shiny-server, first request to /idep250.
+ROOT=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)   # the idep repo checkout
 PORT=3940
 docker rm -f idep_ss_bench >/dev/null 2>&1
 docker run -d --rm --name idep_ss_bench -p 127.0.0.1:$PORT:3838 \
-  -v /home/exouser/idep/shinyapps/:/srv/shiny-server/ \
-  -v /home/exouser/idep/data/:/srv/data/:ro \
-  -v /home/exouser/idep/countsData/:/srv/countsData/ \
-  -v /home/exouser/idep/shinylog/:/var/log/shiny-server/ \
-  -v /home/exouser/idep/config/:/etc/shiny-server/ \
-  -v /home/exouser/idep/classes/:/usr/local/src/myscripts/ \
-  -v /home/exouser/idep/usage/:/srv/usage/ \
+  -v $ROOT/shinyapps/:/srv/shiny-server/ \
+  -v $ROOT/data/:/srv/data/:ro \
+  -v $ROOT/countsData/:/srv/countsData/ \
+  -v $ROOT/shinylog/:/var/log/shiny-server/ \
+  -v $ROOT/config/:/etc/shiny-server/ \
+  -v $ROOT/classes/:/usr/local/src/myscripts/ \
+  -v $ROOT/usage/:/srv/usage/ \
   -e IDEP_TELEMETRY_SQLITE=../../usage/idep_telemetry.sqlite \
   webapp:latest >/dev/null
 

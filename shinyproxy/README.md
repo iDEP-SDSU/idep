@@ -58,6 +58,7 @@ Everything goes through one script:
 ./idep.sh check all       # smoke test every app (~2 min)
 ./idep.sh pin <tag>       # freeze webapp:latest as webapp:<tag>
 ./idep.sh update [--pull] # rebuild or pull the image, then restart
+./idep.sh unit            # print the systemd unit for this checkout and user
 ```
 
 `check` drives ShinyProxy's API the way a browser does and polls until R
@@ -78,10 +79,14 @@ comes back by itself and answers :443 with 502 until someone runs
 `./idep.sh start`:
 
 ```bash
-sudo cp shinyproxy.service /etc/systemd/system/
+./idep.sh unit | sudo tee /etc/systemd/system/shinyproxy.service >/dev/null
 sudo systemctl daemon-reload
 sudo systemctl enable --now shinyproxy
 ```
+
+`unit` renders `shinyproxy.service.in` with the current user and the path of
+this directory, because systemd cannot expand variables in `User=`,
+`WorkingDirectory=` or `ExecStart=`. Re-run it if the checkout moves.
 
 The unit tracks the JVM through `shinyproxy.pid` and restarts it if it
 crashes or is OOM-killed; `start` sweeps the containers a dead instance left
@@ -99,7 +104,7 @@ path can be overridden:
 
 ```bash
 CERT_PEM=/path/to/fullchain.pem CERT_KEY=/path/to/privkey.key ./idep.sh start
-# or Environment=CERT_PEM=... CERT_KEY=... in the unit's [Service] section
+# or Environment=CERT_PEM=... CERT_KEY=... in the [Service] section of shinyproxy.service.in
 ```
 
 The `.pem` must contain the server certificate followed by any intermediate,
@@ -398,6 +403,11 @@ Docker restart.
   ShinyProxy share the root. ShinyProxy's own `/js/`, `/css/`, `/webjars/` and
   `/app_proxy/` live inside the JAR, never on disk, so they never collide with
   a file in `dist/` and never need to be listed.
+- Nothing is tied to a checkout path or user. `application.yml` writes its
+  bind mounts as `${IDEP_ROOT}/...`, which Spring resolves from the
+  environment `idep.sh` exports, and the systemd unit is rendered by
+  `./idep.sh unit`. `idep.sh` itself locates the repo relative to its own
+  path.
 - The nginx image is pinned (`NGINX_IMAGE` in `idep.sh`); `nginx:latest` is
   mainline and would move under us on every start. Pre-pull the tag on a new
   host so a reboot does not depend on Docker Hub.

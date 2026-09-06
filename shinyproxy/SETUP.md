@@ -4,8 +4,11 @@ One-time steps to bring the ShinyProxy stack up on a server that currently
 runs the master-branch stack (nginx + shiny-server via `docker-compose.yml`).
 Day-to-day operation is in [README.md](README.md).
 
-Everything below assumes the repo is checked out at `/home/exouser/idep` and
-that the login user is `exouser`. See step 4 if that is not the case.
+Nothing in the stack is tied to a checkout path or login user: `idep.sh`
+finds the repo relative to its own location, `application.yml` mounts
+`${IDEP_ROOT}/...` which the script exports, and the systemd unit is rendered
+for the current user and directory. The examples below use `/docker/idep` and
+the user `gex`; substitute your own.
 
 ## 1. Host prerequisites
 
@@ -23,13 +26,12 @@ sudo apt-get install -y openjdk-21-jre-headless unzip
 docker pull nginx:1.30
 ```
 
-`idep.sh` does not check for Java. Without it, `start` reports ShinyProxy as
-failed and `startup.log` contains only `java: command not found`.
+`idep.sh start` refuses to run without `java` or `unzip` on the PATH.
 
 ## 2. Check out the branch and its submodules
 
 ```bash
-cd /home/exouser/idep
+cd /docker/idep
 git fetch origin
 git checkout shinyproxy
 git submodule update --init      # idep11, go80, idepgolem1, go
@@ -52,30 +54,19 @@ built against, from <https://www.shinyproxy.io/downloads/> and put it in
 this directory:
 
 ```bash
-cd /home/exouser/idep/shinyproxy
+cd /docker/idep/shinyproxy
 wget https://www.shinyproxy.io/downloads/shinyproxy-3.2.4.jar
 ls shinyproxy-*.jar
 ```
 
 `idep.sh` picks the highest-versioned `shinyproxy-*.jar` it finds here.
 
-## 4. Adjust paths if the checkout or user differs
+## 4. Run as the user who owns the checkout
 
-Two files hardcode `/home/exouser/idep` and the user `exouser`:
-
-- `application.yml`: the `container-volumes` bind mounts (8 lines).
-- `shinyproxy.service`: `User=`, `PIDFile=`, `WorkingDirectory=`,
-  `ExecStart=`, `ExecStop=`.
-
-If production uses a different path or login, replace them before starting:
-
-```bash
-sed -i 's#/home/exouser/idep#/actual/path/to/idep#g' application.yml shinyproxy.service
-sed -i 's#^User=exouser#User=actualuser#' shinyproxy.service
-```
-
-`idep.sh` and `nginx/nginx.conf` derive paths from where the script lives and
-need no change.
+Run every `./idep.sh` command as the login user that will own the stack, not
+as root. `./idep.sh unit` (step 11) bakes that user into the systemd unit, and
+the app containers write into `usage/` as root anyway, so the user needs only
+to be in the `docker` group.
 
 ## 5. Pin the legacy image
 
@@ -97,7 +88,7 @@ The specs bind-mount these from the repo root. `data/`, `countsData/` and
 the telemetry SQLite database and is not in git:
 
 ```bash
-mkdir -p /home/exouser/idep/usage
+mkdir -p /docker/idep/usage
 ```
 
 If it is missing Docker creates it as root; that also works, since the app
@@ -116,7 +107,7 @@ both files.
 Both stacks bind :80 and :443.
 
 ```bash
-cd /home/exouser/idep
+cd /docker/idep
 sudo docker compose down
 ```
 
@@ -131,7 +122,7 @@ Do this **before** starting the stack. It edits `/etc/docker/daemon.json` and
 restarts Docker, which would restart every running container.
 
 ```bash
-cd /home/exouser/idep/shinyproxy
+cd /docker/idep/shinyproxy
 sudo ./memory-cap.sh install      # budget is MEMORY_MAX at the top of the script (140G)
 sudo ./memory-cap.sh status
 ```
@@ -166,7 +157,8 @@ Then from a browser, over https:
 ## 11. Install the systemd unit
 
 ```bash
-sudo cp shinyproxy.service /etc/systemd/system/
+./idep.sh unit                    # review: User=, WorkingDirectory=, ExecStart= must match this host
+./idep.sh unit | sudo tee /etc/systemd/system/shinyproxy.service >/dev/null
 sudo systemctl daemon-reload
 sudo systemctl enable shinyproxy
 ./idep.sh stop && sudo systemctl start shinyproxy

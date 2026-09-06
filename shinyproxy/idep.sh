@@ -7,6 +7,7 @@
 #   ./idep.sh parity               check nothing shiny-server published was dropped
 #   ./idep.sh pin <tag>            freeze the current webapp:latest as webapp:<tag>
 #   ./idep.sh update [--pull]      rebuild (or pull) webapp:latest, then restart
+#   ./idep.sh unit                 print the systemd unit for this checkout and user
 #
 # The stack is a ShinyProxy JAR on the host plus one nginx container on :80.
 # App containers are started and reaped by ShinyProxy itself.
@@ -14,6 +15,10 @@ set -u
 
 cd "$(dirname "$(readlink -f "$0")")"
 ROOT=$(cd .. && pwd)          # the idep repo checkout
+# application.yml writes its bind mounts as ${IDEP_ROOT}/...; Spring resolves
+# that from the environment, so nothing in the config depends on where the
+# repo is checked out or who runs it.
+export IDEP_ROOT=$ROOT
 PIDFILE=shinyproxy.pid
 SP_PORT=8080
 NGINX_NAME=sp-nginx
@@ -34,6 +39,19 @@ CERT_KEY=${CERT_KEY:-$ROOT/nginx/idep.key}
 JAVA_OPTS=${JAVA_OPTS:--Xmx2g}
 
 die() { echo "error: $*" >&2; exit 1; }
+
+# Once shinyproxy.service is installed and running, a manual start/stop races
+# systemd: it restarts whatever we kill, both instances fight over :8080, and
+# a JVM that had to be SIGKILLed counts as a failure. Refuse unless we *are*
+# the unit's ExecStart/ExecStop (systemd sets INVOCATION_ID for those).
+refuse_if_unit_active() {
+    [ -z "${INVOCATION_ID:-}" ] || return 0
+    local st; st=$(systemctl is-active shinyproxy 2>/dev/null)
+    case "$st" in
+        active|activating|deactivating|reloading)
+            die "shinyproxy.service is $st; use: sudo systemctl $1 shinyproxy" ;;
+    esac
+}
 
 jar_path() { ls shinyproxy-*.jar 2>/dev/null | sort -V | tail -1; }
 
@@ -75,6 +93,7 @@ render_templates() {
 cmd_start() {
     local jar; jar=$(jar_path)
     [ -n "$jar" ] || die "no shinyproxy-*.jar here; download it from https://www.shinyproxy.io/downloads/"
+    command -v java >/dev/null || die "java not found; ShinyProxy needs Java 17 or newer (apt-get install openjdk-21-jre-headless)"
     render_templates "$jar"
 
     # Fail loudly now rather than on every app launch: a missing pinned image
@@ -136,7 +155,9 @@ cmd_stop() {
     local pid
     if pid=$(sp_pid); then
         kill "$pid" 2>/dev/null
-        for _ in $(seq 1 15); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+        # Reaping a 40-container pool takes longer than 15 s; give it a minute
+        # (the unit's TimeoutStopSec is 180) before falling back to SIGKILL.
+        for _ in $(seq 1 60); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
         kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null
         echo "ShinyProxy stopped (pid $pid)"
     else
@@ -347,15 +368,27 @@ cmd_parity() {
 
 cmd_logs() { tail -n "${2:-50}" -f startup.log; }
 
+# systemd cannot expand variables in User=, WorkingDirectory= or ExecStart=,
+# so the unit is rendered from shinyproxy.service.in for whoever runs this,
+# in whatever checkout this is:
+#   ./idep.sh unit | sudo tee /etc/systemd/system/shinyproxy.service >/dev/null
+cmd_unit() {
+    [ -f shinyproxy.service.in ] || die "shinyproxy.service.in not found"
+    id -nG | tr ' ' '\n' | grep -qx docker \
+        || echo "warning: $(id -un) is not in the docker group; the unit sets Group=docker" >&2
+    sed -e "s|@USER@|$(id -un)|g" -e "s|@DIR@|$PWD|g" shinyproxy.service.in
+}
+
 case "${1:-}" in
-    start)   cmd_start ;;
-    stop)    cmd_stop ;;
-    restart) cmd_stop; echo; cmd_start ;;
+    start)   refuse_if_unit_active start; cmd_start ;;
+    stop)    refuse_if_unit_active stop; cmd_stop ;;
+    restart) refuse_if_unit_active restart; cmd_stop; echo; cmd_start ;;
     status)  cmd_status ;;
     check)   shift; cmd_check "$@" ;;
     pin)     shift; cmd_pin "$@" ;;
     update)  shift; cmd_update "$@" ;;
     parity)  cmd_parity ;;
     logs)    cmd_logs "$@" ;;
+    unit)    cmd_unit ;;
     *)       sed -n '3,12p' "$0" | sed 's/^# \?//'; exit 1 ;;
 esac

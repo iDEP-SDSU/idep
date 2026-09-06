@@ -4,16 +4,17 @@
 # unless-stopped) but the ShinyProxy JAR does not, so :443 answers 502 until
 # someone runs ./idep.sh start by hand.
 #
-# Install:
-#   sudo cp shinyproxy.service /etc/systemd/system/
+# This is a template: @USER@ and @DIR@ are filled in by `./idep.sh unit`
+# with the user running it and the shinyproxy/ directory it lives in, so the
+# unit follows the checkout instead of hardcoding a path. Install:
+#   ./idep.sh unit | sudo tee /etc/systemd/system/shinyproxy.service >/dev/null
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now shinyproxy
 #
-# Once installed, use `systemctl start|stop|restart shinyproxy` rather than
-# running ./idep.sh start|stop directly, so systemd's view of the service
-# stays right. (A bare `./idep.sh stop` is tolerated: the JVM exits 143 on
-# SIGTERM, listed below as success, so systemd does not restart it; but
-# `systemctl status` will show the unit as inactive from then on.)
+# Once installed, use `systemctl start|stop|restart shinyproxy`. While the
+# unit is active, `./idep.sh start|stop|restart` refuses to run: a manual
+# stop races systemd's restart, and a JVM that had to be SIGKILLed counts
+# as a failure. status, check, parity, pin and logs work as before.
 [Unit]
 Description=ShinyProxy stack for iDEP and ShinyGO
 Requires=docker.service
@@ -24,12 +25,12 @@ Wants=network-online.target
 # idep.sh start detaches the JVM and writes its pid; systemd then tracks
 # that pid as the main process, which is what makes Restart= work.
 Type=forking
-PIDFile=/home/exouser/idep/shinyproxy/shinyproxy.pid
-User=exouser
+PIDFile=@DIR@/shinyproxy.pid
+User=@USER@
 Group=docker
-WorkingDirectory=/home/exouser/idep/shinyproxy
-ExecStart=/home/exouser/idep/shinyproxy/idep.sh start
-ExecStop=/home/exouser/idep/shinyproxy/idep.sh stop
+WorkingDirectory=@DIR@
+ExecStart=@DIR@/idep.sh start
+ExecStop=@DIR@/idep.sh stop
 
 # Bring ShinyProxy back if it crashes or is OOM-killed. On restart idep.sh
 # start sweeps the containers the dead instance left behind.
