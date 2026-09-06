@@ -45,10 +45,11 @@ proxy:
   heartbeat-rate: 10000
   heartbeat-timeout: 900000       # reclaim a container 15 min after the tab closes
 
-  # Hard ceiling on concurrent *seats* (i.e. users), not containers. 108 covers
-  # the two current apps; the extra 24 is headroom for legacy sessions so an
-  # unusual day on the old versions cannot starve /idep/ and /go/.
-  # Past this ShinyProxy shows "not enough capacity" instead of OOM-ing the host.
+  # Hard ceiling on concurrent *seats* (i.e. users) across every spec, not
+  # containers: the pools below are floors on spare seats and grow past them
+  # under load, so this is the only thing that bounds how many R processes
+  # can exist. Past it ShinyProxy shows "not enough capacity" instead of
+  # OOM-ing the host.
   max-total-instances: 132
 
   specs:
@@ -81,8 +82,9 @@ proxy:
       container-memory-limit: 8g
       # Keep spare containers booted so arrivals skip the ~6.5 s cold start
       # (setting minimum-seats-available is what enables pre-initialization).
-      # 48 free seats = 48 idle containers, ~11 GB.
-      minimum-seats-available: 48
+      # This is a floor on *spare* seats, topped up as users take them, not a
+      # cap on users. 20 free seats = 20 idle containers, ~4.6 GB.
+      minimum-seats-available: 20
       # One user per container: iDEP sessions are memory-heavy (8 GB cap) and
       # run long single-threaded computations, so sharing an R process would
       # make users block each other and share one OOM fate.
@@ -105,15 +107,13 @@ proxy:
       container-env:
         IDEP_DATABASE: /srv/data
       container-memory-limit: 8g
-      # 60 free seats at 5 per container = 12 idle containers, ~2.7 GB.
-      minimum-seats-available: 60
-      # ShinyGO is light -- gene lists, a 5 MB upload cap, sub-second start and
-      # short computations -- so five users can share one R process cheaply.
-      seats-per-container: 5
-      # allow-container-re-use is not set: it is only valid with
-      # seats-per-container = 1, and sharing implies re-use by definition.
-      # Containers are then never restarted on their own; use the admin
-      # endpoint /admin/delegate-proxy to cycle them after an image update.
+      # 20 free seats = 20 idle containers, ~4.4 GB.
+      minimum-seats-available: 20
+      # One user per container, as for iDEP: a fresh R process per session
+      # means users never block each other or share an OOM. ShinyGO is light
+      # enough (~220 MB idle, sub-second start) that this costs little.
+      seats-per-container: 1
+      allow-container-re-use: false   # every user gets a fresh R process
       scale-down-delay: 5
 
     # ----------------------------------------------------------------- legacy

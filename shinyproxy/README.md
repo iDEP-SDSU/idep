@@ -12,8 +12,8 @@ Each user session gets its own container. shiny-server is not involved.
 | --- | --- | --- |
 | apps | `/idep/` `/go/` | the other 33 |
 | image | `webapp:latest` | `webapp:2026` (pinned) |
-| pool | pre-warmed, 48 + 60 free seats | none — cold start on first visit |
-| idle cost | ~13.5 GB | **zero** |
+| pool | pre-warmed, 20 + 20 free seats | none — cold start on first visit |
+| idle cost | ~9 GB | **zero** |
 | first load | 0.3 – 2.5 s | 1.6 – 9.6 s |
 
 The legacy tier is pinned to a dated image tag **on purpose**. Rebuilding
@@ -288,24 +288,27 @@ not stop a third-party site from embedding an app.
 
 | | iDEP | ShinyGO | legacy |
 | --- | --- | --- | --- |
-| `minimum-seats-available` | 48 | 60 | unset — no pre-init |
-| `seats-per-container` | 1 | 5 | 5 |
-| `allow-container-re-use` | `false` | *(unset)* | *(unset)* |
-| idle containers | 48 | 12 | 0 |
+| `minimum-seats-available` | 20 | 20 | unset — no pre-init |
+| `seats-per-container` | 1 | 1 | 5 |
+| `allow-container-re-use` | `false` | `false` | *(unset)* |
+| idle containers | 20 | 20 | 0 |
 
-`minimum-seats-available` is a floor on **free** seats, not a total — the pool
-grows past it under load. Setting it at all is what enables pre-initialization,
-which is why omitting it on the legacy tier makes those apps cost nothing.
+`minimum-seats-available` is a floor on **free** seats, not a total — every
+seat a user takes is replaced at once, so the pool grows past it under load
+and 20 spares serve any number of users as long as fewer than 20 arrive
+within one cold start (~7 s). Setting it at all is what enables
+pre-initialization, which is why omitting it on the legacy tier makes those
+apps cost nothing.
 
 `allow-container-re-use: false` gives every user a fresh R process and is
 **only valid when `seats-per-container` is 1**.
 
 Global:
 
-- `max-total-instances: 132` — counts **seats (users), not containers**. 108
-  for the two current apps plus 24 of headroom so a busy day on the old
-  versions cannot starve `/idep/` and `/go/`. Past it, new sessions get "not
-  enough capacity"; existing ones are untouched.
+- `max-total-instances: 132` — counts **seats (users), not containers**,
+  across every spec. Since the pools grow without bound under load, this is
+  the only cap on concurrent sessions. Past it, new sessions get "not enough
+  capacity"; existing ones are untouched.
 - `container-memory-limit: 8g` — a *cap*, not a reservation: containers sit at
   224 MB and grow only as the user loads data. Exceeding it OOM-kills that
   container (exit 137) and nothing else.
@@ -313,11 +316,11 @@ Global:
 - `scale-down-delay: 5` — burst containers linger 5 min before the pool shrinks.
 - `hide-navbar: true` — suppresses ShinyProxy's top bar.
 
-Why iDEP is not shared: its sessions are memory-heavy and run long
-single-threaded computations, so users on one R process would block each other
-and share one OOM fate. ShinyGO is light — gene lists, a 5 MB upload cap,
-sub-second start — so five per container is cheap. ShinyProxy spreads arrivals
-across containers before packing them.
+Why the current apps are not shared: an iDEP session is memory-heavy and runs
+long single-threaded computations, so users on one R process would block each
+other and share one OOM fate. ShinyGO is light enough that a fresh R process
+per user costs little, and it keeps the two specs identical. The legacy tier
+still packs five users per container, as shiny-server did.
 
 ## Measured on this host (32 cores, 122 GB)
 
