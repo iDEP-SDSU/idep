@@ -2,7 +2,7 @@
 #
 # Cap the memory of every Docker container on this host *together*.
 #
-#   sudo ./memory-cap.sh install [SIZE]   put all containers under one budget
+#   sudo ./memory-cap.sh install          put all containers under one budget
 #   sudo ./memory-cap.sh status           show the budget, usage and OOM kills
 #   sudo ./memory-cap.sh remove           lift the cap again
 #
@@ -16,16 +16,26 @@
 # the host keeps the remainder for the OS, Docker and the ShinyProxy JVM,
 # which live outside the slice.
 #
-# Two persistent files do the work, so there is nothing to re-run at boot:
+# Run install ONCE per host. Two ordinary config files do the work and both
+# survive Docker restarts and reboots, so there is nothing to re-run:
 #   /etc/systemd/system/containers.slice     the budget
 #   /etc/docker/daemon.json  "cgroup-parent"  makes Docker use it
 # install is idempotent and only restarts Docker (and with it every
 # container, then ShinyProxy) when daemon.json actually changed. Running it
-# at boot is harmless; it will find nothing to do.
+# again is harmless; it finds nothing to do, or applies an edited budget.
 #
 # The slice covers *all* Docker containers, not only ShinyProxy's: nginx
 # (~70 MB) and anything else on the host (Guacamole here) share the budget.
 set -eu
+
+# ---------------------------------------------------------------- the budget
+# Combined memory for every container on the host. What is left over goes to
+# the OS, the page cache and the ShinyProxy JVM (2 GB heap cap): 16 GiB on a
+# 122 GB host is comfortable. Any systemd size works ("90G", "80%").
+# To change it later, edit this line and run `sudo ./memory-cap.sh install`
+# again: the new value is applied in place, no Docker restart.
+MEMORY_MAX=106G
+# ----------------------------------------------------------------------------
 
 SLICE=containers.slice
 UNIT=/etc/systemd/system/$SLICE
@@ -34,11 +44,6 @@ CG=/sys/fs/cgroup/$SLICE
 
 die() { echo "error: $*" >&2; exit 1; }
 need_root() { [ "$(id -u)" = 0 ] || die "run with sudo"; }
-
-# Default budget: everything but 16 GiB, which is what the host itself, the
-# ShinyProxy JVM (2 GB heap cap) and the page cache need. SIZE is a systemd
-# size ("106G", "80%") and is written verbatim.
-default_size() { awk '/MemTotal/ {printf "%dG\n", $2/1024/1024 - 16}' /proc/meminfo; }
 
 # Which slice a running container is actually in, read from the kernel.
 container_slice() {
@@ -49,7 +54,7 @@ container_slice() {
 
 cmd_install() {
     need_root
-    local size=${1:-$(default_size)}
+    local size=$MEMORY_MAX
     [ "$(docker info -f '{{.CgroupDriver}} {{.CgroupVersion}}' 2>/dev/null)" = "systemd 2" ] \
         || die "needs Docker on cgroup v2 with the systemd cgroup driver (docker info)"
     command -v python3 >/dev/null || die "python3 is required to edit $DAEMON_JSON"
@@ -145,7 +150,7 @@ cmd_status() {
 }
 
 case "${1:-}" in
-    install) cmd_install "${2:-}" ;;
+    install) cmd_install ;;
     remove)  cmd_remove ;;
     status)  cmd_status ;;
     *) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;

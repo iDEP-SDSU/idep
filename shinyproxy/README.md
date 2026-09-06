@@ -348,8 +348,7 @@ and has no setting for the total, so the seat cap alone leaves the host
 exposed to `200 × 8 GB`. `memory-cap.sh` closes that gap one level down:
 
 ```bash
-sudo ./memory-cap.sh install          # budget = host RAM − 16 GiB (106G here)
-sudo ./memory-cap.sh install 90G      # or pick one
+sudo ./memory-cap.sh install          # once per host; budget is MEMORY_MAX at the top of the script
 sudo ./memory-cap.sh status
 sudo ./memory-cap.sh remove
 ```
@@ -365,16 +364,20 @@ touched. Verified here: a slice held to 200 MB kills an R process the moment
 it allocates 320 MB, exit 137, `oom_kill` counted in the slice's
 `memory.events`.
 
-Both files persist, so nothing needs re-running at boot; `install` is
-idempotent and only restarts Docker — which restarts every container, then
-ShinyProxy to rebuild the pool — when `daemon.json` actually changed. The
-budget applies to *all* containers on the host, ShinyProxy's or not; nginx
-(~70 MB) and the Guacamole pair here share it. Containers created before the
-cap stay outside it until recreated; `status` lists them.
+`install` runs **once per host**. Both files are ordinary persistent config:
+Docker re-reads `daemon.json` on every start, and systemd applies the slice's
+`MemoryMax` whenever the slice comes up, so the cap survives `systemctl
+restart docker` and reboots without any help. `install` is idempotent and only
+restarts Docker — which restarts every container, then ShinyProxy to rebuild
+the pool — when `daemon.json` actually changed. The budget applies to *all*
+containers on the host, ShinyProxy's or not; nginx (~70 MB) and the Guacamole
+pair here share it. Containers created before the cap stay outside it until
+recreated; `status` lists them.
 
-The 16 GiB kept back is for the OS, the page cache and the ShinyProxy JVM
-(2 GB heap cap, ~1.3 GB resident after a busy hour). To change the budget
-later, run `install` again with a size; it edits the slice in place without a
+The budget is `MEMORY_MAX` at the top of the script, 106G: host RAM minus
+16 GiB for the OS, the page cache and the ShinyProxy JVM (2 GB heap cap,
+~1.3 GB resident after a busy hour). To change it, edit that line and run
+`install` again; the new value is applied to the running slice in place, no
 Docker restart.
 
 ## Gotchas
