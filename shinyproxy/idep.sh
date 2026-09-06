@@ -8,6 +8,7 @@
 #   ./idep.sh pin <tag>            freeze the current webapp:latest as webapp:<tag>
 #   ./idep.sh update [--pull]      rebuild (or pull) webapp:latest, then restart
 #   ./idep.sh unit                 print the systemd unit for this checkout and user
+#                                  (JAVA=/path/to/java ./idep.sh unit to pin a JVM)
 #
 # The stack is a ShinyProxy JAR on the host plus one nginx container on :80.
 # App containers are started and reaped by ShinyProxy itself.
@@ -36,6 +37,12 @@ if [ -z "${CERT_PEM:-}" ] && [ -f /etc/pki/nginx/server.pem ] \
 fi
 CERT_PEM=${CERT_PEM:-$ROOT/nginx/idep_ssl.pem}
 CERT_KEY=${CERT_KEY:-$ROOT/nginx/idep.key}
+# Java 17 or newer is required (ShinyProxy 3.2 is Spring Boot 3). `java` on
+# the PATH may be an older system default (RHEL 9 ships 11); point this at a
+# newer one without touching the system alternatives:
+#   JAVA=/usr/lib/jvm/jre-21/bin/java ./idep.sh start
+#   JAVA=/usr/lib/jvm/jre-21/bin/java ./idep.sh unit   # bakes it into the unit
+JAVA=${JAVA:-java}
 # ShinyProxy is a small process even with 100+ proxies; without this the JVM
 # would let the heap grow to a quarter of host RAM before collecting.
 JAVA_OPTS=${JAVA_OPTS:--Xmx2g}
@@ -95,7 +102,9 @@ render_templates() {
 cmd_start() {
     local jar; jar=$(jar_path)
     [ -n "$jar" ] || die "no shinyproxy-*.jar here; download it from https://www.shinyproxy.io/downloads/"
-    command -v java >/dev/null || die "java not found; ShinyProxy needs Java 17 or newer (dnf install java-21-openjdk-headless / apt-get install openjdk-21-jre-headless)"
+    command -v "$JAVA" >/dev/null || die "$JAVA not found; ShinyProxy needs Java 17 or newer (dnf install java-21-openjdk-headless / apt-get install openjdk-21-jre-headless)"
+    local jv; jv=$("$JAVA" -version 2>&1 | grep -oP 'version "\K[0-9]+' | head -1)
+    [ "${jv:-0}" -ge 17 ] || die "$JAVA is Java ${jv:-?}; ShinyProxy 3.2 needs 17 or newer. Install java-21-openjdk-headless and set JAVA=/usr/lib/jvm/jre-21/bin/java (see ls /usr/lib/jvm), or: sudo alternatives --config java"
     render_templates "$jar"
 
     # Fail loudly now rather than on every app launch: a missing pinned image
@@ -115,7 +124,7 @@ cmd_start() {
             echo "removed $orphans app containers left by a previous ShinyProxy"
         fi
         # shellcheck disable=SC2086  # JAVA_OPTS is meant to word-split
-        setsid nohup java $JAVA_OPTS -jar "$jar" > startup.log 2>&1 < /dev/null &
+        setsid nohup "$JAVA" $JAVA_OPTS -jar "$jar" > startup.log 2>&1 < /dev/null &
         echo $! > "$PIDFILE"
         disown
         printf 'starting ShinyProxy (%s)' "$jar"
@@ -127,7 +136,7 @@ cmd_start() {
         echo
         curl -s -o /dev/null --max-time 2 "http://127.0.0.1:$SP_PORT/" \
             || die "ShinyProxy did not answer on :$SP_PORT; see startup.log"
-        echo "ShinyProxy up on :$SP_PORT (pid $(cat $PIDFILE), log: startup.log)"
+        echo "ShinyProxy up on :$SP_PORT (pid $(cat $PIDFILE), java $jv, log: startup.log)"
     fi
 
     [ -f "$CERT_PEM" ] && [ -f "$CERT_KEY" ] \
@@ -411,7 +420,11 @@ cmd_unit() {
     [ -f shinyproxy.service.in ] || die "shinyproxy.service.in not found"
     id -nG | tr ' ' '\n' | grep -qx docker \
         || echo "warning: $(id -un) is not in the docker group; the unit sets Group=docker" >&2
-    sed -e "s|@USER@|$(id -un)|g" -e "s|@DIR@|$PWD|g" shinyproxy.service.in
+    # JAVA= given explicitly (not the `java` default): write it into the unit,
+    # otherwise drop the placeholder line.
+    local java_env='/^@JAVA_ENV@$/d'
+    [ "$JAVA" = java ] || java_env="s|^@JAVA_ENV@$|Environment=JAVA=$JAVA|"
+    sed -e "s|@USER@|$(id -un)|g" -e "s|@DIR@|$PWD|g" -e "$java_env" shinyproxy.service.in
 }
 
 case "${1:-}" in

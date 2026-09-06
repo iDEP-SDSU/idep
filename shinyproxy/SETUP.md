@@ -16,7 +16,7 @@ The script starts ShinyProxy as a plain JAR on the host, so the host needs:
 
 | what | why | check |
 | --- | --- | --- |
-| Java 17 or newer | ShinyProxy 3.2.x is a Spring Boot JAR | `java -version` |
+| Java 17 or newer | ShinyProxy 3.2.x is a Spring Boot 3 JAR and does not start on older runtimes | `java -version` (RHEL 9's default is often 11; see below) |
 | `unzip`, `bc`, `curl`, `ss`, `python3` | `start` extracts `app.html` from the JAR with unzip; `check` and `memory-cap.sh status` use bc; every probe uses curl; `ss` finds a ShinyProxy whose pidfile is gone; `memory-cap.sh` edits `daemon.json` with python3 | the loop below prints nothing missing |
 | Docker on cgroup v2 with the systemd driver | `memory-cap.sh` puts every container in one systemd slice and refuses otherwise | `docker info -f '{{.CgroupDriver}} {{.CgroupVersion}}'` prints `systemd 2` |
 | the login user in the `docker` group | ShinyProxy talks to `/var/run/docker.sock`; the old stack was run with `sudo`, so this may not be set up yet | `docker ps` without sudo |
@@ -36,6 +36,22 @@ getenforce                         # Enforcing on a stock RHEL host; see step 11
 ```
 
 (On Debian/Ubuntu: `apt-get install -y openjdk-21-jre-headless unzip bc iproute2 python3 curl`.)
+
+If `java -version` still reports 11 after the install, the system default
+was not changed (`dnf` leaves an existing alternative in place). Either
+leave it, in case something else on the host wants Java 11, and point the
+stack at 21 explicitly, or switch the default:
+
+```bash
+ls /usr/lib/jvm                                   # jre-21, jre-21-openjdk, ...
+export JAVA=/usr/lib/jvm/jre-21/bin/java          # for every ./idep.sh call in this shell
+$JAVA -version                                    # 21.x
+# or instead: sudo alternatives --config java      # makes 21 the default for everyone
+```
+
+With `JAVA` exported, `./idep.sh unit` (step 11) writes it into the systemd
+unit, so run `unit` from the same shell. `start` checks the version and
+refuses anything older than 17.
 
 `idep.sh start` refuses to run without `java` or `unzip` on the PATH.
 
@@ -207,7 +223,7 @@ Then from a browser, over https:
 ## 11. Install the systemd unit
 
 ```bash
-./idep.sh unit                    # review: User=, WorkingDirectory=, ExecStart= must match this host
+./idep.sh unit                    # review: User=, WorkingDirectory=, ExecStart=, Environment=JAVA= must match this host
 ./idep.sh unit | sudo tee /etc/systemd/system/shinyproxy.service >/dev/null
 sudo systemctl daemon-reload
 sudo systemctl enable shinyproxy

@@ -61,6 +61,10 @@ Everything goes through one script:
 ./idep.sh unit            # print the systemd unit for this checkout and user
 ```
 
+`JAVA=/usr/lib/jvm/jre-21/bin/java ./idep.sh start` (or `unit`) selects a JVM
+when the host's default `java` is older than 17, as on RHEL 9; `start`
+refuses an older one.
+
 `check` drives ShinyProxy's API the way a browser does and polls until R
 actually serves HTML, then releases the seat. A plain `curl` of an app URL is
 not a health check — ShinyProxy returns its loading page with HTTP 200 before

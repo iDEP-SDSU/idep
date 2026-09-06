@@ -37,6 +37,9 @@ Group=docker
 WorkingDirectory=@DIR@
 ExecStart=/bin/bash @DIR@/idep.sh start
 ExecStop=/bin/bash @DIR@/idep.sh stop
+# Rendered from JAVA= when `./idep.sh unit` was run with it set (a host whose
+# default java is older than 17); otherwise the line is dropped.
+@JAVA_ENV@
 
 # Bring ShinyProxy back if it crashes or is OOM-killed. On restart idep.sh
 # start sweeps the containers the dead instance left behind.
