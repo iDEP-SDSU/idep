@@ -25,17 +25,22 @@ thing the old shiny-server layout could not express: there, all 30 apps shared
 whatever R the single image happened to have.
 
 ```
-:80   nginx        container, --network host, config in nginx/nginx.conf
+:443  nginx        container, --network host, config in nginx/nginx.conf
+:80    |           (:80 only redirects to https, except /data/)
        |  /            -> shinyapps/dist  (static, straight off disk)
        |  /data/       -> data/shared     (static, autoindex)
        |  /idep/ /go/  -> 127.0.0.1:8080/app/<id>/
        |  /idep73/ ... -> 127.0.0.1:8080/app/<id>/
        |  anything else with no matching file -> 127.0.0.1:8080
        v
-:8080 ShinyProxy   JAR on the host, config in application.yml,
+:8080 ShinyProxy   JAR on the host, loopback only, config in application.yml,
        |           drives Docker via /var/run/docker.sock
        +-- webapp:latest / webapp:2026 containers on 127.0.0.1:2000x
 ```
+
+Only :80 and :443 are reachable from outside. ShinyProxy (:8080) and its
+actuator (:9090) bind 127.0.0.1, and every app container publishes its port on
+127.0.0.1 too, so nginx is the only way in.
 
 ## Operating it
 
@@ -66,14 +71,59 @@ the subcommand along with `shiny-server.conf` — once that file is gone,
 `application.yml` is the only source of truth and there is nothing to compare
 against.
 
-For reboot survival install the unit — otherwise nginx comes back by itself and
-answers :80 with 502 until someone runs `./idep.sh start`:
+For reboot survival and crash recovery install the unit — otherwise nginx
+comes back by itself and answers :443 with 502 until someone runs
+`./idep.sh start`:
 
 ```bash
 sudo cp shinyproxy.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now shinyproxy
 ```
+
+The unit tracks the JVM through `shinyproxy.pid` and restarts it if it
+crashes or is OOM-killed; `start` sweeps the containers a dead instance left
+behind. Once installed, prefer `systemctl start|stop|restart shinyproxy` over
+calling the script directly so systemd's view stays right.
+
+## TLS
+
+nginx terminates TLS with the certificate production already has. `start`
+mounts it from `/etc/pki/nginx/server.pem` and
+`/etc/pki/nginx/private/server.key` — the same files the previous nginx.conf
+read — when they exist, and otherwise from the untracked `../nginx/idep_ssl.pem`
+and `../nginx/idep.key` (a test-host copy; gitignored, key mode 600). Either
+path can be overridden:
+
+```bash
+CERT_PEM=/path/to/fullchain.pem CERT_KEY=/path/to/privkey.key ./idep.sh start
+# or Environment=CERT_PEM=... CERT_KEY=... in the unit's [Service] section
+```
+
+The `.pem` must contain the server certificate followed by any intermediate,
+as nginx expects. `start` refuses to run without both files, and validates
+`nginx.conf` with `nginx -t` before replacing the running nginx.
+
+The previous production nginx sent `Strict-Transport-Security` with a one-year
+max-age, so browsers that have visited the site refuse plain http. This nginx
+sends the same header and redirects everything on :80 to https — except
+`/data/`, which is served on both ports because the apps download missing
+species databases from `http://<host>/data/` at runtime.
+
+`server.forward-headers-strategy: native` makes ShinyProxy honour the
+`X-Forwarded-Proto` nginx sets, so its redirects and cookies use https.
+
+## Rate limiting app starts
+
+There is no authentication, so a client that discards its cookie is a new user
+on every request and could start containers until `max-total-instances` is
+exhausted. nginx limits the three ways to start one — `POST /app_i/…` (the app
+page), `POST /api/proxy/<spec>` (the REST API), and `GET /app_direct*/…` — to
+20 per minute per client IP with a burst of 40: the first 20 go through at
+once, the next 20 are queued, anything beyond that gets 429. A classroom
+behind one NAT address starting together fits inside the burst; a script
+hammering the API does not. Status polling and `/api/proxyspec` are GETs on
+the same prefix and are not counted.
 
 Benchmarks: `./bench.sh 4` times cold sessions (`SPEC=go74 ./bench.sh`);
 `./bench_shinyserver.sh` does the same against the old stack, to compare.
@@ -274,8 +324,11 @@ iDEP session costs, only idle (224 MB) and the 8 GB ceiling. Watch
   ShinyProxy share the root. ShinyProxy's own `/js/`, `/css/`, `/webjars/` and
   `/app_proxy/` live inside the JAR, never on disk, so they never collide with
   a file in `dist/` and never need to be listed.
-- The stack is HTTP-only, matching the root `nginx.conf` it replaces. The certs
-  in `../nginx/` are untracked and unused; add a `listen 443 ssl` block and
-  mount them if you want TLS here.
-- `shinyproxy-3.2.4.jar`, `*.log` and `shinyproxy.pid` are gitignored;
-  re-download the jar from <https://www.shinyproxy.io/downloads/>.
+- The nginx image is pinned (`NGINX_IMAGE` in `idep.sh`); `nginx:latest` is
+  mainline and would move under us on every start. Pre-pull the tag on a new
+  host so a reboot does not depend on Docker Hub.
+- The JVM runs with `-Xmx2g` (`JAVA_OPTS` in `idep.sh`); without a cap it
+  would grow the heap to a quarter of host RAM before collecting.
+- `shinyproxy-3.2.4.jar`, `*.log`, `shinyproxy.pid` and the TLS files in
+  `../nginx/` are gitignored; re-download the jar from
+  <https://www.shinyproxy.io/downloads/>.

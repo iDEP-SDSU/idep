@@ -1,7 +1,7 @@
-# Reboot survival for the ShinyProxy stack.
+# Reboot survival and crash recovery for the ShinyProxy stack.
 #
 # Without this, the nginx container comes back on its own (--restart
-# unless-stopped) but the ShinyProxy JAR does not, so :80 answers 502 until
+# unless-stopped) but the ShinyProxy JAR does not, so :443 answers 502 until
 # someone runs ./idep.sh start by hand.
 #
 # Install:
@@ -9,8 +9,11 @@
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now shinyproxy
 #
-# After that, `systemctl start|stop|restart shinyproxy` and `./idep.sh
-# start|stop|restart` do the same thing -- the unit just calls the script.
+# Once installed, use `systemctl start|stop|restart shinyproxy` rather than
+# running ./idep.sh start|stop directly, so systemd's view of the service
+# stays right. (A bare `./idep.sh stop` is tolerated: the JVM exits 143 on
+# SIGTERM, listed below as success, so systemd does not restart it; but
+# `systemctl status` will show the unit as inactive from then on.)
 [Unit]
 Description=ShinyProxy stack for iDEP and ShinyGO
 Requires=docker.service
@@ -18,13 +21,26 @@ After=docker.service network-online.target
 Wants=network-online.target
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
+# idep.sh start detaches the JVM and writes its pid; systemd then tracks
+# that pid as the main process, which is what makes Restart= work.
+Type=forking
+PIDFile=/home/exouser/idep/shinyproxy/shinyproxy.pid
 User=exouser
 Group=docker
 WorkingDirectory=/home/exouser/idep/shinyproxy
 ExecStart=/home/exouser/idep/shinyproxy/idep.sh start
 ExecStop=/home/exouser/idep/shinyproxy/idep.sh stop
+
+# Bring ShinyProxy back if it crashes or is OOM-killed. On restart idep.sh
+# start sweeps the containers the dead instance left behind.
+Restart=on-failure
+RestartSec=5
+SuccessExitStatus=143
+
+# 60+ R containers each allowed 8 GB on a host with no swap: if memory runs
+# out, have the kernel kill one of them rather than the proxy that owns them.
+OOMScoreAdjust=-900
+
 # Pre-warming 60 containers takes well under a minute, but a cold page cache
 # on the 9 GB database can make the first boot after a reboot much slower.
 TimeoutStartSec=600

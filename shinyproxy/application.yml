@@ -332,8 +332,17 @@ logging:
     name: shinyproxy.log
 
 server:
+  # Loopback only: nginx on :443 is the only way in. Without this the JAR
+  # listens on every interface, so anything not blocked by a firewall could
+  # reach ShinyProxy (and the actuator below) directly.
+  address: 127.0.0.1
   # nginx sets X-Forwarded-*; trust it so generated URLs use the public host.
   forward-headers-strategy: native
   servlet:
     session:
       timeout: 3600
+
+management:
+  server:
+    # The actuator (/actuator/health, /actuator/recyclable) is on :9090.
+    address: 127.0.0.1

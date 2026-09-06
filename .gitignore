@@ -38,6 +38,10 @@ shinyapps/Human__hsapiens_gene_ensembl.db
 shinyapps/tem.csv
 shinyapps/tem2.csv
 
+# TLS cert and private key for nginx (both stacks); never commit these
+nginx/*.key
+nginx/*.pem
+
 # ShinyProxy deployment
 shinyproxy/*.jar
 shinyproxy/*.log

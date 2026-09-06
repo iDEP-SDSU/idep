@@ -17,6 +17,21 @@ ROOT=$(cd .. && pwd)          # the idep repo checkout
 PIDFILE=shinyproxy.pid
 SP_PORT=8080
 NGINX_NAME=sp-nginx
+# Pinned: `latest` is nginx mainline and moves under us on every start.
+NGINX_IMAGE=nginx:1.30
+# TLS material for :443: the certificate production already has, at the
+# paths the previous nginx.conf read it from. A test host without those
+# falls back to the untracked copies under ../nginx/. Override either with
+# CERT_PEM=... CERT_KEY=... ./idep.sh start (or Environment= in the unit).
+if [ -z "${CERT_PEM:-}" ] && [ -f /etc/pki/nginx/server.pem ]; then
+    CERT_PEM=/etc/pki/nginx/server.pem
+    CERT_KEY=${CERT_KEY:-/etc/pki/nginx/private/server.key}
+fi
+CERT_PEM=${CERT_PEM:-$ROOT/nginx/idep_ssl.pem}
+CERT_KEY=${CERT_KEY:-$ROOT/nginx/idep.key}
+# ShinyProxy is a small process even with 100+ proxies; without this the JVM
+# would let the heap grow to a quarter of host RAM before collecting.
+JAVA_OPTS=${JAVA_OPTS:--Xmx2g}
 
 die() { echo "error: $*" >&2; exit 1; }
 
@@ -71,7 +86,15 @@ cmd_start() {
     if sp_pid >/dev/null; then
         echo "ShinyProxy already running (pid $(sp_pid))"
     else
-        setsid nohup java -jar "$jar" > startup.log 2>&1 < /dev/null &
+        # A crashed ShinyProxy (systemd restarts it) leaves its containers
+        # behind and a fresh instance does not adopt them; clear them first.
+        local orphans; orphans=$(app_containers | wc -l)
+        if [ "$orphans" -gt 0 ]; then
+            app_containers | xargs -r docker rm -f >/dev/null 2>&1
+            echo "removed $orphans app containers left by a previous ShinyProxy"
+        fi
+        # shellcheck disable=SC2086  # JAVA_OPTS is meant to word-split
+        setsid nohup java $JAVA_OPTS -jar "$jar" > startup.log 2>&1 < /dev/null &
         echo $! > "$PIDFILE"
         disown
         printf 'starting ShinyProxy (%s)' "$jar"
@@ -86,14 +109,24 @@ cmd_start() {
         echo "ShinyProxy up on :$SP_PORT (pid $(cat $PIDFILE), log: startup.log)"
     fi
 
+    [ -f "$CERT_PEM" ] && [ -f "$CERT_KEY" ] \
+        || die "TLS cert/key not found: $CERT_PEM, $CERT_KEY (set CERT_PEM and CERT_KEY)"
+    local nginx_mounts=(
+        -v "$PWD/nginx/nginx.conf:/etc/nginx/nginx.conf:ro"
+        -v "$CERT_PEM:/etc/nginx/tls/fullchain.pem:ro"
+        -v "$CERT_KEY:/etc/nginx/tls/privkey.pem:ro"
+        -v "$ROOT/shinyapps/dist:/srv/dist:ro"
+        -v "$ROOT/data/shared:/srv/shared:ro"
+    )
+    # Validate before touching the running nginx, so a typo in nginx.conf
+    # leaves the old one serving instead of taking the site down.
+    docker run --rm "${nginx_mounts[@]}" "$NGINX_IMAGE" nginx -t >/dev/null 2>&1 \
+        || { docker run --rm "${nginx_mounts[@]}" "$NGINX_IMAGE" nginx -t; die "nginx.conf failed validation"; }
     docker rm -f "$NGINX_NAME" >/dev/null 2>&1
     docker run -d --name "$NGINX_NAME" --network host --restart unless-stopped \
-        -v "$PWD/nginx/nginx.conf:/etc/nginx/nginx.conf:ro" \
-        -v "$ROOT/shinyapps/dist:/srv/dist:ro" \
-        -v "$ROOT/data/shared:/srv/shared:ro" \
-        nginx:latest >/dev/null || die "nginx failed to start"
-    echo "nginx up on :80"
-    echo "  http://$(hostname -I | awk '{print $1}')/"
+        "${nginx_mounts[@]}" "$NGINX_IMAGE" >/dev/null || die "nginx failed to start"
+    echo "nginx up on :443 (:80 redirects)"
+    echo "  https://$(hostname -I | awk '{print $1}')/"
 }
 
 cmd_stop() {
@@ -133,7 +166,7 @@ cmd_status() {
     fi
 
     if [ -n "$(docker ps -q -f "name=^${NGINX_NAME}$")" ]; then
-        echo "nginx        running (:80)"
+        echo "nginx        running (:443, :80 redirects)"
     else
         echo "nginx        DOWN"; rc=1
     fi
@@ -156,10 +189,12 @@ cmd_status() {
 
     # Static site only. Deliberately does not touch the app paths: a GET to a
     # legacy path would boot a container just to answer the health check.
-    local code
-    code=$(curl -so /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1/ 2>/dev/null)
-    echo "static site  HTTP ${code:-000}"
-    [ "$code" = "200" ] || rc=1
+    # -k: the cert is for the public name, not 127.0.0.1.
+    local code redirect
+    code=$(curl -sko /dev/null -w '%{http_code}' --max-time 5 https://127.0.0.1/ 2>/dev/null)
+    redirect=$(curl -so /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1/ 2>/dev/null)
+    echo "static site  HTTPS ${code:-000}, HTTP ${redirect:-000}"
+    [ "$code" = "200" ] && [ "$redirect" = "301" ] || rc=1
 
     return $rc
 }
