@@ -50,7 +50,7 @@ proxy:
   # under load, so this is the only thing that bounds how many R processes
   # can exist. Past it ShinyProxy shows "not enough capacity" instead of
   # OOM-ing the host.
-  max-total-instances: 132
+  max-total-instances: 200
 
   specs:
 

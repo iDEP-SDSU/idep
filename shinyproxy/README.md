@@ -305,7 +305,7 @@ apps cost nothing.
 
 Global:
 
-- `max-total-instances: 132` — counts **seats (users), not containers**,
+- `max-total-instances: 200` — counts **seats (users), not containers**,
   across every spec. Since the pools grow without bound under load, this is
   the only cap on concurrent sessions. Past it, new sessions get "not enough
   capacity"; existing ones are untouched.
@@ -334,8 +334,8 @@ Idle container: 224 MB, 0.05 % CPU. 40 cold containers booted at once: all ready
 in 14 s, peak load 8 of 32. The database is a read-only bind mount, so it sits
 in the host page cache once and is shared by every container.
 
-**Capacity caveat.** 132 seats is an aggressive cap. Idle it is fine, but 132
-*working* sessions at even 2 GB each would exceed 122 GB — the cap bounds the
+**Capacity caveat.** 200 seats is an aggressive cap. Idle it is fine, but 200
+*working* sessions at even 1 GB each would exceed 122 GB — the cap bounds the
 count, not the sum of real usage. There is no measurement here of what a working
 iDEP session costs, only idle (224 MB) and the 8 GB ceiling. Watch
 `docker stats` under real traffic and set the cap to `~106 GB / observed p95`.
