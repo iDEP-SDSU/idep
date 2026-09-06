@@ -6,6 +6,8 @@ existing bookmarks and links in published papers keep working.
 
 Each user session gets its own container. shiny-server is not involved.
 
+First-time installation on a new host: [SETUP.md](SETUP.md).
+
 ## The two tiers
 
 | | current | legacy |

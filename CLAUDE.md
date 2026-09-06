@@ -40,6 +40,7 @@ shinyapps/                       one directory per app version, mounted at /srv/
   dist/                          static landing site served at /
   RSet, combine, reads, go2gmt   smaller helper apps
 shinyproxy/                      ShinyProxy stack (this branch)
+  SETUP.md                       one-time install checklist for a new host
   application.yml                app specs: current tier (/idep/, /go/) and pinned legacy tier
   nginx/nginx.conf               routes /<app>/ -> ShinyProxy on 127.0.0.1:8080
   idep.sh                        start/stop/status/check/pin/update, the only entry point
