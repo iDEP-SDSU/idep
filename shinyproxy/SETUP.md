@@ -32,7 +32,7 @@ sudo usermod -aG docker "$USER"   # then log out and back in
 docker ps                          # must work without sudo
 docker info -f '{{.CgroupDriver}} {{.CgroupVersion}}'
 docker pull nginx:1.31-alpine
-getenforce                         # Enforcing on a stock RHEL host; see step 11
+getenforce                         # Enforcing on a stock RHEL host; see step 9
 ```
 
 (On Debian/Ubuntu: `apt-get install -y openjdk-21-jre-headless unzip bc iproute2 python3 curl`.)
@@ -49,8 +49,8 @@ $JAVA -version                                    # 21.x
 # or instead: sudo alternatives --config java      # makes 21 the default for everyone
 ```
 
-With `JAVA` exported, `./idep.sh unit` (step 11) writes it into the systemd
-unit, so run `unit` from the same shell. `start` checks the version and
+With `JAVA` exported, `./idep.sh unit` (step 9) writes it into the systemd
+unit, so run `unit` from the same shell; the rehearsal (step 8) uses it too. `start` checks the version and
 refuses anything older than 17.
 
 `idep.sh start` refuses to run without `java` or `unzip` on the PATH.
@@ -75,7 +75,7 @@ git submodule update --init       # idep11, go80, idepgolem1, go
 ```
 
 The new stack does not read the root `nginx/` or `docker-compose.yml`, but
-`./idep.sh parity` (step 10) does read `config/shiny-server.conf`. If
+`./idep.sh parity` (step 8) does read `config/shiny-server.conf`. If
 production's copy differs from the committed one, put it back for the
 comparison so parity checks what production really served:
 
@@ -120,7 +120,7 @@ So pick one ordinary login account (`gex` in these examples) and use it for
 **every** `./idep.sh` command, never `sudo ./idep.sh`. Three things depend
 on that being the same account throughout:
 
-- `./idep.sh unit` (step 11) writes `User=<whoever ran it>` into the
+- `./idep.sh unit` (step 9) writes `User=<whoever ran it>` into the
   systemd unit. After that the service runs as that account and has to be
   able to overwrite the files above; a `shinyproxy.pid` left behind by a
   root run makes the unit fail to start.
@@ -200,47 +200,104 @@ and `CERT_KEY` (see README, "TLS"). `start` refuses to run without both
 files. The `.pem` must be the
 server certificate followed by any intermediate, as before.
 
-## 8. Stop the old stack
+## 8. Rehearse ShinyProxy alone, with the old stack still serving
 
-Both stacks bind :80 and :443.
-
-```bash
-cd /docker/idep
-sudo docker compose down
-```
-
-Also disable anything that would bring it back: a cron entry or systemd unit
-that runs `restart_server.sh` or `docker compose up`, and remove
-`restart: always` containers left from earlier compose versions
-(`docker ps -a --filter name=idep`).
-
-## 9. Install the container memory cap
-
-Do this **before** starting the stack. It edits `/etc/docker/daemon.json` and
-restarts Docker, which would restart every running container.
+ShinyProxy listens on 127.0.0.1:8080, which the old stack does not use, so
+it can run on production before anything is stopped. This starts the JAR
+without its nginx, runs every app against the real directories and
+databases, and stops it again. It is the only step that exercises all 35
+apps before the site depends on them; ten minutes, no disruption. The
+pre-warmed pools add about 9 GB alongside the old stack while it runs.
 
 ```bash
 cd /docker/idep/shinyproxy
-sudo ./memory-cap.sh install      # budget is MEMORY_MAX at the top of the script (140G)
-sudo ./memory-cap.sh status
-```
-
-Keep at least 16 GiB of host RAM outside the budget. On a host with less RAM
-than `MEMORY_MAX` the slice never binds; edit the value first.
-
-## 10. First start and verification
-
-```bash
-./idep.sh start
-./idep.sh status
+IDEP_ROOT=/docker/idep $JAVA -Xmx2g -jar shinyproxy-3.2.4.jar > startup.log 2>&1 &
+until curl -s -o /dev/null http://127.0.0.1:8080/; do sleep 2; done
 ./idep.sh parity                  # every shiny-server location has a route and a spec
 ./idep.sh check all               # ~2 min; must be 35 of 35 on production
+./idep.sh stop                    # stops the JAR and sweeps its containers ("nginx stopped" does not print)
 ```
 
 `parity` compares against `config/shiny-server.conf`; anything it reports
 means a URL from the old server would now 404. Any `check` failure on
 production is a real problem, since all data directories and app versions
-exist there (the test host fails 13 only because they do not).
+exist there (the test host fails 13 only because they do not). Fix it now,
+while the old stack is still serving.
+
+## 9. Install and enable the systemd unit, without starting it
+
+Installing it before the cutover means the first start already goes
+through systemd, instead of a manual start followed by a stop and a second
+start. `enable` only registers the service for boot; nothing runs until
+`systemctl start` in step 11.
+
+```bash
+./idep.sh unit                    # review: User=, WorkingDirectory=, ExecStart=, Environment=JAVA= must match this host
+./idep.sh unit | sudo tee /etc/systemd/system/shinyproxy.service >/dev/null
+sudo systemctl daemon-reload
+sudo systemctl enable shinyproxy
+```
+
+The unit runs `idep.sh` through `/bin/bash` on purpose. With SELinux
+enforcing (the RHEL default), systemd may only execute files whose label is
+an executable type, and a checkout under `/docker` or a home directory is
+`default_t` or `user_home_t`; executing the script directly fails with
+`status=203/EXEC` and "Permission denied" in the journal even though
+`./idep.sh start` works from a shell. Executing `/bin/bash` and handing it
+the script sidesteps that.
+
+## 10. Disable whatever brings the old stack back
+
+Both stacks bind :80 and :443, so nothing may restart the old one after the
+cutover: a cron entry or a systemd unit that runs `restart_server.sh` or
+`docker compose up`, or containers with `restart: always` left from earlier
+compose versions.
+
+```bash
+sudo crontab -l; crontab -l
+systemctl list-units --type=service | grep -i 'idep\|compose\|shiny'
+docker ps -a --filter name=idep --format '{{.Names}} {{.Status}}'
+```
+
+## 11. Cutover
+
+Pick a quiet hour; sessions on the old stack end when it stops. The site is
+down from `compose down` until `systemctl start` returns, about a minute.
+The memory cap goes in between because it restarts Docker, which is cheap
+while nothing is running.
+
+```bash
+docker stats --no-stream | sort -k3 -h | tail    # any busy sessions?
+cd /docker/idep && sudo docker compose down      # site down from here
+docker ps -a --filter name=idep                  # should list nothing
+cd /docker/idep/shinyproxy
+sudo ./memory-cap.sh install                     # budget is MEMORY_MAX at the top of the script (140G)
+sudo systemctl start shinyproxy                  # site up when this returns
+./idep.sh status
+```
+
+Keep at least 16 GiB of host RAM outside the memory budget. On a host with
+less RAM than `MEMORY_MAX` the slice never binds; edit the value first.
+
+If the start fails, get the site up first and debug second. The unit is not
+active after a failed start, so the script allows a manual start:
+
+```bash
+./idep.sh start
+sudo journalctl -u shinyproxy -n 30
+sudo ausearch -m avc -ts recent           # SELinux denials, if any
+```
+
+Once the unit is in charge use `systemctl start|stop|restart shinyproxy`
+rather than `./idep.sh` directly, so systemd's view stays right;
+`./idep.sh update` does this by itself when the unit is active.
+
+## 12. Verify, live
+
+```bash
+./idep.sh check all               # 35 of 35 again, now through the unit
+sudo ./memory-cap.sh status
+```
 
 Then from a browser, over https:
 
@@ -252,36 +309,10 @@ Then from a browser, over https:
 - Follow the "old versions" link inside iDEP; it should open in a new tab or
   take over the tab, never nest inside the frame.
 
-## 11. Install the systemd unit
+Reboot once at a convenient time and confirm the site answers without
+manual intervention.
 
-```bash
-./idep.sh unit                    # review: User=, WorkingDirectory=, ExecStart=, Environment=JAVA= must match this host
-./idep.sh unit | sudo tee /etc/systemd/system/shinyproxy.service >/dev/null
-sudo systemctl daemon-reload
-sudo systemctl enable shinyproxy
-./idep.sh stop && sudo systemctl start shinyproxy
-systemctl status shinyproxy
-```
-
-The unit runs `idep.sh` through `/bin/bash` on purpose. With SELinux
-enforcing (the RHEL default), systemd may only execute files whose label is
-an executable type, and a checkout under `/docker` or a home directory is
-`default_t` or `user_home_t`; executing the script directly fails with
-`status=203/EXEC` and "Permission denied" in the journal even though
-`./idep.sh start` works from a shell. Executing `/bin/bash` and handing it
-the script sidesteps that. If the unit still fails to start:
-
-```bash
-sudo journalctl -u shinyproxy -n 30
-sudo ausearch -m avc -ts recent           # SELinux denials, if any
-```
-
-From now on use `systemctl start|stop|restart shinyproxy` rather than
-`./idep.sh` directly, so systemd's view stays right; `./idep.sh update` does
-this by itself when the unit is active. Reboot once and confirm the site
-answers without manual intervention.
-
-## 12. Afterwards
+## 13. Afterwards
 
 - Watch `docker stats` and `./idep.sh status` during the first busy day to
   see how far real traffic sits from the memory budget and the seat cap.
