@@ -181,6 +181,18 @@ proxy:
       id: idep96
       display-name: iDEP 0.96
       container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep96", host = "0.0.0.0", port = 3838)']
+      # Reads IDEP_DATABASE as the full versioned path with a trailing slash,
+      # exactly like go76/go77 above: server.R does paste0(datapath,
+      # "convertIDs.db") with no separator and no version appended, so the
+      # inherited /srv/data yields "/srv/dataconvertIDs.db" and every session
+      # dies on "unable to open database file". 0.95 and older hardcode the
+      # path and are unaffected; 0.96 is the only iDEP version that reads the
+      # variable. data104b is what the fallback in server.R points at, and
+      # what shiny-server served, since it left IDEP_DATABASE unset.
+      # This map replaces the anchor's, so IDEP_DATA_DIR is repeated.
+      container-env:
+        IDEP_DATABASE: /srv/data/data104b/
+        IDEP_DATA_DIR: /srv/data
 
     - <<: *legacy
       id: idep95
