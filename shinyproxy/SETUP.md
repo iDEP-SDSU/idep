@@ -110,10 +110,42 @@ ls -l shinyproxy-*.jar           # ~150 MB
 
 ## 4. Run as the user who owns the checkout
 
-Run every `./idep.sh` command as the login user that will own the stack, not
-as root. `./idep.sh unit` (step 11) bakes that user into the systemd unit, and
-the app containers write into `usage/` as root anyway, so the user needs only
-to be in the `docker` group.
+The old stack was driven with `sudo docker compose`, so everything it did
+was done by root. The new stack is different: ShinyProxy is not a container
+but a Java process that `idep.sh` starts, and the script writes into this
+directory (`shinyproxy.pid`, `startup.log`, `shinyproxy.log`,
+`templates/app.html`). Whoever runs it owns those files.
+
+So pick one ordinary login account (`gex` in these examples) and use it for
+**every** `./idep.sh` command, never `sudo ./idep.sh`. Three things depend
+on that being the same account throughout:
+
+- `./idep.sh unit` (step 11) writes `User=<whoever ran it>` into the
+  systemd unit. After that the service runs as that account and has to be
+  able to overwrite the files above; a `shinyproxy.pid` left behind by a
+  root run makes the unit fail to start.
+- The account must be able to read the checkout, including the private key
+  under `nginx/` (mode 600), and to run `git checkout` in it (step 2), which
+  means it should own the checkout.
+- It must be in the `docker` group (step 1). That is all the privilege the
+  stack needs: Docker's daemon, which is root, binds :80 and :443 for the
+  nginx container, and ShinyProxy itself listens on the unprivileged :8080.
+
+The account does **not** need write access to `usage/`, `countsData/` or
+`data/`: the app containers run as root inside and write through the bind
+mounts as root, exactly as before.
+
+Check the ownership before going on. If the checkout was cloned with sudo
+and is root-owned, hand it to the account (`data/` is large but `chown` only
+touches inodes, so this takes seconds to a minute):
+
+```bash
+ls -ld /docker/idep /docker/idep/.git         # owner should be gex, not root
+sudo chown -R gex:gex /docker/idep             # only if it is root-owned
+```
+
+`sudo` is still used for the host-level steps: installing packages, the
+memory cap, and the systemd unit.
 
 ## 5. Pin the legacy image
 
