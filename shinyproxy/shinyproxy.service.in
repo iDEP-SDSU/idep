@@ -28,10 +28,22 @@ After=docker.service network-online.target
 Wants=network-online.target
 
 [Service]
-# idep.sh start detaches the JVM and writes its pid; systemd then tracks
-# that pid as the main process, which is what makes Restart= work.
+# idep.sh start detaches the JVM and leaves it as the only process in the
+# cgroup, so systemd adopts it as the main process, which is what makes
+# Restart= work.
+#
+# Deliberately no PIDFile=. idep.sh writes shinyproxy.pid inside the checkout,
+# and with SELinux enforcing (RHEL) a file created there inherits the
+# directory's default_t, which init_t may not read:
+#   systemd[1]: Can't convert PID files .../shinyproxy.pid O_PATH file
+#   descriptor to proper file descriptor: Permission denied
+# systemd then never finishes the forking handshake -- it sits in
+# `activating (start)` while the stack serves normally, until
+# TimeoutStartSec expires and it kills a healthy ShinyProxy and restarts it,
+# every 10 minutes. chcon on the pid file only fixes it until the next stop,
+# which removes the file (cmd_stop). Letting systemd take the single
+# remaining process needs no label at all.
 Type=forking
-PIDFile=@DIR@/shinyproxy.pid
 User=@USER@
 Group=docker
 WorkingDirectory=@DIR@

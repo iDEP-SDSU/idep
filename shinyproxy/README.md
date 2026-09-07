@@ -94,9 +94,14 @@ this directory, because systemd cannot expand variables in `User=`,
 unit runs the script via `/bin/bash` so that SELinux (enforcing on RHEL)
 lets systemd execute it from a checkout that is not labeled `bin_t`.
 
-The unit tracks the JVM through `shinyproxy.pid` and restarts it if it
-crashes or is OOM-killed; `start` sweeps the containers a dead instance left
-behind. Once installed, prefer `systemctl start|stop|restart shinyproxy` over
+The unit is `Type=forking` with no `PIDFile=`: `start` leaves the JVM as the
+only process in the service cgroup, so systemd adopts it as the main process
+and restarts it if it crashes or is OOM-killed; `start` sweeps the containers
+a dead instance left behind. Pointing `PIDFile=` at `shinyproxy.pid` does not
+work under SELinux — the file inherits the checkout's `default_t`, `init_t`
+may not read it, and systemd hangs in `activating (start)` until
+`TimeoutStartSec` and then kills a healthy stack. See the comment in
+`shinyproxy.service.in`. Once installed, prefer `systemctl start|stop|restart shinyproxy` over
 calling the script directly so systemd's view stays right.
 
 ## TLS
