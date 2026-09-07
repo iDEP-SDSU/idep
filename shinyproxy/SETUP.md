@@ -20,7 +20,7 @@ The script starts ShinyProxy as a plain JAR on the host, so the host needs:
 | `unzip`, `bc`, `curl`, `ss`, `python3` | `start` extracts `app.html` from the JAR with unzip; `check` and `memory-cap.sh status` use bc; every probe uses curl; `ss` finds a ShinyProxy whose pidfile is gone; `memory-cap.sh` edits `daemon.json` with python3 | the loop below prints nothing missing |
 | Docker on cgroup v2 with the systemd driver | `memory-cap.sh` puts every container in one systemd slice and refuses otherwise | `docker info -f '{{.CgroupDriver}} {{.CgroupVersion}}'` prints `systemd 2` |
 | the login user in the `docker` group | ShinyProxy talks to `/var/run/docker.sock`; the old stack was run with `sudo`, so this may not be set up yet | `docker ps` without sudo |
-| `nginx:1.30` image pulled | pinned in `idep.sh`; pre-pull so a reboot does not depend on Docker Hub | `docker pull nginx:1.30` |
+| `nginx:1.31-alpine` image pulled | pinned in `idep.sh`; the same base the old nginx image was built from, so production has it already. Pre-pull anyway so a reboot does not depend on Docker Hub | `docker pull nginx:1.31-alpine` |
 
 Production is RHEL 9, which ships cgroup v2 and Docker CE defaults to the
 systemd driver there, so the third row should already hold:
@@ -31,7 +31,7 @@ for t in java unzip bc curl ss python3; do command -v $t >/dev/null || echo "MIS
 sudo usermod -aG docker "$USER"   # then log out and back in
 docker ps                          # must work without sudo
 docker info -f '{{.CgroupDriver}} {{.CgroupVersion}}'
-docker pull nginx:1.30
+docker pull nginx:1.31-alpine
 getenforce                         # Enforcing on a stock RHEL host; see step 11
 ```
 

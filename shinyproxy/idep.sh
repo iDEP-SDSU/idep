@@ -23,8 +23,9 @@ export IDEP_ROOT=$ROOT
 PIDFILE=shinyproxy.pid
 SP_PORT=8080
 NGINX_NAME=sp-nginx
-# Pinned: `latest` is nginx mainline and moves under us on every start.
-NGINX_IMAGE=nginx:1.30
+# Pinned: `latest` moves under us on every start. Same base the master-branch
+# nginx image was built from (nginx/Dockerfile), so production already has it.
+NGINX_IMAGE=nginx:1.31-alpine
 # TLS material for :443. Preferred: a host copy at the RHEL paths the old
 # nginx image used internally; otherwise the untracked pair under ../nginx/
 # that the old image was built from (nginx/Dockerfile copies it in), which is
