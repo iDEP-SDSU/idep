@@ -104,6 +104,33 @@ may not read it, and systemd hangs in `activating (start)` until
 `shinyproxy.service.in`. Once installed, prefer `systemctl start|stop|restart shinyproxy` over
 calling the script directly so systemd's view stays right.
 
+## Routine maintenance
+
+Restarting is the only routine operation that costs users anything, so it is
+worth knowing what it costs. `systemctl restart` — and `update`, which
+restarts through it — stops every app container: sessions in the middle of an
+analysis lose their work, with no warning and no drain. Pools re-warm in about
+a minute and legacy apps cold-start on the next visit, but pick a quiet hour.
+There is no zero-downtime reload: ShinyProxy owns the containers and a new JVM
+does not adopt the old one's, which is also why `start` sweeps them.
+
+Everything else is a calendar item, not a routine:
+
+- **The TLS certificate expires 2026-12-23.** Replace the pair described under
+  "TLS" and restart; nothing renews it automatically, and an expired cert
+  takes down every app at once.
+- **Watch free space.** `data/`, `countsData/` and the Docker images share one
+  filesystem — 86% full, 413 GB free as of 2026-09. A full disk stops
+  container starts and database downloads together.
+- **Logs need no attention.** `shinyproxy.log` is Spring Boot's log file:
+  logback rolls it daily and at 10 MB, gzips what it rolls and keeps a week.
+  `startup.log` is the JVM's stdout, truncated by every `start`. Neither grows
+  without bound, so there is nothing to prune.
+- **`memory-cap.sh install` is once per host**, not periodic: it writes two
+  config files that survive reboots and Docker restarts (see "Capping total
+  container memory"). Use `sudo ./memory-cap.sh status` when investigating
+  memory, and `docker stats` for a single container.
+
 ## TLS
 
 nginx terminates TLS with the certificate production already has. `start`
