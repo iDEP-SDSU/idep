@@ -32,7 +32,7 @@ sudo usermod -aG docker "$USER"   # then log out and back in
 docker ps                          # must work without sudo
 docker info -f '{{.CgroupDriver}} {{.CgroupVersion}}'
 docker pull nginx:1.31-alpine
-getenforce                         # Enforcing on a stock RHEL host; see step 11
+getenforce                         # Enforcing on a stock RHEL host; see step 12
 ```
 
 (On Debian/Ubuntu: `apt-get install -y openjdk-21-jre-headless unzip bc iproute2 python3 curl`.)
@@ -49,7 +49,7 @@ $JAVA -version                                    # 21.x
 # or instead: sudo alternatives --config java      # makes 21 the default for everyone
 ```
 
-With `JAVA` exported, `./idep.sh unit` (step 11) writes it into the systemd
+With `JAVA` exported, `./idep.sh unit` (step 12) writes it into the systemd
 unit, so run `unit` from the same shell. `start` checks the version and
 refuses anything older than 17.
 
@@ -75,7 +75,7 @@ git submodule update --init       # idep11, go80, idepgolem1, go
 ```
 
 The new stack does not read the root `nginx/` or `docker-compose.yml`, but
-`./idep.sh parity` (step 10) does read `config/shiny-server.conf`. If
+`./idep.sh parity` (step 11) does read `config/shiny-server.conf`. If
 production's copy differs from the committed one, put it back for the
 comparison so parity checks what production really served:
 
@@ -111,7 +111,7 @@ ls -l shinyproxy-*.jar           # ~150 MB
 ## 4. Run as the user who owns the checkout
 
 Run every `./idep.sh` command as the login user that will own the stack, not
-as root. `./idep.sh unit` (step 11) bakes that user into the systemd unit, and
+as root. `./idep.sh unit` (step 12) bakes that user into the systemd unit, and
 the app containers write into `usage/` as root anyway, so the user needs only
 to be in the `docker` group.
 
@@ -182,7 +182,27 @@ that runs `restart_server.sh` or `docker compose up`, and remove
 `restart: always` containers left from earlier compose versions
 (`docker ps -a --filter name=idep`).
 
-## 9. Install the container memory cap
+## 9. Open the firewall for :80 and :443
+
+The old stack did **not** need this and the ports still worked, which makes it
+easy to miss. Its nginx published ports (`docker-compose.yml`, `"80:80"`), and
+Docker writes those as DNAT rules that bypass firewalld's INPUT filtering
+altogether. This stack runs nginx with `--network host` (`idep.sh`, `cmd_start`),
+so there is no DNAT and firewalld filters :80/:443 like any other host port.
+
+If they are closed the symptom is confusing: everything passes from the server
+itself and nothing loads from anywhere else, with no trace in nginx's access
+log. Tests run on the host cannot catch it, because traffic to the host's own
+public IP is routed over `lo` (`ip route get <public ip>`), which is in the
+trusted zone.
+
+```bash
+sudo firewall-cmd --permanent --add-service=http --add-service=https
+sudo firewall-cmd --reload
+sudo firewall-cmd --list-all      # services: ... http https
+```
+
+## 10. Install the container memory cap
 
 Do this **before** starting the stack. It edits `/etc/docker/daemon.json` and
 restarts Docker, which would restart every running container.
@@ -196,7 +216,7 @@ sudo ./memory-cap.sh status
 Keep at least 16 GiB of host RAM outside the budget. On a host with less RAM
 than `MEMORY_MAX` the slice never binds; edit the value first.
 
-## 10. First start and verification
+## 11. First start and verification
 
 ```bash
 ./idep.sh start
@@ -220,7 +240,7 @@ Then from a browser, over https:
 - Follow the "old versions" link inside iDEP; it should open in a new tab or
   take over the tab, never nest inside the frame.
 
-## 11. Install the systemd unit
+## 12. Install the systemd unit
 
 ```bash
 ./idep.sh unit                    # review: User=, WorkingDirectory=, ExecStart=, Environment=JAVA= must match this host
@@ -249,7 +269,7 @@ From now on use `systemctl start|stop|restart shinyproxy` rather than
 this by itself when the unit is active. Reboot once and confirm the site
 answers without manual intervention.
 
-## 12. Afterwards
+## 13. Afterwards
 
 - Watch `docker stats` and `./idep.sh status` during the first busy day to
   see how far real traffic sits from the memory budget and the seat cap.

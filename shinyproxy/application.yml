@@ -261,11 +261,26 @@ proxy:
       display-name: ShinyGO 0.77
       # Directory is "go", not "go77" -- the shinygo submodule.
       container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go", host = "0.0.0.0", port = 3838)']
+      # 0.76 and 0.77 are the transitional pair: they read IDEP_DATABASE like
+      # 0.80+ but, unlike them, neither appends a separator nor a database
+      # version -- global.R does paste0(datapath, "convertIDs.db") directly.
+      # So the value has to be the full versioned path *with* a trailing
+      # slash; the inherited /srv/data yields "/srv/dataconvertIDs.db" and the
+      # app exits with "unable to open database file". data104b is what both
+      # hardcoded before the switch to the variable (shinygo 2734f42).
+      # This map replaces the anchor's, so IDEP_DATA_DIR is repeated.
+      container-env:
+        IDEP_DATABASE: /srv/data/data104b/
+        IDEP_DATA_DIR: /srv/data
 
     - <<: *legacy
       id: go76
       display-name: ShinyGO 0.76
       container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go76", host = "0.0.0.0", port = 3838)']
+      # Full versioned path with a trailing slash, as for go77 above.
+      container-env:
+        IDEP_DATABASE: /srv/data/data104b/
+        IDEP_DATA_DIR: /srv/data
 
     - <<: *legacy
       id: go75
