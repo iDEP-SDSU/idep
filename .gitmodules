@@ -1,9 +1,32 @@
 [submodule "shinyapps/idepgolem1"]
 	path = shinyapps/idepgolem1
 	url = https://github.com/espors/idepGolem.git
+	branch = master
 [submodule "shinyapps/go"]
 	path = shinyapps/go
 	url = https://github.com/gexijin/shinygo.git
+	branch = master
 [submodule "shinyapps/go80"]
 	path = shinyapps/go80
 	url = https://github.com/gexijin/shinygo.git
+	branch = shinygo80
+[submodule "shinyapps/go81"]
+	path = shinyapps/go81
+	url = https://github.com/gexijin/shinygo.git
+	branch = data107
+[submodule "shinyapps/go82"]
+	path = shinyapps/go82
+	url = https://github.com/gexijin/shinygo.git
+	branch = data107
+[submodule "shinyapps/go85"]
+	path = shinyapps/go85
+	url = https://github.com/gexijin/shinygo.git
+	branch = v852
+[submodule "shinyapps/go86"]
+	path = shinyapps/go86
+	url = https://github.com/gexijin/shinygo.git
+	branch = v860
+[submodule "shinyapps/datamap"]
+	path = shinyapps/datamap
+	url = https://github.com/gexijin/datamap.git
+	branch = main
