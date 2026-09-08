@@ -129,9 +129,10 @@ does not adopt the old one's, which is also why `start` sweeps them.
 
 Everything else is a calendar item, not a routine:
 
-- **The TLS certificate expires 2026-12-23.** Replace the pair described under
-  "TLS" and restart; nothing renews it automatically, and an expired cert
-  takes down every app at once.
+- **The TLS certificate renews itself** (Let's Encrypt via certbot, see
+  "TLS"); `status` prints the expiry of what nginx is serving and fails when
+  it is under 14 days away, which means renewal has been failing for six
+  weeks. Only a host still on a fixed pair has a calendar item here.
 - **Watch free space.** `data/`, `countsData/` and the Docker images share one
   filesystem — 86% full, 413 GB free as of 2026-09. A full disk stops
   container starts and database downloads together.
@@ -146,22 +147,43 @@ Everything else is a calendar item, not a routine:
 
 ## TLS
 
-nginx terminates TLS with the certificate production already has. `start`
-mounts it from `/etc/pki/nginx/server.pem` and
-`/etc/pki/nginx/private/server.key` — the paths the previous nginx image
-used internally — when **both** exist on the host, and otherwise from the
-untracked `../nginx/idep_ssl.pem` and `../nginx/idep.key`, the pair the
-previous image was built from (gitignored, key mode 600). `start` prints
-which one it used. Either path can be overridden:
+nginx terminates TLS. `start` writes the certificate paths nginx reads
+(`tls.conf`, gitignored, included by `nginx.conf`) from whichever of these it
+finds, in this order, and prints which one it used:
+
+1. `CERT_PEM` / `CERT_KEY` in the environment: a fixed pair, mounted as two
+   files. Nothing renews it.
+2. **A Let's Encrypt certificate certbot keeps on the host** (`LE_DOMAIN`, or
+   detected when `/etc/letsencrypt/renewal/` holds exactly one `<domain>.conf`).
+   This is how the orditus.ai mirror runs; SETUP.md "TLS" has the one-time
+   install.
+3. `/etc/pki/nginx/server.pem` + `/etc/pki/nginx/private/server.key`, the
+   paths the previous nginx image used internally, when both exist.
+4. The untracked `../nginx/idep_ssl.pem` + `../nginx/idep.key` the previous
+   image was built from.
 
 ```bash
 CERT_PEM=/path/to/fullchain.pem CERT_KEY=/path/to/privkey.key ./idep.sh start
-# or Environment=CERT_PEM=... CERT_KEY=... in the [Service] section of shinyproxy.service.in
+# or Environment=CERT_PEM=... CERT_KEY=... (or LE_DOMAIN=...) in the [Service]
+# section of shinyproxy.service.in
 ```
 
-The `.pem` must contain the server certificate followed by any intermediate,
-as nginx expects. `start` refuses to run without both files, and validates
-`nginx.conf` with `nginx -t` before replacing the running nginx.
+In the Let's Encrypt case the whole `/etc/letsencrypt` tree is mounted
+read-only, not the two files: certbot's `live/` paths are symlinks it
+re-points on every renewal, and Docker resolves a symlink once at mount time,
+so a file mount would serve the old certificate until the next restart. With
+the tree mounted, nginx follows the symlinks itself and certbot's deploy hook
+(`/etc/letsencrypt/renewal-hooks/deploy/reload-sp-nginx.sh`) runs
+`docker exec sp-nginx nginx -s reload` after each renewal. Renewal uses the
+HTTP-01 challenge: certbot writes a token under `/var/www/certbot`, which
+`start` mounts and nginx serves at `/.well-known/acme-challenge/` on :80,
+ahead of the https redirect. Port 80 therefore has to stay reachable from the
+internet, not just for the redirect.
+
+The `.pem` of a fixed pair must contain the server certificate followed by any
+intermediate, as nginx expects. `start` refuses to run without a usable
+certificate, and validates `nginx.conf` with `nginx -t` before replacing the
+running nginx.
 
 The previous production nginx sent `Strict-Transport-Security` with a one-year
 max-age, so browsers that have visited the site refuse plain http. This nginx

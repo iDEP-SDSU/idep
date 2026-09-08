@@ -175,8 +175,68 @@ containers run as root, but the directory then cannot be removed without sudo.
 
 ## 7. TLS
 
-`start` looks for the certificate in two places and takes the host pair
-when **both** of its files exist, otherwise the checkout pair:
+Two ways to give nginx a certificate. A public host with its own domain
+should use the first; it is set up once and never touched again.
+
+### Let's Encrypt (orditus.ai mirror)
+
+Prerequisites: the domain's A records (apex and `www`) point at this host,
+and the cloud firewall / security group allows 80 and 443 from anywhere.
+Check with the registrar's own name servers, since a local resolver can cache
+the old address for hours:
+
+```bash
+dig +short @dns1.registrar-servers.com orditus.ai A     # Namecheap
+```
+
+Then, with the stack stopped so port 80 is free for the first issuance:
+
+```bash
+sudo apt-get install -y certbot
+sudo certbot certonly --standalone -n --agree-tos --register-unsafely-without-email \
+     -d orditus.ai -d www.orditus.ai
+sudo mkdir -p /var/www/certbot
+sudo tee /etc/letsencrypt/renewal-hooks/deploy/reload-sp-nginx.sh >/dev/null <<'EOF'
+#!/bin/sh
+# certbot runs this after writing a renewed certificate. sp-nginx mounts
+# /etc/letsencrypt read-only and follows the live/ symlinks, so a reload is
+# all it needs. If the stack is down there is nothing to reload; the next
+# start mounts the new files anyway.
+docker exec sp-nginx nginx -s reload 2>/dev/null || true
+EOF
+sudo chmod 755 /etc/letsencrypt/renewal-hooks/deploy/reload-sp-nginx.sh
+```
+
+`start` now detects the certificate on its own (one `<domain>.conf` under
+`/etc/letsencrypt/renewal/`) and prints `cert: Let's Encrypt for orditus.ai`.
+Start the stack, then move renewals off standalone mode, which would need
+port 80 and fail while nginx holds it, onto the webroot nginx serves:
+
+```bash
+sudo systemctl start shinyproxy            # or ./idep.sh start before the unit exists
+sudo certbot reconfigure --cert-name orditus.ai -n --webroot -w /var/www/certbot
+sudo certbot renew --dry-run               # sleeps up to 8 min first when run without a tty
+./idep.sh status                           # "certificate  expires ...; orditus.ai, Let's Encrypt"
+```
+
+`reconfigure` performs a simulated renewal with the new settings before
+saving them, so a passing run proves the whole path: DNS, port 80, the
+`/.well-known/acme-challenge/` location in `nginx.conf`, and the mount.
+The Ubuntu package installs `certbot.timer`, which runs `certbot renew`
+twice a day; a certificate is renewed 30 days before it expires. Nothing
+else is periodic. If `status` ever reports the certificate within 14 days of
+expiry, renewals have been failing for weeks: run `sudo certbot renew` by
+hand and read the error.
+
+`--register-unsafely-without-email` only means Let's Encrypt has no address
+for account notices; it stopped sending expiry mail in 2025, so nothing is
+lost. To add one later: `sudo certbot update_account --email you@example.org`.
+
+### A fixed pair (production, sdstate.edu)
+
+Without a Let's Encrypt certificate, `start` looks for the certificate in two
+places and takes the host pair when **both** of its files exist, otherwise
+the checkout pair:
 
 1. `/etc/pki/nginx/server.pem` + `/etc/pki/nginx/private/server.key` on the
    host (the RHEL convention).
@@ -197,8 +257,9 @@ openssl x509 -enddate -subject -noout -in nginx/idep_ssl.pem
 
 `start` prints which pair it used. To force a particular one set `CERT_PEM`
 and `CERT_KEY` (see README, "TLS"). `start` refuses to run without both
-files. The `.pem` must be the
-server certificate followed by any intermediate, as before.
+files. The `.pem` must be the server certificate followed by any
+intermediate, as before. Nothing renews a fixed pair: put its expiry on a
+calendar.
 
 ## 8. Rehearse ShinyProxy alone, with the old stack still serving
 

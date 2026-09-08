@@ -16,10 +16,13 @@ Two hosting stacks exist side by side:
   `shiny-server` containers (`docker compose up --scale webapp=50`). Config in
   the repo root: `docker-compose.yml`, `nginx/`, `config/shiny-server.conf`,
   `restart_server.sh`.
-- **`shinyproxy` branch (under test):** ShinyProxy launches one container per
-  user session, nginx routes the same URLs to it. Everything lives in
-  `shinyproxy/`; see `shinyproxy/README.md` for architecture and operations.
-  Do not run both stacks at once, both bind :80/:443.
+- **`shinyproxy` branch (tested on production):** ShinyProxy launches one
+  container per user session, nginx routes the same URLs to it. Everything
+  lives in `shinyproxy/`; see `shinyproxy/README.md` for architecture and
+  operations. Do not run both stacks at once, both bind :80/:443.
+- **`jetstream` branch (mirror at orditus.ai):** the `shinyproxy` stack on a
+  Jetstream cloud host, with a Let's Encrypt certificate that certbot renews
+  (`shinyproxy/SETUP.md`, "TLS"). Branched from `shinyproxy` on 2026-09-08.
 
 Both stacks use the same `webapp` image built from the root `Dockerfile`
 (rocker/shiny + R packages from `classes/librarySetup.R`) and the same

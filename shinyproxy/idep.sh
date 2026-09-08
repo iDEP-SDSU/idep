@@ -26,18 +26,39 @@ NGINX_NAME=sp-nginx
 # Pinned: `latest` moves under us on every start. Same base the master-branch
 # nginx image was built from (nginx/Dockerfile), so production already has it.
 NGINX_IMAGE=nginx:1.31-alpine
-# TLS material for :443. Preferred: a host copy at the RHEL paths the old
-# nginx image used internally; otherwise the untracked pair under ../nginx/
-# that the old image was built from (nginx/Dockerfile copies it in), which is
-# what a production checkout certainly has. Override either with
-# CERT_PEM=... CERT_KEY=... ./idep.sh start (or Environment= in the unit).
-if [ -z "${CERT_PEM:-}" ] && [ -f /etc/pki/nginx/server.pem ] \
-        && [ -f /etc/pki/nginx/private/server.key ]; then
-    CERT_PEM=/etc/pki/nginx/server.pem
-    CERT_KEY=/etc/pki/nginx/private/server.key
+# TLS material for :443, in order of preference:
+#   1. CERT_PEM=... CERT_KEY=... in the environment (or Environment= in the
+#      unit): a fixed pair, mounted into nginx as two files.
+#   2. A Let's Encrypt certificate certbot keeps on this host: LE_DOMAIN=...,
+#      or auto-detected when /etc/letsencrypt/renewal/ holds exactly one
+#      <domain>.conf. `start` mounts the whole /etc/letsencrypt tree read-only,
+#      so nginx follows the live/ symlinks and a `nginx -s reload` (certbot's
+#      deploy hook, see SETUP.md "TLS") picks up every renewal. Only the
+#      renewal conf is checked here because live/ is root-only; the Docker
+#      daemon does the mount as root.
+#   3. The RHEL host paths the old nginx image used internally, when both exist.
+#   4. The untracked pair under ../nginx/ the old image was built from.
+LE_DOMAIN=${LE_DOMAIN:-}
+if [ -n "${CERT_PEM:-}" ]; then
+    LE_DOMAIN=''    # an explicit pair wins
+elif [ -z "$LE_DOMAIN" ]; then
+    le_confs=(/etc/letsencrypt/renewal/*.conf)
+    if [ ${#le_confs[@]} -eq 1 ] && [ -f "${le_confs[0]}" ]; then
+        LE_DOMAIN=$(basename "${le_confs[0]}" .conf)
+    fi
 fi
-CERT_PEM=${CERT_PEM:-$ROOT/nginx/idep_ssl.pem}
-CERT_KEY=${CERT_KEY:-$ROOT/nginx/idep.key}
+if [ -z "$LE_DOMAIN" ]; then
+    if [ -z "${CERT_PEM:-}" ] && [ -f /etc/pki/nginx/server.pem ] \
+            && [ -f /etc/pki/nginx/private/server.key ]; then
+        CERT_PEM=/etc/pki/nginx/server.pem
+        CERT_KEY=/etc/pki/nginx/private/server.key
+    fi
+    CERT_PEM=${CERT_PEM:-$ROOT/nginx/idep_ssl.pem}
+    CERT_KEY=${CERT_KEY:-$ROOT/nginx/idep.key}
+fi
+# Where certbot drops HTTP-01 challenge tokens (certbot --webroot -w ...);
+# nginx serves it at /.well-known/acme-challenge/ on :80 when it exists.
+ACME_WEBROOT=${ACME_WEBROOT:-/var/www/certbot}
 # Java 17 or newer is required (ShinyProxy 3.2 is Spring Boot 3). `java` on
 # the PATH may be an older system default (RHEL 9 ships 11); point this at a
 # newer one without touching the system alternatives:
@@ -147,12 +168,32 @@ cmd_start() {
         echo "ShinyProxy up on :$SP_PORT (pid $(cat $PIDFILE), java $jv, log: startup.log)"
     fi
 
-    [ -f "$CERT_PEM" ] && [ -f "$CERT_KEY" ] \
-        || die "TLS cert/key not found: $CERT_PEM, $CERT_KEY (set CERT_PEM and CERT_KEY)"
+    # nginx.conf includes /etc/nginx/tls.conf for its certificate paths;
+    # written here (gitignored) so one nginx.conf serves both a fixed pair
+    # and a Let's Encrypt tree. See the TLS block at the top of this file.
+    local cert_desc tls_mounts
+    if [ -n "$LE_DOMAIN" ]; then
+        [ -f "/etc/letsencrypt/renewal/$LE_DOMAIN.conf" ] \
+            || die "no Let's Encrypt certificate for $LE_DOMAIN on this host (see SETUP.md, TLS)"
+        tls_mounts=(-v /etc/letsencrypt:/etc/letsencrypt:ro)
+        printf 'ssl_certificate     /etc/letsencrypt/live/%s/fullchain.pem;\nssl_certificate_key /etc/letsencrypt/live/%s/privkey.pem;\n' \
+            "$LE_DOMAIN" "$LE_DOMAIN" > tls.conf
+        cert_desc="Let's Encrypt for $LE_DOMAIN (certbot renews it)"
+    else
+        [ -f "$CERT_PEM" ] && [ -f "$CERT_KEY" ] \
+            || die "TLS cert/key not found: $CERT_PEM, $CERT_KEY (set CERT_PEM and CERT_KEY)"
+        tls_mounts=(-v "$CERT_PEM:/etc/nginx/tls/fullchain.pem:ro"
+                    -v "$CERT_KEY:/etc/nginx/tls/privkey.pem:ro")
+        printf 'ssl_certificate     /etc/nginx/tls/fullchain.pem;\nssl_certificate_key /etc/nginx/tls/privkey.pem;\n' > tls.conf
+        cert_desc="$CERT_PEM (nothing renews it)"
+    fi
+    if [ -d "$ACME_WEBROOT" ]; then
+        tls_mounts+=(-v "$ACME_WEBROOT:/srv/acme:ro")
+    fi
     local nginx_mounts=(
         -v "$PWD/nginx/nginx.conf:/etc/nginx/nginx.conf:ro"
-        -v "$CERT_PEM:/etc/nginx/tls/fullchain.pem:ro"
-        -v "$CERT_KEY:/etc/nginx/tls/privkey.pem:ro"
+        -v "$PWD/tls.conf:/etc/nginx/tls.conf:ro"
+        "${tls_mounts[@]}"
         -v "$ROOT/shinyapps/dist:/srv/dist:ro"
         -v "$ROOT/data/shared:/srv/shared:ro"
     )
@@ -168,8 +209,8 @@ cmd_start() {
     for _ in $(seq 1 20); do
         curl -sko /dev/null --max-time 2 https://127.0.0.1/ && break; sleep 0.5
     done
-    echo "nginx up on :443 (:80 redirects), cert $CERT_PEM"
-    echo "  https://$(hostname -I | awk '{print $1}')/"
+    echo "nginx up on :443 (:80 redirects), cert: $cert_desc"
+    echo "  https://${LE_DOMAIN:-$(hostname -I | awk '{print $1}')}/"
 }
 
 cmd_stop() {
@@ -240,6 +281,29 @@ cmd_status() {
     redirect=$(curl -so /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1/ 2>/dev/null)
     echo "static site  HTTPS ${code:-000}, HTTP ${redirect:-000}"
     [ "$code" = "200" ] && [ "$redirect" = "301" ] || rc=1
+
+    # What nginx is actually serving, so a renewal that did not reach the
+    # container shows up here rather than in a browser two months later.
+    local cert ends who
+    cert=$(echo | openssl s_client -connect 127.0.0.1:443 \
+               -servername "${LE_DOMAIN:-localhost}" 2>/dev/null \
+           | openssl x509 -noout -enddate -checkend $((14*86400)) 2>/dev/null)
+    if [ -n "$cert" ]; then
+        ends=$(echo "$cert" | sed -n 's/^notAfter=//p')
+        if [ -n "$LE_DOMAIN" ]; then
+            who="$LE_DOMAIN, Let's Encrypt (certbot renews it)"
+        else
+            who="fixed pair (nothing renews it)"
+        fi
+        case "$cert" in
+            *"will not expire"*)
+                echo "certificate  expires $ends; $who" ;;
+            *)
+                echo "certificate  expires $ends -- WITHIN 14 DAYS; $who"
+                [ -n "$LE_DOMAIN" ] && echo "             renewal is failing; run: sudo certbot renew"
+                rc=1 ;;
+        esac
+    fi
 
     return $rc
 }
