@@ -46,12 +46,10 @@ actuator (:9090) bind 127.0.0.1, and every app container publishes its port on
 
 ## Operating it
 
-Everything goes through one script:
+Everything goes through one script, except the lifecycle commands once the
+systemd unit is installed:
 
 ```bash
-./idep.sh start           # ShinyProxy on :8080 + nginx on :80
-./idep.sh stop            # stops both, sweeps leftover app containers
-./idep.sh restart
 ./idep.sh status          # process / container / capacity summary
 ./idep.sh logs            # tail -f startup.log
 ./idep.sh check <id>      # really launch one app and time it to served HTML
@@ -59,7 +57,23 @@ Everything goes through one script:
 ./idep.sh pin <tag>       # freeze webapp:latest as webapp:<tag>
 ./idep.sh update [--pull] # rebuild or pull the image, then restart
 ./idep.sh unit            # print the systemd unit for this checkout and user
+
+# lifecycle -- once shinyproxy.service is installed, go through systemd:
+sudo systemctl restart shinyproxy    # not ./idep.sh restart
+sudo systemctl start shinyproxy
+sudo systemctl stop shinyproxy
 ```
+
+`start`, `stop` and `restart` refuse to run while `shinyproxy.service` is
+active and point you at the `systemctl` line instead, so systemd's view of the
+stack stays right; on a host with no unit installed they are the way to run it.
+The unit's `ExecStart`/`ExecStop` call the same `idep.sh start`/`stop`, so
+either route takes the identical code path. `update` needs no such care -- it
+detects the active unit and restarts through `systemctl` itself, asking for
+`sudo` up front rather than after a 30-minute build. Everything above the blank
+line works either way.
+
+A restart is not free: see "Routine maintenance" below.
 
 `JAVA=/usr/lib/jvm/jre-21/bin/java ./idep.sh start` (or `unit`) selects a JVM
 when the host's default `java` is older than 17, as on RHEL 9; `start`
@@ -101,8 +115,7 @@ a dead instance left behind. Pointing `PIDFile=` at `shinyproxy.pid` does not
 work under SELinux — the file inherits the checkout's `default_t`, `init_t`
 may not read it, and systemd hangs in `activating (start)` until
 `TimeoutStartSec` and then kills a healthy stack. See the comment in
-`shinyproxy.service.in`. Once installed, prefer `systemctl start|stop|restart shinyproxy` over
-calling the script directly so systemd's view stays right.
+`shinyproxy.service.in`.
 
 ## Routine maintenance
 
