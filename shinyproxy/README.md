@@ -216,11 +216,12 @@ iDEP 2.60 (ShinyGO is the same with `go`):
 2. Copy the `idep250` block in `application.yml` to a new spec `idep260`,
    changing the id, display name and the `idep260::run_app` call. Give it
    the `minimum-seats-available` pool.
-3. Demote `idep250`: drop `minimum-seats-available` and
-   `allow-container-re-use`, set `seats-per-container: 5`, and point
+3. Demote `idep250`: drop `minimum-seats-available` and point
    `container-image` at a tag that still has the `idep250` package
-   (`./idep.sh pin <tag>` before the update creates one). It now costs
-   nothing until someone visits.
+   (`./idep.sh pin <tag>` before the update creates one). It now costs nothing
+   until someone visits. Leave `seats-per-container` at 1. Check its traffic
+   again a few weeks later — the freshly retired version is usually still busy
+   enough to want a pool of 2, the way `idep20` does.
 4. In `nginx/nginx.conf`, add `location = /idep260` and `location /idep260/`
    lines like the ones for `/idep250/`, then repoint `location /idep/` at
    `/app/idep260/`.
@@ -334,22 +335,81 @@ not stop a third-party site from embedding an app.
 
 ## Configuration reference
 
-| | iDEP | ShinyGO | legacy |
-| --- | --- | --- | --- |
-| `minimum-seats-available` | 20 | 20 | unset — no pre-init |
-| `seats-per-container` | 1 | 1 | 5 |
-| `allow-container-re-use` | `false` | `false` | *(unset)* |
-| idle containers | 20 | 20 | 0 |
+| | iDEP | ShinyGO | legacy (4 busy) | legacy (rest) |
+| --- | --- | --- | --- | --- |
+| `minimum-seats-available` | 6 | 8 | 1 – 2 | unset — no pre-init |
+| `seats-per-container` | 1 | 1 | 1 | 1 |
+| `allow-container-re-use` | `false` | `false` | `false` | `false` |
+| idle containers | 6 (~1.7 GB) | 8 (~2.2 GB) | 7 (~1.8 GB) | 0 |
+| cold start | ~12.5 s | ~6.5 s | ~6 s | ~5 – 12 s |
 
 `minimum-seats-available` is a floor on **free** seats, not a total — every
 seat a user takes is replaced at once, so the pool grows past it under load
-and 20 spares serve any number of users as long as fewer than 20 arrive
-within one cold start (~7 s). Setting it at all is what enables
-pre-initialization, which is why omitting it on the legacy tier makes those
-apps cost nothing.
+and N spares serve any number of users as long as fewer than N arrive within
+one cold start. Setting it at all is what enables pre-initialization, which is
+why omitting it on the 29 quiet legacy specs makes those apps cost nothing.
+
+**How the two numbers were picked.** Replaying a day of real seat claims from
+`shinyproxy.log` (618 ShinyGO, 192 iDEP) against a simulated pool: ShinyGO
+needs 8 spares and iDEP 4 to serve every arrival warm, and both still hold up
+with the boot time tripled, which is what a burst of simultaneous boots looks
+like. iDEP is set to 6 rather than 4 for headroom on its slower boot. They were
+both 20 before, which was sized for peak concurrency rather than for the
+arrival rate — the pool only has to cover the boot of a *replacement* seat, and
+the median gap between iDEP arrivals is 147 s. Re-run the count after any big
+change in traffic:
+
+```sh
+grep -c "Seat claimed.*specId=go86" shinyproxy.log
+```
+
+### Warm pools on the legacy tier
+
+Four old versions get a small pool of their own, because they are not actually
+idle. Sweep-filtered session counts over an 18.7 h window of `shinyproxy.log`,
+per day:
+
+| spec | sessions/day | pool |
+| --- | --- | --- |
+| `idep20` | ~130 | 2 |
+| `go77` | ~82 | 2 |
+| `idep96` | ~72 | 2 |
+| `go80` | ~42 | 1 |
+| `go82`, `go74`, `idep11`, `idep210` | 12 – 19 | none |
+| the other 25 specs | ≤ 8, mostly 1 – 4 | none |
+
+iDEP 2.0 alone runs about 40% of iDEP 2.5's volume. Together the four are
+roughly a quarter of all traffic and every one of those sessions used to wait
+out a full container boot. The four below the line are left cold on purpose: at
+about one session every 90 minutes, a permanently resident container to save
+one person six seconds is not a good trade.
+
+**Filter the checker out before reading any of this.** `./idep.sh check` starts
+every one of the 35 specs in a burst, so a couple of runs is enough to make a
+never-used app look like it has 5 – 7 sessions a day. Discard any cluster of
+starts that spans most of the specs at once:
+
+```sh
+grep "Starting proxy" shinyproxy.log | grep -oP 'specId=\K\w+' | sort | uniq -c | sort -rn
+```
 
 `allow-container-re-use: false` gives every user a fresh R process and is
 **only valid when `seats-per-container` is 1**.
+
+### `seats-per-container` and when sharing actually happens
+
+ShinyProxy routes a spec through its sharing dispatcher **only when
+`minimum-seats-available` is set**. `seats-per-container` on its own does
+nothing: in `containerproxy-1.2.4.jar`, `seatsPerContainer` carries a default
+of 1 while `minimumSeatsAvailable` has none, and that null is what the
+dispatcher tests. The legacy tier used to say `seats-per-container: 5` on the
+strength of the old shiny-server behaviour, and it never once took effect —
+every legacy session in the logs boots its own container and none claim a seat.
+
+It is set to 1 now, which is both what has always happened and what has to keep
+happening: the four specs above do set `minimum-seats-available`, and with 5 on
+the anchor they would quietly start putting five users on one R process under a
+shared 15 GB cap, where one user's OOM kills the other four.
 
 Global:
 
@@ -367,8 +427,9 @@ Global:
 Why the current apps are not shared: an iDEP session is memory-heavy and runs
 long single-threaded computations, so users on one R process would block each
 other and share one OOM fate. ShinyGO is light enough that a fresh R process
-per user costs little, and it keeps the two specs identical. The legacy tier
-still packs five users per container, as shiny-server did.
+per user costs little, and it keeps the two specs identical. The legacy tier is
+one user per container too — the `seats-per-container: 5` it used to carry was
+inert, see above.
 
 ## Measured on this host (32 cores, 122 GB)
 

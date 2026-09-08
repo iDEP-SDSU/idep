@@ -85,11 +85,18 @@ proxy:
         IDEP_DATA_DIR: /srv/data
         IDEP_TELEMETRY_SQLITE: /srv/usage/idep_telemetry.sqlite
       container-memory-limit: 15g
-      # Keep spare containers booted so arrivals skip the ~6.5 s cold start
+      # Keep spare containers booted so arrivals skip the ~12.5 s cold start
       # (setting minimum-seats-available is what enables pre-initialization).
       # This is a floor on *spare* seats, topped up as users take them, not a
-      # cap on users. 20 free seats = 20 idle containers, ~4.6 GB.
-      minimum-seats-available: 20
+      # cap on users. 6 free seats = 6 idle containers, ~1.7 GB.
+      #
+      # Sized from the arrival trace, not from peak concurrency: the pool only
+      # has to cover the boot of a replacement seat, and iDEP arrivals are ~330
+      # a day with a median gap of 147 s. Replaying a day of real claims, 4
+      # spare seats already served every arrival warm, and 6 still does with
+      # the boot time tripled (which is what a burst of simultaneous boots
+      # looks like). The worst burst on record is 8 arrivals in a minute.
+      minimum-seats-available: 6
       # One user per container: iDEP sessions are memory-heavy (15 GB cap) and
       # run long single-threaded computations, so sharing an R process would
       # make users block each other and share one OOM fate.
@@ -112,11 +119,16 @@ proxy:
       container-env:
         IDEP_DATABASE: /srv/data
       container-memory-limit: 15g
-      # 20 free seats = 20 idle containers, ~4.4 GB.
-      minimum-seats-available: 20
+      # 8 free seats = 8 idle containers, ~2.2 GB. ShinyGO is the busier of the
+      # two (~1050 sessions a day) and burstier -- 17 arrivals in one minute is
+      # in the trace -- but it also boots in 6.5 s, so the pool refills faster
+      # than a classroom arrives. Replaying a day of real claims, 8 spare seats
+      # served every arrival warm; even with the boot time tripled only 0.6%
+      # waited, ~11 s each. See the note on idep250 above.
+      minimum-seats-available: 8
       # One user per container, as for iDEP: a fresh R process per session
       # means users never block each other or share an OOM. ShinyGO is light
-      # enough (~220 MB idle, sub-second start) that this costs little.
+      # enough (~270 MB idle, 6.5 s start) that this costs little.
       seats-per-container: 1
       allow-container-re-use: false   # every user gets a fresh R process
       scale-down-delay: 5
@@ -161,8 +173,21 @@ proxy:
         IDEP_DATABASE: /srv/data
         IDEP_DATA_DIR: /srv/data
       container-memory-limit: 15g
-      # Five users share one R process, as they shared one shiny-server process.
-      seats-per-container: 5
+      # One user per container, same as the current tier. This used to say 5,
+      # on the theory that legacy users would share an R process as they shared
+      # one shiny-server process -- but it never did anything: ShinyProxy only
+      # routes a spec through the sharing dispatcher when
+      # minimum-seats-available is set, and seats-per-container alone leaves it
+      # on the default one-container-per-session path (seatsPerContainer
+      # carries a Lombok default, minimumSeatsAvailable does not). Every legacy
+      # session in the logs boots its own container, none claim a seat.
+      #
+      # It matters now that four legacy specs below do set
+      # minimum-seats-available: with 5 here they would silently start sharing
+      # one R process between five users, on the same 15 GB cap, where one
+      # user's OOM takes the other four with it. Keep it 1.
+      seats-per-container: 1
+      allow-container-re-use: false
       scale-down-delay: 5
 
     # --- iDEP ---------------------------------------------------------------
@@ -171,6 +196,10 @@ proxy:
       id: idep20
       display-name: iDEP 2.0
       container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/idep20", host = "0.0.0.0", port = 3838)']
+      # Warm pool: this is one of the four legacy apps with real traffic
+      # (see "Warm pools on the legacy tier" in README.md). ~130 sessions a day, second only to iDEP 2.5;
+      # 2 spares served every arrival warm when the day was replayed.
+      minimum-seats-available: 2
 
     - <<: *legacy
       id: idep11
@@ -193,6 +222,12 @@ proxy:
       container-env:
         IDEP_DATABASE: /srv/data/data104b/
         IDEP_DATA_DIR: /srv/data
+      # Warm pool: this is one of the four legacy apps with real traffic
+      # (see "Warm pools on the legacy tier" in README.md). ~72 sessions a day.
+      # The replay puts its cold-start rate higher than the others, but that is
+      # one client that opened 15 sessions in 90 s on 2026-09-06, not 15
+      # people; the rest of its traffic is smooth and 2 spares cover it.
+      minimum-seats-available: 2
 
     - <<: *legacy
       id: idep95
@@ -267,6 +302,10 @@ proxy:
       id: go80
       display-name: ShinyGO 0.80
       container-cmd: [R, -e, 'shiny::runApp("/srv/shiny-server/go80", host = "0.0.0.0", port = 3838)']
+      # Warm pool: this is one of the four legacy apps with real traffic
+      # (see "Warm pools on the legacy tier" in README.md). ~42 sessions a day; 1 spare already served every
+      # arrival warm, 1 is the whole pool.
+      minimum-seats-available: 1
 
     - <<: *legacy
       id: go77
@@ -284,6 +323,10 @@ proxy:
       container-env:
         IDEP_DATABASE: /srv/data/data104b/
         IDEP_DATA_DIR: /srv/data
+      # Warm pool: this is one of the four legacy apps with real traffic
+      # (see "Warm pools on the legacy tier" in README.md). ~82 sessions a day from 21 distinct IPs in a
+      # single nginx window; 2 spares served every arrival warm.
+      minimum-seats-available: 2
 
     - <<: *legacy
       id: go76
