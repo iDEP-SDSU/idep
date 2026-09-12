@@ -64,3 +64,24 @@ singularity_standalone/          Singularity build for running iDEP without Dock
   the proxy layer where possible.
 - `data/`, `shinylog/`, `countsData/`, TLS keys, the ShinyProxy JAR and logs are
   gitignored; do not commit them.
+
+## Routine app updates (shinyproxy branch)
+
+`/idep/` runs an R package baked into the image; `/go/` and all legacy apps are
+bind-mounted from `shinyapps/`.
+
+```bash
+# ShinyGO / legacy: no rebuild, picked up by the next container
+cd shinyapps/go86 && git pull
+
+# iDEP: rebuild the image (tags the outgoing one webapp:pre-<date>, then restarts)
+cd shinyproxy && ./idep.sh update          # --pull to take gexijin/idep:latest instead
+```
+
+Never plain `docker build` — it overwrites `webapp:latest` with no snapshot, and
+without a restart old containers keep serving the old build for days.
+
+```bash
+curl -s 127.0.0.1:9090/actuator/recyclable   # activeConnections: sessions a restart drops
+./idep.sh status && ./idep.sh check idep250  # after updating
+```
