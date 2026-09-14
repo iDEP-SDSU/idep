@@ -39,6 +39,21 @@ proxy:
   template-path: ./templates/
   container-backend: docker
 
+  # Do NOT set proxy.container-log-path here. It would give per-session R
+  # logs (what shiny-server used to write to /var/log/shiny-server/), but
+  # ShinyProxy implements it by attaching to every container's output over the
+  # Docker API and holding that HTTP connection for the container's whole life.
+  # The bundled docker-client has a fixed pool of 100 connections and
+  # ShinyProxy 3.2.4 exposes no setting for it, so the 100th running container
+  # (sessions plus warm-pool seats) silently exhausts the pool: every later
+  # start *and stop* fails with "Timeout waiting for connection from pool",
+  # users hang at "launching ...", and only a restart recovers. That took the
+  # site down for 18 h on 2026-09-13 at ~80 concurrent sessions.
+  #
+  # If per-session logs are wanted, write them from inside the container
+  # (redirect R's output to a bind-mounted directory in container-cmd); that
+  # costs no Docker API connection.
+
   docker:
     url: unix:///var/run/docker.sock
     # ShinyProxy runs on the host, so containers publish a port on the
