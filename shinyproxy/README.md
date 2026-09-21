@@ -33,6 +33,7 @@ whatever R the single image happened to have.
        |  /data/       -> data/shared     (static, autoindex)
        |  /idep/ /go/  -> 127.0.0.1:8080/app/<id>/
        |  /idep73/ ... -> 127.0.0.1:8080/app/<id>/
+       |  /geofind/    -> 127.0.0.1:8000/   (geofind, a separate service; below)
        |  anything else with no matching file -> 127.0.0.1:8080
        v
 :8080 ShinyProxy   JAR on the host, loopback only, config in application.yml,
@@ -43,6 +44,19 @@ whatever R the single image happened to have.
 Only :80 and :443 are reachable from outside. ShinyProxy (:8080) and its
 actuator (:9090) bind 127.0.0.1, and every app container publishes its port on
 127.0.0.1 too, so nginx is the only way in.
+
+### geofind, a neighbour on the same nginx
+
+[geofind](https://github.com/gexijin/geofind) (GEO dataset search) is not a
+Shiny app and ShinyProxy knows nothing about it: it runs from its own compose
+in `~/geofind`, one container published on 127.0.0.1:8000 only, and nginx
+forwards `/geofind/` to it with the prefix stripped (the app is told the
+prefix through `GEOFIND_ROOT_PATH` in `~/geofind/.env`, for its `/docs`
+page). The route is the only thing here that mentions it. Editing it needs
+no restart: validate with `nginx -t` as `start` does, then
+`docker exec sp-nginx nginx -s reload`. Its own operations (data, index,
+updating) are in `~/geofind/docs/DEPLOY.md`, "Behind an existing reverse
+proxy".
 
 ## Operating it
 

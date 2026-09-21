@@ -23,6 +23,8 @@ Two hosting stacks exist side by side:
 - **`jetstream` branch (mirror at orditus.ai):** the `shinyproxy` stack on a
   Jetstream cloud host, with a Let's Encrypt certificate that certbot renews
   (`shinyproxy/SETUP.md`, "TLS"). Branched from `shinyproxy` on 2026-09-08.
+  Its nginx also routes `/geofind/` to the geofind service (`~/geofind`, its
+  own compose on 127.0.0.1:8000; `shinyproxy/README.md`, "geofind").
 
 Both stacks use the same `webapp` image built from the root `Dockerfile`
 (rocker/shiny + R packages from `classes/librarySetup.R`) and the same
