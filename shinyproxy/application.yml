@@ -65,12 +65,25 @@ proxy:
   heartbeat-rate: 10000
   heartbeat-timeout: 900000       # reclaim a container 15 min after the tab closes
 
+  # Hard lifetime per session, in minutes, for every app. ShinyProxy counts an
+  # open websocket as a heartbeat (the browser answers its pings even in a
+  # frozen background tab), so a tab left open holds its container for days:
+  # on 2026-09-22 the site hit the session cap with 66 sessions older than a
+  # day, 13 of them from a week earlier. Last week 8% of sessions ran past
+  # 4 h and nearly all of those were idle tabs. A cut user reloads and gets a
+  # fresh session at once. ShinyProxy 3.2.4 shows no warning beforehand.
+  default-proxy-max-lifetime: 240
+
   # Hard ceiling on concurrent *seats* (i.e. users) across every spec, not
   # containers: the pools below are floors on spare seats and grow past them
   # under load, so this is the only thing that bounds how many R processes
   # can exist. Past it ShinyProxy shows "not enough capacity" instead of
-  # OOM-ing the host.
-  max-total-instances: 200
+  # OOM-ing the host. Keep it below what the container memory budget
+  # (memory-cap.sh, 145 GiB) can hold: at ~0.6 GB per session on average,
+  # 250 sessions fit and the polite refusal still comes before the kernel
+  # starts OOM-killing users' R sessions. With the 4 h lifetime above, peak
+  # concurrency should sit near 150.
+  max-total-instances: 250
 
   specs:
 

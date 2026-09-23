@@ -31,11 +31,12 @@ set -eu
 # ---------------------------------------------------------------- the budget
 # Combined memory for every container on the host, sized for the production
 # server. What is left over goes to the OS, the page cache and the ShinyProxy
-# JVM (2 GB heap cap); keep at least 16 GiB back. Any systemd size works
+# JVM (2 GB heap cap, ~3 GB resident); keep at least 11 GiB back on this
+# 157 GiB host. Any systemd size works
 # ("90G", "80%"). To change it, edit this line and run
 # `sudo ./memory-cap.sh install` again: the new value is applied in place,
 # no Docker restart.
-MEMORY_MAX=140G
+MEMORY_MAX=145G
 # ----------------------------------------------------------------------------
 
 SLICE=containers.slice
