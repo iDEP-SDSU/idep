@@ -46,7 +46,11 @@ CERT_KEY=${CERT_KEY:-$ROOT/nginx/idep.key}
 JAVA=${JAVA:-java}
 # ShinyProxy is a small process even with 100+ proxies; without this the JVM
 # would let the heap grow to a quarter of host RAM before collecting.
-JAVA_OPTS=${JAVA_OPTS:--Xmx2g}
+# MaxDirectMemorySize defaults to -Xmx; the iframe script injector buffers
+# whole text/html responses (iDEP reports reach 500+ MB) and the JDK caches a
+# temporary direct buffer of that size per I/O thread forever unless
+# maxCachedBufferSize caps it, which exhausted the 2 GiB pool in Oct 2026.
+JAVA_OPTS=${JAVA_OPTS:--Xmx4g -XX:MaxDirectMemorySize=4g -Djdk.nio.maxCachedBufferSize=262144}
 
 die() { echo "error: $*" >&2; exit 1; }
 
