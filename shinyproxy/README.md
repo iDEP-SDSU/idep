@@ -51,7 +51,7 @@ systemd unit is installed:
 
 ```bash
 ./idep.sh status          # process / container / capacity summary
-./idep.sh logs            # tail -f startup.log
+./idep.sh logs            # tail -f shinyproxy.log
 ./idep.sh check <id>      # really launch one app and time it to served HTML
 ./idep.sh check all       # smoke test every app (~2 min)
 ./idep.sh pin <tag>       # freeze webapp:latest as webapp:<tag>
@@ -137,8 +137,11 @@ Everything else is a calendar item, not a routine:
   container starts and database downloads together.
 - **Logs need no attention.** `shinyproxy.log` is Spring Boot's log file:
   logback rolls it daily and at 10 MB, gzips what it rolls and keeps a week.
-  `startup.log` is the JVM's stdout, truncated by every `start`. Neither grows
-  without bound, so there is nothing to prune.
+  `startup.log` is the JVM's stdout, truncated by every `start`; console
+  logging is off in `application.yml` (it used to duplicate the whole log
+  there, unrotated, 155 MB after three weeks), so it only ever holds what the
+  JVM prints when it cannot start. Neither grows, so there is nothing to
+  prune.
 - **`memory-cap.sh install` is once per host**, not periodic: it writes two
   config files that survive reboots and Docker restarts (see "Capping total
   container memory"). Use `sudo ./memory-cap.sh status` when investigating

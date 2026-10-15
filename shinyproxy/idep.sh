@@ -135,6 +135,8 @@ cmd_start() {
             app_containers | xargs -r docker rm -f >/dev/null 2>&1
             echo "removed $orphans app containers left by a previous ShinyProxy"
         fi
+        # stdout/stderr go to startup.log, but console logging is off in
+        # application.yml, so only JVM-level failures land there (see cmd_logs).
         # shellcheck disable=SC2086  # JAVA_OPTS is meant to word-split
         setsid nohup "$JAVA" $JAVA_OPTS -jar "$jar" > startup.log 2>&1 < /dev/null &
         echo $! > "$PIDFILE"
@@ -142,13 +144,13 @@ cmd_start() {
         printf 'starting ShinyProxy (%s)' "$jar"
         for _ in $(seq 1 60); do
             curl -s -o /dev/null --max-time 2 "http://127.0.0.1:$SP_PORT/" && break
-            kill -0 "$(cat $PIDFILE)" 2>/dev/null || { echo; die "ShinyProxy exited; see startup.log"; }
+            kill -0 "$(cat $PIDFILE)" 2>/dev/null || { echo; die "ShinyProxy exited; see shinyproxy.log, or startup.log if the JVM itself failed"; }
             printf '.'; sleep 2
         done
         echo
         curl -s -o /dev/null --max-time 2 "http://127.0.0.1:$SP_PORT/" \
-            || die "ShinyProxy did not answer on :$SP_PORT; see startup.log"
-        echo "ShinyProxy up on :$SP_PORT (pid $(cat $PIDFILE), java $jv, log: startup.log)"
+            || die "ShinyProxy did not answer on :$SP_PORT; see shinyproxy.log"
+        echo "ShinyProxy up on :$SP_PORT (pid $(cat $PIDFILE), java $jv, log: shinyproxy.log)"
     fi
 
     [ -f "$CERT_PEM" ] && [ -f "$CERT_KEY" ] \
@@ -422,7 +424,10 @@ cmd_parity() {
     return $rc
 }
 
-cmd_logs() { tail -n "${2:-50}" -f startup.log; }
+# shinyproxy.log is the application log (logback, rotated daily). startup.log
+# only holds what the JVM prints outside logging, i.e. nothing unless it
+# failed to start; console logging is off in application.yml.
+cmd_logs() { tail -n "${2:-50}" -f shinyproxy.log; }
 
 # systemd cannot expand variables in User=, WorkingDirectory= or ExecStart=,
 # so the unit is rendered from shinyproxy.service.in for whoever runs this,

@@ -439,6 +439,19 @@ proxy:
 logging:
   file:
     name: shinyproxy.log
+  # Console logging off: Spring Boot otherwise writes every line to stdout as
+  # well as to the file, and idep.sh captures stdout in startup.log, which
+  # is never rotated -- after three weeks it was a 155 MB copy of this log.
+  # With the console appender off, startup.log only ever receives what the
+  # JVM itself prints (a crash, a bad JAR, an unsupported Java), so it stays
+  # at a few bytes and is still the place to look when the JVM does not start.
+  threshold:
+    console: "OFF"
+
+spring:
+  main:
+    # The Spring Boot banner also goes to stdout; drop it for the same reason.
+    banner-mode: "off"
 
 server:
   # Loopback only: nginx on :443 is the only way in. Without this the JAR
